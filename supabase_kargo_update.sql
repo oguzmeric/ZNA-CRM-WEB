@@ -1,0 +1,18 @@
+alter table kargolar add column if not exists kargo_no text;
+alter table kargolar add column if not exists tip text default 'giden';
+alter table kargolar add column if not exists gonderen jsonb default '{}';
+alter table kargolar add column if not exists alici jsonb default '{}';
+alter table kargolar add column if not exists icerik text;
+alter table kargolar add column if not exists agirlik text;
+alter table kargolar add column if not exists desi text;
+alter table kargolar add column if not exists ucret text;
+alter table kargolar add column if not exists odeme_yontemi text;
+alter table kargolar add column if not exists tahmini_teslim text;
+alter table kargolar add column if not exists teslim_tarihi timestamptz;
+alter table kargolar add column if not exists ilgili_modul text;
+alter table kargolar add column if not exists ilgili_kullanici_ids jsonb default '[]';
+alter table kargolar add column if not exists durum_gecmisi jsonb default '[]';
+alter table kargolar add column if not exists olusturan_id bigint;
+alter table kargolar add column if not exists olusturan_ad text;
+alter table kargolar add column if not exists olusturma_tarihi timestamptz default now();
+alter table kargolar add column if not exists guncelleme_tarihi timestamptz default now();
