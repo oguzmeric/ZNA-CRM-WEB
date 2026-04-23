@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Wrench, Download, ChevronLeft, ChevronRight,
-  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2,
+  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer,
 } from 'lucide-react'
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
@@ -40,6 +40,8 @@ export default function ServisRaporlari() {
   const [teknisyenFiltre, setTeknisyenFiltre] = useState('')
   const [arizaFiltre, setArizaFiltre] = useState('')
   const [takipFiltre, setTakipFiltre] = useState('')
+  const [tarihBaslangic, setTarihBaslangic] = useState('')
+  const [tarihBitis, setTarihBitis] = useState('')
   const [sayfa, setSayfa] = useState(1)
   const [seciliRapor, setSeciliRapor] = useState(null)
 
@@ -65,21 +67,25 @@ export default function ServisRaporlari() {
       if (teknisyenFiltre && r.teknisyen !== teknisyenFiltre) return false
       if (arizaFiltre && r.arizaKodu !== arizaFiltre) return false
       if (takipFiltre && r.takipKodu !== takipFiltre) return false
+      // Tarih aralığı — r.gidTarih ISO 'YYYY-MM-DD' formatında; string karşılaştırma doğru sıralar
+      if (tarihBaslangic && (!r.gidTarih || r.gidTarih < tarihBaslangic)) return false
+      if (tarihBitis && (!r.gidTarih || r.gidTarih > tarihBitis)) return false
       if (!q) return true
       return trNormalize(
         `${r.fisNo} ${r.firma} ${r.lokasyon} ${r.sonuc} ${r.teknisyen} ${r.bildirilen}`
       ).includes(q)
     })
-  }, [veri, arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre])
+  }, [veri, arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
   const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOYUTU))
   const baslangic = (sayfa - 1) * SAYFA_BOYUTU
   const gorunen = filtreli.slice(baslangic, baslangic + SAYFA_BOYUTU)
 
-  useEffect(() => { setSayfa(1) }, [arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre])
+  useEffect(() => { setSayfa(1) }, [arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
   const temizle = () => {
     setArama(''); setFirmaFiltre(''); setTeknisyenFiltre(''); setArizaFiltre(''); setTakipFiltre('')
+    setTarihBaslangic(''); setTarihBitis('')
   }
 
   const indirExcel = () => {
@@ -87,6 +93,83 @@ export default function ServisRaporlari() {
     link.href = '/data/servis-raporlari.json'
     link.download = 'servis-raporlari.json'
     link.click()
+  }
+
+  const raporPdfYazdir = (r) => {
+    if (!r) return
+    const esc = (s) => String(s ?? '—').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]))
+    const satir = (etiket, deger) => `
+      <tr>
+        <td class="lbl">${esc(etiket)}</td>
+        <td class="val">${esc(deger)}</td>
+      </tr>`
+    const html = `<!doctype html>
+<html lang="tr"><head><meta charset="utf-8" />
+<title>Servis Raporu ${esc(r.fisNo)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px; font: 13px/1.5 -apple-system, "Segoe UI", Arial, sans-serif; color: #0F1C2E; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: #1E5AA8; }
+  .meta { color: #4A5A6E; font-size: 12px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #1E5AA8; }
+  .badges { display: flex; gap: 6px; margin: 12px 0 0; flex-wrap: wrap; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #EDF0F3; color: #4A5A6E; }
+  .badge.code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: #E8EFF8; color: #1E5AA8; }
+  .badge.aktif { background: #DCF1E2; color: #2F7D4F; }
+  .badge.lead { background: #E8EFF8; color: #2B6A9E; }
+  .badge.beklemede { background: #FBEFD8; color: #B77516; }
+  .badge.kayip { background: #F8DEDE; color: #B23A3A; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  td { padding: 8px 0; vertical-align: top; }
+  td.lbl { width: 160px; color: #8393A6; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  td.val { color: #0F1C2E; }
+  .sonuc { margin-top: 16px; padding: 12px 14px; background: #DCF1E2; border-radius: 6px; }
+  .sonuc h3 { margin: 0 0 6px; color: #2F7D4F; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .sonuc p { margin: 0; white-space: pre-wrap; font-size: 13px; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #D9DFE5; font-size: 10px; color: #8393A6; text-align: center; }
+  @media print {
+    body { padding: 16px; }
+    .noprint { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <h1>Servis Raporu</h1>
+  <div class="meta">
+    Fiş No: <strong>${esc(r.fisNo)}</strong> · Tarih: ${esc(formatTarih(r.gidTarih))}
+    <div class="badges">
+      ${r.takipKodu ? `<span class="badge ${takipTone(r.takipKodu)}">${esc(r.takipKodu)}</span>` : ''}
+      ${r.arizaKodu ? `<span class="badge">${esc(r.arizaKodu)}</span>` : ''}
+      ${r.chKodu ? `<span class="badge code">CH ${esc(r.chKodu)}</span>` : ''}
+      ${r.sisNo ? `<span class="badge">${esc(r.sisNo)}</span>` : ''}
+    </div>
+  </div>
+
+  <table>
+    ${satir('Firma', r.firma)}
+    ${r.lokasyon ? satir('Lokasyon', r.lokasyon) : ''}
+    ${satir('Teknisyen', r.teknisyen)}
+    ${satir('Bildirim Tarihi', formatTarih(r.bilTarih))}
+    ${satir('Gidiş Tarihi', formatTarih(r.gidTarih))}
+    ${(r.bildiren && r.bildiren.trim() && r.bildiren !== '.') ? satir('Bildiren', r.bildiren) : ''}
+    ${r.bildirilen ? satir('Bildirilen Sorun', r.bildirilen) : ''}
+  </table>
+
+  ${r.sonuc ? `<div class="sonuc"><h3>✓ Sonuç</h3><p>${esc(r.sonuc)}</p></div>` : ''}
+
+  <div class="footer">
+    ZNA Teknoloji · Servis Raporu · ${new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+  </div>
+
+  <script>window.onload = () => { window.print(); }</script>
+</body></html>`
+
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) {
+      alert('Pop-up engellendi. Tarayıcınızın pop-up engelleyicisine bu sayfa için izin verin.')
+      return
+    }
+    w.document.write(html)
+    w.document.close()
   }
 
   if (yukleniyor) {
@@ -171,9 +254,91 @@ export default function ServisRaporlari() {
               {takipDurumlari.map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
           </div>
+          <div>
+            <Label>Tarih başlangıç</Label>
+            <input
+              type="date"
+              value={tarihBaslangic}
+              onChange={e => setTarihBaslangic(e.target.value)}
+              max={tarihBitis || undefined}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                font: '400 13px/20px var(--font-sans)',
+                outline: 'none',
+              }}
+            />
+          </div>
+          <div>
+            <Label>Tarih bitiş</Label>
+            <input
+              type="date"
+              value={tarihBitis}
+              onChange={e => setTarihBitis(e.target.value)}
+              min={tarihBaslangic || undefined}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                font: '400 13px/20px var(--font-sans)',
+                outline: 'none',
+              }}
+            />
+          </div>
         </div>
-        {(arama || firmaFiltre || teknisyenFiltre || arizaFiltre || takipFiltre) && (
-          <Button variant="tertiary" size="sm" onClick={temizle}>Filtreleri temizle</Button>
+
+        {/* Hızlı tarih kısayolları */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          {[
+            { label: 'Bugün', gun: 0 },
+            { label: 'Son 7 gün', gun: 7 },
+            { label: 'Son 30 gün', gun: 30 },
+            { label: 'Son 90 gün', gun: 90 },
+            { label: 'Bu yıl', gun: -1 },
+          ].map(opt => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => {
+                const bugun = new Date()
+                const bitis = bugun.toISOString().slice(0, 10)
+                if (opt.gun === -1) {
+                  setTarihBaslangic(`${bugun.getFullYear()}-01-01`)
+                } else {
+                  const baslangic = new Date(bugun)
+                  baslangic.setDate(baslangic.getDate() - opt.gun)
+                  setTarihBaslangic(baslangic.toISOString().slice(0, 10))
+                }
+                setTarihBitis(bitis)
+              }}
+              style={{
+                padding: '3px 10px',
+                font: '500 11px/14px var(--font-sans)',
+                borderRadius: 'var(--radius-pill)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {(arama || firmaFiltre || teknisyenFiltre || arizaFiltre || takipFiltre || tarihBaslangic || tarihBitis) && (
+          <div style={{ marginTop: 8 }}>
+            <Button variant="tertiary" size="sm" onClick={temizle}>Filtreleri temizle</Button>
+          </div>
         )}
       </Card>
 
@@ -297,7 +462,16 @@ export default function ServisRaporlari() {
         title={seciliRapor ? `Servis Raporu · ${seciliRapor.fisNo}` : ''}
         width={760}
         footer={
-          <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
+          <>
+            <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
+            <Button
+              variant="primary"
+              iconLeft={<Printer size={14} strokeWidth={1.5} />}
+              onClick={() => raporPdfYazdir(seciliRapor)}
+            >
+              PDF / Yazdır
+            </Button>
+          </>
         }
       >
         {seciliRapor && (
