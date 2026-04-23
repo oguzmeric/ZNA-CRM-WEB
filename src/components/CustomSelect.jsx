@@ -36,7 +36,8 @@ export default function CustomSelect({ value, onChange, className = '', style = 
         ? secilenOpt.label.map((l, i) => <span key={i}>{l}</span>)
         : secilenOpt.label)
     : ''
-  const wFull = className.includes('w-full')
+  // Varsayılan: form alanı olarak kullanılır, tam genişlik. Inline için className="w-auto" verilebilir.
+  const wAuto = className.includes('w-auto')
 
   // Dışarı tıklanınca kapat
   useEffect(() => {
@@ -57,7 +58,11 @@ export default function CustomSelect({ value, onChange, className = '', style = 
     <div
       ref={ref}
       className="relative"
-      style={{ display: wFull ? 'block' : 'inline-block', width: wFull ? '100%' : undefined }}
+      style={{
+        display: wAuto ? 'inline-block' : 'block',
+        width: wAuto ? undefined : '100%',
+        minWidth: 0, // flex item içinde trigger'ın truncate çalışması için
+      }}
     >
       {/* Trigger button */}
       <button
@@ -73,8 +78,17 @@ export default function CustomSelect({ value, onChange, className = '', style = 
         }}
         className={className}
         style={{
+          // Input ile aynı görünüm (className ile override edilebilir)
+          background: 'var(--surface-card, #fff)',
+          border: '1px solid var(--border-default, #D9DFE5)',
+          color: 'var(--text-primary, #0F1C2E)',
+          borderRadius: 'var(--radius-sm, 4px)',
+          padding: '8px 12px',
+          font: '400 13px/20px var(--font-sans)',
+          outline: 'none',
           ...style,
           width: '100%',
+          minWidth: 0,
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',
           display: 'flex',
@@ -86,7 +100,16 @@ export default function CustomSelect({ value, onChange, className = '', style = 
           WebkitAppearance: 'none',
         }}
       >
-        <span className="truncate flex-1">{secilenLabel}</span>
+        <span style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          color: secilenOpt ? 'inherit' : 'var(--text-tertiary)',
+        }}>
+          {secilenLabel || <span style={{ opacity: 0.6 }}>Seç…</span>}
+        </span>
         <svg
           width="12" height="12" viewBox="0 0 12 12" fill="none"
           style={{
@@ -103,15 +126,15 @@ export default function CustomSelect({ value, onChange, className = '', style = 
       {/* Dropdown listesi */}
       {acik && (
         <div
-          className="absolute z-[9999] rounded-xl overflow-hidden"
+          className="absolute z-[9999] rounded-lg overflow-hidden"
           style={{
             top: yukariAc ? 'auto' : 'calc(100% + 4px)',
             bottom: yukariAc ? 'calc(100% + 4px)' : 'auto',
             left: 0,
-            minWidth: '100%',
-            background: 'var(--bg-card, #fff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            right: 0,
+            background: 'var(--surface-card, #fff)',
+            border: '1px solid var(--border-default, #D9DFE5)',
+            boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12))',
             maxHeight: '260px',
             overflowY: 'auto',
           }}
@@ -122,17 +145,20 @@ export default function CustomSelect({ value, onChange, className = '', style = 
               <div
                 key={opt.value}
                 onMouseDown={(e) => { e.preventDefault(); handleSecim(opt.value) }}
+                title={typeof opt.label === 'string' ? opt.label : undefined}
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
                   cursor: 'pointer',
-                  color: secili ? 'var(--primary, #0176D3)' : 'var(--text-secondary, #374151)',
-                  background: secili ? 'rgba(1,118,211,0.07)' : 'transparent',
+                  color: secili ? 'var(--brand-primary, #1E5AA8)' : 'var(--text-secondary, #4A5A6E)',
+                  background: secili ? 'var(--brand-primary-soft, rgba(30,90,168,0.08))' : 'transparent',
                   fontWeight: secili ? 600 : 400,
                   transition: 'background 0.1s',
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
-                onMouseEnter={(e) => { if (!secili) e.currentTarget.style.background = 'var(--bg-hover, #f8fafc)' }}
+                onMouseEnter={(e) => { if (!secili) e.currentTarget.style.background = 'var(--surface-sunken, #EDF0F3)' }}
                 onMouseLeave={(e) => { if (!secili) e.currentTarget.style.background = 'transparent' }}
               >
                 {opt.label}
