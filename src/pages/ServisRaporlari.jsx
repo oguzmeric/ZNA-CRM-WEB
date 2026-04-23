@@ -95,6 +95,106 @@ export default function ServisRaporlari() {
     link.click()
   }
 
+  const listePdfYazdir = () => {
+    const esc = (s) => String(s ?? '—').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]))
+    const filtreOzet = []
+    if (tarihBaslangic && tarihBitis) filtreOzet.push(`Tarih: ${formatTarih(tarihBaslangic)} – ${formatTarih(tarihBitis)}`)
+    else if (tarihBaslangic) filtreOzet.push(`Tarih: ${formatTarih(tarihBaslangic)}'dan itibaren`)
+    else if (tarihBitis) filtreOzet.push(`Tarih: ${formatTarih(tarihBitis)}'a kadar`)
+    if (firmaFiltre) filtreOzet.push(`Firma: ${firmaFiltre}`)
+    if (teknisyenFiltre) filtreOzet.push(`Teknisyen: ${teknisyenFiltre}`)
+    if (arizaFiltre) filtreOzet.push(`Arıza: ${arizaFiltre}`)
+    if (takipFiltre) filtreOzet.push(`Takip: ${takipFiltre}`)
+    if (arama) filtreOzet.push(`Arama: "${arama}"`)
+
+    const satirlar = filtreli.map(r => `
+      <tr>
+        <td class="mono">${esc(r.fisNo)}</td>
+        <td>${esc(formatTarih(r.gidTarih))}</td>
+        <td><span class="badge ${takipTone(r.takipKodu)}">${esc(r.takipKodu || '—')}</span></td>
+        <td>${esc(r.firma)}</td>
+        <td>${esc(r.lokasyon)}</td>
+        <td>${esc(r.sisNo)}</td>
+        <td>${esc(r.teknisyen)}</td>
+        <td class="sonuc">${esc(r.sonuc)}</td>
+      </tr>`).join('')
+
+    const html = `<!doctype html>
+<html lang="tr"><head><meta charset="utf-8" />
+<title>Servis Raporları Listesi</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; font: 11px/1.45 -apple-system, "Segoe UI", Arial, sans-serif; color: #0F1C2E; }
+  .header { padding-bottom: 12px; border-bottom: 2px solid #1E5AA8; margin-bottom: 16px; }
+  .header h1 { margin: 0 0 4px; font-size: 20px; color: #1E5AA8; }
+  .header .meta { font-size: 11px; color: #4A5A6E; }
+  .filtreler { background: #F4F6F8; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; color: #4A5A6E; }
+  .filtreler strong { color: #0F1C2E; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  thead th { background: #EDF0F3; padding: 6px 8px; text-align: left; font-weight: 600; color: #4A5A6E; text-transform: uppercase; font-size: 9px; letter-spacing: .04em; border-bottom: 1px solid #D9DFE5; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid #EDF0F3; vertical-align: top; }
+  tbody tr:nth-child(even) { background: #FAFBFC; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #1E5AA8; font-weight: 600; }
+  .sonuc { max-width: 240px; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 600; background: #EDF0F3; color: #4A5A6E; white-space: nowrap; }
+  .badge.aktif { background: #DCF1E2; color: #2F7D4F; }
+  .badge.lead { background: #E8EFF8; color: #2B6A9E; }
+  .badge.beklemede { background: #FBEFD8; color: #B77516; }
+  .badge.kayip { background: #F8DEDE; color: #B23A3A; }
+  .footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #D9DFE5; font-size: 9px; color: #8393A6; text-align: center; }
+  @page { size: A4 landscape; margin: 12mm; }
+  @media print {
+    body { padding: 0; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Servis Raporları Listesi</h1>
+    <div class="meta">
+      Toplam <strong>${filtreli.length.toLocaleString('tr-TR')}</strong> kayıt ·
+      Oluşturma: ${new Date().toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+    </div>
+  </div>
+
+  ${filtreOzet.length > 0 ? `<div class="filtreler"><strong>Uygulanan filtreler:</strong> ${filtreOzet.map(esc).join(' · ')}</div>` : ''}
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fiş No</th>
+        <th>Tarih</th>
+        <th>Takip</th>
+        <th>Firma</th>
+        <th>Lokasyon</th>
+        <th>Sistem</th>
+        <th>Teknisyen</th>
+        <th>Sonuç</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${satirlar || '<tr><td colspan="8" style="text-align:center; padding: 32px; color: #8393A6;">Kayıt yok</td></tr>'}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    ZNA Teknoloji · Servis Raporları · ${filtreli.length.toLocaleString('tr-TR')} kayıt
+  </div>
+
+  <script>window.onload = () => { window.print(); }</script>
+</body></html>`
+
+    const w = window.open('', '_blank', 'width=1200,height=800')
+    if (!w) {
+      alert('Pop-up engellendi. Tarayıcınızın pop-up engelleyicisine bu sayfa için izin verin.')
+      return
+    }
+    w.document.write(html)
+    w.document.close()
+  }
+
   const raporPdfYazdir = (r) => {
     if (!r) return
     const esc = (s) => String(s ?? '—').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]))
@@ -210,9 +310,19 @@ export default function ServisRaporlari() {
             )} kayıt
           </p>
         </div>
-        <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={indirExcel}>
-          JSON indir
-        </Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={indirExcel}>
+            JSON indir
+          </Button>
+          <Button
+            variant="primary"
+            iconLeft={<Printer size={14} strokeWidth={1.5} />}
+            onClick={listePdfYazdir}
+            disabled={filtreli.length === 0}
+          >
+            Liste PDF ({filtreli.length.toLocaleString('tr-TR')})
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
