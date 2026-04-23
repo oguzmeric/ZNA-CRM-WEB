@@ -26,9 +26,9 @@ function MusteriLayout({ children }) {
   const teklifIzinli =
     !izinliTurler || izinliTurler.length === 0 || izinliTurler.includes('teklif')
 
-  const handleCikis = () => {
-    cikisYap()
-    navigate('/login')
+  const handleCikis = async () => {
+    await cikisYap()
+    navigate('/login', { replace: true })
   }
 
   const sayfaBasligi = () => {

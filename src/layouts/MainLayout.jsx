@@ -174,7 +174,7 @@ function MainLayout({ children }) {
     logKaydet('sayfa_giris', { sayfa: sayfaAdi })
   }, [location.pathname, kullanici])
 
-  const handleCikis = () => {
+  const handleCikis = async () => {
     if (kullanici) {
       if (oncekiSayfa.current && sayfaGirisZamani.current) {
         const sure = Math.round((Date.now() - sayfaGirisZamani.current) / 1000)
@@ -182,8 +182,8 @@ function MainLayout({ children }) {
       }
       logKaydet('kullanici_cikis', { aciklama: 'Sistemden çıkış yapıldı' })
     }
-    cikisYap()
-    navigate('/login')
+    await cikisYap()
+    navigate('/login', { replace: true })
   }
 
   const gorunenMenu = menuItems.filter(
