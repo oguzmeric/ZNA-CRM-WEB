@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Wrench, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
-  SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label,
+  Wrench, Download, ChevronLeft, ChevronRight,
+  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2,
+} from 'lucide-react'
+import {
+  SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
 } from '../components/ui'
 
 const SAYFA_BOYUTU = 50
@@ -38,6 +41,7 @@ export default function ServisRaporlari() {
   const [arizaFiltre, setArizaFiltre] = useState('')
   const [takipFiltre, setTakipFiltre] = useState('')
   const [sayfa, setSayfa] = useState(1)
+  const [seciliRapor, setSeciliRapor] = useState(null)
 
   useEffect(() => {
     fetch('/data/servis-raporlari.json')
@@ -209,7 +213,8 @@ export default function ServisRaporlari() {
               </thead>
               <tbody>
                 {gorunen.map(r => (
-                  <tr key={r.i} style={{ transition: 'background 120ms' }}
+                  <tr key={r.i} style={{ transition: 'background 120ms', cursor: 'pointer' }}
+                    onClick={() => setSeciliRapor(r)}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
@@ -284,6 +289,143 @@ export default function ServisRaporlari() {
           </div>
         )}
       </Card>
+
+      {/* Detay modali — satıra tıklanınca açılır */}
+      <Modal
+        open={!!seciliRapor}
+        onClose={() => setSeciliRapor(null)}
+        title={seciliRapor ? `Servis Raporu · ${seciliRapor.fisNo}` : ''}
+        width={760}
+        footer={
+          <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
+        }
+      >
+        {seciliRapor && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Üst bilgi — meta */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+              paddingBottom: 12,
+              borderBottom: '1px solid var(--border-default)',
+            }}>
+              <CodeBadge>{seciliRapor.fisNo}</CodeBadge>
+              {seciliRapor.takipKodu && <Badge tone={takipTone(seciliRapor.takipKodu)}>{seciliRapor.takipKodu}</Badge>}
+              {seciliRapor.arizaKodu && <Badge tone="neutral">{seciliRapor.arizaKodu}</Badge>}
+              {seciliRapor.chKodu && (
+                <span className="t-caption">
+                  CH: <span className="t-mono" style={{ color: 'var(--text-secondary)' }}>{seciliRapor.chKodu}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Firma + lokasyon */}
+            <DetayAlan
+              icon={<Building2 size={14} strokeWidth={1.5} />}
+              baslik="Firma"
+              icerik={seciliRapor.firma}
+            />
+            {seciliRapor.lokasyon && (
+              <DetayAlan
+                icon={<MapPin size={14} strokeWidth={1.5} />}
+                baslik="Lokasyon"
+                icerik={seciliRapor.lokasyon}
+              />
+            )}
+
+            {/* Sistem / arıza */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {seciliRapor.sisNo && (
+                <DetayAlan
+                  icon={<Hash size={14} strokeWidth={1.5} />}
+                  baslik="Sistem"
+                  icerik={seciliRapor.sisNo}
+                />
+              )}
+              <DetayAlan
+                icon={<User size={14} strokeWidth={1.5} />}
+                baslik="Teknisyen"
+                icerik={seciliRapor.teknisyen || '—'}
+              />
+            </div>
+
+            {/* Tarihler */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <DetayAlan
+                icon={<Calendar size={14} strokeWidth={1.5} />}
+                baslik="Bildirim tarihi"
+                icerik={formatTarih(seciliRapor.bilTarih)}
+              />
+              <DetayAlan
+                icon={<Calendar size={14} strokeWidth={1.5} />}
+                baslik="Gidiş tarihi"
+                icerik={formatTarih(seciliRapor.gidTarih)}
+              />
+            </div>
+
+            {/* Bildiren / bildirilen */}
+            {(seciliRapor.bildiren?.trim() && seciliRapor.bildiren !== '.') && (
+              <DetayAlan
+                icon={<User size={14} strokeWidth={1.5} />}
+                baslik="Bildiren"
+                icerik={seciliRapor.bildiren}
+              />
+            )}
+            {seciliRapor.bildirilen && (
+              <DetayAlan
+                icon={<AlertTriangle size={14} strokeWidth={1.5} />}
+                baslik="Bildirilen sorun"
+                icerik={seciliRapor.bildirilen}
+              />
+            )}
+
+            {/* Sonuç — en önemli */}
+            {seciliRapor.sonuc && (
+              <div style={{
+                padding: 12,
+                background: 'var(--success-soft)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <CheckCircle2 size={14} strokeWidth={1.5} style={{ color: 'var(--success)' }} />
+                  <span className="t-label" style={{ color: 'var(--success)' }}>Sonuç</span>
+                </div>
+                <p style={{
+                  font: '400 13px/20px var(--font-sans)',
+                  color: 'var(--text-primary)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  margin: 0,
+                }}>
+                  {seciliRapor.sonuc}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+function DetayAlan({ icon, baslik, icerik }) {
+  return (
+    <div>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        color: 'var(--text-tertiary)',
+        marginBottom: 4,
+      }}>
+        {icon}
+        <span className="t-label">{baslik}</span>
+      </div>
+      <div style={{
+        font: '400 14px/20px var(--font-sans)',
+        color: 'var(--text-primary)',
+        wordBreak: 'break-word',
+      }}>
+        {icerik}
+      </div>
     </div>
   )
 }
