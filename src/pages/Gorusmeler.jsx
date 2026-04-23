@@ -162,7 +162,6 @@ function Gorusmeler() {
   const gorusenler = [...new Set(gorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 
   const gorunenGorusmeler = [...gorusmeler]
-    .reverse()
     .filter(g => filtre === 'hepsi' || g.durum === filtre)
     .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
