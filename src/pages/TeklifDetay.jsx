@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle,
 } from '../services/teklifService'
@@ -73,12 +74,14 @@ function TeklifDetay() {
   const { kurlar, yukleniyor, kurCek } = useDovizKuru()
   const { hatirlatmaEkle, teklifHatirlatmasi, hatirlatmaSil } = useHatirlatma()
   const { toast } = useToast()
+  const { confirm } = useConfirm()
   const yeni = id === 'yeni'
 
   const [musteriler, setMusteriler] = useState([])
   const [gorusmeler, setGorusmeler] = useState([])
   const [stokUrunler, setStokUrunler] = useState([])
   const [teklifSayisi, setTeklifSayisi] = useState(0)
+  const [tumTeklifler, setTumTeklifler] = useState([])
   const [mevcutTeklif, setMevcutTeklif] = useState(null)
   const [veriYuklendi, setVeriYuklendi] = useState(false)
   const [hatirlatmaGun, setHatirlatmaGun] = useState(7)
@@ -99,7 +102,7 @@ function TeklifDetay() {
       musterileriGetir().then(setMusteriler),
       gorusmeleriGetir().then(setGorusmeler),
       stokUrunleriniGetir().then(setStokUrunler),
-      teklifleriGetir().then(data => setTeklifSayisi(data.length)),
+      teklifleriGetir().then(data => { setTumTeklifler(data); setTeklifSayisi(data.length) }),
     ]
     if (!yeni) {
       promises.push(teklifGetir(id).then(setMevcutTeklif))
@@ -258,6 +261,37 @@ function TeklifDetay() {
       toast.warning('Firma ve konu zorunludur.')
       return
     }
+
+    // BENZER TEKLİF UYARISI:
+    // Aynı stok kalemleri başka bir firmaya daha önce teklif edildiyse uyar.
+    // Yeni teklif veya farklı firmaya kopyalama senaryolarında devreye girer.
+    const yeniStokKodlari = new Set(
+      (form.satirlar || []).map(s => s?.stokKodu).filter(Boolean)
+    )
+    if (yeniStokKodlari.size > 0) {
+      const cakisanlar = (tumTeklifler || []).filter(t => {
+        if (!yeni && t.id?.toString() === id?.toString()) return false // kendi kendinle karşılaştırma
+        if (!t.firmaAdi || t.firmaAdi.trim().toLowerCase() === form.firmaAdi.trim().toLowerCase()) return false
+        const tStok = new Set((t.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
+        for (const k of yeniStokKodlari) if (tStok.has(k)) return true
+        return false
+      })
+
+      if (cakisanlar.length > 0) {
+        const ilk5 = cakisanlar.slice(0, 5)
+        const liste = ilk5.map(t => `• ${t.teklifNo || '-'} — ${t.firmaAdi}`).join('\n')
+        const fazla = cakisanlar.length > 5 ? `\n…ve ${cakisanlar.length - 5} teklif daha` : ''
+        const onay = await confirm({
+          baslik: 'Aynı ürünler başka firmaya teklif edilmiş',
+          mesaj: `Bu teklifteki ürünlerden bir kısmı aşağıdaki firmalara da teklif edilmiş:\n\n${liste}${fazla}\n\nYine de oluşturmak istiyor musunuz?`,
+          onayMetin: 'Evet, oluştur',
+          iptalMetin: 'Vazgeç',
+          tip: 'uyari',
+        })
+        if (!onay) return
+      }
+    }
+
     const kaydedilecek = {
       ...form,
       genelToplam,
