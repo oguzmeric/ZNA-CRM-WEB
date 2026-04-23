@@ -263,6 +263,10 @@ function TeklifDetay() {
       genelToplam,
       dovizKuru: form.dovizKuru === '' || form.dovizKuru === null ? null : Number(form.dovizKuru),
       gecerlilikTarihi: form.gecerlilikTarihi || null,
+      // Bigint kolonlar için boş string → null (PG "invalid input for bigint" hatası vermesin)
+      musteriId: form.musteriId || null,
+      gorusmeId: form.gorusmeId || null,
+      musteriTalepId: form.musteriTalepId || null,
     }
     try {
       if (yeni) {

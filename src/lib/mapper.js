@@ -12,13 +12,19 @@ export const toCamel = (row) => {
 export const arrayToCamel = (arr) => (arr || []).map(toCamel)
 
 // camelCase JS → snake_case DB (strips undefined values)
+// Ek: _id ile biten FK kolonlarda boş string → null (PG bigint cast hatasını engeller)
 export const toSnake = (obj) => {
   if (!obj || typeof obj !== 'object') return obj
   const result = {}
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue
     const snakeKey = key.replace(/[A-Z]/g, l => `_${l.toLowerCase()}`)
-    result[snakeKey] = value
+    // FK-benzeri kolonlarda '' → null
+    if (snakeKey.endsWith('_id') && value === '') {
+      result[snakeKey] = null
+    } else {
+      result[snakeKey] = value
+    }
   }
   return result
 }
