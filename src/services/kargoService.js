@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
+import { pagedFetch } from '../lib/pagedFetch'
 
 // Manual field mapping for kargo (has nested objects that should NOT be snake_case converted inside)
 const kargoToSnake = (kargo) => {
@@ -35,7 +36,9 @@ const kargoToSnake = (kargo) => {
 }
 
 export const kargolariGetir = async () => {
-  const { data } = await supabase.from('kargolar').select('*').order('id', { ascending: false })
+  const data = await pagedFetch((off, size) =>
+    supabase.from('kargolar').select('*').order('id', { ascending: false }).range(off, off + size - 1)
+  )
   return (data || []).map(toCamel)
 }
 

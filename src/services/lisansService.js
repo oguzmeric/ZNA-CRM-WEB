@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { pagedFetch } from '../lib/pagedFetch'
 
 // Form (camelCase) → DB (snake_case)
 const formToDb = (l) => ({
@@ -41,8 +42,9 @@ const dbToForm = (row) => {
 }
 
 export const lisanslariGetir = async () => {
-  const { data, error } = await supabase.from('trassir_lisanslar').select('*').order('olusturma_tarih', { ascending: false })
-  if (error) { console.error('lisanslariGetir hata:', error.message); return [] }
+  const data = await pagedFetch((off, size) =>
+    supabase.from('trassir_lisanslar').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + size - 1)
+  )
   return (data || []).map(dbToForm)
 }
 

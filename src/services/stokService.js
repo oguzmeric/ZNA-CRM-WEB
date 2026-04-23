@@ -1,8 +1,11 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { pagedFetch } from '../lib/pagedFetch'
 
 export const stokUrunleriniGetir = async () => {
-  const { data } = await supabase.from('stok_urunler').select('*').order('stok_adi')
+  const data = await pagedFetch((off, size) =>
+    supabase.from('stok_urunler').select('*').order('stok_adi').range(off, off + size - 1)
+  )
   return arrayToCamel(data)
 }
 
@@ -98,16 +101,21 @@ export const gorselSil = async (stokKodu, ext) => {
 }
 
 export const katalogUrunleriniGetir = async () => {
-  const { data } = await supabase
-    .from('stok_urunler')
-    .select('id, stok_kodu, stok_adi, marka, grup_kodu, birim, aciklama, gorsel_url, katalogda_goster')
-    .eq('katalogda_goster', true)
-    .order('stok_adi')
+  const data = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_urunler')
+      .select('id, stok_kodu, stok_adi, marka, grup_kodu, birim, aciklama, gorsel_url, katalogda_goster')
+      .eq('katalogda_goster', true)
+      .order('stok_adi')
+      .range(off, off + size - 1)
+  )
   return arrayToCamel(data)
 }
 
 export const stokHareketleriniGetir = async () => {
-  const { data } = await supabase.from('stok_hareketleri').select('*').order('tarih', { ascending: false })
+  const data = await pagedFetch((off, size) =>
+    supabase.from('stok_hareketleri').select('*').order('tarih', { ascending: false }).range(off, off + size - 1)
+  )
   return arrayToCamel(data)
 }
 
@@ -128,10 +136,12 @@ export const durumBul = (id) => DURUMLAR.find((d) => d.id === id)
 
 // Her stok kodu için S/N kalemlerinin özetini getir (marka/model + durum sayıları)
 export const stokKalemOzetleriniGetir = async () => {
-  const { data } = await supabase
-    .from('stok_kalemleri')
-    .select('stok_kodu, marka, model, durum')
-  const kalemler = data ?? []
+  const kalemler = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_kalemleri')
+      .select('stok_kodu, marka, model, durum')
+      .range(off, off + size - 1)
+  )
   const map = new Map()
   for (const k of kalemler) {
     const key = k.stok_kodu ?? '(kodsuz)'
@@ -167,11 +177,14 @@ export const stokKalemOzetleriniGetir = async () => {
 
 // Belirli stok_kodu için S/N'li tüm kalemleri getir
 export const modelKalemleriniGetir = async (stokKodu) => {
-  const { data } = await supabase
-    .from('stok_kalemleri')
-    .select('*')
-    .eq('stok_kodu', stokKodu)
-    .order('guncelleme_tarih', { ascending: false })
+  const data = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_kalemleri')
+      .select('*')
+      .eq('stok_kodu', stokKodu)
+      .order('guncelleme_tarih', { ascending: false })
+      .range(off, off + size - 1)
+  )
   return arrayToCamel(data) ?? []
 }
 

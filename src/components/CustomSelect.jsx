@@ -1,12 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 /**
  * Native <select> yerine tamamen CSS kontrollü custom dropdown.
+ * Dropdown paneli body'e portal ile render edilir → parent overflow:hidden
+ * (Table, Modal, Card vs.) tarafından clip edilmez.
+ *
  * API: value, onChange({ target: { value } }), className, style, children (<option> elementleri)
  */
 export default function CustomSelect({ value, onChange, className = '', style = {}, children, disabled = false }) {
   const [acik, setAcik] = useState(false)
-  const [yukariAc, setYukariAc] = useState(false)
+  const [panelStyle, setPanelStyle] = useState(null)
   const ref = useRef(null)
 
   // Option'ları parse et — nested array'leri de (map()) doğru işler
@@ -17,12 +21,10 @@ export default function CustomSelect({ value, onChange, className = '', style = 
     arr.forEach((child) => {
       if (!child) return
       if (Array.isArray(child)) {
-        // {items.map(...)} gibi nested array'ler
         processChildren(child)
       } else if (child.type === 'option') {
         options.push({ value: String(child.props.value ?? ''), label: child.props.children })
       } else if (child.props?.children) {
-        // optgroup veya wrapper element
         processChildren(child.props.children)
       }
     })
@@ -30,23 +32,54 @@ export default function CustomSelect({ value, onChange, className = '', style = 
   processChildren(children)
 
   const secilenOpt = options.find((o) => o.value === String(value ?? ''))
-  // label array olabilir ({ikon} {isim} gibi) — her iki durumda da render edilebilir şekle getir
   const secilenLabel = secilenOpt
     ? (Array.isArray(secilenOpt.label)
         ? secilenOpt.label.map((l, i) => <span key={i}>{l}</span>)
         : secilenOpt.label)
     : ''
-  // Varsayılan: form alanı olarak kullanılır, tam genişlik. Inline için className="w-auto" verilebilir.
   const wAuto = className.includes('w-auto')
 
-  // Dışarı tıklanınca kapat
+  // Açıldığında trigger konumunu hesapla, panel için fixed pozisyon üret
+  useLayoutEffect(() => {
+    if (!acik || !ref.current) return
+    const recalc = () => {
+      const rect = ref.current.getBoundingClientRect()
+      const maxH = 260
+      const asagidaBosluk = window.innerHeight - rect.bottom
+      const yukariAc = asagidaBosluk < maxH && rect.top > asagidaBosluk
+      setPanelStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: rect.width,
+        top: yukariAc ? undefined : rect.bottom + 4,
+        bottom: yukariAc ? window.innerHeight - rect.top + 4 : undefined,
+        maxHeight: maxH,
+      })
+    }
+    recalc()
+    window.addEventListener('scroll', recalc, true)
+    window.addEventListener('resize', recalc)
+    return () => {
+      window.removeEventListener('scroll', recalc, true)
+      window.removeEventListener('resize', recalc)
+    }
+  }, [acik])
+
+  // Dışarı tıklanınca / Escape ile kapat
   useEffect(() => {
     if (!acik) return
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setAcik(false)
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-custom-select-panel]')) {
+        setAcik(false)
+      }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const onKey = (e) => { if (e.key === 'Escape') setAcik(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [acik])
 
   const handleSecim = (val) => {
@@ -57,28 +90,20 @@ export default function CustomSelect({ value, onChange, className = '', style = 
   return (
     <div
       ref={ref}
-      className="relative"
       style={{
+        position: 'relative',
         display: wAuto ? 'inline-block' : 'block',
         width: wAuto ? undefined : '100%',
-        minWidth: 0, // flex item içinde trigger'ın truncate çalışması için
+        minWidth: 0,
       }}
     >
-      {/* Trigger button */}
+      {/* Trigger */}
       <button
         type="button"
         disabled={disabled}
-        onClick={() => {
-          if (disabled) return
-          if (!acik) {
-            const rect = ref.current?.getBoundingClientRect()
-            if (rect) setYukariAc(window.innerHeight - rect.bottom < 280)
-          }
-          setAcik((p) => !p)
-        }}
+        onClick={() => { if (!disabled) setAcik((p) => !p) }}
         className={className}
         style={{
-          // Input ile aynı görünüm (className ile override edilebilir)
           background: 'var(--surface-card, #fff)',
           border: '1px solid var(--border-default, #D9DFE5)',
           color: 'var(--text-primary, #0F1C2E)',
@@ -123,23 +148,30 @@ export default function CustomSelect({ value, onChange, className = '', style = 
         </svg>
       </button>
 
-      {/* Dropdown listesi */}
-      {acik && (
+      {/* Dropdown panel — body'e portal, parent overflow:hidden tarafından clip edilmez */}
+      {acik && panelStyle && createPortal(
         <div
-          className="absolute z-[9999] rounded-lg overflow-hidden"
+          data-custom-select-panel
           style={{
-            top: yukariAc ? 'auto' : 'calc(100% + 4px)',
-            bottom: yukariAc ? 'calc(100% + 4px)' : 'auto',
-            left: 0,
-            right: 0,
+            ...panelStyle,
             background: 'var(--surface-card, #fff)',
             border: '1px solid var(--border-default, #D9DFE5)',
+            borderRadius: 'var(--radius-md, 6px)',
             boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12))',
-            maxHeight: '260px',
-            overflowY: 'auto',
+            overflow: 'auto',
+            zIndex: 10000,
           }}
         >
-          {options.map((opt) => {
+          {options.length === 0 ? (
+            <div style={{
+              padding: '12px',
+              color: 'var(--text-tertiary)',
+              font: '400 12px/16px var(--font-sans)',
+              textAlign: 'center',
+            }}>
+              Seçenek yok
+            </div>
+          ) : options.map((opt) => {
             const secili = opt.value === String(value ?? '')
             return (
               <div
@@ -165,7 +197,8 @@ export default function CustomSelect({ value, onChange, className = '', style = 
               </div>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

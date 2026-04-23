@@ -1,8 +1,11 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { pagedFetch } from '../lib/pagedFetch'
 
 export const firmalariGetir = async () => {
-  const { data } = await supabase.from('firmalar').select('*').order('olusturma_tarih', { ascending: false })
+  const data = await pagedFetch((off, size) =>
+    supabase.from('firmalar').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + size - 1)
+  )
   return arrayToCamel(data)
 }
 
