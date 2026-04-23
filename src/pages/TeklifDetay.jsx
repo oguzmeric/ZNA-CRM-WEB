@@ -280,6 +280,8 @@ function TeklifDetay() {
             toast.success('Teklif kaydedildi.')
           }
           navigate('/teklifler')
+        } else {
+          toast.error('Teklif oluşturulamadı — konsol log\'una bakın.')
         }
       } else {
         await teklifGuncelle(id, kaydedilecek)
@@ -287,7 +289,9 @@ function TeklifDetay() {
         navigate('/teklifler')
       }
     } catch (err) {
-      toast.error('Hata: ' + (err.message || 'Teklif kaydedilemedi'))
+      console.error('[TeklifDetay.kaydet] Tam hata:', err)
+      const detay = [err?.message, err?.details, err?.hint, err?.code].filter(Boolean).join(' · ')
+      toast.error('Kaydetme hatası: ' + (detay || 'bilinmeyen hata'))
     }
   }
 
