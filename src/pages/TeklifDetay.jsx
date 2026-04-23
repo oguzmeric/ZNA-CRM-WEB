@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
@@ -82,6 +82,11 @@ function TeklifDetay() {
   const [stokUrunler, setStokUrunler] = useState([])
   const [teklifSayisi, setTeklifSayisi] = useState(0)
   const [tumTeklifler, setTumTeklifler] = useState([])
+  const [karsilastirmaAcik, setKarsilastirmaAcik] = useState(false)
+  const [karsilasanTeklifler, setKarsilasanTeklifler] = useState([])
+  const [aktifKarsilastirmaIdx, setAktifKarsilastirmaIdx] = useState(0)
+  // Modal "Yine de oluştur"a basıldığında çağrılacak resolver — Promise pattern
+  const karsilastirmaResolverRef = useRef(null)
   const [mevcutTeklif, setMevcutTeklif] = useState(null)
   const [veriYuklendi, setVeriYuklendi] = useState(false)
   const [hatirlatmaGun, setHatirlatmaGun] = useState(7)
@@ -278,16 +283,12 @@ function TeklifDetay() {
       })
 
       if (cakisanlar.length > 0) {
-        const ilk5 = cakisanlar.slice(0, 5)
-        const liste = ilk5.map(t => `• ${t.teklifNo || '-'} — ${t.firmaAdi}`).join('\n')
-        const fazla = cakisanlar.length > 5 ? `\n…ve ${cakisanlar.length - 5} teklif daha` : ''
-        const onay = await confirm({
-          baslik: 'Aynı ürünler başka firmaya teklif edilmiş',
-          mesaj: `Bu teklifteki ürünlerden bir kısmı aşağıdaki firmalara da teklif edilmiş:\n\n${liste}${fazla}\n\nYine de oluşturmak istiyor musunuz?`,
-          onayMetin: 'Evet, oluştur',
-          iptalMetin: 'Vazgeç',
-          tip: 'uyari',
-        })
+        // Yan yana karşılaştırma modali: Promise pattern ile resolve bekle
+        setKarsilasanTeklifler(cakisanlar)
+        setAktifKarsilastirmaIdx(0)
+        setKarsilastirmaAcik(true)
+        const onay = await new Promise((resolve) => { karsilastirmaResolverRef.current = resolve })
+        setKarsilastirmaAcik(false)
         if (!onay) return
       }
     }
@@ -911,6 +912,169 @@ function TeklifDetay() {
         <Button variant="secondary" onClick={() => navigate('/teklifler')}>İptal</Button>
         <Button variant="primary" onClick={kaydet}>Kaydet</Button>
       </div>
+
+      {/* ────────────────────────────────────────────────
+          Yan yana karşılaştırma modali
+          Çakışan stoklara sahip mevcut teklifle yenisini karşılaştır
+      ──────────────────────────────────────────────── */}
+      <Modal
+        open={karsilastirmaAcik}
+        onClose={() => karsilastirmaResolverRef.current?.(false)}
+        title="Aynı ürünler başka firmaya teklif edilmiş"
+        width={1100}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => karsilastirmaResolverRef.current?.(false)}>
+              Vazgeç
+            </Button>
+            <Button variant="primary" onClick={() => karsilastirmaResolverRef.current?.(true)}>
+              Yine de oluştur
+            </Button>
+          </>
+        }
+      >
+        {karsilasanTeklifler.length > 0 && (() => {
+          const eski = karsilasanTeklifler[aktifKarsilastirmaIdx] || karsilasanTeklifler[0]
+          const yeniSet = new Set((form.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
+          const eskiSet = new Set((eski.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
+          const ortak = [...yeniSet].filter(k => eskiSet.has(k))
+          const eskiParaSembol = (paraBirimleri.find(p => p.id === (eski.paraBirimi || 'TL')))?.sembol || '₺'
+          const fmtEski = (n) => `${eskiParaSembol}${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+
+          return (
+            <>
+              {/* Karşılaştırılan teklifler arasında geçiş */}
+              {karsilasanTeklifler.length > 1 && (
+                <div style={{
+                  display: 'flex', gap: 6, flexWrap: 'wrap',
+                  marginBottom: 16, padding: 8,
+                  background: 'var(--surface-sunken)',
+                  borderRadius: 'var(--radius-sm)',
+                }}>
+                  <span className="t-caption" style={{ alignSelf: 'center', marginRight: 4 }}>
+                    {karsilasanTeklifler.length} teklif çakıştı:
+                  </span>
+                  {karsilasanTeklifler.map((t, i) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setAktifKarsilastirmaIdx(i)}
+                      style={{
+                        padding: '4px 10px',
+                        font: '500 12px/16px var(--font-sans)',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${i === aktifKarsilastirmaIdx ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                        background: i === aktifKarsilastirmaIdx ? 'var(--brand-primary)' : 'var(--surface-card)',
+                        color: i === aktifKarsilastirmaIdx ? '#fff' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {t.teklifNo || `#${t.id}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <Alert variant="warning" style={{ marginBottom: 16 }}>
+                <span className="t-body-strong">{ortak.length}</span> ortak ürün bulundu —
+                aşağıda <strong>sarı</strong> ile işaretlendi.
+              </Alert>
+
+              {/* Yan yana iki kart */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* SOL: Mevcut (eski) teklif */}
+                <Card padding={16} style={{ borderColor: 'var(--warning)', borderWidth: 1, borderStyle: 'solid' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                    <Badge tone="beklemede">Mevcut teklif</Badge>
+                    <CodeBadge>{eski.teklifNo || `#${eski.id}`}</CodeBadge>
+                  </div>
+                  <div className="t-body-strong" style={{ marginBottom: 4 }}>{eski.firmaAdi}</div>
+                  <div className="t-caption" style={{ marginBottom: 12 }}>
+                    {eski.tarih ? new Date(eski.tarih).toLocaleDateString('tr-TR') : '—'}
+                    {eski.musteriYetkilisi ? ` · ${eski.musteriYetkilisi}` : ''}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
+                    {(eski.satirlar || []).length === 0 ? (
+                      <div className="t-caption">Satır yok</div>
+                    ) : (eski.satirlar || []).map((s, i) => {
+                      const cakisan = ortak.includes(s.stokKodu)
+                      return (
+                        <div key={i} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '60px 1fr 60px 90px',
+                          gap: 6,
+                          padding: '6px 8px',
+                          borderBottom: '1px solid var(--border-default)',
+                          background: cakisan ? 'var(--warning-soft, rgba(183,117,22,0.08))' : 'transparent',
+                          font: '400 12px/16px var(--font-sans)',
+                        }}>
+                          <span className="t-mono" style={{ color: 'var(--text-tertiary)' }}>{s.stokKodu || '—'}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.stokAdi}>{s.stokAdi}</span>
+                          <span className="tabular-nums" style={{ textAlign: 'right' }}>{s.miktar} {s.birim || ''}</span>
+                          <span className="tabular-nums" style={{ textAlign: 'right' }}>{fmtEski(s.miktar * s.birimFiyat)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 8, borderTop: '1px solid var(--border-default)' }}>
+                    <span className="t-caption">Genel toplam</span>
+                    <span className="tabular-nums" style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
+                      {fmtEski(eski.genelToplam || 0)}
+                    </span>
+                  </div>
+                </Card>
+
+                {/* SAĞ: Yeni teklif (mevcut form) */}
+                <Card padding={16} style={{ borderColor: 'var(--brand-primary)', borderWidth: 1, borderStyle: 'solid' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                    <Badge tone="brand">Yeni teklif</Badge>
+                    <CodeBadge>{form.teklifNo}</CodeBadge>
+                  </div>
+                  <div className="t-body-strong" style={{ marginBottom: 4 }}>{form.firmaAdi}</div>
+                  <div className="t-caption" style={{ marginBottom: 12 }}>
+                    {form.tarih ? new Date(form.tarih).toLocaleDateString('tr-TR') : '—'}
+                    {form.musteriYetkilisi ? ` · ${form.musteriYetkilisi}` : ''}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
+                    {(form.satirlar || []).length === 0 ? (
+                      <div className="t-caption">Satır yok</div>
+                    ) : (form.satirlar || []).map((s, i) => {
+                      const cakisan = ortak.includes(s.stokKodu)
+                      const sembol = paraBirimi?.sembol || '₺'
+                      return (
+                        <div key={i} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '60px 1fr 60px 90px',
+                          gap: 6,
+                          padding: '6px 8px',
+                          borderBottom: '1px solid var(--border-default)',
+                          background: cakisan ? 'var(--warning-soft, rgba(183,117,22,0.08))' : 'transparent',
+                          font: '400 12px/16px var(--font-sans)',
+                        }}>
+                          <span className="t-mono" style={{ color: 'var(--text-tertiary)' }}>{s.stokKodu || '—'}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.stokAdi}>{s.stokAdi}</span>
+                          <span className="tabular-nums" style={{ textAlign: 'right' }}>{s.miktar} {s.birim || ''}</span>
+                          <span className="tabular-nums" style={{ textAlign: 'right' }}>{sembol}{(s.miktar * s.birimFiyat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 8, borderTop: '1px solid var(--border-default)' }}>
+                    <span className="t-caption">Genel toplam</span>
+                    <span className="tabular-nums" style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                      {fmtPara(genelToplam)}
+                    </span>
+                  </div>
+                </Card>
+              </div>
+            </>
+          )
+        })()}
+      </Modal>
     </div>
   )
 }
