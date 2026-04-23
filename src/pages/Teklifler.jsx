@@ -130,7 +130,6 @@ export default function Teklifler() {
   }
 
   const filtreli = [...teklifler]
-    .reverse()
     .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
     .filter(t => arama === '' || `${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`.toLowerCase().includes(arama.toLowerCase()))
 

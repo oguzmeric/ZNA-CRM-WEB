@@ -263,8 +263,9 @@ export default function Dashboard() {
     { d: benimGecikGorevler.length, label: 'Geciken', tone: benimGecikGorevler.length > 0 ? 'danger' : null },
   ].filter(i => !i.modul || kullanici?.moduller?.includes(i.modul))
 
-  const sonGorevler = benimGorevler.slice(-5).reverse()
-  const sonGorusmeler = gorunenGorusmeler.slice(-5).reverse()
+  // Servisler zaten yeni→eski sıralı; ilk 5 = en son 5
+  const sonGorevler = benimGorevler.slice(0, 5)
+  const sonGorusmeler = gorunenGorusmeler.slice(0, 5)
   const gorunenModuller = TUM_MODULLER.filter(m => kullanici?.moduller?.includes(m.id))
 
   /* ── Loading ─────────────────────────────────────────────────────── */
