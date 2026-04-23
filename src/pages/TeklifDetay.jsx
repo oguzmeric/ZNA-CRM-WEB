@@ -19,7 +19,7 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge,
-  Alert, EmptyState, Table, THead, TBody, TR, TH, TD, SegmentedControl,
+  Alert, EmptyState, Table, THead, TBody, TR, TH, TD, SegmentedControl, Modal,
 } from '../components/ui'
 
 const onayDurumlari = [
