@@ -9,9 +9,9 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api/doviz': {
-        target: 'https://api.frankfurter.app',
+        target: 'https://api.frankfurter.dev',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/doviz/, ''),
+        rewrite: (path) => path.replace(/^\/api\/doviz/, '/v1'),
       },
     },
   },
