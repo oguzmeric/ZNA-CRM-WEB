@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import {
   kullanicilariGetir,
   kullaniciGirisKontrol,
+  mevcutOturumKullanici,
+  cikisYapAuth,
   kullaniciEkle as dbKullaniciEkle,
   kullaniciSil as dbKullaniciSil,
   kullaniciGuncelle as dbKullaniciGuncelle,
@@ -19,24 +22,42 @@ export const durumlar = [
 ]
 
 export function AuthProvider({ children }) {
-  const [kullanici, setKullanici] = useState(() => {
-    const k = localStorage.getItem('aktifKullanici')
-    return k ? JSON.parse(k) : null
-  })
+  const [kullanici, setKullanici] = useState(null)
   const [kullanicilar, setKullanicilar] = useState([])
+  const [oturumYuklendi, setOturumYuklendi] = useState(false)
 
   useEffect(() => {
-    kullanicilariGetir().then(setKullanicilar)
+    mevcutOturumKullanici().then((k) => {
+      setKullanici(k)
+      setOturumYuklendi(true)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setKullanici(null)
+        return
+      }
+      const k = await mevcutOturumKullanici()
+      setKullanici(k)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!kullanici) return
+    kullanicilariGetir().then(setKullanicilar)
+  }, [kullanici])
 
   const girisYap = async (kullaniciAdi, sifre) => {
     const bulunan = await kullaniciGirisKontrol(kullaniciAdi, sifre)
     if (bulunan) {
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
-      localStorage.setItem('aktifKullanici', JSON.stringify(guncel))
       await kullaniciDurumGuncelle(bulunan.id, 'cevrimici')
-      setKullanicilar(prev => prev.map(k => k.id === bulunan.id ? { ...k, durum: 'cevrimici' } : k))
+      setKullanicilar((prev) =>
+        prev.map((k) => (k.id === bulunan.id ? { ...k, durum: 'cevrimici' } : k))
+      )
       return true
     }
     return false
@@ -46,17 +67,18 @@ export function AuthProvider({ children }) {
     if (kullanici) {
       await kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi')
     }
+    await cikisYapAuth()
     setKullanici(null)
-    localStorage.removeItem('aktifKullanici')
   }
 
   const durumGuncelle = async (yeniDurum) => {
     if (!kullanici) return
     const guncel = { ...kullanici, durum: yeniDurum }
     setKullanici(guncel)
-    localStorage.setItem('aktifKullanici', JSON.stringify(guncel))
     await kullaniciDurumGuncelle(kullanici.id, yeniDurum)
-    setKullanicilar(prev => prev.map(k => k.id === kullanici.id ? { ...k, durum: yeniDurum } : k))
+    setKullanicilar((prev) =>
+      prev.map((k) => (k.id === kullanici.id ? { ...k, durum: yeniDurum } : k))
+    )
   }
 
   const kullaniciEkle = async (yeniKullanici) => {
@@ -66,33 +88,33 @@ export function AuthProvider({ children }) {
       silinebilir: true,
       durum: 'cevrimdisi',
     })
-    if (k) setKullanicilar(prev => [...prev, k])
+    if (k) setKullanicilar((prev) => [...prev, k])
     return k
   }
 
   const kullaniciSil = async (id) => {
     await dbKullaniciSil(id)
-    setKullanicilar(prev => prev.filter(k => k.id !== id))
+    setKullanicilar((prev) => prev.filter((k) => k.id !== id))
   }
 
   const kullaniciGuncelle = async (id, guncellenmis) => {
     const k = await dbKullaniciGuncelle(id, guncellenmis)
     if (k) {
-      setKullanicilar(prev => prev.map(u => u.id === id ? { ...u, ...k } : u))
+      setKullanicilar((prev) => prev.map((u) => (u.id === id ? { ...u, ...k } : u)))
       if (kullanici?.id === id) {
-        const yeni = { ...kullanici, ...k }
-        setKullanici(yeni)
-        localStorage.setItem('aktifKullanici', JSON.stringify(yeni))
+        setKullanici((prev) => ({ ...prev, ...k }))
       }
     }
   }
 
   return (
-    <AuthContext.Provider value={{
-      kullanici, kullanicilar, durumlar,
-      girisYap, cikisYap, durumGuncelle,
-      kullaniciEkle, kullaniciSil, kullaniciGuncelle,
-    }}>
+    <AuthContext.Provider
+      value={{
+        kullanici, kullanicilar, durumlar, oturumYuklendi,
+        girisYap, cikisYap, durumGuncelle,
+        kullaniciEkle, kullaniciSil, kullaniciGuncelle,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

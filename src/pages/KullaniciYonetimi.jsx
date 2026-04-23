@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
+import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from '../components/CustomSelect'
@@ -113,15 +114,35 @@ export default function KullaniciYonetimi() {
     setForm(p => ({ ...p, izinliTurler: p.izinliTurler.includes(id) ? p.izinliTurler.filter(t => t !== id) : [...p.izinliTurler, id] }))
 
   const kaydet = async () => {
-    if (!form.ad || !form.kullaniciAdi || !form.sifre) {
-      toast.warning('Lütfen tüm alanları doldurun.'); return
-    }
     if (duzenle) {
-      await kullaniciGuncelle(duzenle, form)
+      if (!form.ad || !form.kullaniciAdi) {
+        toast.warning('Ad ve kullanıcı adı zorunludur.'); return
+      }
+      const { sifre, ...guncel } = form
+      await kullaniciGuncelle(duzenle, guncel)
       toast.success(`${form.ad} güncellendi.`)
       setDuzenle(null)
     } else {
-      await kullaniciEkle(form)
+      if (!form.ad || !form.kullaniciAdi || !form.sifre) {
+        toast.warning('Lütfen tüm alanları doldurun.'); return
+      }
+      if (form.sifre.length < 8) {
+        toast.warning('Şifre en az 8 karakter olmalı.'); return
+      }
+      // 1. Supabase Auth kullanıcısı oluştur
+      const email = `${form.kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password: form.sifre,
+        options: { data: { ad: form.ad, kullanici_adi: form.kullaniciAdi, tip: form.tip } },
+      })
+      if (authError || !authData?.user) {
+        toast.error('Auth hatası: ' + (authError?.message || 'bilinmeyen'))
+        return
+      }
+      // 2. kullanicilar tablosuna profil satırı
+      const { sifre, ...profil } = form
+      await kullaniciEkle({ ...profil, authId: authData.user.id, email })
       toast.success(`${form.ad} eklendi.`)
     }
     setForm(bos); setGoster(false)
@@ -129,7 +150,7 @@ export default function KullaniciYonetimi() {
 
   const duzenleBasla = (k) => {
     setForm({
-      ad: k.ad, kullaniciAdi: k.kullaniciAdi, sifre: k.sifre,
+      ad: k.ad, kullaniciAdi: k.kullaniciAdi, sifre: '',
       moduller: k.moduller || [], tip: k.tip || 'zna',
       firmaAdi: k.firmaAdi || '', izinliTurler: k.izinliTurler || [],
     })
@@ -256,8 +277,26 @@ export default function KullaniciYonetimi() {
                   <Input value={form.kullaniciAdi} onChange={e => setForm({ ...form, kullaniciAdi: e.target.value })} placeholder="ahmet_y" />
                 </div>
                 <div>
-                  <Label required>Şifre</Label>
-                  <Input value={form.sifre} onChange={e => setForm({ ...form, sifre: e.target.value })} placeholder="şifre123" />
+                  <Label required={!duzenle}>Şifre</Label>
+                  {duzenle ? (
+                    <div style={{
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--surface-sunken)',
+                      border: '1px solid var(--border-default)',
+                      font: '400 13px/20px var(--font-sans)',
+                      color: 'var(--text-tertiary)',
+                    }}>
+                      Kullanıcı kendi profilinden değiştirir
+                    </div>
+                  ) : (
+                    <Input
+                      type="password"
+                      value={form.sifre}
+                      onChange={e => setForm({ ...form, sifre: e.target.value })}
+                      placeholder="En az 8 karakter"
+                    />
+                  )}
                 </div>
               </div>
 

@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
+import { sifreDegistir as authSifreDegistir, kullaniciGirisKontrol } from '../services/kullaniciService'
 import {
   Button, Input, Label, Card, CardTitle, Badge, Avatar, Alert, EmptyState,
 } from '../components/ui'
@@ -88,16 +89,21 @@ function Profil() {
 
   const fmtTL = (n) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
 
-  const bilgiKaydet = () => {
+  const bilgiKaydet = async () => {
     if (!form.ad || !form.kullaniciAdi) { setKaydetMesaj({ tone: 'danger', text: 'Ad ve kullanıcı adı zorunludur.' }); return }
     if (sifreDegistir) {
-      if (form.mevcutSifre !== kullanici?.sifre) { setKaydetMesaj({ tone: 'danger', text: 'Mevcut şifre hatalı.' }); return }
       if (form.yeniSifre !== form.yeniSifreTekrar) { setKaydetMesaj({ tone: 'danger', text: 'Yeni şifreler eşleşmiyor.' }); return }
-      if (form.yeniSifre.length < 4) { setKaydetMesaj({ tone: 'danger', text: 'Şifre en az 4 karakter olmalı.' }); return }
-      kullaniciGuncelle(kullanici.id, { ad: form.ad, kullaniciAdi: form.kullaniciAdi, sifre: form.yeniSifre })
-    } else {
-      kullaniciGuncelle(kullanici.id, { ad: form.ad, kullaniciAdi: form.kullaniciAdi })
+      if (form.yeniSifre.length < 8) { setKaydetMesaj({ tone: 'danger', text: 'Şifre en az 8 karakter olmalı.' }); return }
+      // Mevcut şifreyi doğrula: re-auth
+      const dogrulama = await kullaniciGirisKontrol(kullanici.kullaniciAdi, form.mevcutSifre)
+      if (!dogrulama) { setKaydetMesaj({ tone: 'danger', text: 'Mevcut şifre hatalı.' }); return }
+      try {
+        await authSifreDegistir(form.yeniSifre)
+      } catch (e) {
+        setKaydetMesaj({ tone: 'danger', text: 'Şifre güncellenemedi: ' + e.message }); return
+      }
     }
+    await kullaniciGuncelle(kullanici.id, { ad: form.ad, kullaniciAdi: form.kullaniciAdi })
     setKaydetMesaj({ tone: 'success', text: 'Bilgiler güncellendi.' })
     setSifreDegistir(false)
     setForm({ ...form, mevcutSifre: '', yeniSifre: '', yeniSifreTekrar: '' })
