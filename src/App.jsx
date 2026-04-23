@@ -27,6 +27,7 @@ import Profil from './pages/Profil'
 import FirmaGecmisi from './pages/FirmaGecmisi'
 import ServisTalepleri from './pages/ServisTalepleri'
 import ServisTalepDetay from './pages/ServisTalepDetay'
+import YeniServisTalebi from './pages/YeniServisTalebi'
 import ServisRaporlari from './pages/ServisRaporlari'
 import Kargolar from './pages/Kargolar'
 import KargoDetay from './pages/KargoDetay'
@@ -116,6 +117,7 @@ function App() {
         <Route path="/profil" element={<Profil />} />
         <Route path="/firma-gecmisi/:firmaAdi" element={<FirmaGecmisi />} />
         <Route path="/servis-talepleri" element={<ServisTalepleri />} />
+        <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />
         <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />
         <Route path="/servis-raporlari" element={<ServisRaporlari />} />
         <Route path="/dokuman-merkezi" element={<DokümanMerkezi />} />

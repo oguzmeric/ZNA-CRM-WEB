@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter } from 'lucide-react'
+import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState,
@@ -70,6 +70,14 @@ export default function ServisTalepleri() {
           <h1 className="t-h1">Servis Talepleri</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>Müşteri talep ve servis portalı</p>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Button
+          variant="primary"
+          iconLeft={<Plus size={14} strokeWidth={1.5} />}
+          onClick={() => navigate('/servis-talepleri/yeni')}
+        >
+          Yeni Talep
+        </Button>
         <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
           <button
             onClick={() => setGorunum('liste')}
@@ -101,6 +109,7 @@ export default function ServisTalepleri() {
           >
             <LayoutGrid size={14} strokeWidth={1.5} /> Pano
           </button>
+        </div>
         </div>
       </div>
 

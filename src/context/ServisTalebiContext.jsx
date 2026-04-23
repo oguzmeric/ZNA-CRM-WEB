@@ -139,6 +139,52 @@ export function ServisTalebiProvider({ children }) {
     return kayitli
   }
 
+  // Personel tarafı: bir müşteri için talep oluşturur
+  // musteri = musteriler tablosundan seçilen kayıt
+  // atanan = (opsiyonel) atanacak teknisyen (kullanicilar tablosundan)
+  const talepOlusturPersonel = async (formData, kullanici, musteri, atanan) => {
+    const baslangicDurum = atanan ? 'atandi' : 'bekliyor'
+    const yeniTalep = {
+      talepNo: talepNoUret(talepler),
+      musteriId: musteri?.id || null,
+      musteriAd: musteri ? `${musteri.ad || ''} ${musteri.soyad || ''}`.trim() : (formData.musteriAd || ''),
+      firmaAdi: musteri?.firma || formData.firmaAdi || '',
+      anaTur: formData.anaTur,
+      altKategori: formData.altKategori,
+      konu: formData.konu,
+      lokasyon: formData.lokasyon || '',
+      cihazTuru: formData.cihazTuru || '',
+      aciklama: formData.aciklama,
+      aciliyet: formData.aciliyet || 'normal',
+      ilgiliKisi: formData.ilgiliKisi || (musteri ? `${musteri.ad} ${musteri.soyad}` : kullanici.ad),
+      telefon: formData.telefon || musteri?.telefon || '',
+      uygunZaman: formData.uygunZaman || '',
+      durum: baslangicDurum,
+      atananKullaniciId: atanan?.id || null,
+      atananKullaniciAd: atanan?.ad || null,
+      planliTarih: formData.planliTarih || null,
+      notlar: [],
+      durumGecmisi: [
+        {
+          durum: 'bekliyor',
+          tarih: new Date().toISOString(),
+          kullaniciAd: kullanici.ad,
+          aciklama: `Personel tarafından oluşturuldu${musteri ? ` — ${musteri.firma || musteri.ad}` : ''}`,
+        },
+        ...(atanan ? [{
+          durum: 'atandi',
+          tarih: new Date().toISOString(),
+          kullaniciAd: kullanici.ad,
+          aciklama: `${atanan.ad} atandı`,
+        }] : []),
+      ],
+      musteriOnay: null,
+    }
+    const kayitli = await servisTalepEkle(yeniTalep)
+    if (kayitli) setTalepler(prev => [kayitli, ...prev])
+    return kayitli
+  }
+
   const talepGuncelle = async (id, guncellenmis, kullaniciAd, aciklama = '') => {
     const mevcutTalep = talepler.find(t => t.id === id)
     if (!mevcutTalep) return
@@ -203,6 +249,7 @@ export function ServisTalebiProvider({ children }) {
       value={{
         talepler,
         talepOlustur,
+        talepOlusturPersonel,
         talepGuncelle,
         talepSil,
         notEkle,
