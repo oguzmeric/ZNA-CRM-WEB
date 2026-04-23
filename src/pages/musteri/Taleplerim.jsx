@@ -1,9 +1,16 @@
 import { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
-import CustomSelect from '../../components/CustomSelect'
-import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Plus, MapPin, User, Clock, Calendar, MessageSquare, Inbox } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+import { useServisTalebi } from '../../context/ServisTalebiContext'
+import CustomSelect from '../../components/CustomSelect'
+import { Button, SearchInput, Card, Badge, CodeBadge, EmptyState } from '../../components/ui'
+
+const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
+const DURUM_TONE = {
+  bekliyor: 'pasif', inceleniyor: 'beklemede', atandi: 'lead',
+  devam_ediyor: 'beklemede', tamamlandi: 'aktif', iptal: 'kayip',
+}
 
 export default function Taleplerim() {
   const { kullanici } = useAuth()
@@ -16,177 +23,135 @@ export default function Taleplerim() {
 
   const talepler = musteriTalepleri(kullanici?.id)
 
-  const filtrelenmis = talepler.filter((t) => {
+  const filtrelenmis = talepler.filter(t => {
     if (aramaMetni && !t.konu.toLowerCase().includes(aramaMetni.toLowerCase()) && !t.talepNo.toLowerCase().includes(aramaMetni.toLowerCase())) return false
     if (durumFiltre === 'bekliyor' && t.durum !== 'bekliyor') return false
     if (durumFiltre === 'devam' && !['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum)) return false
     if (durumFiltre === 'tamamlandi' && t.durum !== 'tamamlandi') return false
-    if (durumFiltre !== 'tumu' && durumFiltre !== 'bekliyor' && durumFiltre !== 'devam' && durumFiltre !== 'tamamlandi' && t.durum !== durumFiltre) return false
+    if (!['tumu', 'bekliyor', 'devam', 'tamamlandi'].includes(durumFiltre) && t.durum !== durumFiltre) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     return true
   }).sort((a, b) => new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi))
 
   const tarihFormat = (tarih) => new Date(tarih).toLocaleDateString('tr-TR', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)' }}>Taleplerim</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-            Toplam {talepler.length} talep · {filtrelenmis.length} gösteriliyor
+          <h1 className="t-h1">Taleplerim</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            Toplam <span className="tabular-nums">{talepler.length}</span> talep · <span className="tabular-nums">{filtrelenmis.length}</span> gösteriliyor
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/musteri-portal/yeni-talep')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-semibold text-white"
-          style={{ background: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
-        >
-          <span>➕</span>
-          Yeni Talep
-        </motion.button>
+        <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/musteri-portal/yeni-talep')}>
+          Yeni talep
+        </Button>
       </div>
 
-      {/* Filtreler */}
-      <div
-        className="rounded p-4 mb-5"
-        style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-      >
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 200px', gap: 12, minWidth: 0 }}>
+          <SearchInput
             value={aramaMetni}
-            onChange={(e) => setAramaMetni(e.target.value)}
-            placeholder="Talep numarası veya konu ara..."
-            className="flex-1 px-4 py-2.5 rounded text-sm outline-none"
-            style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-            onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-            onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
+            onChange={e => setAramaMetni(e.target.value)}
+            placeholder="Talep numarası veya konu ara…"
           />
-          <CustomSelect
-            value={durumFiltre}
-            onChange={(e) => setDurumFiltre(e.target.value)}
-            className="px-4 py-2.5 rounded text-sm outline-none cursor-pointer"
-            style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            <option value="tumu">Tüm Durumlar</option>
+          <CustomSelect value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)}>
+            <option value="tumu">Tüm durumlar</option>
             <option value="bekliyor">Bekleyen</option>
-            <option value="devam">Devam Eden</option>
+            <option value="devam">Devam eden</option>
             <option value="tamamlandi">Tamamlanan</option>
             <option value="iptal">İptal</option>
           </CustomSelect>
-          <CustomSelect
-            value={turFiltre}
-            onChange={(e) => setTurFiltre(e.target.value)}
-            className="px-4 py-2.5 rounded text-sm outline-none cursor-pointer"
-            style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            <option value="tumu">Tüm Türler</option>
-            {ANA_TURLER.map((t) => (
-              <option key={t.id} value={t.id}>{t.ikon} {t.isim}</option>
-            ))}
+          <CustomSelect value={turFiltre} onChange={e => setTurFiltre(e.target.value)}>
+            <option value="tumu">Tüm türler</option>
+            {ANA_TURLER.map(t => <option key={t.id} value={t.id}>{t.isim}</option>)}
           </CustomSelect>
         </div>
-      </div>
+      </Card>
 
-      {/* Liste */}
       {filtrelenmis.length === 0 ? (
-        <div
-          className="rounded py-16 text-center"
-          style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)' }}
-        >
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📭</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Gösterilecek talep bulunamadı</p>
-        </div>
+        <EmptyState icon={<Inbox size={32} strokeWidth={1.5} />} title="Gösterilecek talep bulunamadı" />
       ) : (
-        <div className="space-y-3">
-          {filtrelenmis.map((talep) => {
-            const anaTur = ANA_TURLER.find((t) => t.id === talep.anaTur)
-            const durum = DURUM_LISTESI.find((d) => d.id === talep.durum)
-            const aciliyet = ACILIYET_SEVIYELERI.find((a) => a.id === talep.aciliyet)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtrelenmis.map(talep => {
+            const anaTur = ANA_TURLER.find(t => t.id === talep.anaTur)
+            const durum = DURUM_LISTESI.find(d => d.id === talep.durum)
+            const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
 
             return (
-              <motion.div
+              <Card
                 key={talep.id}
-                whileHover={{ y: -1, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                 onClick={() => navigate(`/musteri-portal/talep/${talep.id}`)}
-                className="rounded p-5 cursor-pointer transition-all"
                 style={{
-                  background: 'var(--bg-card)',
-                  border: talep.aciliyet === 'acil' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(1,118,211,0.1)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  borderLeft: `3px solid ${talep.aciliyet === 'acil' ? 'var(--danger)' : 'var(--border-default)'}`,
+                  transition: 'background 120ms',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
               >
-                <div className="flex items-start gap-4">
-                  <div
-                    className="w-11 h-11 rounded flex items-center justify-center text-xl flex-shrink-0"
-                    style={{ background: anaTur?.bg || 'rgba(1,118,211,0.1)' }}
-                  >
-                    {anaTur?.ikon || '📋'}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <div style={{
+                    width: 40, height: 40,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--brand-primary-soft)',
+                    color: 'var(--brand-primary)',
+                    borderRadius: 'var(--radius-sm)',
+                    flexShrink: 0,
+                    font: '600 14px/1 var(--font-sans)',
+                  }}>
+                    {anaTur?.isim?.charAt(0) || '·'}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>{talep.talepNo}</span>
-                          <span
-                            className="px-2 py-0.5 rounded-full text-xs"
-                            style={{ background: anaTur?.bg, color: anaTur?.renk }}
-                          >
-                            {anaTur?.isim}
-                          </span>
-                          <span
-                            className="px-2 py-0.5 rounded-full text-xs"
-                            style={{ background: aciliyet?.bg, color: aciliyet?.renk }}
-                          >
-                            {aciliyet?.ikon} {aciliyet?.isim}
-                          </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                          <CodeBadge>{talep.talepNo}</CodeBadge>
+                          {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
+                          {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
                         </div>
-                        <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{talep.konu}</p>
+                        <p style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+                          {talep.konu}
+                        </p>
                         {talep.lokasyon && (
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            📍 {talep.lokasyon}
+                          <p style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                            <MapPin size={11} strokeWidth={1.5} /> {talep.lokasyon}
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
-                          style={{ background: durum?.bg, color: durum?.renk }}
-                        >
-                          {durum?.ikon} {durum?.isim}
-                        </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                        {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
                         {talep.atananKullaniciAd && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            👤 {talep.atananKullaniciAd}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                            <User size={11} strokeWidth={1.5} /> {talep.atananKullaniciAd}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 mt-2">
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        🕐 {tarihFormat(talep.olusturmaTarihi)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        <Clock size={11} strokeWidth={1.5} /> {tarihFormat(talep.olusturmaTarihi)}
                       </span>
                       {talep.planliTarih && (
-                        <span style={{ fontSize: '11px', color: '#f59e0b' }}>
-                          📅 Planlı: {new Date(talep.planliTarih).toLocaleDateString('tr-TR')}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)', color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
+                          <Calendar size={11} strokeWidth={1.5} /> Planlı: {new Date(talep.planliTarih).toLocaleDateString('tr-TR')}
                         </span>
                       )}
-                      {talep.notlar.length > 0 && (
-                        <span style={{ fontSize: '11px', color: 'var(--primary)' }}>
-                          💬 {talep.notlar.length} not
+                      {talep.notlar?.length > 0 && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                          <MessageSquare size={11} strokeWidth={1.5} /> <span className="tabular-nums">{talep.notlar.length}</span> not
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </Card>
             )
           })}
         </div>

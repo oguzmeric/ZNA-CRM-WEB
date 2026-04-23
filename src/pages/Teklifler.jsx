@@ -1,57 +1,58 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
+  ChevronUp, ChevronDown, Download, Inbox as InboxMail, ClipboardEdit, Search as SearchIc,
+  CheckCircle2, Ban, Clock,
+} from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import {
-  teklifleriGetir,
-  teklifSil as dbTeklifSil,
-  teklifGuncelle,
-  musteriTalepleriniGetir,
-  musteriTalepGuncelle,
+  teklifleriGetir, teklifSil as dbTeklifSil, teklifGuncelle,
+  musteriTalepleriniGetir, musteriTalepGuncelle,
 } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
 import CustomSelect from '../components/CustomSelect'
+import {
+  Button, SearchInput, Card, Badge, CodeBadge, EmptyState,
+} from '../components/ui'
 
-const durumBadgeStyle = (durum) => {
-  const map = {
-    takipte: { label: 'CEVAP BEKLENİYOR', bg: 'rgba(1,118,211,0.1)', color: 'var(--primary)' },
-    kabul: { label: 'ONAYLANDI', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
-    revizyon: { label: 'REVİZYON', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-    vazgecildi: { label: 'REDDEDİLDİ', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
-  }
-  return map[durum] || map['takipte']
+const onayTone = {
+  takipte:    { tone: 'lead',      isim: 'Cevap Bekleniyor' },
+  kabul:      { tone: 'aktif',     isim: 'Onaylandı' },
+  revizyon:   { tone: 'beklemede', isim: 'Revizyon' },
+  vazgecildi: { tone: 'kayip',     isim: 'Reddedildi' },
 }
 
-const paraBirimFormat = (sayi) =>
-  `${(sayi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`
-
-const tarihFormat = (tarih) => {
-  if (!tarih) return '—'
-  return new Date(tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
+const talepTone = {
+  bekliyor:          { tone: 'beklemede', isim: 'Bekliyor',           C: Clock },
+  inceleniyor:       { tone: 'lead',      isim: 'İnceleniyor',         C: SearchIc },
+  teklif_hazirlandi: { tone: 'aktif',     isim: 'Teklif Hazırlandı',   C: CheckCircle2 },
+  iptal:             { tone: 'kayip',     isim: 'İptal',              C: Ban },
 }
 
-const goreceTarih = (tarih) => {
-  if (!tarih) return '—'
-  const fark = Date.now() - new Date(tarih).getTime()
-  const gun = Math.floor(fark / (1000 * 60 * 60 * 24))
+const fmtTL = (n) => `₺${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+const goreceTarih = (t) => {
+  if (!t) return '—'
+  const gun = Math.floor((Date.now() - new Date(t).getTime()) / 86400000)
   if (gun === 0) return 'bugün'
   if (gun === 1) return 'dün'
-  if (gun < 7) return `${gun} gün önce`
-  if (gun < 30) return `${Math.floor(gun / 7)} hafta önce`
+  if (gun < 7)   return `${gun} gün önce`
+  if (gun < 30)  return `${Math.floor(gun / 7)} hafta önce`
   if (gun < 365) return `${Math.floor(gun / 30)} ay önce`
   return `${Math.floor(gun / 365)} yıl önce`
 }
 
 const filtreMap = {
   cevap_beklenenler: (t) => ['takipte', 'revizyon'].includes(t.onayDurumu),
-  onaylananlar: (t) => t.onayDurumu === 'kabul',
-  reddedilenler: (t) => t.onayDurumu === 'vazgecildi',
-  tumu: () => true,
+  onaylananlar:      (t) => t.onayDurumu === 'kabul',
+  reddedilenler:     (t) => t.onayDurumu === 'vazgecildi',
+  tumu:              () => true,
 }
 
-function Teklifler() {
+export default function Teklifler() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { confirm } = useConfirm()
@@ -65,186 +66,147 @@ function Teklifler() {
   const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
-  const [gosterilecekSayi, setGosterilecekSayi] = useState(100)
+  const [gosterilecek, setGosterilecek] = useState(100)
 
   useEffect(() => {
-    Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satislariGetir()]).then(
-      ([teklifData, talepData, satisData]) => {
-        setTeklifler(teklifData)
-        setMusteriTalepleri(talepData)
-        setSatislar(satisData)
-        setYukleniyor(false)
-      }
-    )
+    Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satislariGetir()])
+      .then(([t, tl, s]) => { setTeklifler(t); setMusteriTalepleri(tl); setSatislar(s); setYukleniyor(false) })
   }, [])
 
-  if (yukleniyor) {
-    return (
-      <div className="p-6 flex items-center justify-center" style={{ minHeight: '200px' }}>
-        <p style={{ color: 'var(--text-muted)' }}>Yükleniyor...</p>
-      </div>
-    )
-  }
+  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
 
-  const bekleyenSayisi = musteriTalepleri.filter((t) => t.durum === 'bekliyor').length
+  const bekleyenSayisi = musteriTalepleri.filter(t => t.durum === 'bekliyor').length
 
   const musteriTalepDurumGuncelle = async (id, yeniDurum) => {
     await musteriTalepGuncelle(id, { durum: yeniDurum })
-    setMusteriTalepleri((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, durum: yeniDurum } : t))
-    )
+    setMusteriTalepleri(prev => prev.map(t => t.id === id ? { ...t, durum: yeniDurum } : t))
   }
 
   const teklifOlustur = (talep) => {
-    localStorage.setItem(
-      'teklif_on_doldurum',
-      JSON.stringify({
-        firmaAdi: talep.firmaAdi,
-        musteriYetkilisi: talep.iletisimKisi,
-        konu: `Teklif Talebi - ${talep.talepNo}`,
-        aciklama: talep.aciklama,
-        satirlar: (talep.urunler || []).map((u) => ({
-          stokKodu: '',
-          stokAdi: u.isim,
-          miktar: parseInt(u.adet) || 1,
-          birim: 'Adet',
-          birimFiyat: 0,
-          iskonto: 0,
-          kdv: 20,
-        })),
-        musteriTalepId: talep.id,
-        musteriTalepNo: talep.talepNo,
-      })
-    )
+    localStorage.setItem('teklif_on_doldurum', JSON.stringify({
+      firmaAdi: talep.firmaAdi, musteriYetkilisi: talep.iletisimKisi,
+      konu: `Teklif Talebi - ${talep.talepNo}`,
+      aciklama: talep.aciklama,
+      satirlar: (talep.urunler || []).map(u => ({
+        stokKodu: '', stokAdi: u.isim, miktar: parseInt(u.adet) || 1,
+        birim: 'Adet', birimFiyat: 0, iskonto: 0, kdv: 20,
+      })),
+      musteriTalepId: talep.id, musteriTalepNo: talep.talepNo,
+    }))
     musteriTalepDurumGuncelle(talep.id, 'inceleniyor')
     navigate('/teklifler/yeni')
   }
 
   const durumGuncelle = async (id, yeniDurum) => {
     await teklifGuncelle(id, { onayDurumu: yeniDurum })
-    setTeklifler((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, onayDurumu: yeniDurum } : t))
-    )
+    setTeklifler(prev => prev.map(t => t.id === id ? { ...t, onayDurumu: yeniDurum } : t))
   }
 
   const teklifSil = async (id) => {
     const onay = await confirm({
       baslik: 'Teklifi Sil',
       mesaj: 'Bu teklif kalıcı olarak silinecek. Emin misiniz?',
-      onayMetin: 'Evet, Sil',
-      iptalMetin: 'Vazgeç',
-      tip: 'tehlikeli',
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
     await dbTeklifSil(id)
-    setTeklifler((prev) => prev.filter((t) => t.id !== id))
+    setTeklifler(prev => prev.filter(t => t.id !== id))
     toast.success('Teklif silindi.')
   }
 
   const faturayaDonustur = (teklif) => {
-    localStorage.setItem(
-      'satis_on_doldurum',
-      JSON.stringify({
-        firmaAdi: teklif.firmaAdi,
-        musteriYetkili: teklif.musteriYetkilisi,
-        teklifId: teklif.id,
-        teklifNo: teklif.teklifNo,
-        satirlar: (teklif.satirlar || []).map((s) => ({
-          id: crypto.randomUUID(),
-          stokKodu: s.stokKodu || '',
-          urunAdi: s.stokAdi || '',
-          miktar: s.miktar || 1,
-          birim: s.birim || 'Adet',
-          birimFiyat: s.birimFiyat || 0,
-          iskontoOran: s.iskonto || 0,
-          kdvOran: s.kdv || 20,
-          araToplam: 0,
-          kdvTutar: 0,
-          satirToplam: 0,
-        })),
-      })
-    )
+    localStorage.setItem('satis_on_doldurum', JSON.stringify({
+      firmaAdi: teklif.firmaAdi, musteriYetkili: teklif.musteriYetkilisi,
+      teklifId: teklif.id, teklifNo: teklif.teklifNo,
+      satirlar: (teklif.satirlar || []).map(s => ({
+        id: crypto.randomUUID(),
+        stokKodu: s.stokKodu || '', urunAdi: s.stokAdi || '',
+        miktar: s.miktar || 1, birim: s.birim || 'Adet',
+        birimFiyat: s.birimFiyat || 0, iskontoOran: s.iskonto || 0,
+        kdvOran: s.kdv || 20, araToplam: 0, kdvTutar: 0, satirToplam: 0,
+      })),
+    }))
     navigate('/satislar/yeni')
   }
 
-  const filtreliTeklifler = [...teklifler]
+  const filtreli = [...teklifler]
     .reverse()
-    .filter((t) => (filtreMap[aktifSekme] || (() => true))(t))
-    .filter((t) =>
-      arama === '' ||
-      `${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`.toLowerCase().includes(arama.toLowerCase())
-    )
+    .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
+    .filter(t => arama === '' || `${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`.toLowerCase().includes(arama.toLowerCase()))
 
-  const gorunenTeklifler = filtreliTeklifler.slice(0, gosterilecekSayi)
-  const dahaFazlaVar = filtreliTeklifler.length > gosterilecekSayi
+  const gorunenTeklifler = filtreli.slice(0, gosterilecek)
+  const dahaFazlaVar = filtreli.length > gosterilecek
 
   return (
-    <div className="p-6">
-      {/* Başlık */}
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Teklifler
-          </h2>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {teklifler.length} teklif
+          <h1 className="t-h1">Teklifler</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            <span className="tabular-nums">{teklifler.length}</span> teklif
           </p>
         </div>
         {aktifSekme !== 'musteri_talepleri' && (
-          <button
-            onClick={() => navigate('/teklifler/yeni')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all"
-            style={{ background: 'var(--primary)' }}
-          >
-            + Yeni Teklif
-          </button>
+          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
+            Yeni teklif
+          </Button>
         )}
       </div>
 
       {/* Arama */}
       {aktifSekme !== 'musteri_talepleri' && (
-        <div className="mb-4">
-          <input
-            type="text"
+        <div style={{ marginBottom: 16, maxWidth: 400 }}>
+          <SearchInput
             value={arama}
-            onChange={(e) => setArama(e.target.value)}
-            placeholder="Teklif no, firma veya konu ara..."
-            className="w-full max-w-sm px-3 py-2 rounded-xl text-sm outline-none"
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-            }}
+            onChange={e => setArama(e.target.value)}
+            placeholder="Teklif no, firma veya konu ara…"
           />
         </div>
       )}
 
-      {/* Ana sekmeler */}
-      <div className="flex gap-0 mb-0" style={{ borderBottom: '2px solid var(--border)' }}>
+      {/* Sekmeler */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 0, borderBottom: '1px solid var(--border-default)', overflowX: 'auto' }}>
         {[
-          { id: 'cevap_beklenenler', label: 'CEVAP BEKLENENLER' },
-          { id: 'onaylananlar', label: 'ONAYLANANLAR' },
-          { id: 'reddedilenler', label: 'REDDEDİLENLER' },
-          { id: 'tumu', label: 'TÜMÜ' },
-          { id: 'musteri_talepleri', label: '📥 MÜŞTERİ TALEPLERİ', badge: bekleyenSayisi },
-        ].map((sekme) => {
-          const aktif = aktifSekme === sekme.id
+          { id: 'cevap_beklenenler', label: 'Cevap Beklenenler' },
+          { id: 'onaylananlar',      label: 'Onaylananlar' },
+          { id: 'reddedilenler',     label: 'Reddedilenler' },
+          { id: 'tumu',              label: 'Tümü' },
+          { id: 'musteri_talepleri', label: 'Müşteri Talepleri', icon: <InboxMail size={12} strokeWidth={1.5} />, badge: bekleyenSayisi },
+        ].map(s => {
+          const aktif = aktifSekme === s.id
           return (
             <button
-              key={sekme.id}
-              onClick={() => { setAktifSekme(sekme.id); setGosterilecekSayi(100) }}
-              className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold transition-colors relative"
+              key={s.id}
+              onClick={() => { setAktifSekme(s.id); setGosterilecek(100) }}
               style={{
-                color: aktif ? 'var(--primary)' : 'var(--text-muted)',
-                borderBottom: aktif ? '2px solid var(--primary)' : '2px solid transparent',
-                marginBottom: '-2px',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '10px 14px',
                 background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                marginBottom: -1,
+                color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                fontSize: 11,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
-              {sekme.label}
-              {sekme.badge > 0 && (
-                <span className="text-white text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#ef4444', fontSize: '10px' }}>
-                  {sekme.badge}
+              {s.icon}
+              {s.label}
+              {s.badge > 0 && (
+                <span style={{
+                  minWidth: 16, height: 16, padding: '0 5px',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--danger)', color: '#fff',
+                  fontSize: 10, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {s.badge}
                 </span>
               )}
             </button>
@@ -254,456 +216,334 @@ function Teklifler() {
 
       {/* MÜŞTERİ TALEPLERİ */}
       {aktifSekme === 'musteri_talepleri' && (
-        <div className="mt-6">
+        <div style={{ marginTop: 20 }}>
           {musteriTalepleri.length === 0 ? (
-            <div
-              className="rounded-2xl p-12 text-center"
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid rgba(1,118,211,0.1)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              }}
-            >
-              <p style={{ fontSize: '36px', marginBottom: '12px' }}>📭</p>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Henüz müşteri teklif talebi yok
-              </p>
-            </div>
+            <EmptyState icon={<Inbox size={32} strokeWidth={1.5} />} title="Henüz müşteri teklif talebi yok" />
           ) : (
-            <div className="space-y-3">
-              {[...musteriTalepleri]
-                .sort((a, b) => new Date(b.tarih) - new Date(a.tarih))
-                .map((talep) => {
-                  const durumRenk = {
-                    bekliyor: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-                    inceleniyor: { bg: 'rgba(1,118,211,0.1)', color: 'var(--primary)' },
-                    teklif_hazirlandi: { bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
-                    iptal: { bg: 'rgba(107,114,128,0.1)', color: '#6b7280' },
-                  }
-                  const renk = durumRenk[talep.durum] || durumRenk['bekliyor']
-                  const acik = seciliTalep === talep.id
-
-                  return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[...musteriTalepleri].sort((a, b) => new Date(b.tarih) - new Date(a.tarih)).map(talep => {
+                const d = talepTone[talep.durum] || talepTone.bekliyor
+                const IconC = d.C
+                const acik = seciliTalep === talep.id
+                return (
+                  <Card key={talep.id} padding={0} style={{ overflow: 'hidden' }}>
                     <div
-                      key={talep.id}
-                      className="rounded-2xl overflow-hidden"
+                      onClick={() => setSeciliTalep(acik ? null : talep.id)}
                       style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid rgba(1,118,211,0.1)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        display: 'flex', alignItems: 'center', gap: 16,
+                        padding: '14px 20px',
+                        cursor: 'pointer',
+                        transition: 'background 120ms',
                       }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <div
-                        className="flex items-center gap-4 px-5 py-4 cursor-pointer transition"
-                        onClick={() => setSeciliTalep(acik ? null : talep.id)}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span
-                              className="text-xs font-mono font-semibold"
-                              style={{ color: 'var(--text-secondary)' }}
-                            >
-                              {talep.talepNo}
-                            </span>
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: renk.bg, color: renk.color }}
-                            >
-                              {talep.durum === 'bekliyor'
-                                ? '⏳ Bekliyor'
-                                : talep.durum === 'inceleniyor'
-                                ? '🔍 İnceleniyor'
-                                : talep.durum === 'teklif_hazirlandi'
-                                ? '✅ Teklif Hazırlandı'
-                                : '⛔ İptal'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                              {talep.firmaAdi || '—'}
-                            </p>
-                            <span style={{ color: 'var(--border)' }}>·</span>
-                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                              {talep.iletisimKisi}
-                            </p>
-                            <span style={{ color: 'var(--border)' }}>·</span>
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                              {(talep.urunler?.length || 0)} ürün
-                            </p>
-                          </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                          <CodeBadge>{talep.talepNo}</CodeBadge>
+                          <Badge tone={d.tone} icon={<IconC size={11} strokeWidth={1.5} />}>{d.isim}</Badge>
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {tarihFormat(talep.tarih)}
-                          </p>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                            {acik ? '▲' : '▼'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, font: '400 13px/18px var(--font-sans)', flexWrap: 'wrap' }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{talep.firmaAdi || '—'}</span>
+                          <span style={{ color: 'var(--border-default)' }}>·</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{talep.iletisimKisi}</span>
+                          <span style={{ color: 'var(--border-default)' }}>·</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>
+                            <span className="tabular-nums">{talep.urunler?.length || 0}</span> ürün
                           </span>
                         </div>
                       </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtTarih(talep.tarih)}
+                        </span>
+                        {acik ? <ChevronUp size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronDown size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />}
+                      </div>
+                    </div>
 
-                      {acik && (
-                        <div
-                          className="px-5 pb-5"
-                          style={{ borderTop: '1px solid var(--border)' }}
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
-                            <div>
-                              <p
-                                className="text-xs font-semibold uppercase tracking-wide mb-2"
-                                style={{ color: 'var(--text-muted)' }}
-                              >
-                                İstenen Ürünler
-                              </p>
-                              <div className="space-y-1.5">
-                                {(talep.urunler || []).map((u, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-center justify-between rounded-xl px-3 py-2"
-                                    style={{ background: 'var(--bg-hover)' }}
-                                  >
-                                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                                      {u.isim}
-                                    </span>
-                                    <span
-                                      className="text-xs font-medium rounded-lg px-2 py-0.5"
-                                      style={{
-                                        background: 'var(--bg-card)',
-                                        border: '1px solid var(--border)',
-                                        color: 'var(--text-secondary)',
-                                      }}
-                                    >
-                                      {u.adet} adet
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <p
-                                  className="text-xs font-semibold uppercase tracking-wide mb-1"
-                                  style={{ color: 'var(--text-muted)' }}
-                                >
-                                  Açıklama
-                                </p>
-                                <p
-                                  className="text-sm rounded-xl px-3 py-2"
-                                  style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-                                >
-                                  {talep.aciklama}
-                                </p>
-                              </div>
-                              {talep.butce && (
-                                <div>
-                                  <p
-                                    className="text-xs font-semibold uppercase tracking-wide mb-1"
-                                    style={{ color: 'var(--text-muted)' }}
-                                  >
-                                    Bütçe
-                                  </p>
-                                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                    {talep.butce}
-                                  </p>
+                    {acik && (
+                      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
+                          <div>
+                            <p className="t-label" style={{ marginBottom: 8 }}>İSTENEN ÜRÜNLER</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {(talep.urunler || []).map((u, i) => (
+                                <div key={i} style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '6px 10px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  background: 'var(--surface-card)',
+                                  border: '1px solid var(--border-default)',
+                                }}>
+                                  <span style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{u.isim}</span>
+                                  <span style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {u.adet} adet
+                                  </span>
                                 </div>
-                              )}
-                              {talep.telefon && (
-                                <div>
-                                  <p
-                                    className="text-xs font-semibold uppercase tracking-wide mb-1"
-                                    style={{ color: 'var(--text-muted)' }}
-                                  >
-                                    Telefon
-                                  </p>
-                                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                    {talep.telefon}
-                                  </p>
-                                </div>
-                              )}
+                              ))}
                             </div>
                           </div>
-                          <div
-                            className="flex gap-2 mt-4 pt-4"
-                            style={{ borderTop: '1px solid var(--border)' }}
-                          >
-                            {(talep.durum === 'bekliyor' || talep.durum === 'inceleniyor') && (
-                              <button
-                                onClick={() => teklifOlustur(talep)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition"
-                                style={{ background: 'var(--primary)' }}
-                              >
-                                📝 Teklif Oluştur
-                              </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div>
+                              <p className="t-label" style={{ marginBottom: 6 }}>AÇIKLAMA</p>
+                              <p style={{
+                                font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)',
+                                padding: '8px 10px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--surface-card)',
+                                border: '1px solid var(--border-default)',
+                                margin: 0,
+                              }}>
+                                {talep.aciklama}
+                              </p>
+                            </div>
+                            {talep.butce && (
+                              <div>
+                                <p className="t-label" style={{ marginBottom: 4 }}>BÜTÇE</p>
+                                <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, fontVariantNumeric: 'tabular-nums' }}>{talep.butce}</p>
+                              </div>
                             )}
+                            {talep.telefon && (
+                              <div>
+                                <p className="t-label" style={{ marginBottom: 4 }}>TELEFON</p>
+                                <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, fontVariantNumeric: 'tabular-nums' }}>{talep.telefon}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)', flexWrap: 'wrap' }}>
+                          {(talep.durum === 'bekliyor' || talep.durum === 'inceleniyor') && (
+                            <Button variant="primary" iconLeft={<ClipboardEdit size={14} strokeWidth={1.5} />} onClick={() => teklifOlustur(talep)}>
+                              Teklif oluştur
+                            </Button>
+                          )}
+                          <div style={{ minWidth: 180 }}>
                             <CustomSelect
                               value={talep.durum}
-                              onChange={(e) => musteriTalepDurumGuncelle(talep.id, e.target.value)}
-                              style={{
-                                fontSize: '12px',
-                                borderRadius: '10px',
-                                padding: '6px 10px',
-                                fontWeight: '500',
-                                outline: 'none',
-                                cursor: 'pointer',
-                                background: renk.bg,
-                                color: renk.color,
-                                border: 'none',
-                              }}
+                              onChange={e => musteriTalepDurumGuncelle(talep.id, e.target.value)}
                             >
-                              <option value="bekliyor">⏳ Bekliyor</option>
-                              <option value="inceleniyor">🔍 İnceleniyor</option>
-                              <option value="teklif_hazirlandi">✅ Teklif Hazırlandı</option>
-                              <option value="iptal">⛔ İptal</option>
+                              <option value="bekliyor">Bekliyor</option>
+                              <option value="inceleniyor">İnceleniyor</option>
+                              <option value="teklif_hazirlandi">Teklif Hazırlandı</option>
+                              <option value="iptal">İptal</option>
                             </CustomSelect>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* TEKLİFLER TABLOLU SEKMELERİ */}
+      {/* TEKLİF TABLOSU */}
       {aktifSekme !== 'musteri_talepleri' && (
-        <div className="mt-6">
-          {/* Teklif tablosu */}
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid rgba(1,118,211,0.1)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            }}
-          >
-            {/* Header */}
-            <div
-              className="grid items-center px-4 py-3 text-xs font-semibold uppercase tracking-wide"
-              style={{
-                gridTemplateColumns: '1fr 160px 150px 120px 160px',
-                borderBottom: '1px solid var(--border)',
-                color: 'var(--text-muted)',
-                background: 'var(--bg-hover)',
-              }}
-            >
-              <div>TEKLİF AÇIKLAMASI</div>
-              <div>FATURA</div>
-              <div>DÜZENLEME TARİHİ</div>
-              <div className="text-right">TEKLİF TOPLAMI</div>
-              <div className="text-right">AKSIYONLAR</div>
-            </div>
-
+        <div style={{ marginTop: 20 }}>
+          <Card padding={0} style={{ overflow: 'hidden' }}>
             {gorunenTeklifler.length === 0 ? (
-              <div
-                className="flex flex-col items-center justify-center py-16"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                <span style={{ fontSize: '40px', marginBottom: '12px' }}>📋</span>
-                <p className="text-sm font-medium">
-                  {arama ? 'Arama sonucu bulunamadı.' : 'Bu kategoride teklif bulunmuyor.'}
-                </p>
+              <div style={{ padding: 40 }}>
+                <EmptyState
+                  icon={<FileText size={32} strokeWidth={1.5} />}
+                  title={arama ? 'Arama sonucu bulunamadı' : 'Bu kategoride teklif bulunmuyor'}
+                />
               </div>
             ) : (
-              gorunenTeklifler.map((t, idx) => {
-                const badge = durumBadgeStyle(t.onayDurumu)
-                const hatirlatma = teklifHatirlatmasi(t.id)
-                const hatirlatmaVadesiGeldi =
-                  hatirlatma && new Date(hatirlatma.hatirlatmaTarihi) <= new Date()
-                const ilgiliFatura = satislar.find((s) => s.teklifId === t.id)
-
-                return (
-                  <motion.div
-                    key={t.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.03 }}
-                    className="grid items-center px-4 py-3 text-sm transition-colors"
-                    style={{
-                      gridTemplateColumns: '1fr 160px 150px 120px 160px',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    {/* TEKLİF AÇIKLAMASI */}
-                    <div className="min-w-0 pr-3">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        {hatirlatma && (
-                          <span
-                            title={
-                              hatirlatmaVadesiGeldi
-                                ? 'Takip zamanı geldi!'
-                                : `Hatırlatma: ${new Date(hatirlatma.hatirlatmaTarihi).toLocaleDateString('tr-TR')}`
-                            }
-                            style={{ fontSize: '11px', cursor: 'help' }}
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                    <thead>
+                      <tr>
+                        {[
+                          { l: 'Teklif Açıklaması' },
+                          { l: 'Fatura' },
+                          { l: 'Düzenleme' },
+                          { l: 'Toplam', align: 'right' },
+                          { l: '', align: 'right' },
+                        ].map((h, i) => (
+                          <th key={i} style={{
+                            background: 'var(--surface-sunken)',
+                            padding: '10px 14px',
+                            textAlign: h.align || 'left',
+                            font: '600 11px/16px var(--font-sans)',
+                            color: 'var(--text-tertiary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            borderBottom: '1px solid var(--border-default)',
+                            whiteSpace: 'nowrap',
+                          }}>{h.l}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gorunenTeklifler.map(t => {
+                        const onay = onayTone[t.onayDurumu] || onayTone.takipte
+                        const hatirlatma = teklifHatirlatmasi(t.id)
+                        const hatirlatmaVadesiGeldi = hatirlatma && new Date(hatirlatma.hatirlatmaTarihi) <= new Date()
+                        const ilgiliFatura = satislar.find(s => s.teklifId === t.id)
+                        return (
+                          <tr key={t.id}
+                            style={{ transition: 'background 120ms' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
-                            {hatirlatmaVadesiGeldi ? '🔴' : '🔔'}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => navigate(`/teklifler/${t.id}`)}
-                          className="font-semibold text-sm truncate hover:opacity-70 transition text-left"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {t.konu || t.teklifNo}
-                        </button>
-                        {t.revizyon > 0 && (
-                          <span className="text-xs" style={{ color: '#f59e0b' }}>
-                            Rev.{t.revizyon}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                        {t.firmaAdi}{t.musteriYetkilisi ? ` · ${t.musteriYetkilisi}` : ''}
-                      </p>
-                    </div>
-
-                    {/* FATURA */}
-                    <div className="flex flex-col gap-1.5">
-                      {ilgiliFatura ? (
-                        <button
-                          onClick={() => navigate(`/satislar/${ilgiliFatura.id}`)}
-                          className="text-xs font-medium hover:opacity-70 transition text-left"
-                          style={{ color: '#10b981' }}
-                        >
-                          ✅ Fatura Oluşturuldu
-                        </button>
-                      ) : t.onayDurumu === 'kabul' ? (
-                        <button
-                          onClick={() => faturayaDonustur(t)}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition w-fit"
-                          style={{ background: '#0176D3' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                        >
-                          🧾 Fatura Oluştur
-                        </button>
-                      ) : (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          —
-                        </span>
-                      )}
-                      <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full w-fit"
-                        style={{ background: badge.bg, color: badge.color }}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
-
-                    {/* DÜZENLEME TARİHİ */}
-                    <div>
-                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {tarihFormat(t.tarih)}
-                      </p>
-                      <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
-                        {goreceTarih(t.tarih)}
-                      </p>
-                    </div>
-
-                    {/* TEKLİF TOPLAMI */}
-                    <div className="text-right font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {paraBirimFormat(t.genelToplam)}
-                    </div>
-
-                    {/* AKSIYONLAR */}
-                    <div className="flex gap-1 justify-end flex-wrap">
-                      <button
-                        onClick={() => navigate(`/teklifler/${t.id}`)}
-                        className="text-xs px-2 py-1 rounded-lg transition"
-                        style={{
-                          color: 'var(--primary)',
-                          border: '1px solid rgba(1,118,211,0.2)',
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = 'rgba(1,118,211,0.08)')
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        Düzenle
-                      </button>
-                      {t.onayDurumu !== 'kabul' && t.onayDurumu !== 'vazgecildi' && (
-                        <button
-                          onClick={() => durumGuncelle(t.id, 'kabul')}
-                          className="text-xs px-2 py-1 rounded-lg transition text-white"
-                          style={{ background: '#10b981' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                        >
-                          ✅ Onayla
-                        </button>
-                      )}
-                      <button
-                        onClick={() => teklifSil(t.id)}
-                        className="text-xs px-2 py-1 rounded-lg transition"
-                        style={{
-                          color: '#ef4444',
-                          border: '1px solid rgba(239,68,68,0.2)',
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        Sil
-                      </button>
-                    </div>
-                  </motion.div>
-                )
-              })
-            )}
-
-            {/* Daha Fazla Yükle */}
-            {dahaFazlaVar && (
-              <div className="flex items-center justify-center py-4 border-t" style={{ borderColor: 'rgba(1,118,211,0.08)' }}>
-                <button
-                  onClick={() => setGosterilecekSayi(prev => prev + 200)}
-                  className="px-6 py-2 rounded-xl text-sm font-medium transition"
-                  style={{ background: 'rgba(1,118,211,0.08)', color: 'var(--primary)', border: '1px solid rgba(1,118,211,0.2)' }}
-                >
-                  ⬇ {filtreliTeklifler.length - gosterilecekSayi} Kayıt Daha — Yükle
-                </button>
-              </div>
-            )}
-
-            {/* Alt bilgi çubuğu */}
-            {gorunenTeklifler.length > 0 && (
-              <div
-                className="flex items-center justify-between px-5 py-3 rounded-b-2xl text-xs"
-                style={{
-                  background: 'var(--bg-hover)',
-                  borderTop: '1px solid var(--border)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <span>{gorunenTeklifler.length} Kayıt</span>
-                <div className="flex gap-6">
-                  <span>
-                    Toplam:{' '}
-                    <strong style={{ color: 'var(--text-primary)' }}>
-                      {gorunenTeklifler.reduce((s, t) => s + (t.genelToplam || 0), 0)
-                        .toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                    </strong>
-                  </span>
-                  <span>
-                    Kabul Edilen:{' '}
-                    <strong style={{ color: '#10b981' }}>
-                      {gorunenTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0)
-                        .toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                    </strong>
-                  </span>
+                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', minWidth: 280 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                {hatirlatma && (
+                                  <span
+                                    title={hatirlatmaVadesiGeldi
+                                      ? 'Takip zamanı geldi!'
+                                      : `Hatırlatma: ${new Date(hatirlatma.hatirlatmaTarihi).toLocaleDateString('tr-TR')}`}
+                                    style={{ display: 'inline-flex', color: hatirlatmaVadesiGeldi ? 'var(--danger)' : 'var(--warning)' }}
+                                  >
+                                    {hatirlatmaVadesiGeldi
+                                      ? <AlertCircle size={13} strokeWidth={1.5} />
+                                      : <Bell size={13} strokeWidth={1.5} />}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => navigate(`/teklifler/${t.id}`)}
+                                  style={{
+                                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                                    font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                                    textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 360,
+                                  }}
+                                >
+                                  {t.konu || t.teklifNo}
+                                </button>
+                                {t.revizyon > 0 && (
+                                  <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--warning)' }}>Rev.{t.revizyon}</span>
+                                )}
+                              </div>
+                              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 380 }}>
+                                {t.firmaAdi}{t.musteriYetkilisi ? ` · ${t.musteriYetkilisi}` : ''}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                                {ilgiliFatura ? (
+                                  <button
+                                    onClick={() => navigate(`/satislar/${ilgiliFatura.id}`)}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                                      font: '500 12px/16px var(--font-sans)', color: 'var(--success)',
+                                    }}
+                                  >
+                                    <CheckCircle2 size={12} strokeWidth={1.5} /> Fatura oluşturuldu
+                                  </button>
+                                ) : t.onayDurumu === 'kabul' ? (
+                                  <Button variant="primary" size="sm" iconLeft={<Receipt size={12} strokeWidth={1.5} />} onClick={() => faturayaDonustur(t)}>
+                                    Fatura oluştur
+                                  </Button>
+                                ) : (
+                                  <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                                )}
+                                <Badge tone={onay.tone}>{onay.isim}</Badge>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                              <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                                {fmtTarih(t.tarih)}
+                              </div>
+                              <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: 2 }}>
+                                {goreceTarih(t.tarih)}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                              {fmtTL(t.genelToplam)}
+                            </td>
+                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'inline-flex', gap: 4 }}>
+                                <button
+                                  aria-label="Düzenle"
+                                  onClick={() => navigate(`/teklifler/${t.id}`)}
+                                  style={{
+                                    width: 28, height: 28,
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'transparent', border: '1px solid var(--border-default)',
+                                    borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                                >
+                                  <Pencil size={12} strokeWidth={1.5} />
+                                </button>
+                                {t.onayDurumu !== 'kabul' && t.onayDurumu !== 'vazgecildi' && (
+                                  <button
+                                    aria-label="Onayla"
+                                    onClick={() => durumGuncelle(t.id, 'kabul')}
+                                    style={{
+                                      height: 28, padding: '0 10px',
+                                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                                      background: 'var(--success)', color: '#fff',
+                                      border: 'none',
+                                      borderRadius: 'var(--radius-sm)',
+                                      font: '500 12px/16px var(--font-sans)',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <Check size={12} strokeWidth={2} /> Onayla
+                                  </button>
+                                )}
+                                <button
+                                  aria-label="Sil"
+                                  onClick={() => teklifSil(t.id)}
+                                  style={{
+                                    width: 28, height: 28,
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'transparent', border: '1px solid var(--border-default)',
+                                    borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                                >
+                                  <Trash2 size={12} strokeWidth={1.5} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+
+                {dahaFazlaVar && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: 16, borderTop: '1px solid var(--border-default)' }}>
+                    <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={() => setGosterilecek(p => p + 200)}>
+                      {filtreli.length - gosterilecek} kayıt daha — yükle
+                    </Button>
+                  </div>
+                )}
+
+                {gorunenTeklifler.length > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 20px',
+                    background: 'var(--surface-sunken)',
+                    borderTop: '1px solid var(--border-default)',
+                    font: '400 12px/16px var(--font-sans)',
+                    color: 'var(--text-tertiary)',
+                  }}>
+                    <span><span className="tabular-nums">{gorunenTeklifler.length}</span> Kayıt</span>
+                    <div style={{ display: 'flex', gap: 24 }}>
+                      <span>Toplam: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtTL(gorunenTeklifler.reduce((s, t) => s + (t.genelToplam || 0), 0))}
+                      </strong></span>
+                      <span>Kabul edilen: <strong style={{ color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtTL(gorunenTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0))}
+                      </strong></span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
-          </div>
+          </Card>
         </div>
       )}
     </div>
   )
 }
-
-export default Teklifler

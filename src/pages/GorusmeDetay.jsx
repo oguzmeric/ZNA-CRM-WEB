@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
+  Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
 import CustomSelect from '../components/CustomSelect'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
+import {
+  Button, Input, Textarea, Label,
+  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl,
+} from '../components/ui'
 
 const varsayilanKonular = [
   'CCTV', 'NVR-ANALİZ', 'Network', 'Teklif', 'Demo',
@@ -12,24 +20,37 @@ const varsayilanKonular = [
 ]
 
 const durumlar = [
-  { id: 'acik', isim: 'Açık', renk: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  { id: 'beklemede', isim: 'Beklemede', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { id: 'kapali', isim: 'Kapalı', renk: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  { id: 'acik',      isim: 'Açık',      tone: 'acik' },
+  { id: 'beklemede', isim: 'Beklemede', tone: 'beklemede' },
+  { id: 'kapali',    isim: 'Kapalı',    tone: 'kapali' },
 ]
 
 const gorevOncelikleri = [
-  { id: 'dusuk', isim: 'Düşük', renk: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
-  { id: 'orta', isim: 'Orta', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { id: 'yuksek', isim: 'Yüksek', renk: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  { id: 'dusuk',  isim: 'Düşük',  tone: 'pasif' },
+  { id: 'orta',   isim: 'Orta',   tone: 'beklemede' },
+  { id: 'yuksek', isim: 'Yüksek', tone: 'kayip' },
 ]
 
-const bosGorevForm = {
-  baslik: '',
-  aciklama: '',
-  atanan: '',
-  oncelik: 'orta',
-  sonTarih: '',
+const IRTIBAT = {
+  telefon:         { C: Phone,         isim: 'Telefon' },
+  whatsapp:        { C: MessageCircle, isim: 'WhatsApp' },
+  mail:            { C: Mail,          isim: 'Mail' },
+  yuz_yuze:        { C: Handshake,     isim: 'Yüz Yüze' },
+  merkez:          { C: Building2,     isim: 'Merkez' },
+  uzak_baglanti:   { C: Monitor,       isim: 'Uzak Bağlantı' },
+  bridge:          { C: Link2,         isim: 'Bridge' },
+  online_toplanti: { C: Video,         isim: 'Online Toplantı' },
+  telegram:        { C: Send,          isim: 'Telegram' },
+  diger:           { C: Lightbulb,     isim: 'Diğer' },
 }
+
+const gorevDurumTone = (d) => {
+  if (d === 'tamamlandi') return { tone: 'aktif', isim: 'Tamamlandı' }
+  if (d === 'devam')      return { tone: 'beklemede', isim: 'Devam Ediyor' }
+  return { tone: 'lead', isim: 'Bekliyor' }
+}
+
+const bosGorevForm = { baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '' }
 
 function GorusmeDetay() {
   const { id } = useParams()
@@ -48,62 +69,39 @@ function GorusmeDetay() {
   const [gorevForm, setGorevForm] = useState(bosGorevForm)
 
   useEffect(() => {
-    const verileriGetir = async () => {
+    (async () => {
       setYukleniyor(true)
       try {
-        const [gorusmeVerisi, tumGorevler] = await Promise.all([
-          gorusmeGetir(id),
-          gorevleriGetir(),
-        ])
-        setGorusme(gorusmeVerisi)
-        const baglilar = tumGorevler.filter(
-          (g) => g.firmaAdi === gorusmeVerisi?.firmaAdi
-        )
-        setGorevler(baglilar)
-      } finally {
-        setYukleniyor(false)
-      }
-    }
-    verileriGetir()
+        const [g, tum] = await Promise.all([gorusmeGetir(id), gorevleriGetir()])
+        setGorusme(g)
+        setGorevler(tum.filter(t => t.firmaAdi === g?.firmaAdi))
+      } finally { setYukleniyor(false) }
+    })()
   }, [id])
 
-  if (yukleniyor) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <p className="text-gray-400">Yükleniyor...</p>
-      </div>
-    )
+  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+
+  if (!gorusme) return (
+    <div style={{ padding: 24 }}>
+      <EmptyState
+        icon={<Phone size={32} strokeWidth={1.5} />}
+        title="Görüşme bulunamadı"
+        action={
+          <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/gorusmeler')}>
+            Görüşmelere dön
+          </Button>
+        }
+      />
+    </div>
+  )
+
+  const durum = durumlar.find(d => d.id === gorusme.durum)
+
+  const gorusmeGuncelle = async (g) => {
+    const gncl = await gorusmeGuncelleService(gorusme.id, { ...gorusme, ...g })
+    if (gncl) setGorusme(gncl)
   }
 
-  if (!gorusme) {
-    return (
-      <div className="p-6">
-        <p className="text-gray-400 mb-4">Görüşme bulunamadı.</p>
-        <button
-          onClick={() => navigate('/gorusmeler')}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          ← Görüşmelere dön
-        </button>
-      </div>
-    )
-  }
-
-  const durum = durumlar.find((d) => d.id === gorusme.durum)
-  const bagliGorevler = gorevler
-
-  // Görüşmeyi güncelle
-  const gorusmeGuncelle = async (guncellenmis) => {
-    const guncellendi = await gorusmeGuncelleService(gorusme.id, { ...gorusme, ...guncellenmis })
-    if (guncellendi) setGorusme(guncellendi)
-  }
-
-  // Durum değiştir
-  const durumDegistir = (yeniDurum) => {
-    gorusmeGuncelle({ durum: yeniDurum })
-  }
-
-  // Düzenleme aç
   const duzenleAc = () => {
     const manuelMi = !varsayilanKonular.includes(gorusme.konu)
     setDuzenleForm({
@@ -112,8 +110,7 @@ function GorusmeDetay() {
       manuelKonu: manuelMi ? gorusme.konu : '',
       durum: gorusme.durum,
     })
-    setManuelKonuAc(manuelMi)
-    setDuzenleAcik(true)
+    setManuelKonuAc(manuelMi); setDuzenleAcik(true)
   }
 
   const duzenleKaydet = () => {
@@ -123,443 +120,326 @@ function GorusmeDetay() {
     setDuzenleAcik(false)
   }
 
-  // Görev oluştur
   const gorevAc = () => {
-    setGorevForm({
-      ...bosGorevForm,
-      baslik: `${gorusme.firmaAdi} — ${gorusme.konu}`,
-      aciklama: gorusme.notlar || '',
-    })
+    setGorevForm({ ...bosGorevForm, baslik: `${gorusme.firmaAdi} — ${gorusme.konu}`, aciklama: gorusme.notlar || '' })
     setGorevFormAcik(true)
   }
 
   const gorevKaydet = async () => {
     if (!gorevForm.baslik || !gorevForm.atanan || !gorevForm.sonTarih) {
-      alert('Başlık, atanan kişi ve son tarih zorunludur!')
+      alert('Başlık, atanan kişi ve son tarih zorunludur.')
       return
     }
-    const atananKisi = kullanicilar.find((k) => k.id?.toString() === gorevForm.atanan)
+    const atananKisi = kullanicilar.find(k => k.id?.toString() === gorevForm.atanan)
     const yeniGorev = {
-      baslik: gorevForm.baslik,
-      aciklama: gorevForm.aciklama,
-      durum: 'bekliyor',
-      oncelik: gorevForm.oncelik,
-      atananId: gorevForm.atanan,
-      atananAd: atananKisi?.ad || '',
-      olusturanAd: kullanici.ad,
-      bitisTarihi: gorevForm.sonTarih,
+      baslik: gorevForm.baslik, aciklama: gorevForm.aciklama,
+      durum: 'bekliyor', oncelik: gorevForm.oncelik,
+      atananId: gorevForm.atanan, atananAd: atananKisi?.ad || '',
+      olusturanAd: kullanici.ad, bitisTarihi: gorevForm.sonTarih,
       firmaAdi: gorusme.firmaAdi,
     }
-    const eklenenGorev = await gorevEkle(yeniGorev)
-    if (eklenenGorev) {
-      setGorevler((prev) => [...prev, eklenenGorev])
-    }
-
-    const oncelik = gorevOncelikleri.find((o) => o.id === gorevForm.oncelik)
-    bildirimEkle(
-      gorevForm.atanan,
-      'Yeni Görev Atandı',
-      `"${gorevForm.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}`,
-      'bilgi',
-      '/gorevler'
-    )
-    setGorevForm(bosGorevForm)
-    setGorevFormAcik(false)
+    const eklenen = await gorevEkle(yeniGorev)
+    if (eklenen) setGorevler(prev => [...prev, eklenen])
+    const oncelik = gorevOncelikleri.find(o => o.id === gorevForm.oncelik)
+    bildirimEkle(gorevForm.atanan, 'Yeni Görev Atandı', `"${gorevForm.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}`, 'bilgi', '/gorevler')
+    setGorevForm(bosGorevForm); setGorevFormAcik(false)
   }
 
-  const gorevDurumRenk = (d) => {
-    if (d === 'tamamlandi') return { renk: '#10b981', bg: 'rgba(16,185,129,0.1)', isim: 'Tamamlandı' }
-    if (d === 'devam') return { renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)', isim: 'Devam Ediyor' }
-    return { renk: '#0176D3', bg: 'rgba(1,118,211,0.1)', isim: 'Bekliyor' }
-  }
+  const Ir = IRTIBAT[gorusme.irtibatSekli]
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div style={{ padding: 24, maxWidth: 880, margin: '0 auto' }}>
 
-      {/* Geri butonu */}
+      {/* Geri */}
       <button
         onClick={() => navigate('/gorusmeler')}
-        className="text-sm text-gray-400 hover:text-indigo-600 mb-5 flex items-center gap-1 transition"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
       >
-        ← Görüşmelere dön
+        <ArrowLeft size={14} strokeWidth={1.5} /> Görüşmelere dön
       </button>
 
-      {/* Başlık kartı */}
-      <div
-        className="rounded-2xl p-6 mb-4"
-        style={{
-          background: 'rgba(255,255,255,0.92)',
-          border: '1px solid rgba(1,118,211,0.12)',
-          boxShadow: '0 4px 24px rgba(1,118,211,0.08)',
-        }}
-      >
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                {gorusme.aktNo}
-              </span>
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: durum?.bg, color: durum?.renk }}
-              >
-                {durum?.isim}
-              </span>
+      {/* Ana kart */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <CodeBadge>{gorusme.aktNo}</CodeBadge>
+              {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
             </div>
-            <h2 className="text-xl font-semibold text-gray-800 mt-1">
-              {gorusme.firmaAdi}
-            </h2>
-            {gorusme.musteriAdi && (
-              <p className="text-sm text-gray-500 mt-0.5">👤 {gorusme.musteriAdi}</p>
+            <h1 className="t-h1">{gorusme.firmaAdi}</h1>
+            {gorusme.muhatapAd && (
+              <p style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                <User size={12} strokeWidth={1.5} /> {gorusme.muhatapAd}
+              </p>
             )}
           </div>
-          <button
+          <Button
+            variant={duzenleAcik ? 'secondary' : 'primary'}
+            iconLeft={duzenleAcik ? null : undefined}
             onClick={duzenleAcik ? () => setDuzenleAcik(false) : duzenleAc}
-            className="text-sm px-4 py-2 rounded-xl border transition flex-shrink-0"
-            style={{
-              color: duzenleAcik ? '#6b7280' : 'var(--primary)',
-              borderColor: duzenleAcik ? 'rgba(107,114,128,0.3)' : 'rgba(1,118,211,0.3)',
-            }}
           >
             {duzenleAcik ? 'İptal' : 'Düzenle'}
-          </button>
+          </Button>
         </div>
 
-        {/* Detay satırları */}
+        {/* Görüntüleme modu */}
         {!duzenleAcik && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-t border-gray-100">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Konu</p>
-                <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(1,68,134,0.1)', color: 'var(--primary-dark)' }}
-                >
-                  {gorusme.konu}
-                </span>
+                <div className="t-label" style={{ marginBottom: 4 }}>KONU</div>
+                <Badge tone="brand">{gorusme.konu}</Badge>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">İrtibat Şekli</p>
-                <p className="text-sm font-medium text-gray-700">
-                  {gorusme.irtibatSekli
-                    ? {
-                        telefon: '📞 Telefon', whatsapp: '💬 WhatsApp', mail: '✉️ Mail',
-                        yuz_yuze: '🤝 Yüz Yüze', merkez: '🏢 Merkez', uzak_baglanti: '🖥️ Uzak Bağlantı',
-                        bridge: '🌉 Bridge', online_toplanti: '📹 Online Toplantı',
-                        telegram: '📨 Telegram', diger: '💡 Diğer',
-                      }[gorusme.irtibatSekli] || gorusme.irtibatSekli
-                    : '—'}
-                </p>
+                <div className="t-label" style={{ marginBottom: 4 }}>İRTİBAT ŞEKLİ</div>
+                {Ir ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                    <Ir.C size={14} strokeWidth={1.5} /> {Ir.isim}
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                )}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Görüşen</p>
-                <p className="text-sm font-medium text-gray-700">{gorusme.hazirlayan}</p>
+                <div className="t-label" style={{ marginBottom: 4 }}>GÖRÜŞEN</div>
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorusme.hazirlayan || gorusme.gorusen}</span>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Tarih</p>
-                <p className="text-sm font-medium text-gray-700">{gorusme.tarih}</p>
+                <div className="t-label" style={{ marginBottom: 4 }}>TARİH</div>
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{gorusme.tarih}</span>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Firma Geçmişi</p>
+                <div className="t-label" style={{ marginBottom: 4 }}>FİRMA GEÇMİŞİ</div>
                 <button
                   onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(gorusme.firmaAdi)}`)}
-                  className="text-xs font-medium transition"
-                  style={{ color: 'var(--primary)' }}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)' }}
                 >
-                  Geçmişi gör →
+                  Geçmişi gör <ArrowRight size={12} strokeWidth={1.5} />
                 </button>
               </div>
             </div>
 
-            {gorusme.notlar && (
-              <div className="pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">Notlar</p>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{gorusme.notlar}</p>
+            {(gorusme.notlar || gorusme.takipNotu) && (
+              <div style={{ paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                <div className="t-label" style={{ marginBottom: 4 }}>NOTLAR</div>
+                <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {gorusme.notlar || gorusme.takipNotu}
+                </p>
               </div>
             )}
 
-            {/* Durum değiştir */}
-            <div className="pt-4 border-t border-gray-100 mt-4">
-              <p className="text-xs text-gray-400 mb-2">Durum</p>
-              <div className="flex gap-2">
-                {durumlar.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => durumDegistir(d.id)}
-                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition"
-                    style={{
-                      background: gorusme.durum === d.id ? d.bg : 'transparent',
-                      color: gorusme.durum === d.id ? d.renk : '#9ca3af',
-                      border: gorusme.durum === d.id ? `1.5px solid ${d.renk}50` : '1.5px solid #e5e7eb',
-                    }}
-                  >
-                    {d.isim}
-                  </button>
-                ))}
-              </div>
+            {/* Durum SegmentedControl */}
+            <div style={{ paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
+              <div className="t-label" style={{ marginBottom: 8 }}>DURUM</div>
+              <SegmentedControl
+                options={durumlar.map(d => ({ value: d.id, label: d.isim }))}
+                value={gorusme.durum}
+                onChange={v => gorusmeGuncelle({ durum: v })}
+              />
             </div>
           </>
         )}
 
-        {/* Düzenleme formu */}
+        {/* Düzenleme */}
         {duzenleAcik && (
-          <div className="border-t border-gray-100 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">Konu</label>
+                <Label>Konu</Label>
                 <CustomSelect
                   value={manuelKonuAc ? '__manuel__' : duzenleForm.konu}
-                  onChange={(e) => {
+                  onChange={e => {
                     if (e.target.value === '__manuel__') {
-                      setManuelKonuAc(true)
-                      setDuzenleForm({ ...duzenleForm, konu: '', manuelKonu: '' })
+                      setManuelKonuAc(true); setDuzenleForm({ ...duzenleForm, konu: '', manuelKonu: '' })
                     } else {
-                      setManuelKonuAc(false)
-                      setDuzenleForm({ ...duzenleForm, konu: e.target.value, manuelKonu: '' })
+                      setManuelKonuAc(false); setDuzenleForm({ ...duzenleForm, konu: e.target.value, manuelKonu: '' })
                     }
                   }}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
-                  <option value="">Konu seç...</option>
-                  {varsayilanKonular.map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
+                  <option value="">Konu seç…</option>
+                  {varsayilanKonular.map(k => <option key={k} value={k}>{k}</option>)}
                   <option value="__manuel__">+ Manuel gir</option>
                 </CustomSelect>
                 {manuelKonuAc && (
-                  <input
-                    type="text"
+                  <Input
+                    style={{ marginTop: 8 }}
                     value={duzenleForm.manuelKonu || ''}
-                    onChange={(e) => setDuzenleForm({ ...duzenleForm, manuelKonu: e.target.value.toUpperCase() })}
-                    className="w-full border border-indigo-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 mt-2"
-                    placeholder="Konu yazın..."
+                    onChange={e => setDuzenleForm({ ...duzenleForm, manuelKonu: e.target.value.toUpperCase() })}
+                    placeholder="Konu yazın…"
                     autoFocus
                   />
                 )}
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">Durum</label>
-                <CustomSelect
-                  value={duzenleForm.durum}
-                  onChange={(e) => setDuzenleForm({ ...duzenleForm, durum: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  {durumlar.map((d) => (
-                    <option key={d.id} value={d.id}>{d.isim}</option>
-                  ))}
+                <Label>Durum</Label>
+                <CustomSelect value={duzenleForm.durum} onChange={e => setDuzenleForm({ ...duzenleForm, durum: e.target.value })}>
+                  {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
                 </CustomSelect>
               </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-600 mb-1 block">Notlar</label>
-                <textarea
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Notlar</Label>
+                <Textarea
                   value={duzenleForm.takipNotu}
-                  onChange={(e) => setDuzenleForm({ ...duzenleForm, takipNotu: e.target.value })}
+                  onChange={e => setDuzenleForm({ ...duzenleForm, takipNotu: e.target.value })}
                   rows={4}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="Görüşme detayları, takip edilecek konular..."
+                  placeholder="Görüşme detayları, takip edilecek konular…"
                 />
               </div>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={duzenleKaydet}
-                className="text-sm px-5 py-2 rounded-xl text-white transition"
-                style={{ background: 'var(--primary)' }}
-              >
-                Kaydet
-              </button>
-              <button
-                onClick={() => setDuzenleAcik(false)}
-                className="text-sm px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-              >
-                İptal
-              </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" onClick={duzenleKaydet}>Kaydet</Button>
+              <Button variant="secondary" onClick={() => setDuzenleAcik(false)}>İptal</Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Bağlı Görevler */}
-      <div
-        className="rounded-2xl p-6"
-        style={{
-          background: 'rgba(255,255,255,0.92)',
-          border: '1px solid rgba(1,118,211,0.12)',
-          boxShadow: '0 4px 24px rgba(1,118,211,0.08)',
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
+      {/* Bağlı görevler */}
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h3 className="font-semibold text-gray-800">Bağlı Görevler</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {bagliGorevler.length > 0
-                ? `${bagliGorevler.length} görev`
+            <CardTitle>Bağlı Görevler</CardTitle>
+            <p className="t-caption" style={{ marginTop: 2 }}>
+              {gorevler.length > 0
+                ? <><span className="tabular-nums">{gorevler.length}</span> görev</>
                 : 'Bu görüşmeye henüz görev eklenmedi'}
             </p>
           </div>
-          <button
+          <Button
+            variant={gorevFormAcik ? 'secondary' : 'primary'}
+            iconLeft={gorevFormAcik ? null : <Plus size={14} strokeWidth={1.5} />}
             onClick={gorevFormAcik ? () => setGorevFormAcik(false) : gorevAc}
-            className="text-sm px-4 py-2 rounded-xl text-white transition flex items-center gap-1.5"
-            style={{
-              background: gorevFormAcik
-                ? '#9ca3af'
-                : 'var(--primary)',
-              boxShadow: gorevFormAcik ? 'none' : '0 4px 12px rgba(1,118,211,0.3)',
-            }}
           >
-            {gorevFormAcik ? 'İptal' : '+ Görev Oluştur'}
-          </button>
+            {gorevFormAcik ? 'İptal' : 'Görev oluştur'}
+          </Button>
         </div>
 
-        {/* Görev oluşturma formu */}
+        {/* Görev formu */}
         {gorevFormAcik && (
-          <div
-            className="rounded-xl p-4 mb-4"
-            style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)' }}
-          >
-            <p className="text-xs font-semibold text-indigo-600 mb-3 uppercase tracking-wide">Yeni Görev</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <div className="md:col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">Başlık *</label>
-                <input
-                  type="text"
-                  value={gorevForm.baslik}
-                  onChange={(e) => setGorevForm({ ...gorevForm, baslik: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="Görev başlığı"
-                />
+          <div style={{
+            padding: 16,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--surface-sunken)',
+            border: '1px solid var(--border-default)',
+            marginBottom: 16,
+          }}>
+            <p className="t-label" style={{ marginBottom: 12 }}>YENİ GÖREV</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label required>Başlık</Label>
+                <Input value={gorevForm.baslik} onChange={e => setGorevForm({ ...gorevForm, baslik: e.target.value })} placeholder="Görev başlığı" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Atanacak Kişi *</label>
-                <CustomSelect
-                  value={gorevForm.atanan}
-                  onChange={(e) => setGorevForm({ ...gorevForm, atanan: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="">Kişi seç...</option>
-                  {kullanicilar.filter((k) => k.tip !== 'musteri').map((k) => (
-                    <option key={k.id} value={k.id}>{k.ad}</option>
-                  ))}
+                <Label required>Atanacak kişi</Label>
+                <CustomSelect value={gorevForm.atanan} onChange={e => setGorevForm({ ...gorevForm, atanan: e.target.value })}>
+                  <option value="">Kişi seç…</option>
+                  {kullanicilar.filter(k => k.tip !== 'musteri').map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
                 </CustomSelect>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Son Tarih *</label>
-                <input
-                  type="date"
-                  value={gorevForm.sonTarih}
-                  onChange={(e) => setGorevForm({ ...gorevForm, sonTarih: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
+                <Label required>Son tarih</Label>
+                <Input type="date" value={gorevForm.sonTarih} onChange={e => setGorevForm({ ...gorevForm, sonTarih: e.target.value })} />
               </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Öncelik</label>
-                <div className="flex gap-2">
-                  {gorevOncelikleri.map((o) => (
-                    <button
-                      key={o.id}
-                      onClick={() => setGorevForm({ ...gorevForm, oncelik: o.id })}
-                      className="flex-1 text-xs py-2 rounded-lg font-medium transition"
-                      style={{
-                        background: gorevForm.oncelik === o.id ? o.bg : 'var(--bg-card)',
-                        color: gorevForm.oncelik === o.id ? o.renk : 'var(--text-muted)',
-                        border: gorevForm.oncelik === o.id ? `1.5px solid ${o.renk}50` : '1.5px solid #e5e7eb',
-                      }}
-                    >
-                      {o.isim}
-                    </button>
-                  ))}
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Öncelik</Label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {gorevOncelikleri.map(o => {
+                    const active = gorevForm.oncelik === o.id
+                    return (
+                      <button
+                        key={o.id}
+                        onClick={() => setGorevForm({ ...gorevForm, oncelik: o.id })}
+                        style={{
+                          flex: 1, height: 36, padding: '0 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: active ? 'var(--brand-primary)' : 'var(--surface-card)',
+                          color: active ? '#fff' : 'var(--text-secondary)',
+                          border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                          font: '500 13px/18px var(--font-sans)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {o.isim}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-              <div className="md:col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">Açıklama</label>
-                <textarea
-                  value={gorevForm.aciklama}
-                  onChange={(e) => setGorevForm({ ...gorevForm, aciklama: e.target.value })}
-                  rows={3}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="Görev detayları..."
-                />
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Açıklama</Label>
+                <Textarea value={gorevForm.aciklama} onChange={e => setGorevForm({ ...gorevForm, aciklama: e.target.value })} rows={3} placeholder="Görev detayları…" />
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={gorevKaydet}
-                className="text-sm px-5 py-2 rounded-xl text-white transition"
-                style={{ background: 'var(--primary)' }}
-              >
-                Görevi Kaydet
-              </button>
-              <button
-                onClick={() => setGorevFormAcik(false)}
-                className="text-sm px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-              >
-                İptal
-              </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" onClick={gorevKaydet}>Görevi kaydet</Button>
+              <Button variant="secondary" onClick={() => setGorevFormAcik(false)}>İptal</Button>
             </div>
           </div>
         )}
 
-        {/* Bağlı görevler listesi */}
-        {bagliGorevler.length === 0 && !gorevFormAcik && (
-          <div
-            className="flex flex-col items-center justify-center py-8 rounded-xl"
-            style={{ border: '2px dashed rgba(1,118,211,0.2)' }}
-          >
-            <span className="text-2xl mb-2">📋</span>
-            <p className="text-sm text-gray-400">Henüz görev eklenmedi</p>
-            <p className="text-xs text-gray-300 mt-0.5">Yukarıdaki butona tıklayarak görev oluşturabilirsiniz</p>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          {bagliGorevler.map((gorev) => {
-            const oncelik = gorevOncelikleri.find((o) => o.id === gorev.oncelik)
-            const durumBilgi = gorevDurumRenk(gorev.durum)
-            const atananKisi = kullanicilar.find((k) => k.id?.toString() === gorev.atananId?.toString())
-            const gecikti = gorev.bitisTarihi && new Date(gorev.bitisTarihi) < new Date() && gorev.durum !== 'tamamlandi'
-
-            return (
-              <div
-                key={gorev.id}
-                onClick={() => navigate(`/gorevler/${gorev.id}`)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition"
-                style={{
-                  background: 'rgba(255,255,255,0.7)',
-                  border: gecikti ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(1,118,211,0.1)',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(1,118,211,0.04)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.7)')}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{gorev.baslik}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: oncelik?.bg, color: oncelik?.renk }}
-                    >
-                      {oncelik?.isim}
-                    </span>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: durumBilgi.bg, color: durumBilgi.renk }}
-                    >
-                      {durumBilgi.isim}
-                    </span>
-                    {gecikti && (
-                      <span className="text-xs text-red-500 font-medium">⚠️ Gecikti</span>
+        {/* Liste */}
+        {gorevler.length === 0 && !gorevFormAcik ? (
+          <EmptyState
+            icon={<FileText size={28} strokeWidth={1.5} />}
+            title="Henüz görev eklenmedi"
+            description="Yukarıdaki butonla ilk görevi oluşturabilirsin."
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {gorevler.map(gorev => {
+              const oncelik = gorevOncelikleri.find(o => o.id === gorev.oncelik)
+              const db = gorevDurumTone(gorev.durum)
+              const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atananId?.toString())
+              const gecikti = gorev.bitisTarihi && new Date(gorev.bitisTarihi) < new Date() && gorev.durum !== 'tamamlandi'
+              return (
+                <div
+                  key={gorev.id}
+                  onClick={() => navigate(`/gorevler/${gorev.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: `1px solid ${gecikti ? 'var(--danger-border)' : 'var(--border-default)'}`,
+                    borderLeft: `3px solid ${gecikti ? 'var(--danger)' : 'var(--border-default)'}`,
+                    background: 'var(--surface-card)',
+                    cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {gorev.baslik}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                      {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
+                      <Badge tone={db.tone}>{db.isim}</Badge>
+                      {gecikti && <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                    {atananKisi && <span>{atananKisi.ad}</span>}
+                    {gorev.bitisTarihi && (
+                      <span style={{ color: gecikti ? 'var(--danger)' : 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {gorev.bitisTarihi}
+                      </span>
                     )}
+                    <ArrowRight size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-gray-400 flex-shrink-0">
-                  <span>{atananKisi?.ad}</span>
-                  <span style={{ color: gecikti ? '#ef4444' : 'var(--text-muted)' }}>{gorev.bitisTarihi}</span>
-                  <span className="text-indigo-400">Detay →</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

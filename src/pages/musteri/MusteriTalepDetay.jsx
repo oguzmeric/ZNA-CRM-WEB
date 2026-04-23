@@ -1,8 +1,46 @@
-import { useState } from 'react'
+import { useState, isValidElement } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, Pencil, Info, FileText, MessageSquare, MapPin, Monitor, Clock,
+  Check, Star, ThumbsUp, ThumbsDown, AlertTriangle, CheckCircle2, Shield, Send,
+  Frown, Meh, Smile,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
-import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Button, Input, Textarea, Label, Card, Badge, CodeBadge, Alert, EmptyState,
+} from '../../components/ui'
+
+const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
+const DURUM_TONE = {
+  bekliyor: 'pasif', inceleniyor: 'beklemede', atandi: 'lead',
+  devam_ediyor: 'beklemede', tamamlandi: 'aktif', iptal: 'kayip',
+}
+
+const PUAN_META = [
+  null,
+  { isim: 'Çok Kötü',  tone: 'kayip',     color: 'var(--danger)',  C: Frown },
+  { isim: 'Kötü',      tone: 'kayip',     color: 'var(--danger)',  C: Frown },
+  { isim: 'Orta',      tone: 'beklemede', color: 'var(--warning)', C: Meh },
+  { isim: 'İyi',       tone: 'aktif',     color: 'var(--success)', C: Smile },
+  { isim: 'Mükemmel',  tone: 'brand',     color: 'var(--brand-primary)', C: Smile },
+]
+
+function YildizGoster({ puan, boyut = 18 }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <Star
+          key={i}
+          size={boyut}
+          strokeWidth={1.5}
+          fill={i <= puan ? 'var(--warning)' : 'transparent'}
+          style={{ color: i <= puan ? 'var(--warning)' : 'var(--border-default)' }}
+        />
+      ))}
+    </span>
+  )
+}
 
 export default function MusteriTalepDetay() {
   const { id } = useParams()
@@ -13,9 +51,7 @@ export default function MusteriTalepDetay() {
   const [yeniNot, setYeniNot] = useState('')
   const [duzenlemeModu, setDuzenlemeModu] = useState(false)
   const [duzenForm, setDuzenForm] = useState(null)
-
-  // Müşteri onay & memnuniyet akışı
-  const [onayAsamasi, setOnayAsamasi] = useState(null) // null | 'anket' | 'sorun' | 'bitti'
+  const [onayAsamasi, setOnayAsamasi] = useState(null)
   const [degPuan, setDegPuan] = useState(0)
   const [degHover, setDegHover] = useState(0)
   const [degYorum, setDegYorum] = useState('')
@@ -27,53 +63,44 @@ export default function MusteriTalepDetay() {
     } catch { return null }
   })
 
-  const talep = talepler.find((t) => t.id === parseInt(id))
+  const talep = talepler.find(t => t.id === parseInt(id))
 
   if (!talep) {
     return (
-      <div className="text-center py-20">
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Talep bulunamadı</p>
-        <button onClick={() => navigate('/musteri-portal/taleplerim')} className="mt-4 text-sm" style={{ color: 'var(--primary)' }}>
-          Taleplerime Dön
-        </button>
+      <div style={{ padding: 24 }}>
+        <EmptyState
+          icon={<FileText size={32} strokeWidth={1.5} />}
+          title="Talep bulunamadı"
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/musteri-portal/taleplerim')}>Taleplerime dön</Button>}
+        />
       </div>
     )
   }
 
-  const anaTur = ANA_TURLER.find((t) => t.id === talep.anaTur)
-  const durum = DURUM_LISTESI.find((d) => d.id === talep.durum)
-  const aciliyet = ACILIYET_SEVIYELERI.find((a) => a.id === talep.aciliyet)
+  const anaTur = ANA_TURLER.find(t => t.id === talep.anaTur)
+  const durum = DURUM_LISTESI.find(d => d.id === talep.durum)
+  const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
   const duzenlenebilir = talep.durum === 'bekliyor'
 
-  const tarihFormat = (tarih) =>
-    new Date(tarih).toLocaleDateString('tr-TR', {
-      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    })
+  const tarihFormat = (t) =>
+    new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   const duzenlemeyiAc = () => {
     setDuzenForm({
-      konu: talep.konu,
-      aciklama: talep.aciklama,
-      lokasyon: talep.lokasyon || '',
-      cihazTuru: talep.cihazTuru || '',
-      aciliyet: talep.aciliyet,
-      ilgiliKisi: talep.ilgiliKisi || '',
-      telefon: talep.telefon || '',
-      uygunZaman: talep.uygunZaman || '',
+      konu: talep.konu, aciklama: talep.aciklama,
+      lokasyon: talep.lokasyon || '', cihazTuru: talep.cihazTuru || '',
+      aciliyet: talep.aciliyet, ilgiliKisi: talep.ilgiliKisi || '',
+      telefon: talep.telefon || '', uygunZaman: talep.uygunZaman || '',
     })
     setDuzenlemeModu(true)
   }
 
-  const duzenlemeyiIptal = () => {
-    setDuzenlemeModu(false)
-    setDuzenForm(null)
-  }
+  const duzenlemeyiIptal = () => { setDuzenlemeModu(false); setDuzenForm(null) }
 
   const duzenlemeyiKaydet = () => {
     if (!duzenForm.konu.trim() || !duzenForm.aciklama.trim()) return
     talepGuncelle(talep.id, duzenForm, kullanici.ad, 'Müşteri tarafından güncellendi')
-    setDuzenlemeModu(false)
-    setDuzenForm(null)
+    setDuzenlemeModu(false); setDuzenForm(null)
   }
 
   const notGonder = () => {
@@ -82,19 +109,15 @@ export default function MusteriTalepDetay() {
     setYeniNot('')
   }
 
-  // Müşteri "Onaylıyorum" → ankete geç
   const musteriOnayladi = () => {
     talepGuncelle(talep.id, { musteriOnay: 'onaylandi' }, kullanici.ad, 'Müşteri çözümü onayladı')
     setOnayAsamasi('anket')
   }
 
-  // Müşteri "Sorun Devam Ediyor" → açıklama formu
   const sorunDevamEdiyor = () => setOnayAsamasi('sorun')
 
-  // Sorunu gönder → talebi yeniden aç
   const sorunGonder = () => {
-    talepGuncelle(
-      talep.id,
+    talepGuncelle(talep.id,
       { durum: 'devam_ediyor', musteriOnay: 'ret' },
       kullanici.ad,
       'Müşteri sorunu devam ettiğini bildirdi'
@@ -103,21 +126,15 @@ export default function MusteriTalepDetay() {
     setOnayAsamasi('bitti')
   }
 
-  // Memnuniyet değerlendirmesini kaydet
   const degerlendirmeKaydet = () => {
     if (!degPuan) return
     const puanlar = JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
     const yeni = {
       id: crypto.randomUUID(),
-      servisTalepId: talep.id,
-      talepNo: talep.talepNo,
-      musteriAd: talep.musteriAd,
-      firmaAdi: talep.firmaAdi || '',
-      konu: talep.konu,
-      puan: degPuan,
-      yorum: degYorum.trim(),
-      tarih: new Date().toISOString(),
-      kaydeden: kullanici.ad,
+      servisTalepId: talep.id, talepNo: talep.talepNo,
+      musteriAd: talep.musteriAd, firmaAdi: talep.firmaAdi || '',
+      konu: talep.konu, puan: degPuan, yorum: degYorum.trim(),
+      tarih: new Date().toISOString(), kaydeden: kullanici.ad,
     }
     puanlar.push(yeni)
     localStorage.setItem('memnuniyet_puanlari', JSON.stringify(puanlar))
@@ -125,611 +142,511 @@ export default function MusteriTalepDetay() {
     setOnayAsamasi('bitti')
   }
 
+  const talepBilgileri = [
+    { k: 'Talep No',       v: <CodeBadge>{talep.talepNo}</CodeBadge> },
+    { k: 'Tür',            v: anaTur && <Badge tone="brand">{anaTur.isim}</Badge> },
+    { k: 'Durum',          v: durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge> },
+    { k: 'Aciliyet',       v: aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge> },
+    talep.atananKullaniciAd && { k: 'Atanan Ekip', v: talep.atananKullaniciAd },
+    talep.planliTarih && { k: 'Planlı Tarih', v: new Date(talep.planliTarih).toLocaleDateString('tr-TR'), tabular: true },
+    { k: 'İlgili Kişi',    v: talep.ilgiliKisi },
+    talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
+    talep.uygunZaman && { k: 'Uygun Zaman', v: talep.uygunZaman },
+  ].filter(Boolean)
+
   return (
-    <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-      {/* Geri */}
+    <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
+
       <button
         onClick={() => navigate('/musteri-portal/taleplerim')}
-        className="text-sm flex items-center gap-1 mb-5 transition-colors"
-        style={{ color: 'var(--primary)' }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
       >
-        ← Taleplerime Dön
+        <ArrowLeft size={14} strokeWidth={1.5} /> Taleplerime dön
       </button>
 
       {/* Başlık kartı */}
-      <div
-        className="rounded p-6 mb-5"
-        style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 16px rgba(1,118,211,0.08)' }}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
-            <div
-              className="w-12 h-12 rounded flex items-center justify-center text-2xl flex-shrink-0"
-              style={{ background: anaTur?.bg }}
-            >
-              {anaTur?.ikon}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              <CodeBadge>{talep.talepNo}</CodeBadge>
+              {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
+              {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
+              {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>{talep.talepNo}</span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: durum?.bg, color: durum?.renk }}>
-                  {durum?.ikon} {durum?.isim}
-                </span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: aciliyet?.bg, color: aciliyet?.renk }}>
-                  {aciliyet?.ikon} {aciliyet?.isim}
-                </span>
-              </div>
-              <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
-                {talep.konu}
-              </h1>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Oluşturulma: {tarihFormat(talep.olusturmaTarihi)}
-                {talep.guncellemeTarihi !== talep.olusturmaTarihi && (
-                  <> · Güncellendi: {tarihFormat(talep.guncellemeTarihi)}</>
-                )}
-              </p>
-            </div>
+            <h1 className="t-h1">{talep.konu}</h1>
+            <p className="t-caption" style={{ marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              Oluşturulma: {tarihFormat(talep.olusturmaTarihi)}
+              {talep.guncellemeTarihi !== talep.olusturmaTarihi && (
+                <> · Güncellendi: {tarihFormat(talep.guncellemeTarihi)}</>
+              )}
+            </p>
           </div>
 
-          {/* Düzenle butonu — sadece "bekliyor" durumunda */}
           {duzenlenebilir && !duzenlemeModu && (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={duzenlemeyiAc}
-              className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium flex-shrink-0"
-              style={{
-                background: 'rgba(1,118,211,0.08)',
-                color: 'var(--primary)',
-                border: '1px solid rgba(1,118,211,0.2)',
-              }}
-            >
-              ✏️ Düzenle
-            </motion.button>
+            <Button variant="secondary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={duzenlemeyiAc}>
+              Düzenle
+            </Button>
           )}
         </div>
 
-        {/* Bekliyor uyarısı */}
         {duzenlenebilir && !duzenlemeModu && (
-          <div
-            className="mt-4 px-3 py-2 rounded text-xs flex items-center gap-2"
-            style={{ background: 'rgba(1,118,211,0.05)', color: 'var(--primary)' }}
-          >
-            <span>ℹ️</span>
+          <Alert variant="info" style={{ marginTop: 16 }}>
             Talebiniz henüz incelemeye alınmadı. İçeriği düzenleyebilirsiniz.
-          </div>
+          </Alert>
         )}
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Sol: Detaylar */}
-        <div className="lg:col-span-2 space-y-5">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 2fr) minmax(280px, 1fr))', gap: 20 }}>
 
-          {/* Talep detayı / Düzenleme formu */}
-          <AnimatePresence mode="wait">
-            {duzenlemeModu ? (
-              <motion.div
-                key="duzenle"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="rounded overflow-hidden"
-                style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.2)', boxShadow: '0 4px 16px rgba(1,118,211,0.1)' }}
-              >
-                <div
-                  className="px-5 py-4 flex items-center justify-between"
-                  style={{ borderBottom: '1px solid rgba(1,118,211,0.08)', background: 'rgba(1,118,211,0.03)' }}
-                >
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--primary)' }}>✏️ Talebi Düzenle</h3>
-                  <button onClick={duzenlemeyiIptal} style={{ fontSize: '12px', color: 'var(--text-muted)' }}>İptal</button>
+        {/* Sol */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Detay veya düzenleme formu */}
+          {duzenlemeModu ? (
+            <Card padding={0}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 20px',
+                background: 'var(--brand-primary-soft)',
+                borderBottom: '1px solid var(--border-default)',
+              }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 14px/20px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                  <Pencil size={14} strokeWidth={1.5} /> Talebi Düzenle
                 </div>
+                <button
+                  onClick={duzenlemeyiIptal}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}
+                >
+                  İptal
+                </button>
+              </div>
 
-                <div className="p-5 space-y-4">
+              <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <Label required>Konu başlığı</Label>
+                  <Input value={duzenForm.konu} onChange={e => setDuzenForm({ ...duzenForm, konu: e.target.value })} />
+                </div>
+                <div>
+                  <Label required>Açıklama</Label>
+                  <Textarea value={duzenForm.aciklama} onChange={e => setDuzenForm({ ...duzenForm, aciklama: e.target.value })} rows={4} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Konu Başlığı <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={duzenForm.konu}
-                      onChange={(e) => setDuzenForm({ ...duzenForm, konu: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                      style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                    />
+                    <Label>Lokasyon</Label>
+                    <Input value={duzenForm.lokasyon} onChange={e => setDuzenForm({ ...duzenForm, lokasyon: e.target.value })} />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Açıklama <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <textarea
-                      value={duzenForm.aciklama}
-                      onChange={(e) => setDuzenForm({ ...duzenForm, aciklama: e.target.value })}
-                      rows={4}
-                      className="w-full px-4 py-2.5 rounded text-sm outline-none resize-none"
-                      style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                    />
+                    <Label>Cihaz / sistem</Label>
+                    <Input value={duzenForm.cihazTuru} onChange={e => setDuzenForm({ ...duzenForm, cihazTuru: e.target.value })} />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Lokasyon</label>
-                      <input
-                        type="text"
-                        value={duzenForm.lokasyon}
-                        onChange={(e) => setDuzenForm({ ...duzenForm, lokasyon: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                        style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                        onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Cihaz / Sistem</label>
-                      <input
-                        type="text"
-                        value={duzenForm.cihazTuru}
-                        onChange={(e) => setDuzenForm({ ...duzenForm, cihazTuru: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                        style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                        onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Aciliyet</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {ACILIYET_SEVIYELERI.map((a) => (
+                </div>
+                <div>
+                  <Label>Aciliyet</Label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6 }}>
+                    {ACILIYET_SEVIYELERI.map(a => {
+                      const active = duzenForm.aciliyet === a.id
+                      return (
                         <button
                           key={a.id}
                           onClick={() => setDuzenForm({ ...duzenForm, aciliyet: a.id })}
-                          className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium"
                           style={{
-                            background: duzenForm.aciliyet === a.id ? a.bg : 'rgba(248,250,252,0.8)',
-                            border: `1px solid ${duzenForm.aciliyet === a.id ? a.renk : 'rgba(1,118,211,0.1)'}`,
-                            color: duzenForm.aciliyet === a.id ? a.renk : '#64748b',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: active ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                            border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                            color: active ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                            font: active ? '600 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                            cursor: 'pointer',
                           }}
                         >
-                          {a.ikon} {a.isim}
+                          {a.isim}
                         </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">İlgili Kişi</label>
-                      <input
-                        type="text"
-                        value={duzenForm.ilgiliKisi}
-                        onChange={(e) => setDuzenForm({ ...duzenForm, ilgiliKisi: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                        style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                        onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Telefon</label>
-                      <input
-                        type="tel"
-                        value={duzenForm.telefon}
-                        onChange={(e) => setDuzenForm({ ...duzenForm, telefon: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                        style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                        onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Uygun Ziyaret Zamanı</label>
-                    <input
-                      type="text"
-                      value={duzenForm.uygunZaman}
-                      onChange={(e) => setDuzenForm({ ...duzenForm, uygunZaman: e.target.value })}
-                      placeholder="Örn: Hafta içi 09:00-17:00"
-                      className="w-full px-4 py-2.5 rounded text-sm outline-none"
-                      style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={duzenlemeyiKaydet}
-                      disabled={!duzenForm.konu.trim() || !duzenForm.aciklama.trim()}
-                      className="flex-1 py-2.5 rounded text-sm font-semibold text-white"
-                      style={{
-                        background: duzenForm.konu.trim() && duzenForm.aciklama.trim()
-                          ? 'var(--primary)'
-                          : '#e2e8f0',
-                        color: duzenForm.konu.trim() && duzenForm.aciklama.trim() ? 'white' : '#94a3b8',
-                        boxShadow: duzenForm.konu.trim() ? '0 4px 12px rgba(1,118,211,0.3)' : 'none',
-                      }}
-                    >
-                      ✓ Değişiklikleri Kaydet
-                    </motion.button>
-                    <button
-                      onClick={duzenlemeyiIptal}
-                      className="px-5 py-2.5 rounded text-sm font-medium"
-                      style={{ background: 'rgba(1,118,211,0.06)', color: 'var(--primary)' }}
-                    >
-                      İptal
-                    </button>
+                      )
+                    })}
                   </div>
                 </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="goruntule"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="rounded p-5"
-                style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-              >
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                  📄 Talep Detayı
-                </h3>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                  {talep.aciklama}
-                </p>
-                {(talep.lokasyon || talep.cihazTuru) && (
-                  <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid rgba(1,118,211,0.08)' }}>
-                    {talep.lokasyon && (
-                      <div>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📍 Lokasyon: </span>
-                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{talep.lokasyon}</span>
-                      </div>
-                    )}
-                    {talep.cihazTuru && (
-                      <div>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🖥️ Cihaz/Sistem: </span>
-                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{talep.cihazTuru}</span>
-                      </div>
-                    )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                  <div>
+                    <Label>İlgili kişi</Label>
+                    <Input value={duzenForm.ilgiliKisi} onChange={e => setDuzenForm({ ...duzenForm, ilgiliKisi: e.target.value })} />
                   </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <div>
+                    <Label>Telefon</Label>
+                    <Input type="tel" value={duzenForm.telefon} onChange={e => setDuzenForm({ ...duzenForm, telefon: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Uygun ziyaret zamanı</Label>
+                  <Input value={duzenForm.uygunZaman} onChange={e => setDuzenForm({ ...duzenForm, uygunZaman: e.target.value })} placeholder="Örn: Hafta içi 09:00-17:00" />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button
+                    variant="primary"
+                    iconLeft={<Check size={14} strokeWidth={2} />}
+                    onClick={duzenlemeyiKaydet}
+                    disabled={!duzenForm.konu.trim() || !duzenForm.aciklama.trim()}
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    Değişiklikleri kaydet
+                  </Button>
+                  <Button variant="secondary" onClick={duzenlemeyiIptal}>İptal</Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 className="t-h2" style={{ margin: 0 }}>Talep Detayı</h2>
+              </div>
+              <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                {talep.aciklama}
+              </p>
+              {(talep.lokasyon || talep.cihazTuru) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  {talep.lokasyon && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '400 13px/18px var(--font-sans)' }}>
+                      <MapPin size={12} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+                      <span className="t-caption">Lokasyon:</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{talep.lokasyon}</span>
+                    </div>
+                  )}
+                  {talep.cihazTuru && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '400 13px/18px var(--font-sans)' }}>
+                      <Monitor size={12} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+                      <span className="t-caption">Cihaz/Sistem:</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{talep.cihazTuru}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
 
           {/* Yazışmalar */}
-          <div
-            className="rounded overflow-hidden"
-            style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(1,118,211,0.08)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                💬 Yazışmalar & Notlar
-              </h3>
+          <Card padding={0}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <MessageSquare size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 className="t-h2" style={{ margin: 0 }}>Yazışmalar & Notlar</h2>
+              </div>
             </div>
-
-            <div style={{ minHeight: '160px', maxHeight: '360px', overflowY: 'auto', padding: '16px' }}>
+            <div style={{ minHeight: 160, maxHeight: 380, overflowY: 'auto', padding: 16 }}>
               {talep.notlar.length === 0 ? (
-                <div className="text-center py-8">
-                  <p style={{ color: '#cbd5e1', fontSize: '13px' }}>Henüz yazışma yok</p>
-                </div>
+                <EmptyState title="Henüz yazışma yok" />
               ) : (
-                <div className="space-y-3">
-                  {talep.notlar.map((not) => {
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {talep.notlar.map(not => {
                     const benimNot = not.kullaniciId === kullanici?.id
                     const znaTeam = not.tip === 'ic' && !benimNot
                     return (
-                      <motion.div
+                      <div
                         key={not.id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`flex ${benimNot ? 'justify-end' : 'justify-start'}`}
+                        style={{ display: 'flex', justifyContent: benimNot ? 'flex-end' : 'flex-start' }}
                       >
-                        <div
-                          className="max-w-sm rounded px-4 py-3"
-                          style={{
-                            background: benimNot
-                              ? 'var(--primary)'
-                              : znaTeam
-                              ? 'rgba(16,185,129,0.06)'
-                              : 'rgba(248,250,252,0.9)',
-                            border: znaTeam ? '1px solid rgba(16,185,129,0.2)' : benimNot ? 'none' : '1px solid rgba(1,118,211,0.1)',
-                          }}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: benimNot ? 'rgba(255,255,255,0.8)' : znaTeam ? '#10b981' : 'var(--primary)' }}>
-                              {znaTeam ? '🛡️ ZNA Ekibi' : not.kullaniciAd}
+                        <div style={{
+                          maxWidth: 480,
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-md)',
+                          background: benimNot ? 'var(--brand-primary)'
+                            : znaTeam ? 'var(--success-soft)'
+                            : 'var(--surface-sunken)',
+                          border: benimNot ? 'none'
+                            : znaTeam ? '1px solid var(--success-border)'
+                            : '1px solid var(--border-default)',
+                        }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                            {znaTeam && <Shield size={11} strokeWidth={1.5} style={{ color: 'var(--success)' }} />}
+                            <span style={{
+                              font: '600 11px/16px var(--font-sans)',
+                              color: benimNot ? 'rgba(255,255,255,0.85)'
+                                : znaTeam ? 'var(--success)'
+                                : 'var(--text-secondary)',
+                            }}>
+                              {znaTeam ? 'ZNA Ekibi' : not.kullaniciAd}
                             </span>
                           </div>
-                          <p style={{ fontSize: '13px', color: benimNot ? 'white' : 'var(--text-secondary)', lineHeight: 1.6 }}>
+                          <p style={{
+                            font: '400 13px/20px var(--font-sans)',
+                            color: benimNot ? '#fff' : 'var(--text-primary)',
+                            margin: 0, whiteSpace: 'pre-wrap',
+                          }}>
                             {not.metin}
                           </p>
-                          <p style={{ fontSize: '10px', color: benimNot ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)', marginTop: '4px' }}>
+                          <p style={{
+                            font: '400 10px/14px var(--font-sans)',
+                            color: benimNot ? 'rgba(255,255,255,0.65)' : 'var(--text-tertiary)',
+                            marginTop: 4, fontVariantNumeric: 'tabular-nums',
+                          }}>
                             {new Date(not.tarih).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                           </p>
                         </div>
-                      </motion.div>
+                      </div>
                     )
                   })}
                 </div>
               )}
             </div>
-
             {!['tamamlandi', 'iptal'].includes(talep.durum) && (
-              <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(1,118,211,0.08)', background: 'var(--bg-hover)' }}>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={yeniNot}
-                    onChange={(e) => setYeniNot(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && notGonder()}
-                    placeholder="Not veya soru yazın..."
-                    className="flex-1 px-4 py-2.5 rounded text-sm outline-none"
-                    style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-card)' }}
-                    onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                    onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                  />
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <Input
+                      value={yeniNot}
+                      onChange={e => setYeniNot(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && notGonder()}
+                      placeholder="Not veya soru yazın…"
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    iconLeft={<Send size={14} strokeWidth={1.5} />}
                     onClick={notGonder}
                     disabled={!yeniNot.trim()}
-                    className="px-4 py-2.5 rounded text-sm font-medium flex-shrink-0"
-                    style={{
-                      background: yeniNot.trim() ? 'var(--primary)' : '#e2e8f0',
-                      color: yeniNot.trim() ? 'white' : 'var(--text-muted)',
-                    }}
                   >
                     Gönder
-                  </motion.button>
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Durum geçmişi */}
           {talep.durumGecmisi.length > 0 && (
-            <div
-              className="rounded p-5"
-              style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-            >
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                🕐 Durum Geçmişi
-              </h3>
-              <div className="relative">
-                <div className="absolute left-4 top-0 bottom-0 w-px" style={{ background: 'rgba(1,118,211,0.15)' }} />
-                <div className="space-y-4 pl-10">
-                  {[...talep.durumGecmisi].reverse().map((g, i) => {
-                    const d = DURUM_LISTESI.find((x) => x.id === g.durum)
-                    return (
-                      <div key={i} className="relative">
-                        <div
-                          className="absolute -left-6 w-4 h-4 rounded-full"
-                          style={{ background: d?.bg || 'rgba(1,118,211,0.1)', border: `2px solid ${d?.renk || 'var(--primary)'}` }}
-                        />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: d?.renk }}>{d?.ikon} {d?.isim}</span>
-                        {g.aciklama && (
-                          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{g.aciklama}</p>
-                        )}
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{tarihFormat(g.tarih)}</p>
-                      </div>
-                    )
-                  })}
-                </div>
+            <Card>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Clock size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 className="t-h2" style={{ margin: 0 }}>Durum Geçmişi</h2>
               </div>
-            </div>
+              <div style={{ position: 'relative', paddingLeft: 24 }}>
+                <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
+                {[...talep.durumGecmisi].reverse().map((g, i) => {
+                  const d = DURUM_LISTESI.find(x => x.id === g.durum)
+                  return (
+                    <div key={i} style={{ position: 'relative', paddingBottom: i < talep.durumGecmisi.length - 1 ? 16 : 0 }}>
+                      <span style={{
+                        position: 'absolute', left: -20, top: 2,
+                        width: 17, height: 17, borderRadius: '50%',
+                        background: 'var(--surface-card)',
+                        border: '2px solid var(--brand-primary)',
+                      }} />
+                      <div>
+                        <div style={{ marginBottom: 4 }}>
+                          {d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
+                        </div>
+                        {g.aciklama && (
+                          <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: '0 0 2px' }}>{g.aciklama}</p>
+                        )}
+                        <p className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>{tarihFormat(g.tarih)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
           )}
         </div>
 
-        {/* Sağ: Bilgiler */}
-        <div className="space-y-4">
-          <div
-            className="rounded p-5"
-            style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-          >
-            <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
-              Talep Bilgileri
-            </h3>
-            <div className="space-y-3">
-              {[
-                { k: 'Talep No', v: talep.talepNo },
-                { k: 'Tür', v: `${anaTur?.ikon} ${anaTur?.isim}` },
-                { k: 'Durum', v: durum?.isim, renk: durum?.renk },
-                { k: 'Aciliyet', v: `${aciliyet?.ikon} ${aciliyet?.isim}`, renk: aciliyet?.renk },
-                talep.atananKullaniciAd && { k: 'Atanan Ekip', v: talep.atananKullaniciAd },
-                talep.planliTarih && { k: 'Planlı Tarih', v: new Date(talep.planliTarih).toLocaleDateString('tr-TR') },
-                { k: 'İlgili Kişi', v: talep.ilgiliKisi },
-                talep.telefon && { k: 'Telefon', v: talep.telefon },
-                talep.uygunZaman && { k: 'Uygun Zaman', v: talep.uygunZaman },
-              ].filter(Boolean).map(({ k, v, renk }) => (
+        {/* Sağ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card>
+            <p className="t-label" style={{ marginBottom: 14 }}>TALEP BİLGİLERİ</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {talepBilgileri.map(({ k, v, tabular }) => (
                 <div key={k}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{k}</p>
-                  <p style={{ fontSize: '13px', fontWeight: 500, color: renk || 'var(--text-primary)' }}>{v}</p>
+                  <p className="t-caption" style={{ marginBottom: 2 }}>{k}</p>
+                  {isValidElement(v)
+                    ? v
+                    : <p style={{
+                        font: '500 13px/18px var(--font-sans)',
+                        color: 'var(--text-primary)', margin: 0,
+                        fontVariantNumeric: tabular ? 'tabular-nums' : 'normal',
+                      }}>
+                        {v}
+                      </p>
+                  }
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          {/* ── Müşteri Onay & Memnuniyet Akışı ── */}
+          {/* Onay / memnuniyet akışı */}
           {talep.durum === 'tamamlandi' && (
-            <AnimatePresence mode="wait">
-
-              {/* 1. İlk onay sorusu */}
+            <>
+              {/* 1. Onay sorusu */}
               {(talep.musteriOnay === null || talep.musteriOnay === undefined) && !onayAsamasi && (
-                <motion.div key="onay-soru"
-                  initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
-                  className="rounded p-5"
-                  style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">✅</span>
-                    <p style={{ fontSize: '13px', fontWeight: 700, color: '#065f46' }}>Talep Tamamlandı</p>
+                <Card style={{ background: 'var(--success-soft)', borderColor: 'var(--success-border)' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--success)' }} />
+                    <p style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--success)', margin: 0 }}>Talep Tamamlandı</p>
                   </div>
-                  <p style={{ fontSize: '12px', color: '#047857', marginBottom: '14px', lineHeight: 1.5 }}>
+                  <p style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 14 }}>
                     Teknik ekibimiz talebinizi çözdüğünü bildirdi. Sorununuz çözüldü mü?
                   </p>
-                  <div className="flex gap-2">
-                    <motion.button whileTap={{ scale:0.97 }} onClick={musteriOnayladi}
-                      className="flex-1 py-2.5 rounded text-xs font-semibold transition-all"
-                      style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color:'white', boxShadow:'0 4px 12px rgba(16,185,129,0.3)' }}>
-                      👍 Evet, Çözüldü
-                    </motion.button>
-                    <motion.button whileTap={{ scale:0.97 }} onClick={sorunDevamEdiyor}
-                      className="flex-1 py-2.5 rounded text-xs font-semibold transition-all"
-                      style={{ background: 'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.25)' }}>
-                      👎 Sorun Devam Ediyor
-                    </motion.button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      variant="primary"
+                      iconLeft={<ThumbsUp size={14} strokeWidth={1.5} />}
+                      onClick={musteriOnayladi}
+                      style={{ flex: 1, justifyContent: 'center', background: 'var(--success)', border: '1px solid var(--success)' }}
+                    >
+                      Evet, çözüldü
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      iconLeft={<ThumbsDown size={14} strokeWidth={1.5} />}
+                      onClick={sorunDevamEdiyor}
+                      style={{ flex: 1, justifyContent: 'center', color: 'var(--danger)', background: 'var(--danger-soft)', border: '1px solid var(--danger-border)' }}
+                    >
+                      Sorun devam ediyor
+                    </Button>
                   </div>
-                </motion.div>
+                </Card>
               )}
 
-              {/* 2. Memnuniyet anketi */}
+              {/* 2. Anket */}
               {onayAsamasi === 'anket' && (
-                <motion.div key="anket"
-                  initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
-                  className="rounded p-5"
-                  style={{ background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.3)', boxShadow:'0 4px 16px rgba(245,158,11,0.1)' }}>
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>⭐ Hizmet Değerlendirmesi</p>
-                  <p style={{ fontSize: '12px', color: '#b45309', marginBottom: '16px' }}>
+                <Card style={{ borderColor: 'var(--warning-border)' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Star size={16} strokeWidth={1.5} fill="var(--warning)" style={{ color: 'var(--warning)' }} />
+                    <p style={{ font: '700 14px/20px var(--font-sans)', color: 'var(--warning)', margin: 0 }}>Hizmet Değerlendirmesi</p>
+                  </div>
+                  <p style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 14 }}>
                     Aldığınız hizmeti değerlendirmeniz bize çok yardımcı olur.
                   </p>
 
-                  {/* Yıldız seçici */}
-                  <div className="flex justify-center gap-2 mb-3">
-                    {[1,2,3,4,5].map(i => (
-                      <button key={i}
-                        onClick={() => setDegPuan(i)}
-                        onMouseEnter={() => setDegHover(i)}
-                        onMouseLeave={() => setDegHover(0)}
-                        style={{
-                          fontSize: '36px', lineHeight: 1,
-                          color: i <= (degHover || degPuan) ? '#f59e0b' : '#e2e8f0',
-                          transform: i <= (degHover || degPuan) ? 'scale(1.2)' : 'scale(1)',
-                          transition: 'all 0.1s',
-                          background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px',
-                        }}>
-                        ★
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+                    {[1, 2, 3, 4, 5].map(i => {
+                      const filled = i <= (degHover || degPuan)
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setDegPuan(i)}
+                          onMouseEnter={() => setDegHover(i)}
+                          onMouseLeave={() => setDegHover(0)}
+                          aria-label={`${i} yıldız`}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                            transform: filled ? 'scale(1.15)' : 'scale(1)',
+                            transition: 'transform 120ms',
+                          }}
+                        >
+                          <Star
+                            size={34}
+                            strokeWidth={1.5}
+                            fill={filled ? 'var(--warning)' : 'transparent'}
+                            style={{ color: filled ? 'var(--warning)' : 'var(--border-default)' }}
+                          />
+                        </button>
+                      )
+                    })}
                   </div>
 
-                  {/* Puan etiketi */}
-                  {degPuan > 0 && (
-                    <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }}
-                      className="text-center text-sm font-semibold mb-3"
-                      style={{ color: ['','#ef4444','#f97316','#f59e0b','#10b981','var(--primary)'][degPuan] }}>
-                      {['','😞 Çok Kötü','😕 Kötü','😐 Orta','🙂 İyi','😄 Mükemmel'][degPuan]}
-                    </motion.p>
-                  )}
+                  {degPuan > 0 && (() => {
+                    const meta = PUAN_META[degPuan]
+                    const IconC = meta.C
+                    return (
+                      <p style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        font: '600 13px/18px var(--font-sans)', color: meta.color,
+                        textAlign: 'center', marginBottom: 12,
+                      }}>
+                        <IconC size={16} strokeWidth={1.5} /> {meta.isim}
+                      </p>
+                    )
+                  })()}
 
-                  <textarea
+                  <Textarea
                     value={degYorum}
                     onChange={e => setDegYorum(e.target.value)}
-                    placeholder="Yorumunuz (isteğe bağlı)..."
+                    placeholder="Yorumunuz (isteğe bağlı)…"
                     rows={2}
-                    className="w-full px-3 py-2.5 rounded text-sm resize-none outline-none mb-3"
-                    style={{ border:'1px solid rgba(245,158,11,0.3)', background:'rgba(255,251,235,0.5)' }}
-                    onFocus={e => e.target.style.borderColor='#f59e0b'}
-                    onBlur={e => e.target.style.borderColor='rgba(245,158,11,0.3)'}
+                    style={{ marginBottom: 12 }}
                   />
 
-                  <motion.button whileTap={{ scale:0.97 }}
+                  <Button
+                    variant="primary"
+                    iconLeft={<Star size={14} strokeWidth={1.5} fill={degPuan ? '#fff' : 'none'} />}
                     onClick={degerlendirmeKaydet}
                     disabled={!degPuan}
-                    className="w-full py-2.5 rounded text-sm font-semibold transition-all"
-                    style={{
-                      background: degPuan ? 'linear-gradient(135deg,#f59e0b,#f97316)' : '#e2e8f0',
-                      color: degPuan ? 'white' : 'var(--text-muted)',
-                      boxShadow: degPuan ? '0 4px 12px rgba(245,158,11,0.35)' : 'none',
-                    }}>
-                    ⭐ Değerlendirmeyi Gönder
-                  </motion.button>
-                </motion.div>
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Değerlendirmeyi gönder
+                  </Button>
+                </Card>
               )}
 
-              {/* 3. Sorun devam ediyor formu */}
+              {/* 3. Sorun formu */}
               {onayAsamasi === 'sorun' && (
-                <motion.div key="sorun"
-                  initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
-                  className="rounded p-5"
-                  style={{ background: 'rgba(239,68,68,0.04)', border:'1px solid rgba(239,68,68,0.2)' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626', marginBottom: '4px' }}>
-                    ⚠️ Sorunu Bildir
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#ef4444', marginBottom: '12px' }}>
+                <Card style={{ borderColor: 'var(--danger-border)', background: 'var(--danger-soft)' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <AlertTriangle size={14} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />
+                    <p style={{ font: '700 13px/18px var(--font-sans)', color: 'var(--danger)', margin: 0 }}>Sorunu Bildir</p>
+                  </div>
+                  <p style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 12 }}>
                     Talebiniz yeniden açılacak. Sorun hakkında bilgi verebilir misiniz?
                   </p>
-                  <textarea
+                  <Textarea
                     value={sorunAciklama}
                     onChange={e => setSorunAciklama(e.target.value)}
-                    placeholder="Sorun nedir? Neler denendi?..."
+                    placeholder="Sorun nedir? Neler denendi?…"
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded text-sm resize-none outline-none mb-3"
-                    style={{ border:'1px solid rgba(239,68,68,0.2)', background:'var(--bg-card)' }}
-                    onFocus={e => e.target.style.borderColor='#ef4444'}
-                    onBlur={e => e.target.style.borderColor='rgba(239,68,68,0.2)'}
+                    style={{ marginBottom: 10 }}
                   />
-                  <div className="flex gap-2">
-                    <motion.button whileTap={{ scale:0.97 }} onClick={sorunGonder}
-                      className="flex-1 py-2 rounded text-sm font-semibold text-white"
-                      style={{ background:'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow:'0 4px 12px rgba(239,68,68,0.3)' }}>
-                      Talebi Yeniden Aç
-                    </motion.button>
-                    <button onClick={() => setOnayAsamasi(null)}
-                      className="px-4 py-2 rounded text-sm border text-gray-500"
-                      style={{ border:'1px solid #e5e7eb' }}>
-                      İptal
-                    </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button variant="danger" onClick={sorunGonder} style={{ flex: 1, justifyContent: 'center' }}>
+                      Talebi yeniden aç
+                    </Button>
+                    <Button variant="secondary" onClick={() => setOnayAsamasi(null)}>İptal</Button>
                   </div>
-                </motion.div>
+                </Card>
               )}
 
-              {/* 4. Tamamlandı — daha önce memnuniyet verilmişse göster */}
+              {/* 4. Değerlendirme alındı */}
               {(onayAsamasi === 'bitti' || mevcutDeg) && talep.musteriOnay === 'onaylandi' && (
-                <motion.div key="bitti"
-                  initial={{ opacity:0, scale:0.97 }} animate={{ opacity:1, scale:1 }}
-                  className="rounded p-5"
-                  style={{ background:'rgba(1,118,211,0.05)', border:'1px solid rgba(1,118,211,0.2)' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#4f46e5', marginBottom:'8px' }}>
-                    ✅ Değerlendirmeniz Alındı
-                  </p>
+                <Card style={{ background: 'var(--brand-primary-soft)', borderColor: 'var(--border-default)' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+                    <p style={{ font: '700 13px/18px var(--font-sans)', color: 'var(--brand-primary)', margin: 0 }}>
+                      Değerlendirmeniz Alındı
+                    </p>
+                  </div>
                   {mevcutDeg && (
                     <>
-                      <div className="flex items-center gap-1 mb-2">
-                        {[1,2,3,4,5].map(i=>(
-                          <span key={i} style={{ fontSize:'22px', color: i<=mevcutDeg.puan?'#f59e0b':'#e2e8f0' }}>★</span>
-                        ))}
-                        <span className="ml-2 text-sm font-bold" style={{ color:'#f59e0b' }}>{mevcutDeg.puan}/5</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <YildizGoster puan={mevcutDeg.puan} boyut={20} />
+                        <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
+                          {mevcutDeg.puan}/5
+                        </span>
                       </div>
                       {mevcutDeg.yorum && (
-                        <p style={{ fontSize:'12px', color:'#64748b', fontStyle:'italic' }}>"{mevcutDeg.yorum}"</p>
+                        <p style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>
+                          "{mevcutDeg.yorum}"
+                        </p>
                       )}
                     </>
                   )}
-                </motion.div>
+                </Card>
               )}
 
-              {/* 5. Sorun bildirildi — talep yeniden açıldı */}
+              {/* 5. Talep yeniden açıldı */}
               {talep.musteriOnay === 'ret' && (
-                <motion.div key="ret" initial={{ opacity:0 }} animate={{ opacity:1 }}
-                  className="rounded p-4"
-                  style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)' }}>
-                  <p style={{ fontSize:'13px', fontWeight:600, color:'#dc2626' }}>
-                    ⚠️ Talebiniz yeniden açıldı
-                  </p>
-                  <p style={{ fontSize:'12px', color:'#ef4444', marginTop:'4px' }}>
-                    Ekibimiz en kısa sürede sizinle iletişime geçecek.
-                  </p>
-                </motion.div>
+                <Alert
+                  variant="danger"
+                  title="Talebiniz yeniden açıldı"
+                >
+                  Ekibimiz en kısa sürede sizinle iletişime geçecek.
+                </Alert>
               )}
-
-            </AnimatePresence>
+            </>
           )}
         </div>
       </div>

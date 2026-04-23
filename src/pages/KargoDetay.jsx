@@ -1,8 +1,36 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, Trash2, ArrowUpRight, ArrowDownLeft, Phone, MapPin, AlertTriangle,
+  Check, Pencil, Package, Send,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useKargo } from '../context/KargoContext'
+import {
+  Button, Input, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
+} from '../components/ui'
+
+const KARGO_DURUM_TONE = {
+  hazirlaniyor:    'beklemede',
+  kargoya_verildi: 'lead',
+  yolda:           'lead',
+  dagitimda:       'beklemede',
+  teslim_edildi:   'aktif',
+  iade:            'kayip',
+  kayip:           'kayip',
+}
+
+const safeArr = (v) => {
+  if (Array.isArray(v)) return v
+  if (typeof v === 'string') { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } }
+  return []
+}
+const safeObj = (v) => {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v
+  if (typeof v === 'string') { try { const p = JSON.parse(v); return (p && typeof p === 'object') ? p : {} } catch { return {} } }
+  return {}
+}
 
 export default function KargoDetay() {
   const { id } = useParams()
@@ -22,64 +50,47 @@ export default function KargoDetay() {
   const [takipNoGecici, setTakipNoGecici] = useState('')
   const [silOnay, setSilOnay] = useState(false)
 
-  const kargo = (kargolar || []).find((k) => String(k?.id) === String(id))
+  const kargo = (kargolar || []).find(k => String(k?.id) === String(id))
 
   if (!kargo) {
     return (
-      <div className="p-6">
-        <p className="text-gray-400 mb-4">Kargo bulunamadı.</p>
-        <button onClick={() => navigate('/kargolar')} className="text-sm text-indigo-600 hover:underline">← Kargoları gör</button>
+      <div style={{ padding: 24 }}>
+        <EmptyState
+          icon={<Package size={32} strokeWidth={1.5} />}
+          title="Kargo bulunamadı"
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/kargolar')}>Kargolara dön</Button>}
+        />
       </div>
     )
   }
 
-  // Supabase JSONB kolonları bazen string geliyorsa parse et
-  const safeParseArray = (v) => {
-    if (Array.isArray(v)) return v
-    if (typeof v === 'string') {
-      try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] }
-    }
-    return []
-  }
-  const safeParseObject = (v) => {
-    if (v && typeof v === 'object' && !Array.isArray(v)) return v
-    if (typeof v === 'string') {
-      try { const p = JSON.parse(v); return (p && typeof p === 'object') ? p : {} } catch { return {} }
-    }
-    return {}
-  }
+  const gonderen = safeObj(kargo.gonderen)
+  const alici    = safeObj(kargo.alici)
+  const notlar   = safeArr(kargo.notlar)
+  const durumGecmisi = safeArr(kargo.durumGecmisi)
+  const ilgiliKullaniciIds = safeArr(kargo.ilgiliKullaniciIds)
 
-  const gonderen = safeParseObject(kargo.gonderen)
-  const alici    = safeParseObject(kargo.alici)
-  const notlar   = safeParseArray(kargo.notlar)
-  const durumGecmisi = safeParseArray(kargo.durumGecmisi)
-  const ilgiliKullaniciIds = safeParseArray(kargo.ilgiliKullaniciIds)
-
-  const mevcutDurum = DURUM_LISTESI.find((d) => d.id === kargo.durum)
-  const firma = KARGO_FIRMALARI.find((f) => f.id === kargo.kargoFirmasi)
-  const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date() && !['teslim_edildi','iade'].includes(kargo.durum)
+  const mevcutDurum = DURUM_LISTESI.find(d => d.id === kargo.durum)
+  const firma = KARGO_FIRMALARI.find(f => f.id === kargo.kargoFirmasi)
+  const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date() && !['teslim_edildi', 'iade'].includes(kargo.durum)
   const tamamlandi = ['teslim_edildi', 'iade'].includes(kargo.durum)
+  const TipIcon = kargo.tip === 'giden' ? ArrowUpRight : ArrowDownLeft
+  const mevcut_sira = mevcutDurum?.sira || 0
 
   const durumGuncelle = () => {
     if (!yeniDurum) return
     kargoDurumGuncelle(kargo.id, yeniDurum, kullanici.ad, durumNot)
-
-    // İlgili kişilere bildirim
-    const durumBilgi = DURUM_LISTESI.find((d) => d.id === yeniDurum)
-    ilgiliKullaniciIds
-      .filter((uid) => String(uid) !== String(kullanici.id))
-      .forEach((uid) => {
-        bildirimEkle(
-          uid,
-          `Kargo Güncellendi — ${durumBilgi?.ikon} ${durumBilgi?.isim}`,
-          `${kargo.kargoNo}: ${gonderen.firma || gonderen.ad || '?'} → ${alici.firma || alici.ad || '?'}${durumNot ? '. Not: ' + durumNot : ''}`,
-          yeniDurum === 'teslim_edildi' ? 'basari' : yeniDurum === 'iade' ? 'uyari' : 'bilgi',
-          `/kargolar/${kargo.id}`
-        )
-      })
-
-    setYeniDurum('')
-    setDurumNot('')
+    const durumBilgi = DURUM_LISTESI.find(d => d.id === yeniDurum)
+    ilgiliKullaniciIds.filter(uid => String(uid) !== String(kullanici.id)).forEach(uid => {
+      bildirimEkle(
+        uid,
+        `Kargo Güncellendi — ${durumBilgi?.isim}`,
+        `${kargo.kargoNo}: ${gonderen.firma || gonderen.ad || '?'} → ${alici.firma || alici.ad || '?'}${durumNot ? '. Not: ' + durumNot : ''}`,
+        yeniDurum === 'teslim_edildi' ? 'basari' : yeniDurum === 'iade' ? 'uyari' : 'bilgi',
+        `/kargolar/${kargo.id}`
+      )
+    })
+    setYeniDurum(''); setDurumNot('')
   }
 
   const notEkle = () => {
@@ -93,145 +104,202 @@ export default function KargoDetay() {
     setTakipNoDuzenle(false)
   }
 
-  const ileriDurumlar = DURUM_LISTESI.filter((d) => d.id !== kargo.durum && d.id !== 'iade')
-  const mevcut_sira = mevcutDurum?.sira || 0
+  const metaBilgiler = [
+    { l: 'AĞIRLIK',          v: kargo.agirlik ? `${kargo.agirlik} kg` : '—' },
+    { l: 'DESİ',             v: kargo.desi || '—' },
+    { l: 'ÜCRET',            v: kargo.ucret ? `₺${kargo.ucret}` : '—' },
+    { l: 'ÖDEME',            v: { gonderici: 'Gönderici', alici: 'Alıcı', kapida: 'Kapıda' }[kargo.odemeYontemi] || '—' },
+    { l: 'TAHMİNİ TESLİM',   v: kargo.tahminiTeslim || '—' },
+    { l: 'TESLİM TARİHİ',    v: kargo.teslimTarihi ? new Date(kargo.teslimTarihi).toLocaleDateString('tr-TR') : '—' },
+    { l: 'OLUŞTURAN',        v: kargo.olusturanAd || '—' },
+    { l: 'KAYIT TARİHİ',     v: kargo.olusturmaTarihi ? new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR') : '—' },
+  ]
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
 
-      {/* Geri */}
-      <div className="flex items-center justify-between mb-5">
-        <button onClick={() => navigate('/kargolar')} className="text-sm text-gray-400 hover:text-indigo-600 flex items-center gap-1 transition">
-          ← Kargolara dön
+      {/* Geri + Sil */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <button
+          onClick={() => navigate('/kargolar')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+        >
+          <ArrowLeft size={14} strokeWidth={1.5} /> Kargolara dön
         </button>
         {!tamamlandi && (
-          <button
-            onClick={() => setSilOnay(true)}
-            className="text-sm text-red-400 hover:text-red-600 border border-red-100 px-3 py-1.5 rounded-lg transition"
-          >
-            🗑 Sil
-          </button>
+          <Button variant="tertiary" size="sm" iconLeft={<Trash2 size={12} strokeWidth={1.5} />} onClick={() => setSilOnay(true)}>
+            Sil
+          </Button>
         )}
       </div>
 
-      {/* Silme onayı */}
       {silOnay && (
-        <div className="rounded-xl px-5 py-4 mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-sm">
-          <span className="text-red-700 flex-1 font-medium">Bu kargoyu kalıcı olarak silmek istediğinize emin misiniz?</span>
-          <button onClick={() => { kargoSil(kargo.id); navigate('/kargolar') }} className="text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg font-semibold transition">Evet, Sil</button>
-          <button onClick={() => setSilOnay(false)} className="text-gray-600 px-4 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition">İptal</button>
-        </div>
+        <Alert
+          variant="danger"
+          title="Bu kargoyu kalıcı olarak silmek istediğinize emin misiniz?"
+          action={
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="danger" size="sm" onClick={() => { kargoSil(kargo.id); navigate('/kargolar') }}>Evet, sil</Button>
+              <Button variant="secondary" size="sm" onClick={() => setSilOnay(false)}>İptal</Button>
+            </div>
+          }
+          style={{ marginBottom: 16 }}
+        />
       )}
 
       {/* Ana kart */}
-      <div className="rounded-2xl p-6 mb-4" style={{
-        background: 'rgba(255,255,255,0.92)',
-        border: gecikti ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(1,118,211,0.12)',
-        boxShadow: '0 4px 24px rgba(1,118,211,0.08)',
-      }}>
-        {/* Başlık */}
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{kargo.kargoNo}</span>
-              <span className="text-lg">{kargo.tip === 'giden' ? '📤' : '📥'}</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: kargo.tip === 'giden' ? 'var(--primary)' : '#10b981', background: kargo.tip === 'giden' ? 'rgba(1,118,211,0.1)' : 'rgba(16,185,129,0.1)' }}>
+      <Card
+        style={{
+          marginBottom: 16,
+          borderColor: gecikti ? 'var(--danger-border)' : 'var(--border-default)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{
+            width: 44, height: 44,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 'var(--radius-md)',
+            background: kargo.tip === 'giden' ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
+            color: kargo.tip === 'giden' ? 'var(--brand-primary)' : 'var(--success)',
+            flexShrink: 0,
+          }}>
+            <TipIcon size={20} strokeWidth={1.5} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              <CodeBadge>{kargo.kargoNo}</CodeBadge>
+              <Badge tone={kargo.tip === 'giden' ? 'brand' : 'aktif'}>
                 {kargo.tip === 'giden' ? 'Giden' : 'Gelen'}
-              </span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: firma?.bg, color: firma?.renk }}>
-                {firma?.isim}
-              </span>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: mevcutDurum?.bg, color: mevcutDurum?.renk }}>
-                {mevcutDurum?.ikon} {mevcutDurum?.isim}
-              </span>
-              {gecikti && <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">⚠️ Gecikti</span>}
+              </Badge>
+              {firma && <Badge tone="brand">{firma.isim}</Badge>}
+              {mevcutDurum && <Badge tone={KARGO_DURUM_TONE[mevcutDurum.id] ?? 'neutral'}>{mevcutDurum.isim}</Badge>}
+              {gecikti && <Badge tone="kayip" icon={<AlertTriangle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
             </div>
-            <p className="text-lg font-bold text-gray-800">
+            <h1 className="t-h1">
               {gonderen.firma || gonderen.ad || '?'}
-              <span className="text-gray-300 mx-2">→</span>
+              <span style={{ color: 'var(--text-tertiary)', margin: '0 8px' }}>→</span>
               {alici.firma || alici.ad || '?'}
-            </p>
-            <p className="text-sm text-gray-500 mt-0.5">{kargo.icerik}</p>
+            </h1>
+            <p className="t-caption" style={{ marginTop: 4 }}>{kargo.icerik}</p>
           </div>
         </div>
 
         {/* Takip No */}
-        <div className="flex items-center gap-2 mb-5 p-3 rounded-xl" style={{ background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.12)' }}>
-          <span className="text-sm text-gray-500">Takip No:</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', marginBottom: 16,
+          background: 'var(--surface-sunken)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-sm)',
+        }}>
+          <span className="t-label" style={{ margin: 0 }}>TAKİP NO:</span>
           {takipNoDuzenle ? (
             <>
-              <input
-                type="text"
-                value={takipNoGecici}
-                onChange={(e) => setTakipNoGecici(e.target.value)}
-                className="flex-1 border border-indigo-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                placeholder="Takip numarası girin"
-                autoFocus
-              />
-              <button onClick={takipNoKaydet} className="text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-lg transition">Kaydet</button>
-              <button onClick={() => setTakipNoDuzenle(false)} className="text-xs text-gray-500 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition">İptal</button>
+              <div style={{ flex: 1 }}>
+                <Input
+                  value={takipNoGecici}
+                  onChange={e => setTakipNoGecici(e.target.value)}
+                  placeholder="Takip numarası girin"
+                  autoFocus
+                  style={{ height: 32 }}
+                />
+              </div>
+              <Button variant="primary" size="sm" onClick={takipNoKaydet}>Kaydet</Button>
+              <Button variant="secondary" size="sm" onClick={() => setTakipNoDuzenle(false)}>İptal</Button>
             </>
           ) : (
             <>
-              <span className="font-mono text-sm font-semibold text-indigo-600 flex-1">
-                {kargo.takipNo || <span className="text-gray-300 font-normal">Henüz eklenmedi</span>}
+              <span style={{ flex: 1, font: '500 13px/18px var(--font-mono)', color: kargo.takipNo ? 'var(--brand-primary)' : 'var(--text-tertiary)' }}>
+                {kargo.takipNo || 'Henüz eklenmedi'}
               </span>
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Pencil size={12} strokeWidth={1.5} />}
                 onClick={() => { setTakipNoGecici(kargo.takipNo || ''); setTakipNoDuzenle(true) }}
-                className="text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1 border border-indigo-200 rounded-lg transition"
               >
-                {kargo.takipNo ? 'Düzenle' : '+ Ekle'}
-              </button>
+                {kargo.takipNo ? 'Düzenle' : 'Ekle'}
+              </Button>
             </>
           )}
         </div>
 
         {/* Gönderen / Alıcı */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
           {[
-            { baslik: '📤 Gönderen', veri: gonderen },
-            { baslik: '📥 Alıcı',    veri: alici },
-          ].map(({ baslik, veri }) => (
-            <div key={baslik} className="rounded-xl p-4" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-              <p className="text-xs font-semibold text-gray-500 mb-2">{baslik}</p>
-              {veri.firma && <p className="text-sm font-semibold text-gray-800">{veri.firma}</p>}
-              {veri.ad && <p className="text-sm text-gray-700">{veri.ad}</p>}
-              {veri.telefon && <p className="text-xs text-gray-400 mt-1">📞 {veri.telefon}</p>}
-              {veri.adres && <p className="text-xs text-gray-400 mt-1">📍 {veri.adres}</p>}
-              {!veri.ad && !veri.firma && <p className="text-xs text-gray-300">Bilgi girilmedi</p>}
+            { baslik: 'Gönderen', icon: ArrowUpRight, veri: gonderen },
+            { baslik: 'Alıcı',    icon: ArrowDownLeft, veri: alici },
+          ].map(({ baslik, icon: IconC, veri }) => (
+            <div
+              key={baslik}
+              style={{
+                padding: 14,
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                <IconC size={12} strokeWidth={1.5} /> {baslik}
+              </p>
+              {veri.firma && <p style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>{veri.firma}</p>}
+              {veri.ad && <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0 }}>{veri.ad}</p>}
+              {veri.telefon && (
+                <p style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                  <Phone size={11} strokeWidth={1.5} /> {veri.telefon}
+                </p>
+              )}
+              {veri.adres && (
+                <p style={{ display: 'flex', alignItems: 'flex-start', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  <MapPin size={11} strokeWidth={1.5} style={{ marginTop: 2, flexShrink: 0 }} /> {veri.adres}
+                </p>
+              )}
+              {!veri.ad && !veri.firma && (
+                <p className="t-caption">Bilgi girilmedi</p>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Meta bilgiler */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-100">
-          {[
-            { etiket: 'Ağırlık', deger: kargo.agirlik ? kargo.agirlik + ' kg' : '—' },
-            { etiket: 'Desi', deger: kargo.desi || '—' },
-            { etiket: 'Ücret', deger: kargo.ucret ? kargo.ucret + ' ₺' : '—' },
-            { etiket: 'Ödeme', deger: { gonderici: 'Gönderici', alici: 'Alıcı', kapida: 'Kapıda' }[kargo.odemeYontemi] || '—' },
-            { etiket: 'Tahmini Teslim', deger: kargo.tahminiTeslim || '—' },
-            { etiket: 'Teslim Tarihi', deger: kargo.teslimTarihi ? new Date(kargo.teslimTarihi).toLocaleDateString('tr-TR') : '—' },
-            { etiket: 'Oluşturan', deger: kargo.olusturanAd || '—' },
-            { etiket: 'Kayıt Tarihi', deger: kargo.olusturmaTarihi ? new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR') : '—' },
-          ].map(({ etiket, deger }) => (
-            <div key={etiket}>
-              <p className="text-xs text-gray-400 mb-0.5">{etiket}</p>
-              <p className="text-sm font-medium text-gray-700">{deger}</p>
+        {/* Meta */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+          {metaBilgiler.map(i => (
+            <div key={i.l}>
+              <div className="t-label" style={{ marginBottom: 4 }}>{i.l}</div>
+              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {i.v}
+              </div>
             </div>
           ))}
         </div>
 
         {/* İlgili kişiler */}
         {ilgiliKullaniciIds.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 mb-2">Bildirim Alan Personel</p>
-            <div className="flex gap-2 flex-wrap">
-              {ilgiliKullaniciIds.map((uid) => {
-                const k = (kullanicilar || []).find((u) => String(u?.id) === String(uid))
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <p className="t-label" style={{ marginBottom: 8 }}>BİLDİRİM ALAN PERSONEL</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {ilgiliKullaniciIds.map(uid => {
+                const k = (kullanicilar || []).find(u => String(u?.id) === String(uid))
                 return k ? (
-                  <div key={uid} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: 'rgba(1,118,211,0.08)', color: 'var(--primary)', border: '1px solid rgba(1,118,211,0.2)' }}>
-                    <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold" style={{ fontSize: 9 }}>{k.ad?.charAt(0) || '?'}</div>
+                  <div
+                    key={uid}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '4px 10px 4px 4px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'var(--brand-primary-soft)',
+                      border: '1px solid var(--border-default)',
+                      font: '500 12px/16px var(--font-sans)',
+                      color: 'var(--brand-primary)',
+                    }}
+                  >
+                    <Avatar name={k.ad} size="xs" />
                     {k.ad}
                   </div>
                 ) : null
@@ -239,164 +307,169 @@ export default function KargoDetay() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Durum İlerleyici (progress bar) */}
+      {/* Durum ilerleyişi */}
       {!['iade'].includes(kargo.durum) && (
-        <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 24px rgba(1,118,211,0.06)' }}>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Kargo İlerleyişi</p>
-          <div className="flex items-center justify-between relative">
-            <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200" style={{ zIndex: 0 }} />
-            {DURUM_LISTESI.filter((d) => d.sira > 0).sort((a, b) => a.sira - b.sira).map((d) => {
+        <Card style={{ marginBottom: 16 }}>
+          <p className="t-label" style={{ marginBottom: 16 }}>KARGO İLERLEYİŞİ</p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 14, left: 14, right: 14, height: 2, background: 'var(--border-default)', zIndex: 0 }} />
+            {DURUM_LISTESI.filter(d => d.sira > 0).sort((a, b) => a.sira - b.sira).map(d => {
               const gecildi = d.sira <= mevcut_sira
               return (
-                <div key={d.id} className="flex flex-col items-center gap-1.5 relative" style={{ zIndex: 1 }}>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all"
-                    style={{
-                      background: gecildi ? d.renk : 'var(--bg-card)',
-                      border: `2px solid ${gecildi ? d.renk : '#e5e7eb'}`,
-                      boxShadow: gecildi ? `0 0 0 3px ${d.renk}30` : 'none',
-                    }}
-                  >
-                    {gecildi ? <span style={{ color: 'white', fontSize: 12 }}>✓</span> : <span style={{ fontSize: 12 }}>{d.ikon}</span>}
+                <div key={d.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative', zIndex: 1, flex: 1 }}>
+                  <div style={{
+                    width: 30, height: 30,
+                    borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: gecildi ? 'var(--brand-primary)' : 'var(--surface-card)',
+                    border: `2px solid ${gecildi ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                  }}>
+                    {gecildi ? <Check size={14} strokeWidth={2.5} style={{ color: '#fff' }} /> : null}
                   </div>
-                  <p className="text-xs text-center font-medium" style={{ color: gecildi ? d.renk : 'var(--text-muted)', maxWidth: 72, lineHeight: 1.2 }}>
+                  <p style={{
+                    font: gecildi ? '600 11px/14px var(--font-sans)' : '500 11px/14px var(--font-sans)',
+                    color: gecildi ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+                    textAlign: 'center',
+                    maxWidth: 80,
+                    margin: 0,
+                  }}>
                     {d.isim}
                   </p>
                 </div>
               )
             })}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Durum Güncelle */}
+      {/* Durum güncelle */}
       {!tamamlandi && (
-        <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 24px rgba(1,118,211,0.06)' }}>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Durum Güncelle</p>
-          <div className="flex gap-2 flex-wrap mb-3">
-            {DURUM_LISTESI.filter((d) => d.id !== kargo.durum).map((d) => (
-              <button
-                key={d.id}
-                onClick={() => setYeniDurum(d.id)}
-                className="text-sm px-3 py-2 rounded-xl font-medium transition flex items-center gap-1.5"
-                style={{
-                  background: yeniDurum === d.id ? d.bg : 'var(--bg-card)',
-                  color: yeniDurum === d.id ? d.renk : 'var(--text-muted)',
-                  border: yeniDurum === d.id ? `2px solid ${d.renk}60` : '2px solid #e5e7eb',
-                  boxShadow: yeniDurum === d.id ? `0 4px 12px ${d.renk}25` : 'none',
-                }}
-              >
-                {d.ikon} {d.isim}
-              </button>
-            ))}
+        <Card style={{ marginBottom: 16 }}>
+          <p className="t-label" style={{ marginBottom: 12 }}>DURUM GÜNCELLE</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: yeniDurum ? 12 : 0 }}>
+            {DURUM_LISTESI.filter(d => d.id !== kargo.durum).map(d => {
+              const active = yeniDurum === d.id
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => setYeniDurum(d.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: active ? 'var(--brand-primary)' : 'var(--surface-card)',
+                    color: active ? '#fff' : 'var(--text-secondary)',
+                    border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                    font: '500 13px/18px var(--font-sans)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {d.isim}
+                </button>
+              )
+            })}
           </div>
           {yeniDurum && (
-            <div className="flex gap-2 items-start">
-              <input
-                type="text"
-                value={durumNot}
-                onChange={(e) => setDurumNot(e.target.value)}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                placeholder="Durum notu (opsiyonel)..."
-              />
-              <button
-                onClick={durumGuncelle}
-                className="text-sm px-5 py-2 rounded-xl text-white font-medium flex-shrink-0 transition"
-                style={{ background: 'var(--primary)' }}
-              >
-                Güncelle
-              </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <Input
+                  value={durumNot}
+                  onChange={e => setDurumNot(e.target.value)}
+                  placeholder="Durum notu (opsiyonel)…"
+                />
+              </div>
+              <Button variant="primary" onClick={durumGuncelle}>Güncelle</Button>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* Durum Geçmişi */}
-      <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 24px rgba(1,118,211,0.06)' }}>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Durum Geçmişi</p>
-        <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-0.5" style={{ background: 'rgba(1,118,211,0.15)' }} />
-          <div className="flex flex-col gap-4">
+      {/* Durum geçmişi */}
+      <Card style={{ marginBottom: 16 }}>
+        <p className="t-label" style={{ marginBottom: 16 }}>DURUM GEÇMİŞİ</p>
+        {durumGecmisi.length === 0 ? (
+          <p className="t-caption">Henüz durum güncellemesi yok.</p>
+        ) : (
+          <div style={{ position: 'relative', paddingLeft: 24 }}>
+            <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
             {[...durumGecmisi].reverse().map((gecmis, i) => {
-              const durumBilgi = DURUM_LISTESI.find((d) => d.id === gecmis.durum)
+              const durumBilgi = DURUM_LISTESI.find(d => d.id === gecmis.durum)
+              const durumT = durumBilgi ? KARGO_DURUM_TONE[durumBilgi.id] : 'neutral'
               return (
-                <div key={i} className="flex gap-4 pl-2 relative">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 relative z-10"
-                    style={{ background: durumBilgi?.bg || '#f1f5f9', border: `2px solid ${durumBilgi?.renk || '#e5e7eb'}30` }}
-                  >
-                    {durumBilgi?.ikon || '•'}
-                  </div>
-                  <div className="flex-1 pb-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold" style={{ color: durumBilgi?.renk || '#374151' }}>
-                        {durumBilgi?.isim || gecmis.durum}
-                      </span>
-                      <span className="text-xs text-gray-400">{gecmis.kullaniciAd}</span>
-                      <span className="text-xs text-gray-300">
+                <div key={i} style={{ position: 'relative', paddingBottom: i < durumGecmisi.length - 1 ? 16 : 0 }}>
+                  <span style={{
+                    position: 'absolute', left: -20, top: 2,
+                    width: 17, height: 17,
+                    borderRadius: '50%',
+                    background: 'var(--surface-card)',
+                    border: '2px solid var(--brand-primary)',
+                  }} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      {durumBilgi && <Badge tone={durumT}>{durumBilgi.isim}</Badge>}
+                      <span className="t-caption">{gecmis.kullaniciAd}</span>
+                      <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {gecmis.tarih ? new Date(gecmis.tarih).toLocaleString('tr-TR') : ''}
                       </span>
                     </div>
                     {gecmis.aciklama && (
-                      <p className="text-xs text-gray-500 mt-0.5">{gecmis.aciklama}</p>
+                      <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0 }}>
+                        {gecmis.aciklama}
+                      </p>
                     )}
                   </div>
                 </div>
               )
             })}
-            {durumGecmisi.length === 0 && (
-              <p className="text-sm text-gray-400 pl-12">Henüz durum güncellemesi yok.</p>
-            )}
           </div>
-        </div>
-      </div>
+        )}
+      </Card>
 
       {/* Notlar */}
-      <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 24px rgba(1,118,211,0.06)' }}>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-          Notlar {notlar.length > 0 && <span className="text-indigo-500">({notlar.length})</span>}
-        </p>
-
-        {notlar.length === 0 && (
-          <p className="text-sm text-gray-400 mb-4">Henüz not eklenmedi.</p>
-        )}
-
-        <div className="flex flex-col gap-3 mb-4">
-          {notlar.map((not, i) => (
-            <div key={not.id || i} className="rounded-xl p-3" style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.1)' }}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold" style={{ fontSize: 10 }}>
-                  {not.kullaniciAd?.charAt(0) || '?'}
+      <Card>
+        <CardTitle>Notlar {notlar.length > 0 && <span style={{ color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums' }}>({notlar.length})</span>}</CardTitle>
+        <div style={{ marginTop: 12 }}>
+          {notlar.length === 0 && <p className="t-caption" style={{ marginBottom: 12 }}>Henüz not eklenmedi.</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {notlar.map((not, i) => (
+              <div
+                key={not.id || i}
+                style={{
+                  padding: 12,
+                  background: 'var(--surface-sunken)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <Avatar name={not.kullaniciAd} size="xs" />
+                  <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{not.kullaniciAd}</span>
+                  <span className="t-caption" style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                    {not.tarih ? new Date(not.tarih).toLocaleString('tr-TR') : ''}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-gray-700">{not.kullaniciAd}</span>
-                <span className="text-xs text-gray-400 ml-auto">{not.tarih ? new Date(not.tarih).toLocaleString('tr-TR') : ''}</span>
+                <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {not.metin}
+                </p>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">{not.metin}</p>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Input
+                value={yeniNot}
+                onChange={e => setYeniNot(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && notEkle()}
+                placeholder="Not ekle…"
+              />
             </div>
-          ))}
+            <Button variant="primary" iconLeft={<Send size={14} strokeWidth={1.5} />} onClick={notEkle} disabled={!yeniNot.trim()}>
+              Ekle
+            </Button>
+          </div>
         </div>
-
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={yeniNot}
-            onChange={(e) => setYeniNot(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && notEkle()}
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="Not ekle..."
-          />
-          <button
-            onClick={notEkle}
-            disabled={!yeniNot.trim()}
-            className="text-sm px-5 py-2 rounded-xl text-white font-medium transition disabled:opacity-40"
-            style={{ background: 'var(--primary)' }}
-          >
-            Ekle
-          </button>
-        </div>
-      </div>
+      </Card>
     </div>
   )
 }

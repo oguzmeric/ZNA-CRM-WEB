@@ -1,27 +1,27 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import {
+  ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2,
+} from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { kargolariGetir } from '../services/kargoService'
+import { Button, Card, Badge, EmptyState } from '../components/ui'
 
-// ─── Sabitler ────────────────────────────────────────────────────────────────
 const TIP = {
-  gorusme: { label: 'Görüşme', ikon: '📞', bg: '#e8f4fd', text: '#0176D3', dot: '#0176D3' },
-  gorev:   { label: 'Görev',   ikon: '✅', bg: '#ecfdf5', text: '#047857', dot: '#10b981' },
-  servis:  { label: 'Servis',  ikon: '🛎️', bg: '#fffbeb', text: '#b45309', dot: '#f59e0b' },
-  kargo:   { label: 'Kargo',   ikon: '📦', bg: '#f0f4ff', text: '#3730a3', dot: '#6366f1' },
+  gorusme: { label: 'Görüşme', C: Phone,       softBg: 'var(--info-soft)',    fg: 'var(--info)',    dot: 'var(--info)' },
+  gorev:   { label: 'Görev',   C: CheckSquare, softBg: 'var(--success-soft)', fg: 'var(--success)', dot: 'var(--success)' },
+  servis:  { label: 'Servis',  C: Wrench,      softBg: 'var(--warning-soft)', fg: 'var(--warning)', dot: 'var(--warning)' },
+  kargo:   { label: 'Kargo',   C: Truck,       softBg: 'var(--brand-primary-soft)', fg: 'var(--brand-primary)', dot: 'var(--brand-primary)' },
 }
 
 const AYLAR  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
 const GUNLER = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz']
 
-function dtStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-}
+const dtStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
-function haftaBasi(d) {
+const haftaBasi = (d) => {
   const c = new Date(d)
   const day = c.getDay()
   c.setDate(c.getDate() + (day === 0 ? -6 : 1 - day))
@@ -51,10 +51,9 @@ function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar) {
   return evs
 }
 
-// ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export default function Takvim() {
   const navigate = useNavigate()
-  const today = new Date(); today.setHours(0,0,0,0)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
   const todayStr = dtStr(today)
 
   const [mod,        setMod]        = useState('ay')
@@ -68,15 +67,8 @@ export default function Takvim() {
 
   useEffect(() => {
     setYukleniyor(true)
-    Promise.all([
-      gorusmeleriGetir(),
-      gorevleriGetir(),
-      servisTalepleriniGetir(),
-      kargolariGetir(),
-    ])
-      .then(([gorusmeler, gorevler, servisTalepleri, kargolar]) => {
-        setEvs(etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar))
-      })
+    Promise.all([gorusmeleriGetir(), gorevleriGetir(), servisTalepleriniGetir(), kargolariGetir()])
+      .then(([g, gr, s, k]) => setEvs(etkinlikleriDonustur(g, gr, s, k)))
       .catch(() => {})
       .finally(() => setYukleniyor(false))
   }, [])
@@ -123,7 +115,10 @@ export default function Takvim() {
     if (mod === 'ay') { if (ay === 11) { setAy(0); setYil(y => y+1) } else setAy(a => a+1) }
     else setHaftaIlk(h => { const n = new Date(h); n.setDate(n.getDate()+7); return n })
   }
-  const goToday = () => { setYil(today.getFullYear()); setAy(today.getMonth()); setHaftaIlk(haftaBasi(today)); setSecilenGun(todayStr) }
+  const goToday = () => {
+    setYil(today.getFullYear()); setAy(today.getMonth())
+    setHaftaIlk(haftaBasi(today)); setSecilenGun(todayStr)
+  }
 
   const navTitle = mod === 'ay'
     ? `${AYLAR[ay]} ${yil}`
@@ -137,352 +132,407 @@ export default function Takvim() {
   const buAyEvs = filtreliEvs.filter(e => e.tarih >= ayBaslangic && e.tarih <= aySonu)
 
   return (
-    <div className="p-6">
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* ── Başlık ── */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Takvim</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {filtreliEvs.length} etkinlik · {buAyEvs.length} bu ay
+          <h1 className="t-h1">Takvim</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            <span className="tabular-nums">{filtreliEvs.length}</span> etkinlik · <span className="tabular-nums">{buAyEvs.length}</span> bu ay
           </p>
         </div>
 
-        {/* Mod seçici */}
-        <div className="flex rounded overflow-hidden border border-gray-200">
+        <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
           {[{ id: 'ay', l: 'Aylık' }, { id: 'hafta', l: 'Haftalık' }].map(m => (
-            <button key={m.id} onClick={() => setMod(m.id)}
-              className="px-4 py-1.5 text-xs font-medium transition-all"
+            <button
+              key={m.id}
+              onClick={() => setMod(m.id)}
               style={{
-                background: mod === m.id ? 'var(--primary)' : 'var(--bg-card)',
-                color: mod === m.id ? 'white' : '#706e6b',
-              }}>
+                padding: '6px 14px',
+                borderRadius: 'calc(var(--radius-sm) - 2px)',
+                background: mod === m.id ? 'var(--surface-card)' : 'transparent',
+                boxShadow: mod === m.id ? 'var(--shadow-sm)' : 'none',
+                color: mod === m.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer',
+                font: '500 13px/18px var(--font-sans)',
+              }}
+            >
               {m.l}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Filtreler + Navigasyon (tek satır) ── */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-
-        {/* Filtre chip'leri */}
-        <div className="flex gap-1.5 flex-wrap">
+      {/* Filter chip'leri + navigasyon */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {Object.entries(TIP).map(([tip, meta]) => {
             const on = filtreler.includes(tip)
             const sayi = evs.filter(e => e.tip === tip).length
+            const IconC = meta.C
             return (
-              <button key={tip} onClick={() => toggleFiltre(tip)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-all border"
+              <button
+                key={tip}
+                onClick={() => toggleFiltre(tip)}
                 style={{
-                  background: on ? meta.bg : 'var(--bg-card)',
-                  color: on ? meta.text : 'var(--text-muted)',
-                  borderColor: on ? meta.dot + '60' : '#e5e7eb',
-                }}>
-                <span style={{ fontSize: '11px' }}>{meta.ikon}</span>
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: on ? meta.softBg : 'var(--surface-card)',
+                  color: on ? meta.fg : 'var(--text-tertiary)',
+                  border: `1px solid ${on ? meta.dot : 'var(--border-default)'}`,
+                  font: '500 12px/16px var(--font-sans)',
+                  cursor: 'pointer',
+                  transition: 'all 120ms',
+                }}
+              >
+                <IconC size={12} strokeWidth={1.5} />
                 {meta.label}
-                <span className="ml-0.5 opacity-50">({sayi})</span>
+                <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums' }}>({sayi})</span>
               </button>
             )
           })}
         </div>
 
-        {/* Navigasyon */}
-        <div className="flex items-center gap-2">
-          <button onClick={prev}
-            className="w-7 h-7 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition text-base"
-            style={{ lineHeight: 1 }}>
-            ‹
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={prev}
+            aria-label="Önceki"
+            style={{
+              width: 32, height: 32,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+          >
+            <ChevronLeft size={16} strokeWidth={1.5} />
           </button>
-          <span className="text-sm font-semibold text-gray-700 min-w-36 text-center">{navTitle}</span>
-          <button onClick={goToday}
-            className="text-xs px-2.5 py-1 rounded border font-medium transition-all hover:bg-blue-50"
-            style={{ borderColor: 'var(--primary)', color: 'var(--primary)', background: 'var(--bg-card)' }}>
-            Bugün
-          </button>
-          <button onClick={next}
-            className="w-7 h-7 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition text-base"
-            style={{ lineHeight: 1 }}>
-            ›
+          <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', minWidth: 160, textAlign: 'center' }}>
+            {navTitle}
+          </span>
+          <Button variant="secondary" size="sm" onClick={goToday}>Bugün</Button>
+          <button
+            onClick={next}
+            aria-label="Sonraki"
+            style={{
+              width: 32, height: 32,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+          >
+            <ChevronRight size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>
 
-      {/* ── Ana İçerik ── */}
-      <div className="flex gap-4 items-start">
+      {/* Ana içerik */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
         {/* Takvim kartı */}
-        <div className="flex-1 min-w-0 bg-white rounded border border-gray-200 overflow-hidden">
-
-          {/* Yükleniyor */}
+        <Card padding={0} style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           {yukleniyor && (
-            <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
-              <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
-              <span className="text-sm">Yükleniyor…</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80, gap: 8, color: 'var(--text-tertiary)' }}>
+              <Loader2 size={20} strokeWidth={1.5} style={{ animation: 'spin 1s linear infinite' }} />
+              <span className="t-body">Yükleniyor…</span>
             </div>
           )}
 
-          {/* Gün başlıkları + Takvim içeriği */}
-          {!yukleniyor && <>
-          <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
-            {GUNLER.map((g, i) => (
-              <div key={g} className="py-2 text-center text-xs font-semibold uppercase tracking-wider"
-                style={{ color: i >= 5 ? '#f43f5e' : '#9ca3af' }}>
-                {g}
+          {!yukleniyor && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--surface-sunken)', borderBottom: '1px solid var(--border-default)' }}>
+                {GUNLER.map((g, i) => (
+                  <div key={g} style={{
+                    padding: '10px 8px', textAlign: 'center',
+                    font: '600 11px/16px var(--font-sans)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: i >= 5 ? 'var(--danger)' : 'var(--text-tertiary)',
+                  }}>
+                    {g}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* ── AYLIK GÖRÜNÜM ── */}
-          {mod === 'ay' && (
-            <div className="grid grid-cols-7">
-              {ayGrid.map((cell, i) => {
-                const str = `${cell.y}-${String(cell.m+1).padStart(2,'0')}-${String(cell.d).padStart(2,'0')}`
-                const dayEvs  = evsMap[str] || []
-                const isToday = str === todayStr
-                const isSel   = str === secilenGun
-                const isWknd  = (i % 7) >= 5
-                const row     = Math.floor(i / 7)
-                const totalRows = Math.floor(ayGrid.length / 7)
+              {/* AYLIK */}
+              {mod === 'ay' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {ayGrid.map((cell, i) => {
+                    const str = `${cell.y}-${String(cell.m+1).padStart(2,'0')}-${String(cell.d).padStart(2,'0')}`
+                    const dayEvs  = evsMap[str] || []
+                    const isToday = str === todayStr
+                    const isSel   = str === secilenGun
+                    const row     = Math.floor(i / 7)
+                    const totalRows = Math.floor(ayGrid.length / 7)
 
-                return (
-                  <div key={i}
-                    onClick={() => setSecilenGun(isSel ? null : str)}
-                    className="cursor-pointer transition-colors"
-                    style={{
-                      minHeight: '80px',
-                      padding: '6px 6px 4px',
-                      borderBottom: row < totalRows-1 ? '1px solid #f3f4f6' : 'none',
-                      borderRight:  i % 7 < 6        ? '1px solid #f3f4f6' : 'none',
-                      background: isSel
-                        ? '#e8f4fd'
-                        : isToday
-                        ? '#f0f8ff'
-                        : cell.out
-                        ? '#fafafa'
-                        : isWknd
-                        ? '#fdfcfc'
-                        : 'var(--bg-card)',
-                    }}
-                  >
-                    {/* Gün numarası */}
-                    <div className="flex items-center justify-between mb-1">
-                      <span
-                        className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full"
-                        style={
-                          isToday
-                            ? { background: 'var(--primary)', color: 'white' }
-                            : { color: cell.out ? '#d1d5db' : isWknd ? '#f43f5e' : '#374151' }
-                        }>
-                        {cell.d}
-                      </span>
-                      {dayEvs.length > 2 && (
-                        <span className="text-xs text-gray-400" style={{ fontSize: '10px' }}>+{dayEvs.length-2}</span>
-                      )}
-                    </div>
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setSecilenGun(isSel ? null : str)}
+                        style={{
+                          minHeight: 88,
+                          padding: '6px 6px 4px',
+                          borderBottom: row < totalRows-1 ? '1px solid var(--border-default)' : 'none',
+                          borderRight:  i % 7 < 6        ? '1px solid var(--border-default)' : 'none',
+                          background: isSel ? 'var(--brand-primary-soft)'
+                            : isToday ? 'var(--brand-primary-soft)'
+                            : cell.out ? 'var(--surface-sunken)'
+                            : 'var(--surface-card)',
+                          cursor: 'pointer',
+                          transition: 'background 120ms',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{
+                            width: 22, height: 22,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: '50%',
+                            font: '600 12px/1 var(--font-sans)',
+                            fontVariantNumeric: 'tabular-nums',
+                            background: isToday ? 'var(--brand-primary)' : 'transparent',
+                            color: isToday ? '#fff' : cell.out ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                          }}>
+                            {cell.d}
+                          </span>
+                          {dayEvs.length > 2 && (
+                            <span style={{ font: '500 10px/1 var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                              +{dayEvs.length-2}
+                            </span>
+                          )}
+                        </div>
 
-                    {/* Etkinlik chip'leri */}
-                    <div className="space-y-0.5">
-                      {dayEvs.slice(0, 2).map(ev => {
-                        const t = TIP[ev.tip]
-                        return (
-                          <div key={ev.id}
-                            onClick={e => { e.stopPropagation(); navigate(ev.link) }}
-                            className="truncate font-medium hover:opacity-75 transition-opacity cursor-pointer"
-                            style={{
-                              fontSize: '10px',
-                              lineHeight: '16px',
-                              padding: '0 4px',
-                              borderRadius: '3px',
-                              background: t.bg,
-                              color: t.text,
-                            }}
-                            title={ev.baslik}>
-                            {ev.baslik}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* ── HAFTALIK GÖRÜNÜM ── */}
-          {mod === 'hafta' && (
-            <div className="grid grid-cols-7 divide-x divide-gray-100">
-              {haftaGunler.map(({ d, str }) => {
-                const dayEvs  = evsMap[str] || []
-                const isToday = str === todayStr
-                const isSel   = str === secilenGun
-                const dow     = d.getDay()
-                const isWknd  = dow === 0 || dow === 6
-
-                return (
-                  <div key={str}
-                    onClick={() => setSecilenGun(isSel ? null : str)}
-                    className="cursor-pointer transition-colors"
-                    style={{
-                      minHeight: '220px',
-                      background: isSel ? '#e8f4fd' : isToday ? '#f0f8ff' : isWknd ? '#fdfcfc' : 'var(--bg-card)',
-                    }}
-                  >
-                    {/* Gün başlığı */}
-                    <div className="text-center py-2 px-1 border-b border-gray-100"
-                      style={{ background: isSel ? 'rgba(1,118,211,0.1)' : isToday ? 'rgba(1,118,211,0.06)' : '#fafafa' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-1"
-                        style={{ color: isWknd ? '#f43f5e' : '#9ca3af' }}>
-                        {GUNLER[dow === 0 ? 6 : dow-1]}
-                      </p>
-                      <span
-                        className="text-base font-bold w-8 h-8 flex items-center justify-center rounded-full mx-auto"
-                        style={
-                          isToday
-                            ? { background: 'var(--primary)', color: 'white' }
-                            : { color: isWknd ? '#f43f5e' : '#374151' }
-                        }>
-                        {d.getDate()}
-                      </span>
-                      {dayEvs.length > 0 && (
-                        <span className="mt-0.5 text-xs block" style={{ color: 'var(--primary)', fontSize: '10px' }}>
-                          {dayEvs.length} etkinlik
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Etkinlikler */}
-                    <div className="p-1.5 space-y-1">
-                      {dayEvs.map(ev => {
-                        const t = TIP[ev.tip]
-                        return (
-                          <div key={ev.id}
-                            onClick={e => { e.stopPropagation(); navigate(ev.link) }}
-                            className="cursor-pointer hover:opacity-80 transition-opacity rounded"
-                            style={{ background: t.bg, borderLeft: `3px solid ${t.dot}`, padding: '4px 6px' }}>
-                            <p className="font-semibold truncate" style={{ fontSize: '11px', color: t.text }}>
-                              {ev.baslik}
-                            </p>
-                            {ev.alt && (
-                              <p className="truncate" style={{ fontSize: '10px', color: '#9ca3af' }}>{ev.alt}</p>
-                            )}
-                          </div>
-                        )
-                      })}
-                      {dayEvs.length === 0 && (
-                        <p className="text-center pt-4 text-gray-300" style={{ fontSize: '11px' }}>—</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          </>}
-        </div>
-
-        {/* ── YAN PANEL ── */}
-        <AnimatePresence>
-          {secilenGun && (
-            <motion.div
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.15 }}
-              className="flex-shrink-0"
-              style={{ width: 240 }}
-            >
-              <div className="bg-white rounded border border-gray-200 overflow-hidden sticky top-4">
-
-                {/* Panel başlığı */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      {new Date(secilenGun+'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                    </p>
-                    <p className="text-xs text-gray-400 capitalize">
-                      {new Date(secilenGun+'T12:00:00').toLocaleDateString('tr-TR', { weekday: 'long' })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {secilenGun === todayStr && (
-                      <span className="text-xs px-1.5 py-0.5 rounded text-white" style={{ background: 'var(--primary)', fontSize: '10px' }}>
-                        Bugün
-                      </span>
-                    )}
-                    <button onClick={() => setSecilenGun(null)}
-                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition text-gray-400 text-base">
-                      ×
-                    </button>
-                  </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {dayEvs.slice(0, 2).map(ev => {
+                            const t = TIP[ev.tip]
+                            return (
+                              <div
+                                key={ev.id}
+                                onClick={e => { e.stopPropagation(); navigate(ev.link) }}
+                                title={ev.baslik}
+                                style={{
+                                  font: '500 10px/16px var(--font-sans)',
+                                  padding: '0 6px',
+                                  borderRadius: 2,
+                                  background: t.softBg,
+                                  color: t.fg,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {ev.baslik}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
+              )}
 
-                {/* Etkinlik listesi */}
-                <div className="p-3">
-                  {secilenEvs.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <p className="text-2xl mb-2">📭</p>
-                      <p className="text-xs text-gray-400">Bu gün için etkinlik yok</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {secilenEvs.map(ev => {
-                        const t = TIP[ev.tip]
-                        return (
-                          <button key={ev.id}
-                            onClick={() => navigate(ev.link)}
-                            className="w-full text-left rounded transition-all hover:opacity-80"
-                            style={{ background: t.bg, borderLeft: `3px solid ${t.dot}`, padding: '8px 10px' }}>
-                            <div className="flex items-start gap-1.5">
-                              <span style={{ fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>{t.ikon}</span>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold truncate" style={{ color: t.text }}>
+              {/* HAFTALIK */}
+              {mod === 'hafta' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {haftaGunler.map(({ d, str }, i) => {
+                    const dayEvs  = evsMap[str] || []
+                    const isToday = str === todayStr
+                    const isSel   = str === secilenGun
+                    const dow     = d.getDay()
+                    const isWknd  = dow === 0 || dow === 6
+                    return (
+                      <div
+                        key={str}
+                        onClick={() => setSecilenGun(isSel ? null : str)}
+                        style={{
+                          minHeight: 240,
+                          background: isSel ? 'var(--brand-primary-soft)'
+                            : isToday ? 'var(--brand-primary-soft)'
+                            : 'var(--surface-card)',
+                          borderRight: i < 6 ? '1px solid var(--border-default)' : 'none',
+                          cursor: 'pointer',
+                          transition: 'background 120ms',
+                        }}
+                      >
+                        <div style={{
+                          textAlign: 'center', padding: '8px 4px',
+                          borderBottom: '1px solid var(--border-default)',
+                          background: 'var(--surface-sunken)',
+                        }}>
+                          <div className="t-label" style={{ marginBottom: 4, color: isWknd ? 'var(--danger)' : 'var(--text-tertiary)' }}>
+                            {GUNLER[dow === 0 ? 6 : dow-1]}
+                          </div>
+                          <span style={{
+                            width: 28, height: 28,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: '50%',
+                            font: '600 14px/1 var(--font-sans)',
+                            fontVariantNumeric: 'tabular-nums',
+                            background: isToday ? 'var(--brand-primary)' : 'transparent',
+                            color: isToday ? '#fff' : isWknd ? 'var(--danger)' : 'var(--text-primary)',
+                          }}>
+                            {d.getDate()}
+                          </span>
+                          {dayEvs.length > 0 && (
+                            <div style={{ font: '400 11px/1 var(--font-sans)', color: 'var(--brand-primary)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                              {dayEvs.length} etkinlik
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {dayEvs.map(ev => {
+                            const t = TIP[ev.tip]
+                            return (
+                              <div
+                                key={ev.id}
+                                onClick={e => { e.stopPropagation(); navigate(ev.link) }}
+                                style={{
+                                  background: t.softBg,
+                                  borderLeft: `3px solid ${t.dot}`,
+                                  padding: '4px 6px',
+                                  borderRadius: 2,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <div style={{ font: '500 11px/14px var(--font-sans)', color: t.fg, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {ev.baslik}
-                                </p>
+                                </div>
                                 {ev.alt && (
-                                  <p className="text-xs text-gray-400 truncate mt-0.5">{ev.alt}</p>
+                                  <div style={{ font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {ev.alt}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                            )
+                          })}
+                          {dayEvs.length === 0 && (
+                            <p style={{ textAlign: 'center', padding: '12px 0', font: '400 11px/1 var(--font-sans)', color: 'var(--text-tertiary)' }}>—</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-
-                {/* Özet */}
-                {secilenEvs.length > 0 && (
-                  <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-1">
-                    <div className="pt-2 grid grid-cols-2 gap-1">
-                      {Object.entries(TIP).map(([tip, meta]) => {
-                        const sayi = secilenEvs.filter(e => e.tip === tip).length
-                        if (!sayi) return null
-                        return (
-                          <div key={tip} className="flex items-center gap-1" style={{ fontSize: '11px' }}>
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: meta.dot }} />
-                            <span className="text-gray-400">{meta.label}</span>
-                            <span className="font-bold ml-auto" style={{ color: meta.text }}>{sayi}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+              )}
+            </>
           )}
-        </AnimatePresence>
+        </Card>
+
+        {/* Yan panel */}
+        {secilenGun && (
+          <Card padding={0} style={{ width: 260, flexShrink: 0, overflow: 'hidden', position: 'sticky', top: 16 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: 'var(--surface-sunken)',
+              borderBottom: '1px solid var(--border-default)',
+            }}>
+              <div>
+                <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                  {new Date(secilenGun + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+                </div>
+                <div className="t-caption" style={{ textTransform: 'capitalize' }}>
+                  {new Date(secilenGun + 'T12:00:00').toLocaleDateString('tr-TR', { weekday: 'long' })}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {secilenGun === todayStr && <Badge tone="brand">Bugün</Badge>}
+                <button
+                  aria-label="Kapat"
+                  onClick={() => setSecilenGun(null)}
+                  style={{
+                    width: 24, height: 24,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-tertiary)', borderRadius: 'var(--radius-sm)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                >
+                  <X size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: 12 }}>
+              {secilenEvs.length === 0 ? (
+                <EmptyState icon={<Inbox size={24} strokeWidth={1.5} />} title="Bu gün için etkinlik yok" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {secilenEvs.map(ev => {
+                    const t = TIP[ev.tip]
+                    const IconC = t.C
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => navigate(ev.link)}
+                        style={{
+                          textAlign: 'left',
+                          background: t.softBg,
+                          borderLeft: `3px solid ${t.dot}`,
+                          border: 'none',
+                          padding: '8px 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'flex-start', gap: 6,
+                        }}
+                      >
+                        <IconC size={13} strokeWidth={1.5} style={{ color: t.fg, flexShrink: 0, marginTop: 1 }} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ font: '500 12px/16px var(--font-sans)', color: t.fg, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ev.baslik}
+                          </div>
+                          {ev.alt && (
+                            <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {ev.alt}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {secilenEvs.length > 0 && (
+              <div style={{ padding: '8px 12px 12px', borderTop: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                  {Object.entries(TIP).map(([tip, meta]) => {
+                    const sayi = secilenEvs.filter(e => e.tip === tip).length
+                    if (!sayi) return null
+                    return (
+                      <div key={tip} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot }} />
+                        <span style={{ color: 'var(--text-tertiary)' }}>{meta.label}</span>
+                        <span style={{ marginLeft: 'auto', color: meta.fg, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{sayi}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
 
-      {/* Renk açıklaması */}
-      <div className="flex gap-4 mt-2 px-1">
+      {/* Açıklama */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 12, padding: '0 4px' }}>
         {Object.entries(TIP).map(([tip, meta]) => (
-          <div key={tip} className="flex items-center gap-1 text-xs text-gray-400">
-            <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: meta.dot }} />
+          <div key={tip} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: meta.dot }} />
             {meta.label}
           </div>
         ))}

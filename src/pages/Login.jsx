@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { Button, Input, Label } from '../components/ui'
 
 function Login() {
   const [kullaniciAdi, setKullaniciAdi] = useState('')
@@ -14,7 +16,7 @@ function Login() {
     if (basarili) {
       navigate('/dashboard')
     } else {
-      setHata('Kullanıcı adı veya şifre hatalı!')
+      setHata('Kullanıcı adı veya şifre hatalı.')
     }
   }
 
@@ -23,69 +25,105 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center relative overflow-hidden">
-
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'var(--surface-bg)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
       <img
         src="/logo.jpeg"
         alt=""
+        aria-hidden
         style={{
           position: 'absolute',
-          top: '50%',
-          left: '50%',
+          top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '75%',
-          height: '75%',
+          width: '60%', height: '60%',
           objectFit: 'contain',
-          opacity: 0.04,
+          opacity: 0.03,
           pointerEvents: 'none',
           userSelect: 'none',
         }}
       />
 
-      <div className="relative z-10 bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
-
-        <div className="flex justify-center mb-5">
-          <img src="/logo.jpeg" alt="ZNA Logo" className="h-14 object-contain" />
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: 400,
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--shadow-md)',
+          padding: 32,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <img src="/logo.jpeg" alt="ZNA Logo" style={{ height: 48, objectFit: 'contain' }} />
         </div>
 
-        <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">ZNA CRM</h1>
-        <p className="text-gray-400 text-sm mb-6 text-center">Devam etmek için giriş yapın</p>
+        <h1 style={{ font: '600 20px/28px var(--font-sans)', color: 'var(--text-primary)', textAlign: 'center', margin: '0 0 4px' }}>
+          ZNA CRM
+        </h1>
+        <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', textAlign: 'center', margin: '0 0 24px' }}>
+          Devam etmek için giriş yapın
+        </p>
 
-        <div className="mb-4">
-          <label className="text-sm text-gray-600 mb-1 block">Kullanıcı Adı</label>
-          <input
+        <div style={{ marginBottom: 16 }}>
+          <Label htmlFor="login-user">Kullanıcı adı</Label>
+          <Input
+            id="login-user"
             type="text"
             value={kullaniciAdi}
             onChange={(e) => setKullaniciAdi(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="kullanici_adi"
+            autoComplete="username"
           />
         </div>
 
-        <div className="mb-4">
-          <label className="text-sm text-gray-600 mb-1 block">Şifre</label>
-          <input
+        <div style={{ marginBottom: 16 }}>
+          <Label htmlFor="login-pass">Şifre</Label>
+          <Input
+            id="login-pass"
             type="password"
             value={sifre}
             onChange={(e) => setSifre(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="••••••••"
+            autoComplete="current-password"
           />
         </div>
 
         {hata && (
-          <p className="text-red-500 text-sm mb-4">{hata}</p>
+          <div
+            role="alert"
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              padding: '10px 12px',
+              background: 'var(--danger-soft)',
+              border: '1px solid var(--danger-border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--danger)',
+              font: '400 13px/18px var(--font-sans)',
+              marginBottom: 16,
+            }}
+          >
+            <AlertTriangle size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>{hata}</span>
+          </div>
         )}
 
-        <button
-          onClick={handleGiris}
-          className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 transition"
-        >
+        <Button variant="primary" onClick={handleGiris} style={{ width: '100%', justifyContent: 'center' }}>
           Giriş Yap
-        </button>
-
+        </Button>
       </div>
     </div>
   )

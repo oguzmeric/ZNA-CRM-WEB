@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Plus, Pencil, Trash2, Phone, Mail, MapPin, Receipt, ArrowRight } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -7,6 +8,10 @@ import { firmalariGetir, firmaEkle, firmaGuncelle, firmaSil as dbFirmaSil } from
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { lisanslariGetir } from '../services/lisansService'
+import {
+  Button, SearchInput, Input, Label,
+  Card, Badge, CodeBadge, Avatar, EmptyState,
+} from '../components/ui'
 
 const sektorler = [
   'Teknoloji', 'Güvenlik', 'İnşaat', 'Sağlık', 'Eğitim',
@@ -14,27 +19,8 @@ const sektorler = [
 ]
 
 const bosForm = {
-  firmaAdi: '',
-  vergiNo: '',
-  sektor: '',
-  telefon: '',
-  email: '',
-  adres: '',
-  sehir: '',
-  notlar: '',
-}
-
-const sektorRenk = {
-  'Teknoloji': '#0176D3',
-  'Güvenlik': '#ef4444',
-  'İnşaat': '#f59e0b',
-  'Sağlık': '#10b981',
-  'Eğitim': '#3b82f6',
-  'Üretim': '#014486',
-  'Lojistik': '#ec4899',
-  'Finans': '#14b8a6',
-  'Perakende': '#f97316',
-  'Diğer': '#6b7280',
+  firmaAdi: '', vergiNo: '', sektor: '', telefon: '', email: '',
+  adres: '', sehir: '', notlar: '',
 }
 
 function Firmalar() {
@@ -58,58 +44,37 @@ function Firmalar() {
     lisanslariGetir().then(setLisanslar)
   }, [])
 
-  if (yukleniyor) return <div className="p-6 text-center text-gray-400">Yükleniyor...</div>
+  const firmaKoduOlustur = (mevcut) => `FRM-${String(mevcut.length + 1).padStart(4, '0')}`
 
-  const firmaKoduOlustur = (mevcutFirmalar) => {
-    const sayi = mevcutFirmalar.length + 1
-    return `FRM-${String(sayi).padStart(4, '0')}`
-  }
-
-  const firmaIstatistik = (firmaAdi) => {
-    return {
-      gorusme: gorusmeler.filter((g) => g.firmaAdi === firmaAdi).length,
-      teklif: teklifler.filter((t) => t.firmaAdi === firmaAdi).length,
-      lisans: lisanslar.filter((l) => l.firmaAdi === firmaAdi).length,
-      kabulTeklif: teklifler.filter((t) => t.firmaAdi === firmaAdi && t.onayDurumu === 'kabul').length,
-    }
-  }
+  const firmaIstatistik = (firmaAdi) => ({
+    gorusme: gorusmeler.filter(g => g.firmaAdi === firmaAdi).length,
+    teklif:  teklifler.filter(t => t.firmaAdi === firmaAdi).length,
+    lisans:  lisanslar.filter(l => l.firmaAdi === firmaAdi).length,
+    kabul:   teklifler.filter(t => t.firmaAdi === firmaAdi && t.onayDurumu === 'kabul').length,
+  })
 
   const kaydet = async () => {
-    if (!form.firmaAdi) {
-      alert('Firma adı zorunludur!')
-      return
-    }
+    if (!form.firmaAdi) { toast.error('Firma adı zorunludur.'); return }
     if (duzenleId) {
       const guncellendi = await firmaGuncelle(duzenleId, form)
       if (guncellendi) setFirmalar(prev => prev.map(f => f.id === duzenleId ? guncellendi : f))
       toast.success('Firma güncellendi.')
       setDuzenleId(null)
     } else {
-      const yeni = await firmaEkle({
-        ...form,
-        kod: firmaKoduOlustur(firmalar),
-        olusturmaTarih: new Date().toISOString(),
-      })
+      const yeni = await firmaEkle({ ...form, kod: firmaKoduOlustur(firmalar), olusturmaTarih: new Date().toISOString() })
       if (yeni) setFirmalar(prev => [yeni, ...prev])
       toast.success('Firma kaydedildi.')
     }
-    setForm(bosForm)
-    setGoster(false)
+    setForm(bosForm); setGoster(false)
   }
 
   const duzenleAc = (f) => {
     setForm({
-      firmaAdi: f.firmaAdi,
-      vergiNo: f.vergiNo || '',
-      sektor: f.sektor || '',
-      telefon: f.telefon || '',
-      email: f.email || '',
-      adres: f.adres || '',
-      sehir: f.sehir || '',
-      notlar: f.notlar || '',
+      firmaAdi: f.firmaAdi, vergiNo: f.vergiNo || '', sektor: f.sektor || '',
+      telefon: f.telefon || '', email: f.email || '', adres: f.adres || '',
+      sehir: f.sehir || '', notlar: f.notlar || '',
     })
-    setDuzenleId(f.id)
-    setGoster(true)
+    setDuzenleId(f.id); setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -117,9 +82,7 @@ function Firmalar() {
     const onay = await confirm({
       baslik: 'Firmayı Sil',
       mesaj: 'Bu firmayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
-      onayMetin: 'Evet, Sil',
-      iptalMetin: 'Vazgeç',
-      tip: 'tehlikeli',
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
     await dbFirmaSil(id)
@@ -127,254 +90,205 @@ function Firmalar() {
     toast.success('Firma silindi.')
   }
 
-  const gorunenFirmalar = firmalar.filter((f) =>
-    arama === '' ||
-    (f.firmaAdi || '').toLowerCase().includes(arama.toLowerCase()) ||
-    (f.kod || '').toLowerCase().includes(arama.toLowerCase()) ||
-    (f.vergiNo || '').toLowerCase().includes(arama.toLowerCase()) ||
-    (f.sektor || '').toLowerCase().includes(arama.toLowerCase()) ||
-    (f.sehir || '').toLowerCase().includes(arama.toLowerCase())
-  )
+  const gorunenFirmalar = firmalar.filter(f => {
+    if (!arama) return true
+    const q = arama.toLowerCase()
+    return [f.firmaAdi, f.kod, f.vergiNo, f.sektor, f.sehir]
+      .some(v => (v || '').toLowerCase().includes(q))
+  })
+
+  if (yukleniyor) {
+    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  }
 
   return (
-    <div className="p-6">
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* Başlık */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Firmalar</h2>
-          <p className="text-sm text-gray-400 mt-1">{firmalar.length} firma kayıtlı</p>
+          <h1 className="t-h1">Firmalar</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            <span className="tabular-nums">{firmalar.length}</span> firma kayıtlı
+          </p>
         </div>
-        <button
-          onClick={() => { setGoster(true); setDuzenleId(null); setForm(bosForm) }}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          + Yeni Firma
-        </button>
+        <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => { setGoster(true); setDuzenleId(null); setForm(bosForm) }}>
+          Yeni firma
+        </Button>
       </div>
 
       {/* Arama */}
-      <div className="mb-6">
-        <input
-          type="text"
+      <div style={{ marginBottom: 16, maxWidth: 560 }}>
+        <SearchInput
           value={arama}
-          onChange={(e) => setArama(e.target.value)}
-          placeholder="Firma adı, kod, vergi no, sektör veya şehir ara..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={e => setArama(e.target.value)}
+          placeholder="Firma adı, kod, vergi no, sektör veya şehir ara…"
         />
       </div>
 
       {/* Form */}
       {goster && (
-        <div className="bg-white rounded-xl p-6 mb-6 border border-blue-100 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">
+        <Card style={{ marginBottom: 16 }}>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>
             {duzenleId ? 'Firmayı Düzenle' : 'Yeni Firma'}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Firma Adı *</label>
-              <input
-                type="text"
-                value={form.firmaAdi}
-                onChange={(e) => setForm({ ...form, firmaAdi: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="BTM Health A.Ş."
-              />
+              <Label required>Firma adı</Label>
+              <Input value={form.firmaAdi} onChange={e => setForm({ ...form, firmaAdi: e.target.value })} placeholder="BTM Health A.Ş." />
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Vergi No</label>
-              <input
-                type="text"
-                value={form.vergiNo}
-                onChange={(e) => setForm({ ...form, vergiNo: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="1234567890"
-              />
+              <Label>Vergi no</Label>
+              <Input value={form.vergiNo} onChange={e => setForm({ ...form, vergiNo: e.target.value })} placeholder="1234567890" />
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Sektör</label>
-              <CustomSelect
-                value={form.sektor}
-                onChange={(e) => setForm({ ...form, sektor: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Seçin...</option>
-                {sektorler.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <Label>Sektör</Label>
+              <CustomSelect value={form.sektor} onChange={e => setForm({ ...form, sektor: e.target.value })}>
+                <option value="">Seçin…</option>
+                {sektorler.map(s => <option key={s} value={s}>{s}</option>)}
               </CustomSelect>
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Telefon</label>
-              <input
-                type="text"
-                value={form.telefon}
-                onChange={(e) => setForm({ ...form, telefon: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0212 000 00 00"
-              />
+              <Label>Telefon</Label>
+              <Input value={form.telefon} onChange={e => setForm({ ...form, telefon: e.target.value })} placeholder="0212 000 00 00" />
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">E-posta</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="info@firma.com"
-              />
+              <Label>E-posta</Label>
+              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="info@firma.com" />
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Şehir</label>
-              <input
-                type="text"
-                value={form.sehir}
-                onChange={(e) => setForm({ ...form, sehir: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="İstanbul"
-              />
+              <Label>Şehir</Label>
+              <Input value={form.sehir} onChange={e => setForm({ ...form, sehir: e.target.value })} placeholder="İstanbul" />
             </div>
-            <div className="md:col-span-2">
-              <label className="text-sm text-gray-600 mb-1 block">Adres</label>
-              <input
-                type="text"
-                value={form.adres}
-                onChange={(e) => setForm({ ...form, adres: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Mahalle, sokak, no..."
-              />
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Adres</Label>
+              <Input value={form.adres} onChange={e => setForm({ ...form, adres: e.target.value })} placeholder="Mahalle, sokak, no…" />
             </div>
             <div>
-              <label className="text-sm text-gray-600 mb-1 block">Notlar</label>
-              <input
-                type="text"
-                value={form.notlar}
-                onChange={(e) => setForm({ ...form, notlar: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Kısa not..."
-              />
+              <Label>Notlar</Label>
+              <Input value={form.notlar} onChange={e => setForm({ ...form, notlar: e.target.value })} placeholder="Kısa not…" />
             </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={kaydet}
-              className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              {duzenleId ? 'Güncelle' : 'Kaydet'}
-            </button>
-            <button
-              onClick={() => { setGoster(false); setForm(bosForm); setDuzenleId(null) }}
-              className="text-sm px-5 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
-            >
-              İptal
-            </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="primary" onClick={kaydet}>{duzenleId ? 'Güncelle' : 'Kaydet'}</Button>
+            <Button variant="secondary" onClick={() => { setGoster(false); setForm(bosForm); setDuzenleId(null) }}>İptal</Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Firma listesi */}
-      {gorunenFirmalar.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-4xl mb-3">🏢</p>
-          <p className="text-gray-400 text-sm">
-            {arama ? 'Arama sonucu bulunamadı.' : 'Henüz firma eklenmedi.'}
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {gorunenFirmalar.map((f) => {
-          const istat = firmaIstatistik(f.firmaAdi)
-          const renk = sektorRenk[f.sektor] || '#0176D3'
-
-          return (
-            <div
-              key={f.id}
-              className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-100 transition-all"
-              onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(f.firmaAdi)}`)}
-            >
-              {/* Üst renkli şerit */}
-              <div className="h-1 w-full" style={{ background: renk }} />
-
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-base font-bold flex-shrink-0"
-                      style={{ background: renk }}
-                    >
-                      {f.firmaAdi?.charAt(0) || '?'}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">{f.firmaAdi}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs font-mono text-gray-400">{f.kod}</span>
-                        {f.sektor && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-                            {f.sektor}
-                          </span>
-                        )}
+      {/* Grid */}
+      {gorunenFirmalar.length === 0 ? (
+        <EmptyState
+          title={arama ? 'Arama sonucu bulunamadı' : 'Henüz firma eklenmedi'}
+          description={arama ? 'Farklı bir arama terimi deneyin.' : 'Üstteki butonla ilk firmayı ekleyebilirsin.'}
+        />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 12 }}>
+          {gorunenFirmalar.map(f => {
+            const istat = firmaIstatistik(f.firmaAdi)
+            return (
+              <Card
+                key={f.id}
+                onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(f.firmaAdi)}`)}
+                style={{ cursor: 'pointer', transition: 'border-color 120ms, box-shadow 120ms' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                    <Avatar name={f.firmaAdi} size="md" />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {f.firmaAdi}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                        {f.kod && <CodeBadge>{f.kod}</CodeBadge>}
+                        {f.sektor && <Badge tone="neutral">{f.sektor}</Badge>}
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <button
+                      aria-label="Düzenle"
                       onClick={() => duzenleAc(f)}
-                      className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition text-gray-500"
+                      style={{
+                        width: 32, height: 32,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'transparent',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                     >
-                      ✏️
+                      <Pencil size={14} strokeWidth={1.5} />
                     </button>
                     <button
+                      aria-label="Sil"
                       onClick={() => firmaSil(f.id)}
-                      className="text-xs px-2 py-1.5 rounded-lg border border-red-100 hover:bg-red-50 transition text-red-400"
+                      style={{
+                        width: 32, height: 32,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'transparent',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                     >
-                      🗑️
+                      <Trash2 size={14} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
 
-                {/* İletişim bilgileri */}
-                <div className="flex flex-wrap gap-3 mb-4 text-xs text-gray-400">
-                  {f.telefon && <span>📞 {f.telefon}</span>}
-                  {f.email && <span>✉️ {f.email}</span>}
-                  {f.sehir && <span>📍 {f.sehir}</span>}
-                  {f.vergiNo && <span>🧾 {f.vergiNo}</span>}
+                {/* İletişim */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  {f.telefon && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontVariantNumeric: 'tabular-nums' }}><Phone size={11} strokeWidth={1.5} />{f.telefon}</span>}
+                  {f.email && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Mail size={11} strokeWidth={1.5} />{f.email}</span>}
+                  {f.sehir && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={11} strokeWidth={1.5} />{f.sehir}</span>}
+                  {f.vergiNo && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontVariantNumeric: 'tabular-nums' }}><Receipt size={11} strokeWidth={1.5} />{f.vergiNo}</span>}
                 </div>
 
                 {f.notlar && (
-                  <p className="text-xs text-gray-400 italic mb-4 line-clamp-1">{f.notlar}</p>
+                  <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', marginBottom: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {f.notlar}
+                  </p>
                 )}
 
-                {/* İstatistikler */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex gap-4">
-                    <div className="text-center">
-                      <p className="text-base font-bold text-blue-500">{istat.gorusme}</p>
-                      <p className="text-xs text-gray-400">Görüşme</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-base font-bold text-blue-700">{istat.teklif}</p>
-                      <p className="text-xs text-gray-400">Teklif</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-base font-bold text-green-500">{istat.kabulTeklif}</p>
-                      <p className="text-xs text-gray-400">Kabul</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-base font-bold text-indigo-600">{istat.lisans}</p>
-                      <p className="text-xs text-gray-400">Lisans</p>
-                    </div>
+                {/* İstatistik + "Geçmişi gör" */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    {[
+                      { d: istat.gorusme, l: 'Görüşme' },
+                      { d: istat.teklif,  l: 'Teklif' },
+                      { d: istat.kabul,   l: 'Kabul', success: istat.kabul > 0 },
+                      { d: istat.lisans,  l: 'Lisans' },
+                    ].map((i, idx) => (
+                      <div key={idx} style={{ textAlign: 'center' }}>
+                        <div style={{
+                          font: '600 16px/1 var(--font-sans)',
+                          color: i.success ? 'var(--success)' : 'var(--text-primary)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {i.d}
+                        </div>
+                        <div style={{ font: '400 11px/1 var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{i.l}</div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-xs font-medium text-blue-600 px-3 py-1 rounded-lg bg-blue-50">
-                    Geçmişi Gör →
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--brand-primary)', font: '500 12px/18px var(--font-sans)' }}>
+                    Geçmişi gör <ArrowRight size={14} strokeWidth={1.5} />
                   </span>
                 </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

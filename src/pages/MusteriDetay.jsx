@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import {
+  ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
+  Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
+  CheckCircle2,
+} from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { musteriGetir, musteriGuncelle, musterileriGetir } from '../services/musteriService'
@@ -10,16 +15,33 @@ import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
 import { gorevleriGetir } from '../services/gorevService'
+import {
+  Button, Input, Textarea, Label,
+  Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState, SegmentedControl,
+} from '../components/ui'
 
-const durumRenkMap = {
-  aktif: { bg: 'rgba(16,185,129,0.1)', color: '#10b981', isim: 'Aktif' },
-  lead:  { bg: 'rgba(1,118,211,0.1)',   color: '#0176D3', isim: 'Lead' },
-  pasif: { bg: 'rgba(107,114,128,0.1)', color: '#6b7280', isim: 'Pasif' },
-  kayip: { bg: 'rgba(239,68,68,0.1)',   color: '#ef4444', isim: 'Kayıp' },
+const durumMap = {
+  aktif: { tone: 'aktif', isim: 'Aktif' },
+  lead:  { tone: 'lead',  isim: 'Lead' },
+  pasif: { tone: 'pasif', isim: 'Pasif' },
+  kayip: { tone: 'kayip', isim: 'Kayıp' },
 }
 
-const bosKisi  = { ad: '', soyad: '', unvan: '', telefon: '', email: '', anaKisi: false }
-const bosLok   = { ad: '', adres: '', notlar: '', aktif: true }
+const bosKisi = { ad: '', soyad: '', unvan: '', telefon: '', email: '', anaKisi: false }
+const bosLok  = { ad: '', adres: '', notlar: '', aktif: true }
+
+const TIMELINE_ICONS = {
+  gorusme: Phone,
+  teklif:  FileText,
+  fatura:  Receipt,
+  gorev:   CheckSquare,
+}
+const TIMELINE_RENK = {
+  gorusme: 'var(--info)',
+  teklif:  'var(--brand-primary)',
+  fatura:  'var(--success)',
+  gorev:   'var(--warning)',
+}
 
 function MusteriDetay() {
   const { id } = useParams()
@@ -29,28 +51,23 @@ function MusteriDetay() {
   const { confirm } = useConfirm()
   const lokasyonBolumRef = useRef(null)
 
-  // Yeni müşteri oluşturulduktan hemen sonra mı gelindi?
   const yeniOlusturuldu = location.state?.yeniMusteri === true
 
   const [musteri, setMusteri]       = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [aktifSekme, setAktifSekme] = useState('hepsi')
 
-  // İlgili kişiler (musteri_kisiler tablosu)
-  const [kisiler, setKisiler]             = useState([])
-  const [kisiForm, setKisiForm]           = useState(null)
+  const [kisiler, setKisiler]       = useState([])
+  const [kisiForm, setKisiForm]     = useState(null)
   const [kisiKaydediliyor, setKisiKaydediliyor] = useState(false)
 
-  // Firma düzenleme
   const [duzenleForm, setDuzenleForm] = useState(null)
   const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
 
-  // Alt lokasyonlar (musteri_lokasyonlari tablosu)
-  const [lokasyonlar, setLokasyonlar]         = useState([])
-  const [lokasyonForm, setLokasyonForm]       = useState(null)
+  const [lokasyonlar, setLokasyonlar]   = useState([])
+  const [lokasyonForm, setLokasyonForm] = useState(null)
   const [lokKaydediliyor, setLokKaydediliyor] = useState(false)
 
-  // Supabase aktivite verileri
   const [gorusmeler, setGorusmeler] = useState([])
   const [teklifler, setTeklifler]   = useState([])
   const [satislar, setSatislar]     = useState([])
@@ -68,9 +85,7 @@ function MusteriDetay() {
         satislariGetir(),
         gorevleriGetir(),
       ])
-      setMusteri(m)
-      setKisiler(k)
-      setLokasyonlar(l)
+      setMusteri(m); setKisiler(k); setLokasyonlar(l)
       if (m?.firma) {
         const firma = m.firma.toLowerCase().trim()
         setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
@@ -79,7 +94,6 @@ function MusteriDetay() {
         setGorevler((gv || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
       }
       setYukleniyor(false)
-      // Yeni müşteri oluşturulduysa kişi formunu hemen aç ve lokasyon bölümüne scroll et
       if (yeniOlusturuldu) {
         setKisiForm({ ...bosKisi })
         setTimeout(() => lokasyonBolumRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400)
@@ -88,50 +102,47 @@ function MusteriDetay() {
     yukle()
   }, [id])
 
-  if (yukleniyor) return <div className="p-6 text-center text-gray-400">Yükleniyor...</div>
+  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
 
   if (!musteri) return (
-    <div className="p-6 text-center text-gray-400">
-      <p className="text-4xl mb-3">🏢</p>
-      <p>Müşteri bulunamadı</p>
-      <button onClick={() => navigate('/musteriler')} className="mt-4 text-blue-500 text-sm">← Müşterilere dön</button>
+    <div style={{ padding: 24 }}>
+      <EmptyState
+        icon={<Building2 size={32} strokeWidth={1.5} />}
+        title="Müşteri bulunamadı"
+        action={
+          <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/musteriler')}>
+            Müşterilere dön
+          </Button>
+        }
+      />
     </div>
   )
 
-  const dr = durumRenkMap[musteri.durum] || durumRenkMap.aktif
+  const durum = durumMap[musteri.durum] || durumMap.aktif
 
-  // ── İlgili Kişi CRUD ──────────────────────────────────────────
+  // ── CRUD ──
   const kisiKaydet = async () => {
     if (!kisiForm.ad?.trim()) { toast.error('Ad zorunludur.'); return }
     setKisiKaydediliyor(true)
     try {
       if (kisiForm.id) {
-        const guncellendi = await musteriKisiGuncelle(kisiForm.id, kisiForm)
-        setKisiler(prev => prev.map(k => k.id === kisiForm.id ? guncellendi : (kisiForm.anaKisi ? { ...k, anaKisi: false } : k)))
+        const g = await musteriKisiGuncelle(kisiForm.id, kisiForm)
+        setKisiler(prev => prev.map(k => k.id === kisiForm.id ? g : (kisiForm.anaKisi ? { ...k, anaKisi: false } : k)))
         toast.success('Kişi güncellendi.')
       } else {
-        const yeni = await musteriKisiEkle({ ...kisiForm, musteriId: Number(id) })
-        setKisiler(prev => [
-          ...(kisiForm.anaKisi ? prev.map(k => ({ ...k, anaKisi: false })) : prev),
-          yeni,
-        ])
+        const y = await musteriKisiEkle({ ...kisiForm, musteriId: Number(id) })
+        setKisiler(prev => [...(kisiForm.anaKisi ? prev.map(k => ({ ...k, anaKisi: false })) : prev), y])
         toast.success('Kişi eklendi.')
       }
       setKisiForm(null)
-    } catch {
-      toast.error('Kaydedilemedi.')
-    } finally {
-      setKisiKaydediliyor(false)
-    }
+    } catch { toast.error('Kaydedilemedi.') }
+    finally { setKisiKaydediliyor(false) }
   }
 
   const kisiSil = async (kisiId) => {
     const onay = await confirm({
-      baslik: 'Kişiyi Sil',
-      mesaj: 'Bu ilgili kişi silinecek. Emin misiniz?',
-      onayMetin: 'Evet, Sil',
-      iptalMetin: 'Vazgeç',
-      tip: 'tehlikeli',
+      baslik: 'Kişiyi Sil', mesaj: 'Bu ilgili kişi silinecek. Emin misiniz?',
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
     await musteriKisiSil(kisiId)
@@ -139,35 +150,28 @@ function MusteriDetay() {
     toast.success('Kişi silindi.')
   }
 
-  // ── Alt Lokasyon CRUD ──────────────────────────────────────────
   const lokasyonKaydet = async () => {
     if (!lokasyonForm.ad?.trim()) { toast.error('Lokasyon adı zorunludur.'); return }
     setLokKaydediliyor(true)
     try {
       if (lokasyonForm.id) {
-        const guncellendi = await musteriLokasyonGuncelle(lokasyonForm.id, lokasyonForm)
-        setLokasyonlar(prev => prev.map(l => l.id === lokasyonForm.id ? guncellendi : l))
+        const g = await musteriLokasyonGuncelle(lokasyonForm.id, lokasyonForm)
+        setLokasyonlar(prev => prev.map(l => l.id === lokasyonForm.id ? g : l))
         toast.success('Lokasyon güncellendi.')
       } else {
-        const yeni = await musteriLokasyonEkle({ ...lokasyonForm, musteriId: Number(id) })
-        setLokasyonlar(prev => [...prev, yeni])
+        const y = await musteriLokasyonEkle({ ...lokasyonForm, musteriId: Number(id) })
+        setLokasyonlar(prev => [...prev, y])
         toast.success('Lokasyon eklendi.')
       }
       setLokasyonForm(null)
-    } catch {
-      toast.error('Kaydedilemedi.')
-    } finally {
-      setLokKaydediliyor(false)
-    }
+    } catch { toast.error('Kaydedilemedi.') }
+    finally { setLokKaydediliyor(false) }
   }
 
   const lokasyonSil = async (lokId) => {
     const onay = await confirm({
-      baslik: 'Lokasyonu Sil',
-      mesaj: 'Bu lokasyon silinecek. Emin misiniz?',
-      onayMetin: 'Evet, Sil',
-      iptalMetin: 'Vazgeç',
-      tip: 'tehlikeli',
+      baslik: 'Lokasyonu Sil', mesaj: 'Bu lokasyon silinecek. Emin misiniz?',
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
     await musteriLokasyonSil(lokId)
@@ -175,678 +179,613 @@ function MusteriDetay() {
     toast.success('Lokasyon silindi.')
   }
 
-  // ── Firma Bilgileri Düzenleme ──────────────────────────────────
   const duzenleBaslat = () => {
     setDuzenleForm({
-      firma: musteri.firma || '',
-      kod: musteri.kod || '',
-      sehir: musteri.sehir || '',
-      vergiNo: musteri.vergiNo || '',
-      telefon: musteri.telefon || '',
-      email: musteri.email || '',
-      durum: musteri.durum || 'aktif',
-      notlar: musteri.notlar || '',
+      firma: musteri.firma || '', kod: musteri.kod || '', sehir: musteri.sehir || '',
+      vergiNo: musteri.vergiNo || '', telefon: musteri.telefon || '', email: musteri.email || '',
+      durum: musteri.durum || 'aktif', notlar: musteri.notlar || '',
     })
   }
 
   const duzenleKaydet = async () => {
     if (!duzenleForm.firma?.trim()) { toast.error('Firma adı zorunludur.'); return }
-    if (!duzenleForm.kod?.trim()) { toast.error('Müşteri kodu zorunludur.'); return }
-
+    if (!duzenleForm.kod?.trim())   { toast.error('Müşteri kodu zorunludur.'); return }
     setDuzenleKaydediliyor(true)
     try {
-      // Kod değiştirilmişse benzersizlik kontrolü
       if (duzenleForm.kod.trim() !== musteri.kod) {
-        const tumMusteriler = await musterileriGetir()
-        const cakisma = (tumMusteriler || []).find(
-          m => m.kod === duzenleForm.kod.trim() && m.id !== Number(id)
-        )
-        if (cakisma) {
-          toast.error(`Bu kod zaten kullanılıyor: ${cakisma.firma}`)
-          setDuzenleKaydediliyor(false)
-          return
-        }
+        const tum = await musterileriGetir()
+        const cakisma = (tum || []).find(m => m.kod === duzenleForm.kod.trim() && m.id !== Number(id))
+        if (cakisma) { toast.error(`Bu kod zaten kullanılıyor: ${cakisma.firma}`); setDuzenleKaydediliyor(false); return }
       }
-
-      const guncellendi = await musteriGuncelle(Number(id), {
-        ...duzenleForm,
-        kod: duzenleForm.kod.trim(),
-        firma: duzenleForm.firma.trim(),
-      })
-      if (guncellendi) {
-        setMusteri(prev => ({ ...prev, ...guncellendi }))
-        setDuzenleForm(null)
-        toast.success('Firma bilgileri güncellendi.')
-      } else {
-        toast.error('Güncellenemedi.')
-      }
-    } catch (e) {
-      console.error('duzenleKaydet hata:', e)
-      toast.error(e?.message || 'Güncellenemedi.')
-    } finally {
-      setDuzenleKaydediliyor(false)
-    }
+      const g = await musteriGuncelle(Number(id), { ...duzenleForm, kod: duzenleForm.kod.trim(), firma: duzenleForm.firma.trim() })
+      if (g) { setMusteri(prev => ({ ...prev, ...g })); setDuzenleForm(null); toast.success('Firma bilgileri güncellendi.') }
+      else   { toast.error('Güncellenemedi.') }
+    } catch (e) { toast.error(e?.message || 'Güncellenemedi.') }
+    finally { setDuzenleKaydediliyor(false) }
   }
 
-  // ── Finansal özet ─────────────────────────────────────────────
-  const toplam  = satislar.reduce((s, f) => s + (f.genelToplam || 0), 0)
-  const tahsil  = satislar.reduce((s, f) => s + (f.odenenToplam || 0), 0)
-  const kalan   = toplam - tahsil
-  const bugun   = new Date(); bugun.setHours(0,0,0,0)
+  // ── Finansal özet ──
+  const toplam = satislar.reduce((s, f) => s + (f.genelToplam || 0), 0)
+  const tahsil = satislar.reduce((s, f) => s + (f.odenenToplam || 0), 0)
+  const kalan  = toplam - tahsil
+  const bugun  = new Date(); bugun.setHours(0, 0, 0, 0)
   const geciken = satislar
     .filter(f => f.durum === 'gonderildi' && f.vadeTarihi && new Date(f.vadeTarihi) < bugun)
-    .reduce((s, f) => s + ((f.genelToplam||0) - (f.odenenToplam||0)), 0)
-  const fmt = n => (n||0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+    .reduce((s, f) => s + ((f.genelToplam || 0) - (f.odenenToplam || 0)), 0)
+  const fmt = n => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
 
-  // ── Timeline ──────────────────────────────────────────────────
+  // ── Timeline ──
   const tumOlaylar = [
-    ...gorusmeler.map(g => ({
-      id: `g-${g.id}`, tip: 'gorusme', tarih: g.tarih,
-      baslik: g.konu, detay: `Görüşen: ${g.gorusen || '—'}`,
-      ikon: '📞', renk: '#3b82f6', hedef: `/gorusmeler/${g.id}`,
-    })),
-    ...teklifler.map(t => ({
-      id: `t-${t.id}`, tip: 'teklif', tarih: t.tarih,
-      baslik: t.konu || t.teklifNo,
-      detay: `${t.teklifNo} · ${fmt(t.genelToplam)} ₺`,
-      ikon: '📋', renk: '#0176D3', hedef: `/teklifler/${t.id}`,
-    })),
-    ...satislar.map(s => ({
-      id: `s-${s.id}`, tip: 'fatura', tarih: s.faturaTarihi,
-      baslik: s.faturaNo, detay: `${fmt(s.genelToplam)} ₺`,
-      ikon: '🧾', renk: '#10b981', hedef: `/satislar/${s.id}`,
-    })),
-    ...gorevler.map(g => ({
-      id: `gv-${g.id}`, tip: 'gorev', tarih: g.olusturmaTarih?.split('T')[0] || '',
-      baslik: g.baslik, detay: g.aciklama || '—',
-      ikon: '✅', renk: '#f59e0b', hedef: `/gorevler/${g.id}`,
-    })),
+    ...gorusmeler.map(g => ({ id: `g-${g.id}`, tip: 'gorusme', tarih: g.tarih, baslik: g.konu, detay: `Görüşen: ${g.gorusen || '—'}`, hedef: `/gorusmeler/${g.id}` })),
+    ...teklifler.map(t => ({ id: `t-${t.id}`, tip: 'teklif', tarih: t.tarih, baslik: t.konu || t.teklifNo, detay: `${t.teklifNo} · ${fmt(t.genelToplam)} ₺`, hedef: `/teklifler/${t.id}` })),
+    ...satislar.map(s => ({ id: `s-${s.id}`, tip: 'fatura', tarih: s.faturaTarihi, baslik: s.faturaNo, detay: `${fmt(s.genelToplam)} ₺`, hedef: `/satislar/${s.id}` })),
+    ...gorevler.map(g => ({ id: `gv-${g.id}`, tip: 'gorev', tarih: g.olusturmaTarih?.split('T')[0] || '', baslik: g.baslik, detay: g.aciklama || '—', hedef: `/gorevler/${g.id}` })),
   ].sort((a, b) => new Date(b.tarih) - new Date(a.tarih))
 
-  const filtreliOlaylar = aktifSekme === 'hepsi'
-    ? tumOlaylar
-    : tumOlaylar.filter(o => o.tip === aktifSekme)
+  const filtreliOlaylar = aktifSekme === 'hepsi' ? tumOlaylar : tumOlaylar.filter(o => o.tip === aktifSekme)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
 
       {/* Geri */}
       <button
         onClick={() => navigate('/musteriler')}
-        className="text-sm text-gray-400 hover:text-blue-600 mb-6 flex items-center gap-1 transition"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16, transition: 'color 120ms',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
       >
-        ← Müşterilere Dön
+        <ArrowLeft size={14} strokeWidth={1.5} /> Müşterilere dön
       </button>
 
-      {/* ── Yeni Müşteri Banner ── */}
+      {/* Yeni müşteri banner */}
       {yeniOlusturuldu && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3">
-          <span className="text-xl">🎉</span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">Müşteri oluşturuldu!</p>
-            <p className="text-xs text-green-600 mt-0.5">Aşağıdan ilgili kişiler ve alt lokasyonlar ekleyebilirsiniz. Bunlar mobil uygulamada da görünecek.</p>
-          </div>
-        </div>
+        <Alert
+          variant="success"
+          title="Müşteri oluşturuldu"
+          style={{ marginBottom: 16 }}
+        >
+          Aşağıdan ilgili kişiler ve alt lokasyonlar ekleyebilirsiniz. Bunlar mobil uygulamada da görünecek.
+        </Alert>
       )}
 
-      {/* ── Ana Başlık Kartı ── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
-        <div className="h-1.5" style={{ background: 'var(--primary)' }} />
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0"
-                style={{ background: 'var(--primary)' }}
-              >
-                🏢
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">{musteri.firma || '—'}</h2>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-xs px-2.5 py-0.5 rounded-full font-medium" style={{ background: dr.bg, color: dr.color }}>
-                    {dr.isim}
+      {/* Ana başlık kartı */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+            <Avatar name={musteri.firma || musteri.ad} size="lg" />
+            <div style={{ minWidth: 0 }}>
+              <h1 className="t-h1" style={{ marginBottom: 6 }}>{musteri.firma || '—'}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Badge tone={durum.tone}>{durum.isim}</Badge>
+                {musteri.kod && <CodeBadge>{musteri.kod}</CodeBadge>}
+                {musteri.sehir && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                    <MapPin size={11} strokeWidth={1.5} /> {musteri.sehir}
                   </span>
-                  {musteri.kod && (
-                    <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {musteri.kod}
-                    </span>
-                  )}
-                  {musteri.sehir && (
-                    <span className="text-xs text-gray-400">📍 {musteri.sehir}</span>
-                  )}
-                  {musteri.vergiNo && (
-                    <span className="text-xs text-gray-400">VKN: {musteri.vergiNo}</span>
-                  )}
-                </div>
+                )}
+                {musteri.vergiNo && (
+                  <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                    VKN: {musteri.vergiNo}
+                  </span>
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={duzenleBaslat}
-                className="text-sm px-4 py-2 rounded-xl text-white transition font-medium"
-                style={{ background: 'var(--primary)' }}
-              >
-                ✏️ Düzenle
-              </button>
-              <button
-                onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}
-                className="text-sm px-4 py-2 rounded-xl border transition font-medium"
-                style={{ color: 'var(--primary)', borderColor: 'rgba(1,118,211,0.3)' }}
-              >
-                📋 Firma Geçmişi
-              </button>
             </div>
           </div>
-          {musteri.notlar && !duzenleForm && (
-            <div className="mt-4 px-4 py-3 rounded-xl text-sm text-gray-600 bg-blue-50 border border-blue-100 whitespace-pre-wrap">
-              📝 {musteri.notlar}
-            </div>
-          )}
-
-          {/* ── Firma Bilgileri Düzenleme Formu ── */}
-          {duzenleForm && (
-            <div className="mt-5 pt-5 border-t border-gray-100">
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-3">
-                Firma Bilgilerini Düzenle
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                <div className="md:col-span-2">
-                  <label className="text-xs text-gray-500 mb-1 block">Firma Adı *</label>
-                  <input
-                    type="text"
-                    value={duzenleForm.firma}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, firma: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Müşteri Kodu *</label>
-                  <input
-                    type="text"
-                    value={duzenleForm.kod}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, kod: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="BAS-0001"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Durum</label>
-                  <CustomSelect
-                    value={duzenleForm.durum}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, durum: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="aktif">Aktif</option>
-                    <option value="lead">Lead</option>
-                    <option value="pasif">Pasif</option>
-                    <option value="kayip">Kayıp</option>
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Telefon</label>
-                  <input
-                    type="text"
-                    value={duzenleForm.telefon}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, telefon: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">E-posta</label>
-                  <input
-                    type="email"
-                    value={duzenleForm.email}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Şehir / İlçe</label>
-                  <input
-                    type="text"
-                    value={duzenleForm.sehir}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, sehir: e.target.value }))}
-                    placeholder="İstanbul · Başakşehir"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Vergi No</label>
-                  <input
-                    type="text"
-                    value={duzenleForm.vergiNo}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, vergiNo: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs text-gray-500 mb-1 block">Notlar</label>
-                  <textarea
-                    value={duzenleForm.notlar}
-                    onChange={e => setDuzenleForm(prev => ({ ...prev, notlar: e.target.value }))}
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="Adres, müşteri notları..."
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={duzenleKaydet}
-                  disabled={duzenleKaydediliyor}
-                  className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition"
-                  style={{ background: 'var(--primary)', opacity: duzenleKaydediliyor ? 0.7 : 1 }}
-                >
-                  {duzenleKaydediliyor ? 'Kaydediliyor...' : '💾 Kaydet'}
-                </button>
-                <button
-                  onClick={() => setDuzenleForm(null)}
-                  className="px-4 py-1.5 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                >
-                  İptal
-                </button>
-              </div>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
+            <Button variant="primary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={duzenleBaslat}>
+              Düzenle
+            </Button>
+            <Button variant="secondary" iconLeft={<FileText size={14} strokeWidth={1.5} />} onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}>
+              Firma geçmişi
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* ── İlgili Kişiler ── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-700">
-            👥 İlgili Kişiler
-            <span className="ml-2 text-xs font-normal text-gray-400">({kisiler.length})</span>
-          </h3>
+        {musteri.notlar && !duzenleForm && (
+          <div style={{
+            marginTop: 16,
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--brand-primary-soft)',
+            border: '1px solid var(--border-default)',
+            font: '400 13px/20px var(--font-sans)',
+            color: 'var(--text-secondary)',
+            whiteSpace: 'pre-wrap',
+          }}>
+            {musteri.notlar}
+          </div>
+        )}
+
+        {/* Düzenle formu */}
+        {duzenleForm && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border-default)' }}>
+            <p className="t-label" style={{ marginBottom: 12 }}>FİRMA BİLGİLERİNİ DÜZENLE</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label required>Firma adı</Label>
+                <Input value={duzenleForm.firma} onChange={e => setDuzenleForm(p => ({ ...p, firma: e.target.value }))} />
+              </div>
+              <div>
+                <Label required>Müşteri kodu</Label>
+                <Input value={duzenleForm.kod} onChange={e => setDuzenleForm(p => ({ ...p, kod: e.target.value }))} style={{ fontFamily: 'var(--font-mono)' }} placeholder="BAS-0001" />
+              </div>
+              <div>
+                <Label>Durum</Label>
+                <CustomSelect value={duzenleForm.durum} onChange={e => setDuzenleForm(p => ({ ...p, durum: e.target.value }))}>
+                  <option value="aktif">Aktif</option>
+                  <option value="lead">Lead</option>
+                  <option value="pasif">Pasif</option>
+                  <option value="kayip">Kayıp</option>
+                </CustomSelect>
+              </div>
+              <div>
+                <Label>Telefon</Label>
+                <Input value={duzenleForm.telefon} onChange={e => setDuzenleForm(p => ({ ...p, telefon: e.target.value }))} />
+              </div>
+              <div>
+                <Label>E-posta</Label>
+                <Input type="email" value={duzenleForm.email} onChange={e => setDuzenleForm(p => ({ ...p, email: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Şehir / ilçe</Label>
+                <Input value={duzenleForm.sehir} onChange={e => setDuzenleForm(p => ({ ...p, sehir: e.target.value }))} placeholder="İstanbul · Başakşehir" />
+              </div>
+              <div>
+                <Label>Vergi no</Label>
+                <Input value={duzenleForm.vergiNo} onChange={e => setDuzenleForm(p => ({ ...p, vergiNo: e.target.value }))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Notlar</Label>
+                <Textarea value={duzenleForm.notlar} onChange={e => setDuzenleForm(p => ({ ...p, notlar: e.target.value }))} rows={3} placeholder="Adres, müşteri notları…" />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} onClick={duzenleKaydet} disabled={duzenleKaydediliyor}>
+                {duzenleKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDuzenleForm(null)}>İptal</Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* İlgili kişiler */}
+      <Card padding={0} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+            <h2 className="t-h2" style={{ margin: 0 }}>İlgili Kişiler</h2>
+            <span className="t-caption tabular-nums">({kisiler.length})</span>
+          </div>
           {!kisiForm && (
-            <button
-              onClick={() => setKisiForm({ ...bosKisi })}
-              className="text-xs px-3 py-1.5 rounded-lg text-white font-medium transition"
-              style={{ background: 'var(--primary)' }}
-            >
-              + Kişi Ekle
-            </button>
+            <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setKisiForm({ ...bosKisi })}>
+              Kişi ekle
+            </Button>
           )}
         </div>
 
-        {/* Kişi formu */}
         {kisiForm && (
-          <div className="px-5 py-4 border-b border-gray-100 bg-blue-50">
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-3">
-              {kisiForm.id ? 'Kişiyi Düzenle' : 'Yeni Kişi Ekle'}
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+            <p className="t-label" style={{ marginBottom: 12 }}>{kisiForm.id ? 'KİŞİYİ DÜZENLE' : 'YENİ KİŞİ EKLE'}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
               {[
-                { key: 'ad',      label: 'Ad *',    placeholder: 'Ad' },
-                { key: 'soyad',   label: 'Soyad',   placeholder: 'Soyad' },
-                { key: 'unvan',   label: 'Unvan',   placeholder: 'Satın Alma Müdürü' },
+                { key: 'ad',      label: 'Ad', required: true, placeholder: 'Ad' },
+                { key: 'soyad',   label: 'Soyad', placeholder: 'Soyad' },
+                { key: 'unvan',   label: 'Unvan', placeholder: 'Satın Alma Müdürü' },
                 { key: 'telefon', label: 'Telefon', placeholder: '0532 000 00 00' },
-                { key: 'email',   label: 'E-Posta', placeholder: 'kisi@firma.com' },
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-                  <input
-                    type="text"
-                    value={kisiForm[key]}
-                    onChange={e => setKisiForm(prev => ({ ...prev, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+                { key: 'email',   label: 'E-posta', placeholder: 'kisi@firma.com' },
+              ].map(f => (
+                <div key={f.key}>
+                  <Label required={f.required}>{f.label}</Label>
+                  <Input value={kisiForm[f.key]} onChange={e => setKisiForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} />
                 </div>
               ))}
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                   <input
                     type="checkbox"
                     checked={kisiForm.anaKisi}
-                    onChange={e => setKisiForm(prev => ({ ...prev, anaKisi: e.target.checked }))}
-                    className="w-4 h-4 rounded text-blue-600"
+                    onChange={e => setKisiForm(p => ({ ...p, anaKisi: e.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
                   />
-                  <span className="text-xs text-gray-600 font-medium">⭐ Ana Kişi</span>
+                  <Star size={14} strokeWidth={1.5} /> Ana kişi
                 </label>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={kisiKaydet}
-                disabled={kisiKaydediliyor}
-                className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition"
-                style={{ background: 'var(--primary)', opacity: kisiKaydediliyor ? 0.7 : 1 }}
-              >
-                {kisiKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-              <button
-                onClick={() => setKisiForm(null)}
-                className="px-4 py-1.5 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-              >
-                İptal
-              </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" onClick={kisiKaydet} disabled={kisiKaydediliyor}>
+                {kisiKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+              </Button>
+              <Button variant="secondary" onClick={() => setKisiForm(null)}>İptal</Button>
             </div>
           </div>
         )}
 
-        {/* Kişi listesi */}
         {kisiler.length === 0 && !kisiForm ? (
-          <div className="px-5 py-8 text-center text-gray-400 text-sm">
-            Henüz ilgili kişi eklenmedi.
-            <br />
-            <button
-              onClick={() => setKisiForm({ ...bosKisi })}
-              className="mt-2 text-blue-500 hover:underline text-xs"
-            >
-              + İlk kişiyi ekle
-            </button>
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<Users size={28} strokeWidth={1.5} />}
+              title="Henüz ilgili kişi eklenmedi"
+              action={<Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setKisiForm({ ...bosKisi })}>İlk kişiyi ekle</Button>}
+            />
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div>
             {kisiler.map(kisi => (
-              <div key={kisi.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                  style={{ background: kisi.anaKisi ? '#f59e0b' : 'var(--primary)' }}
-                >
-                  {kisi.ad?.charAt(0)?.toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                    {kisi.ad} {kisi.soyad}
-                    {kisi.anaKisi && <span className="text-xs bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full">⭐ Ana Kişi</span>}
-                    {kisi.unvan && <span className="text-xs text-gray-400 font-normal">· {kisi.unvan}</span>}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {kisi.telefon && <span className="text-xs text-gray-400">📞 {kisi.telefon}</span>}
-                    {kisi.email   && <span className="text-xs text-gray-400">✉️ {kisi.email}</span>}
+              <div
+                key={kisi.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 20px',
+                  borderBottom: '1px solid var(--border-default)',
+                  transition: 'background 120ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <Avatar name={kisi.ad + ' ' + (kisi.soyad || '')} size="md" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
+                      {kisi.ad} {kisi.soyad}
+                    </span>
+                    {kisi.anaKisi && (
+                      <Badge tone="beklemede" icon={<Star size={11} strokeWidth={1.5} />}>Ana kişi</Badge>
+                    )}
+                    {kisi.unvan && (
+                      <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>· {kisi.unvan}</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 2, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', flexWrap: 'wrap' }}>
+                    {kisi.telefon && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontVariantNumeric: 'tabular-nums' }}><Phone size={11} strokeWidth={1.5} /> {kisi.telefon}</span>}
+                    {kisi.email   && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Mail size={11} strokeWidth={1.5} /> {kisi.email}</span>}
                   </div>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                   <button
+                    aria-label="Düzenle"
                     onClick={() => setKisiForm({ ...kisi })}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition"
+                    style={{
+                      width: 28, height: 28,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   >
-                    Düzenle
+                    <Pencil size={12} strokeWidth={1.5} />
                   </button>
                   <button
+                    aria-label="Sil"
                     onClick={() => kisiSil(kisi.id)}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition"
+                    style={{
+                      width: 28, height: 28,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   >
-                    Sil
+                    <Trash2 size={12} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* ── Alt Lokasyonlar ── */}
-      <div ref={lokasyonBolumRef} className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-700">
-            📍 Alt Lokasyonlar
-            <span className="ml-2 text-xs font-normal text-gray-400">({lokasyonlar.length})</span>
-          </h3>
+      {/* Alt lokasyonlar */}
+      <Card ref={lokasyonBolumRef} padding={0} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+            <h2 className="t-h2" style={{ margin: 0 }}>Alt Lokasyonlar</h2>
+            <span className="t-caption tabular-nums">({lokasyonlar.length})</span>
+          </div>
           {!lokasyonForm && (
-            <button
-              onClick={() => setLokasyonForm({ ...bosLok })}
-              className="text-xs px-3 py-1.5 rounded-lg text-white font-medium transition"
-              style={{ background: 'var(--primary)' }}
-            >
-              + Lokasyon Ekle
-            </button>
+            <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setLokasyonForm({ ...bosLok })}>
+              Lokasyon ekle
+            </Button>
           )}
         </div>
 
-        {/* Lokasyon formu */}
         {lokasyonForm && (
-          <div className="px-5 py-4 border-b border-gray-100 bg-green-50">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-3">
-              {lokasyonForm.id ? 'Lokasyonu Düzenle' : 'Yeni Lokasyon Ekle'}
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+            <p className="t-label" style={{ marginBottom: 12 }}>{lokasyonForm.id ? 'LOKASYONU DÜZENLE' : 'YENİ LOKASYON EKLE'}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Lokasyon Adı *</label>
-                <input
-                  type="text"
-                  value={lokasyonForm.ad}
-                  onChange={e => setLokasyonForm(prev => ({ ...prev, ad: e.target.value }))}
-                  placeholder="Otopark Doğu, Sistem Odası, Lobi..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+                <Label required>Lokasyon adı</Label>
+                <Input value={lokasyonForm.ad} onChange={e => setLokasyonForm(p => ({ ...p, ad: e.target.value }))} placeholder="Otopark Doğu, Sistem Odası, Lobi…" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Adres</label>
-                <input
-                  type="text"
-                  value={lokasyonForm.adres}
-                  onChange={e => setLokasyonForm(prev => ({ ...prev, adres: e.target.value }))}
-                  placeholder="Atatürk Cad. No:12, Kat 3..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+                <Label>Adres</Label>
+                <Input value={lokasyonForm.adres} onChange={e => setLokasyonForm(p => ({ ...p, adres: e.target.value }))} placeholder="Atatürk Cad. No:12, Kat 3…" />
               </div>
-              <div className="md:col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">Notlar</label>
-                <input
-                  type="text"
-                  value={lokasyonForm.notlar}
-                  onChange={e => setLokasyonForm(prev => ({ ...prev, notlar: e.target.value }))}
-                  placeholder="Erişim bilgileri, yetkili kişi, anahtar konumu..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Notlar</Label>
+                <Input value={lokasyonForm.notlar} onChange={e => setLokasyonForm(p => ({ ...p, notlar: e.target.value }))} placeholder="Erişim bilgileri, yetkili kişi, anahtar konumu…" />
               </div>
-              <div className="flex items-center">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                   <input
                     type="checkbox"
                     checked={lokasyonForm.aktif}
-                    onChange={e => setLokasyonForm(prev => ({ ...prev, aktif: e.target.checked }))}
-                    className="w-4 h-4 rounded text-green-600"
+                    onChange={e => setLokasyonForm(p => ({ ...p, aktif: e.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
                   />
-                  <span className="text-xs text-gray-600 font-medium">Aktif lokasyon</span>
+                  Aktif lokasyon
                 </label>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={lokasyonKaydet}
-                disabled={lokKaydediliyor}
-                className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition bg-green-600 hover:bg-green-700"
-                style={{ opacity: lokKaydediliyor ? 0.7 : 1 }}
-              >
-                {lokKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-              <button
-                onClick={() => setLokasyonForm(null)}
-                className="px-4 py-1.5 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-              >
-                İptal
-              </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" onClick={lokasyonKaydet} disabled={lokKaydediliyor}>
+                {lokKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+              </Button>
+              <Button variant="secondary" onClick={() => setLokasyonForm(null)}>İptal</Button>
             </div>
           </div>
         )}
 
-        {/* Lokasyon listesi */}
         {lokasyonlar.length === 0 && !lokasyonForm ? (
-          <div className="px-5 py-8 text-center text-gray-400 text-sm">
-            Henüz lokasyon eklenmedi.
-            <br />
-            <button
-              onClick={() => setLokasyonForm({ ...bosLok })}
-              className="mt-2 text-blue-500 hover:underline text-xs"
-            >
-              + İlk lokasyonu ekle
-            </button>
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<MapPin size={28} strokeWidth={1.5} />}
+              title="Henüz lokasyon eklenmedi"
+              action={<Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setLokasyonForm({ ...bosLok })}>İlk lokasyonu ekle</Button>}
+            />
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div>
             {lokasyonlar.map(lok => (
-              <div key={lok.id} className="flex items-start gap-4 px-5 py-3 hover:bg-gray-50 transition">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 mt-0.5"
-                  style={{ background: lok.aktif ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)' }}
-                >
-                  📍
+              <div
+                key={lok.id}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: '12px 20px',
+                  borderBottom: '1px solid var(--border-default)',
+                  transition: 'background 120ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{
+                  width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: lok.aktif ? 'var(--success-soft)' : 'var(--surface-sunken)',
+                  color: lok.aktif ? 'var(--success)' : 'var(--text-tertiary)',
+                  flexShrink: 0, marginTop: 2,
+                }}>
+                  <MapPin size={14} strokeWidth={1.5} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{lok.ad}</span>
+                    {!lok.aktif && <Badge tone="pasif">Pasif</Badge>}
+                  </div>
+                  {lok.adres  && <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>{lok.adres}</p>}
+                  {lok.notlar && <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0', fontStyle: 'italic' }}>{lok.notlar}</p>}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                    {lok.ad}
-                    {!lok.aktif && (
-                      <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">Pasif</span>
-                    )}
-                  </p>
-                  {lok.adres && <p className="text-xs text-gray-400 mt-0.5">{lok.adres}</p>}
-                  {lok.notlar && <p className="text-xs text-gray-400 mt-0.5 italic">{lok.notlar}</p>}
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                   <button
+                    aria-label="Düzenle"
                     onClick={() => setLokasyonForm({ ...lok })}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition"
+                    style={{
+                      width: 28, height: 28,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   >
-                    Düzenle
+                    <Pencil size={12} strokeWidth={1.5} />
                   </button>
                   <button
+                    aria-label="Sil"
                     onClick={() => lokasyonSil(lok.id)}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition"
+                    style={{
+                      width: 28, height: 28,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   >
-                    Sil
+                    <Trash2 size={12} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* ── Özet Kartlar ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      {/* Özet KPI 4'lü */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
-          { isim: 'Görüşme',  sayi: gorusmeler.length, ikon: '📞', renk: '#3b82f6', sekme: 'gorusme' },
-          { isim: 'Teklif',   sayi: teklifler.length,  ikon: '📋', renk: '#0176D3', sekme: 'teklif' },
-          { isim: 'Fatura',   sayi: satislar.length,   ikon: '🧾', renk: '#10b981', sekme: 'fatura' },
-          { isim: 'Görev',    sayi: gorevler.length,   ikon: '✅', renk: '#f59e0b', sekme: 'gorev' },
+          { key: 'gorusme', isim: 'Görüşme', sayi: gorusmeler.length, Icon: Phone },
+          { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
+          { key: 'fatura',  isim: 'Fatura',  sayi: satislar.length,   Icon: Receipt },
+          { key: 'gorev',   isim: 'Görev',   sayi: gorevler.length,   Icon: CheckSquare },
         ].map(k => (
-          <div
-            key={k.isim}
-            className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center cursor-pointer hover:shadow-md transition"
-            onClick={() => setAktifSekme(k.sekme)}
+          <button
+            key={k.key}
+            onClick={() => setAktifSekme(k.key)}
+            style={{
+              textAlign: 'left',
+              background: 'var(--surface-card)',
+              border: `1px solid ${aktifSekme === k.key ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-md)',
+              padding: 16,
+              cursor: 'pointer',
+              transition: 'all 120ms',
+              boxShadow: aktifSekme === k.key ? 'var(--shadow-sm)' : 'none',
+            }}
+            onMouseEnter={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-strong)' }}
+            onMouseLeave={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-default)' }}
           >
-            <div className="text-2xl mb-1">{k.ikon}</div>
-            <p className="text-2xl font-bold" style={{ color: k.renk }}>{k.sayi}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{k.isim}</p>
-          </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, color: 'var(--text-tertiary)' }}>
+              <span className="t-label">{k.isim}</span>
+              <k.Icon size={14} strokeWidth={1.5} />
+            </div>
+            <div style={{ font: '600 24px/1 var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {k.sayi}
+            </div>
+          </button>
         ))}
       </div>
 
-      {/* ── Finansal Özet ── */}
+      {/* Finansal özet */}
       {satislar.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">💰 Finansal Özet</h3>
-            <button onClick={() => navigate('/satislar')} className="text-xs text-blue-500 hover:underline">
-              Tüm Faturalar →
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <CardTitle>Finansal Özet</CardTitle>
+            <button
+              onClick={() => navigate('/satislar')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Tüm faturalar <ArrowRight size={14} strokeWidth={1.5} />
             </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
             {[
-              { label: 'Toplam Faturalanan', value: `${fmt(toplam)} ₺`, renk: 'var(--primary)', bg: 'rgba(1,118,211,0.06)' },
-              { label: 'Tahsil Edilen',      value: `${fmt(tahsil)} ₺`, renk: '#10b981',       bg: 'rgba(16,185,129,0.06)' },
-              { label: 'Kalan Bakiye',       value: `${fmt(kalan)} ₺`,  renk: kalan > 0 ? '#f59e0b' : '#10b981', bg: kalan > 0 ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.06)' },
-              { label: 'Gecikmiş',           value: `${fmt(geciken)} ₺`, renk: geciken > 0 ? '#ef4444' : '#10b981', bg: geciken > 0 ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)' },
+              { label: 'TOPLAM',       value: `₺${fmt(toplam)}`,  color: 'var(--text-primary)' },
+              { label: 'TAHSİL EDİLEN', value: `₺${fmt(tahsil)}`, color: 'var(--success)' },
+              { label: 'KALAN BAKİYE',  value: `₺${fmt(kalan)}`,  color: kalan > 0 ? 'var(--warning)' : 'var(--success)' },
+              { label: 'GECİKMİŞ',      value: `₺${fmt(geciken)}`, color: geciken > 0 ? 'var(--danger)' : 'var(--text-primary)' },
             ].map(k => (
-              <div key={k.label} className="rounded-xl p-3" style={{ background: k.bg }}>
-                <p className="text-xs text-gray-400 mb-1">{k.label}</p>
-                <p className="text-sm font-bold" style={{ color: k.renk }}>{k.value}</p>
+              <div key={k.label} style={{
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px 14px',
+              }}>
+                <div className="t-label" style={{ marginBottom: 4 }}>{k.label}</div>
+                <div style={{ font: '600 16px/22px var(--font-sans)', color: k.color, fontVariantNumeric: 'tabular-nums' }}>
+                  {k.value}
+                </div>
               </div>
             ))}
           </div>
-          <div className="space-y-1.5">
+
+          <div>
             {satislar.slice(0, 4).map(f => {
               const gecikmisMi = f.durum === 'gonderildi' && f.vadeTarihi && new Date(f.vadeTarihi) < bugun
-              const renk = gecikmisMi ? '#ef4444' : f.durum === 'odendi' ? '#10b981' : f.durum === 'gonderildi' ? '#0176D3' : '#6b7280'
-              const isim = gecikmisMi ? 'Gecikti' : f.durum === 'odendi' ? 'Ödendi' : f.durum === 'gonderildi' ? 'Gönderildi' : 'Taslak'
+              const tone = gecikmisMi ? 'kayip'
+                : f.durum === 'odendi' ? 'aktif'
+                : f.durum === 'gonderildi' ? 'lead' : 'pasif'
+              const isim = gecikmisMi ? 'Gecikti'
+                : f.durum === 'odendi' ? 'Ödendi'
+                : f.durum === 'gonderildi' ? 'Gönderildi' : 'Taslak'
               return (
                 <div
                   key={f.id}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50 transition"
                   onClick={() => navigate(`/satislar/${f.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-bold" style={{ color: 'var(--primary)' }}>{f.faturaNo}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${renk}18`, color: renk }}>{isim}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <CodeBadge>{f.faturaNo}</CodeBadge>
+                    <Badge tone={tone}>{isim}</Badge>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-gray-700">{fmt(f.genelToplam)} ₺</span>
-                    {f.vadeTarihi && <span className="text-xs text-gray-400">{new Date(f.vadeTarihi).toLocaleDateString('tr-TR', { day:'2-digit', month:'short' })}</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      ₺{fmt(f.genelToplam)}
+                    </span>
+                    {f.vadeTarihi && (
+                      <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {new Date(f.vadeTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+                      </span>
+                    )}
                   </div>
                 </div>
               )
             })}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* ── Aktivite Timeline ── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex gap-0 px-4 pt-4 border-b border-gray-100 flex-wrap">
-          {[
-            { id: 'hepsi',   isim: 'Tümü',       sayi: tumOlaylar.length },
-            { id: 'gorusme', isim: 'Görüşmeler', sayi: gorusmeler.length },
-            { id: 'teklif',  isim: 'Teklifler',  sayi: teklifler.length },
-            { id: 'fatura',  isim: 'Faturalar',  sayi: satislar.length },
-            { id: 'gorev',   isim: 'Görevler',   sayi: gorevler.length },
-          ].map(s => (
-            <button
-              key={s.id}
-              onClick={() => setAktifSekme(s.id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition relative"
-              style={{
-                color: aktifSekme === s.id ? 'var(--primary)' : '#9ca3af',
-                borderBottom: aktifSekme === s.id ? '2px solid var(--primary)' : '2px solid transparent',
-                marginBottom: '-1px',
-              }}
-            >
-              {s.isim}
-              <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: aktifSekme === s.id ? 'rgba(1,118,211,0.1)' : '#f3f4f6', color: aktifSekme === s.id ? 'var(--primary)' : '#9ca3af' }}>
-                {s.sayi}
-              </span>
-            </button>
-          ))}
+      {/* Timeline */}
+      <Card padding={0}>
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
+          <SegmentedControl
+            options={[
+              { value: 'hepsi',   label: 'Tümü',       count: tumOlaylar.length },
+              { value: 'gorusme', label: 'Görüşmeler', count: gorusmeler.length },
+              { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
+              { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
+              { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
+            ]}
+            value={aktifSekme}
+            onChange={setAktifSekme}
+          />
         </div>
-        <div className="p-4">
+        <div style={{ padding: 16 }}>
           {filtreliOlaylar.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <p className="text-3xl mb-2">📭</p>
-              <p className="text-sm">Bu kategoride kayıt bulunamadı</p>
-            </div>
+            <EmptyState icon={<Inbox size={28} strokeWidth={1.5} />} title="Bu kategoride kayıt bulunamadı" />
           ) : (
-            <div className="space-y-2">
-              {filtreliOlaylar.map(olay => (
-                <div
-                  key={olay.id}
-                  className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition group"
-                  onClick={() => navigate(olay.hedef)}
-                >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {filtreliOlaylar.map(olay => {
+                const IconC = TIMELINE_ICONS[olay.tip] ?? FileText
+                const renk = TIMELINE_RENK[olay.tip] ?? 'var(--brand-primary)'
+                return (
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                    style={{ background: `${olay.renk}15` }}
+                    key={olay.id}
+                    onClick={() => navigate(olay.hedef)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    {olay.ikon}
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--surface-sunken)',
+                      color: renk,
+                      flexShrink: 0,
+                    }}>
+                      <IconC size={14} strokeWidth={1.5} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.baslik}
+                      </div>
+                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.detay}
+                      </div>
+                    </div>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {olay.tarih}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{olay.baslik}</p>
-                    <p className="text-xs text-gray-400 truncate">{olay.detay}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-gray-400">{olay.tarih}</p>
-                    <p className="text-xs font-medium opacity-0 group-hover:opacity-100 transition" style={{ color: olay.renk }}>Git →</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
-      </div>
-
+      </Card>
     </div>
   )
 }

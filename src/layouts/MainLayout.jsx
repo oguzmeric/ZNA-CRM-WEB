@@ -3,110 +3,34 @@ import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard, Users, CheckSquare, Phone, Calendar, Package,
+  ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
+  MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
+  Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle,
+} from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
-
-function NeuralBackground() {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    let animId
-
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-
-    const onResize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    window.addEventListener('resize', onResize)
-
-    const NOKTA_SAYISI = 70
-    const noktalar = Array.from({ length: NOKTA_SAYISI }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      r: Math.random() * 2 + 1.5,
-      pulse: Math.random() * Math.PI * 2,
-    }))
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      noktalar.forEach((n) => {
-        n.x += n.vx
-        n.y += n.vy
-        n.pulse += 0.02
-        if (n.x < 0 || n.x > canvas.width) n.vx *= -1
-        if (n.y < 0 || n.y > canvas.height) n.vy *= -1
-        const boyut = n.r + Math.sin(n.pulse) * 0.8
-        ctx.beginPath()
-        ctx.arc(n.x, n.y, boyut, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(1, 118, 211, 0.5)'
-        ctx.fill()
-      })
-      for (let i = 0; i < noktalar.length; i++) {
-        for (let j = i + 1; j < noktalar.length; j++) {
-          const dx = noktalar[i].x - noktalar[j].x
-          const dy = noktalar[i].y - noktalar[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 140) {
-            const alpha = (1 - dist / 140) * 0.25
-            ctx.beginPath()
-            ctx.moveTo(noktalar[i].x, noktalar[i].y)
-            ctx.lineTo(noktalar[j].x, noktalar[j].y)
-            ctx.strokeStyle = `rgba(1, 68, 134, ${alpha})`
-            ctx.lineWidth = 0.8
-            ctx.stroke()
-          }
-        }
-      }
-      animId = requestAnimationFrame(draw)
-    }
-    draw()
-    return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        top: 0, left: 0,
-        width: '100vw', height: '100vh',
-        zIndex: 0,
-        pointerEvents: 'none',
-        opacity: 0.5,
-      }}
-    />
-  )
-}
+import { Avatar } from '../components/ui'
 
 const menuItems = [
-  { id: 'dashboard', isim: 'Dashboard', ikon: '▣', yol: '/dashboard', modul: null },
+  { id: 'dashboard', isim: 'Panel', Icon: LayoutDashboard, yol: '/dashboard', modul: null },
   {
     id: 'musteriler',
     isim: 'Müşteriler',
-    ikon: '👥',
+    Icon: Users,
     modul: 'musteriler',
     altMenu: [
       { id: 'musteri-liste', isim: 'Müşteri Listesi', yol: '/musteriler' },
       { id: 'firmalar', isim: 'Firmalar', yol: '/firmalar' },
     ],
   },
-  { id: 'gorevler', isim: 'Görevler', ikon: '✅', yol: '/gorevler', modul: 'gorevler' },
-  { id: 'gorusmeler', isim: 'Görüşmeler', ikon: '📞', yol: '/gorusmeler', modul: 'gorusmeler' },
-  { id: 'takvim', isim: 'Takvim', ikon: '📅', yol: '/takvim', modul: null },
+  { id: 'gorevler', isim: 'Görevler', Icon: CheckSquare, yol: '/gorevler', modul: 'gorevler' },
+  { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler' },
+  { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null },
   {
     id: 'stok',
     isim: 'Stok',
-    ikon: '📦',
+    Icon: Package,
     modul: 'stok',
     altMenu: [
       { id: 'stok-kartlar', isim: 'Stok Kartları', yol: '/stok' },
@@ -117,46 +41,47 @@ const menuItems = [
   {
     id: 'satislar',
     isim: 'Satışlar',
-    ikon: '🧾',
+    Icon: ReceiptText,
     modul: 'musteriler',
     altMenu: [
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
   },
-  { id: 'trassir', isim: 'Trassir Lisanslar', ikon: null, yol: '/trassir-lisanslar', modul: 'lisanslar' },
+  { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar' },
   {
     id: 'servis',
     isim: 'Servis',
-    ikon: '🛎️',
+    Icon: Wrench,
     modul: 'servis_talepleri',
     altMenu: [
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
+      { id: 'servis_raporlari', isim: 'Servis Raporları',   yol: '/servis-raporlari' },
       { id: 'memnuniyet',       isim: 'Müşteri Memnuniyeti', yol: '/memnuniyet' },
     ],
   },
-  { id: 'kargolar', isim: 'Kargo Takip', ikon: '📦', yol: '/kargolar', modul: null },
-  { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', ikon: '📚', yol: '/dokuman-merkezi', modul: null },
+  { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null },
+  { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null },
   {
     id: 'raporlar',
     isim: 'Raporlar',
-    ikon: '📊',
+    Icon: BarChart3,
     modul: 'raporlar',
     altMenu: [
       { id: 'raporlar-liste', isim: 'Raporlar', yol: '/raporlar' },
       { id: 'rapor-merkezi',  isim: 'Rapor Merkezi', yol: '/rapor-merkezi' },
     ],
   },
-  { id: 'chat', isim: 'Mesajlar', ikon: '💬', yol: '/chat', modul: null },
-  { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', ikon: '⚙️', yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
+  { id: 'chat', isim: 'Mesajlar', Icon: MessageSquare, yol: '/chat', modul: null },
+  { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
 ]
 
 const durumRenkleri = {
-  cevrimici: '#22c55e',
-  mesgul: '#ef4444',
-  disarida: '#f59e0b',
-  toplantida: '#014486',
-  cevrimdisi: '#6b7280',
+  cevrimici: 'var(--success)',
+  mesgul: 'var(--danger)',
+  disarida: 'var(--warning)',
+  toplantida: 'var(--brand-primary)',
+  cevrimdisi: 'var(--text-tertiary)',
 }
 
 const durumIsimleri = {
@@ -167,15 +92,15 @@ const durumIsimleri = {
   cevrimdisi: 'Çevrimdışı',
 }
 
-const bildirimTipIkon = {
-  bilgi: '🔔',
-  basari: '✅',
-  uyari: '⚠️',
-  hata: '❌',
+const bildirimTipIcon = {
+  bilgi:   { C: Info,           color: 'var(--info)' },
+  basari:  { C: CheckCircle2,   color: 'var(--success)' },
+  uyari:   { C: AlertTriangle,  color: 'var(--warning)' },
+  hata:    { C: XCircle,        color: 'var(--danger)' },
 }
 
 const sayfaIsimleri = {
-  '/dashboard': 'Dashboard',
+  '/dashboard': 'Panel',
   '/musteriler': 'Müşteriler',
   '/firmalar': 'Firmalar',
   '/gorevler': 'Görevler',
@@ -268,7 +193,6 @@ function MainLayout({ children }) {
   const menuAcik = (id) => {
     if (id === 'stok') return stokAcik
     if (id === 'satislar') return teklifAcik
-    if (id === 'teklifler') return teklifAcik
     if (id === 'musteriler') return musteriAcik
     if (id === 'raporlar') return raporlarAcik
     if (id === 'servis') return servisAcik
@@ -278,14 +202,13 @@ function MainLayout({ children }) {
   const menuToggle = (id) => {
     if (id === 'stok') setStokAcik(!stokAcik)
     if (id === 'satislar') setTeklifAcik(!teklifAcik)
-    if (id === 'teklifler') setTeklifAcik(!teklifAcik)
     if (id === 'musteriler') setMusteriAcik(!musteriAcik)
     if (id === 'raporlar') setRaporlarAcik(!raporlarAcik)
     if (id === 'servis') setServisAcik(!servisAcik)
   }
 
   const sayfaBasligi = () => {
-    if (location.pathname === '/dashboard') return 'Dashboard'
+    if (location.pathname === '/dashboard') return 'Panel'
     if (location.pathname === '/musteriler') return 'Müşteriler'
     if (location.pathname.startsWith('/musteriler/')) return 'Müşteri Detayı'
     if (location.pathname === '/firmalar') return 'Firmalar'
@@ -329,145 +252,195 @@ function MainLayout({ children }) {
 
   const profilFoto = localStorage.getItem(`profil_foto_${kullanici?.id}`)
 
+  // ─────────────────────────── Render ───────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative', background: 'var(--bg-page, #f4f6f9)' }}>
-
-      <NeuralBackground />
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--surface-bg)' }}>
 
       {/* Sidebar */}
-      <div className="sidebar-gradient" style={{ width: '240px', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', zIndex: 10, borderRight: '1px solid rgba(1,118,211,0.15)' }}>
-
-        <div style={{ padding: '20px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }} className="flex items-center gap-3">
-          <img src="/logo.jpeg" alt="ZNA Logo" className="w-10 h-10 object-contain rounded-xl" style={{ boxShadow: 'none' }} />
-          <div>
-            <h1 className="text-white font-bold text-sm tracking-tight">ZNA Teknoloji</h1>
-            <p style={{ color: 'rgba(165,180,252,0.7)', fontSize: '11px' }}>Yönetim Sistemi</p>
+      <aside
+        style={{
+          width: 248,
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          background: 'var(--surface-sidebar)',
+          color: 'var(--text-on-dark-muted)',
+        }}
+      >
+        {/* Brand */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: 16,
+            borderBottom: '1px solid var(--border-on-dark)',
+          }}
+        >
+          <img src="/logo.jpeg" alt="ZNA" style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', objectFit: 'contain', background: 'var(--surface-card)' }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--text-on-dark)', font: '500 14px/20px var(--font-sans)', whiteSpace: 'nowrap' }}>ZNA Teknoloji</div>
+            <div style={{ color: 'var(--text-on-dark-muted)', font: '400 12px/16px var(--font-sans)' }}>Yönetim sistemi</div>
           </div>
         </div>
 
-        <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center gap-3">
-            <div className="relative flex-shrink-0">
+        {/* User */}
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-on-dark)', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
               {profilFoto ? (
                 <img
                   src={profilFoto}
                   alt="Profil"
-                  className="w-9 h-9 rounded-full object-cover cursor-pointer"
-                  style={{ boxShadow: '0 0 0 2px rgba(1,118,211,0.5)' }}
                   onClick={() => navigate('/profil')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }}
                 />
               ) : (
-                <div
-                  onClick={() => navigate('/profil')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold cursor-pointer"
-                  style={{ background: '#0176D3', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}
-                >
-                  {kullanici?.ad?.charAt(0)}
-                </div>
+                <span onClick={() => navigate('/profil')} style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                  <Avatar name={kullanici?.ad} size="sm" onDark />
+                </span>
               )}
-              <div
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
-                style={{ backgroundColor: durumRenkleri[mevcutDurum], borderColor: '#032D60' }}
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  bottom: -1, right: -1,
+                  width: 10, height: 10,
+                  borderRadius: '50%',
+                  background: durumRenkleri[mevcutDurum],
+                  border: '2px solid var(--surface-sidebar)',
+                }}
               />
             </div>
-            <div className="min-w-0 flex-1">
+            <div style={{ minWidth: 0, flex: 1 }}>
               <button
                 onClick={() => navigate('/profil')}
-                className="text-white text-sm font-medium truncate hover:text-blue-300 transition text-left w-full block"
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--text-on-dark)',
+                  font: '500 13px/18px var(--font-sans)',
+                  textAlign: 'left',
+                  width: '100%',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}
               >
                 {kullanici?.ad}
               </button>
               <button
                 onClick={() => setDurumMenuAcik(!durumMenuAcik)}
-                className="text-xs flex items-center gap-1 hover:opacity-80 transition"
-                style={{ color: durumRenkleri[mevcutDurum] }}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  color: durumRenkleri[mevcutDurum],
+                  font: '400 12px/16px var(--font-sans)',
+                }}
               >
-                <span className="status-dot" style={{ backgroundColor: durumRenkleri[mevcutDurum], width: '6px', height: '6px' }} />
-                <span>{durumIsimleri[mevcutDurum]}</span>
-                <span style={{ color: 'rgba(255,255,255,0.3)' }}>▾</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: durumRenkleri[mevcutDurum] }} />
+                {durumIsimleri[mevcutDurum]}
+                <ChevronDown size={12} strokeWidth={1.5} style={{ color: 'var(--text-on-dark-muted)' }} />
               </button>
             </div>
           </div>
 
-          <AnimatePresence>
-            {durumMenuAcik && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-                className="mt-3 rounded-xl overflow-hidden"
-                style={{ background: 'rgba(3,45,96,0.95)', border: '1px solid rgba(1,118,211,0.2)' }}
-              >
-                {Object.entries(durumIsimleri).map(([key, isim]) => (
-                  <button
-                    key={key}
-                    onClick={() => { durumGuncelle(key); setDurumMenuAcik(false) }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition"
-                  >
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: durumRenkleri[key] }} />
-                    <span style={{ color: 'rgba(226,232,240,0.9)' }}>{isim}</span>
-                    {mevcutDurum === key && <span className="ml-auto text-blue-400 text-xs">✓</span>}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {durumMenuAcik && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%', left: 16, right: 16,
+                marginTop: 4,
+                background: 'var(--surface-sidebar-active)',
+                border: '1px solid var(--border-on-dark)',
+                borderRadius: 'var(--radius-sm)',
+                overflow: 'hidden',
+                zIndex: 'var(--z-dropdown)',
+                boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              {Object.entries(durumIsimleri).map(([key, isim]) => (
+                <button
+                  key={key}
+                  onClick={() => { durumGuncelle(key); setDurumMenuAcik(false) }}
+                  style={{
+                    width: '100%',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-on-dark)',
+                    font: '400 13px/18px var(--font-sans)',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: durumRenkleri[key], flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{isim}</span>
+                  {mevcutDurum === key && <Check size={14} strokeWidth={2} style={{ color: 'var(--brand-primary)' }} />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto" style={{ padding: '12px 10px' }}>
-          {gorunenMenu.map((item) => {
+        {/* Nav */}
+        <nav aria-label="Ana menü" style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {gorunenMenu.map(item => {
             if (item.altMenu) {
-              const altAktif = item.altMenu.some((a) => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
+              const altAktif = item.altMenu.some(a => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
               const acik = menuAcik(item.id)
               return (
                 <div key={item.id}>
                   <button
                     onClick={() => menuToggle(item.id)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-0.5 text-sm transition-all"
                     style={{
-                      background: altAktif ? 'rgba(1,118,211,0.15)' : 'transparent',
-                      color: altAktif ? 'rgba(165,180,252,1)' : 'rgba(148,163,184,0.8)',
+                      width: '100%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: altAktif ? 'var(--surface-sidebar-active)' : 'transparent',
+                      color: altAktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
+                      border: 'none',
+                      borderLeft: `3px solid ${altAktif ? 'var(--brand-primary)' : 'transparent'}`,
+                      paddingLeft: 9,
+                      cursor: 'pointer',
+                      font: altAktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                      transition: 'background 120ms, color 120ms',
                     }}
-                    onMouseEnter={(e) => { if (!altAktif) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                    onMouseLeave={(e) => { if (!altAktif) e.currentTarget.style.background = 'transparent' }}
+                    onMouseEnter={e => { if (!altAktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
+                    onMouseLeave={e => { if (!altAktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-base">{item.ikon}</span>
-                      <span className="font-medium">{item.isim}</span>
-                    </div>
-                    <span className="text-xs opacity-50">{acik ? '▾' : '▸'}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                      <item.Icon size={16} strokeWidth={1.5} />
+                      {item.isim}
+                    </span>
+                    {acik ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}
                   </button>
-                  <AnimatePresence>
-                    {acik && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="ml-4 mb-1 overflow-hidden"
-                      >
-                        {item.altMenu.map((alt) => {
-                          const aktif = location.pathname === alt.yol || location.pathname.startsWith(alt.yol + '/')
-                          return (
-                            <button
-                              key={alt.id}
-                              onClick={() => navigate(alt.yol)}
-                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl mb-0.5 text-sm transition-all"
-                              style={{
-                                background: aktif ? '#0176D3' : 'transparent',
-                                color: aktif ? 'white' : 'rgba(148,163,184,0.7)',
-                                boxShadow: 'none',
-                              }}
-                            >
-                              <span className="text-xs opacity-50">—</span>
-                              <span>{alt.isim}</span>
-                            </button>
-                          )
-                        })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {acik && (
+                    <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, marginBottom: 4 }}>
+                      {item.altMenu.map(alt => {
+                        const aktif = location.pathname === alt.yol || location.pathname.startsWith(alt.yol + '/')
+                        return (
+                          <button
+                            key={alt.id}
+                            onClick={() => navigate(alt.yol)}
+                            style={{
+                              width: '100%', textAlign: 'left',
+                              padding: '6px 12px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
+                              color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
+                              border: 'none',
+                              cursor: 'pointer',
+                              font: aktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                            }}
+                            onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
+                            onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
+                          >
+                            {alt.isim}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             }
@@ -475,219 +448,268 @@ function MainLayout({ children }) {
             const aktif = location.pathname === item.yol ||
               (item.yol !== '/dashboard' && location.pathname.startsWith(item.yol))
             return (
-              <motion.button
+              <button
                 key={item.id}
                 onClick={() => navigate(item.yol)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-sm font-medium"
                 style={{
-                  background: aktif ? '#0176D3' : 'transparent',
-                  color: aktif ? 'white' : 'rgba(148,163,184,0.8)',
-                  boxShadow: 'none',
+                  width: '100%',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
+                  color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
+                  border: 'none',
+                  borderLeft: `3px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                  paddingLeft: 9,
+                  cursor: 'pointer',
+                  font: aktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                  transition: 'background 120ms, color 120ms',
                 }}
-                whileHover={{ x: aktif ? 0 : 3 }}
-                whileTap={{ scale: 0.98 }}
-                onMouseEnter={(e) => { if (!aktif) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                onMouseLeave={(e) => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
+                onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
+                onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
+                aria-current={aktif ? 'page' : undefined}
               >
                 {item.id === 'trassir'
-                  ? <img src="/trassirlogo.png" alt="Trassir" className="w-5 h-5 object-contain rounded" />
-                  : <span className="text-base">{item.ikon}</span>
-                }
-                <span className="flex-1 text-left">{item.isim}</span>
+                  ? <img src="/trassirlogo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                  : <item.Icon size={16} strokeWidth={1.5} />}
+                <span style={{ flex: 1, textAlign: 'left' }}>{item.isim}</span>
                 {item.id === 'chat' && okunmamis > 0 && (
-                  <span className="text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', fontSize: '10px' }}>
+                  <span style={{
+                    minWidth: 18, height: 18, padding: '0 5px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--danger)', color: '#fff',
+                    fontSize: 11, fontWeight: 600,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {okunmamis}
                   </span>
                 )}
-              </motion.button>
+              </button>
             )
           })}
         </nav>
 
-        <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Logout */}
+        <div style={{ padding: 8, borderTop: '1px solid var(--border-on-dark)' }}>
           <button
             onClick={handleCikis}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
-            style={{ color: 'rgba(148,163,184,0.7)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#f87171' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(148,163,184,0.7)' }}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'transparent',
+              color: 'var(--text-on-dark-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              font: '400 13px/18px var(--font-sans)',
+              transition: 'background 120ms, color 120ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(178,58,58,0.12)'; e.currentTarget.style.color = '#E88B8B' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' }}
           >
-            <span>🚪</span>
+            <LogOut size={16} strokeWidth={1.5} />
             <span>Çıkış Yap</span>
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Ana içerik */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
+      {/* Content area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        <div
-          className="flex items-center justify-between flex-shrink-0"
+        {/* Topbar */}
+        <header
           style={{
-            padding: '14px 24px',
-            background: 'var(--bg-header, #ffffff)',
-            borderBottom: '1px solid var(--border, #dddbda)',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+            height: 56,
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 24px',
+            background: 'var(--surface-card)',
+            borderBottom: '1px solid var(--border-default)',
             position: 'relative',
-            zIndex: 100,
+            zIndex: 'var(--z-sticky)',
           }}
         >
-          <h2 className="font-semibold" style={{ fontSize: '15px', color: 'var(--text-primary, #374151)' }}>{sayfaBasligi()}</h2>
+          <h1 style={{ font: '600 20px/28px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+            {sayfaBasligi()}
+          </h1>
 
-          <div className="flex items-center gap-3">
-
-            {/* Tema butonu */}
-            <motion.button
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Tema */}
+            <button
               onClick={() => setTemaPaneliAcik(!temaPaneliAcik)}
-              className="relative flex items-center justify-center rounded-xl transition-all"
+              aria-label="Tema"
               style={{
-                width: '36px', height: '36px',
-                background: temaPaneliAcik ? 'rgba(1,118,211,0.1)' : 'var(--bg-hover, rgba(248,250,252,0.8))',
-                border: '1px solid var(--border, #dddbda)',
+                width: 36, height: 36,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: temaPaneliAcik ? 'var(--surface-sunken)' : 'transparent',
+                border: '1px solid transparent',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'background 120ms, color 120ms',
               }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title="Tema Seçimi"
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-sunken)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { if (!temaPaneliAcik) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
             >
-              <span style={{ fontSize: '16px' }}>🎨</span>
-            </motion.button>
+              <Palette size={18} strokeWidth={1.5} />
+            </button>
 
-            <div className="relative">
-              <motion.button
+            {/* Bildirim */}
+            <div style={{ position: 'relative' }}>
+              <button
                 onClick={() => setBildirimPanelAcik(!bildirimPanelAcik)}
-                className="relative flex items-center justify-center rounded-xl transition-all"
+                aria-label="Bildirimler"
                 style={{
-                  width: '36px', height: '36px',
-                  background: bildirimPanelAcik ? 'rgba(1,118,211,0.1)' : 'rgba(248,250,252,0.8)',
-                  border: '1px solid #dddbda',
+                  width: 36, height: 36,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: bildirimPanelAcik ? 'var(--surface-sunken)' : 'transparent',
+                  border: '1px solid transparent',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  position: 'relative',
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-sunken)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => { if (!bildirimPanelAcik) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
               >
-                <span style={{ fontSize: '16px' }}>🔔</span>
+                <Bell size={18} strokeWidth={1.5} />
                 {okunmamisSayisi > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 text-white rounded-full flex items-center justify-center"
                     style={{
-                      width: '16px', height: '16px', fontSize: '9px',
-                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      boxShadow: '0 2px 8px rgba(239,68,68,0.4)',
+                      position: 'absolute', top: 4, right: 4,
+                      minWidth: 16, height: 16, padding: '0 4px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'var(--danger)', color: '#fff',
+                      fontSize: 10, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      border: '2px solid var(--surface-card)',
                     }}
                   >
                     {okunmamisSayisi > 9 ? '9+' : okunmamisSayisi}
                   </span>
                 )}
-              </motion.button>
+              </button>
 
-              <AnimatePresence>
-                {bildirimPanelAcik && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: '48px',
-                      width: '320px',
-                      borderRadius: '4px',
-                      overflow: 'hidden',
-                      zIndex: 9999,
-                      background: 'var(--bg-card, #ffffff)',
-                      border: '1px solid var(--border, #dddbda)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    }}
-                  >
-                    <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #dddbda' }}>
-                      <p className="font-semibold text-gray-800 text-sm">
-                        Bildirimler
-                        {okunmamisSayisi > 0 && (
-                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                            {okunmamisSayisi} yeni
-                          </span>
-                        )}
-                      </p>
+              {bildirimPanelAcik && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0, top: 44,
+                    width: 340,
+                    background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    overflow: 'hidden',
+                    zIndex: 'var(--z-dropdown)',
+                  }}
+                >
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>Bildirimler</span>
                       {okunmamisSayisi > 0 && (
-                        <button onClick={tumunuOku} className="text-xs text-blue-500 hover:text-blue-700 transition">
-                          Tümünü oku
-                        </button>
+                        <span style={{
+                          padding: '1px 7px',
+                          borderRadius: 'var(--radius-pill)',
+                          background: 'var(--danger-soft)', color: 'var(--danger)',
+                          font: '500 11px/16px var(--font-sans)',
+                        }}>
+                          {okunmamisSayisi} yeni
+                        </span>
                       )}
                     </div>
-                    <div style={{ maxHeight: '384px', overflowY: 'auto' }}>
-                      {benimBildirimlerim.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-gray-400 text-sm">Henüz bildirim yok</div>
-                      ) : (
-                        benimBildirimlerim.map((b) => (
+                    {okunmamisSayisi > 0 && (
+                      <button
+                        onClick={tumunuOku}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--brand-primary)',
+                          font: '500 12px/16px var(--font-sans)',
+                        }}
+                      >
+                        Tümünü oku
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+                    {benimBildirimlerim.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+                        Henüz bildirim yok
+                      </div>
+                    ) : (
+                      benimBildirimlerim.map(b => {
+                        const tip = bildirimTipIcon[b.tip] ?? bildirimTipIcon.bilgi
+                        const IconC = tip.C
+                        return (
                           <div
                             key={b.id}
-                            className="px-4 py-3 cursor-pointer transition-all"
-                            style={{
-                              borderBottom: '1px solid rgba(1,118,211,0.06)',
-                              background: !b.okundu ? 'rgba(1,118,211,0.04)' : 'transparent',
-                            }}
                             onClick={() => bildirimTikla(b)}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(1,118,211,0.08)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = !b.okundu ? 'rgba(1,118,211,0.04)' : 'transparent'}
+                            style={{
+                              padding: '12px 16px',
+                              borderBottom: '1px solid var(--border-default)',
+                              background: !b.okundu ? 'var(--brand-primary-soft)' : 'transparent',
+                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'flex-start', gap: 10,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                            onMouseLeave={e => e.currentTarget.style.background = !b.okundu ? 'var(--brand-primary-soft)' : 'transparent'}
                           >
-                            <div className="flex items-start gap-3">
-                              <span style={{ fontSize: '15px' }}>{bildirimTipIkon[b.tip] || '🔔'}</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-800">{b.baslik}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">{b.mesaj}</p>
-                                <p className="text-xs text-gray-400 mt-1">{zamanFormat(b.tarih)}</p>
-                              </div>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                {!b.okundu && <div className="w-2 h-2 rounded-full" style={{ background: '#0176D3' }} />}
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); bildirimSil(b.id) }}
-                                  className="text-gray-300 hover:text-red-400 transition text-xs"
-                                >✕</button>
-                              </div>
+                            <span style={{ color: tip.color, display: 'inline-flex', marginTop: 2 }}>
+                              <IconC size={16} strokeWidth={1.5} />
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{b.baslik}</div>
+                              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>{b.mesaj}</div>
+                              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{zamanFormat(b.tarih)}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                              {!b.okundu && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand-primary)' }} />}
+                              <button
+                                onClick={e => { e.stopPropagation(); bildirimSil(b.id) }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2, display: 'inline-flex' }}
+                                onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                              >
+                                <X size={14} strokeWidth={1.5} />
+                              </button>
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+            {/* Durum pill */}
+            <span
               style={{
-                background: 'var(--bg-hover, rgba(248,250,252,0.8))',
-                border: '1px solid var(--border, #dddbda)',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-secondary)',
+                font: '500 12px/16px var(--font-sans)',
               }}
             >
-              <span className="status-dot" style={{ backgroundColor: durumRenkleri[mevcutDurum], width: '7px', height: '7px' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary, #374151)' }}>{durumIsimleri[mevcutDurum]}</span>
-            </div>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: durumRenkleri[mevcutDurum] }} />
+              {durumIsimleri[mevcutDurum]}
+            </span>
           </div>
-        </div>
+        </header>
 
-        <div
-          style={{ flex: 1, overflowY: 'auto', backgroundColor: 'transparent', position: 'relative', zIndex: 1 }}
+        {/* Page content */}
+        <main
+          style={{ flex: 1, overflowY: 'auto', background: 'var(--surface-bg)' }}
           onClick={() => setBildirimPanelAcik(false)}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-              style={{ height: '100%' }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+          {children}
+        </main>
       </div>
 
-      {/* Tema Paneli */}
       <ThemePaneli acik={temaPaneliAcik} kapat={() => setTemaPaneliAcik(false)} />
     </div>
   )

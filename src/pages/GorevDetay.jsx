@@ -1,20 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { gorevGetir, gorevGuncelle } from '../services/gorevService'
+import {
+  Button, Textarea, Card, CardTitle, Badge, Avatar, EmptyState, SegmentedControl,
+} from '../components/ui'
 
 const oncelikler = [
-  { id: 'dusuk', isim: 'Düşük', renk: 'bg-gray-100 text-gray-600' },
-  { id: 'orta', isim: 'Orta', renk: 'bg-amber-100 text-amber-600' },
-  { id: 'yuksek', isim: 'Yüksek', renk: 'bg-red-100 text-red-600' },
+  { id: 'dusuk',  isim: 'Düşük',  tone: 'pasif' },
+  { id: 'orta',   isim: 'Orta',   tone: 'beklemede' },
+  { id: 'yuksek', isim: 'Yüksek', tone: 'kayip' },
 ]
 
 const durumlar = [
-  { id: 'bekliyor', isim: 'Bekliyor', renk: 'bg-gray-100 text-gray-600' },
-  { id: 'devam', isim: 'Devam Ediyor', renk: 'bg-blue-100 text-blue-600' },
-  { id: 'tamamlandi', isim: 'Tamamlandı', renk: 'bg-green-100 text-green-600' },
+  { id: 'bekliyor',   isim: 'Bekliyor',     tone: 'pasif' },
+  { id: 'devam',      isim: 'Devam Ediyor', tone: 'lead' },
+  { id: 'tamamlandi', isim: 'Tamamlandı',   tone: 'aktif' },
 ]
 
 function GorevDetay() {
@@ -31,32 +37,32 @@ function GorevDetay() {
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
 
   useEffect(() => {
-    gorevGetir(id).then((data) => {
-      setGorev(data)
-      setYukleniyor(false)
-    })
+    gorevGetir(id).then(d => { setGorev(d); setYukleniyor(false) })
   }, [id])
 
-  if (yukleniyor) return <div className="p-6 text-center text-gray-400">Yükleniyor...</div>
+  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
 
-  if (!gorev) {
-    return (
-      <div className="p-6">
-        <p className="text-gray-400">Görev bulunamadı.</p>
-        <button onClick={() => navigate('/gorevler')} className="mt-4 text-sm text-blue-600 hover:underline">
-          ← Geri dön
-        </button>
-      </div>
-    )
-  }
+  if (!gorev) return (
+    <div style={{ padding: 24 }}>
+      <EmptyState
+        icon={<CheckSquare size={32} strokeWidth={1.5} />}
+        title="Görev bulunamadı"
+        action={
+          <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/gorevler')}>
+            Görevlere dön
+          </Button>
+        }
+      />
+    </div>
+  )
 
-  const oncelik = oncelikler.find((o) => o.id === gorev.oncelik)
-  const durum = durumlar.find((d) => d.id === gorev.durum)
-  const atananKisi = kullanicilar.find((k) => k.id?.toString() === gorev.atanan?.toString())
+  const oncelik = oncelikler.find(o => o.id === gorev.oncelik)
+  const durum   = durumlar.find(d => d.id === gorev.durum)
+  const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atanan?.toString())
 
   const durumGuncelle = async (yeniDurum) => {
     await gorevGuncelle(gorev.id, { durum: yeniDurum })
-    setGorev((prev) => ({ ...prev, durum: yeniDurum }))
+    setGorev(prev => ({ ...prev, durum: yeniDurum }))
     toast.success('Durum güncellendi.')
   }
 
@@ -64,27 +70,19 @@ function GorevDetay() {
     if (!yeniYorum.trim()) return
     const yorum = {
       id: crypto.randomUUID(),
-      yazar: kullanici.ad,
-      yazarId: kullanici.id,
+      yazar: kullanici.ad, yazarId: kullanici.id,
       icerik: yeniYorum,
       tarih: new Date().toLocaleString('tr-TR'),
     }
     const yeniYorumlar = [...(gorev.yorumlar || []), yorum]
     await gorevGuncelle(gorev.id, { yorumlar: yeniYorumlar })
-    setGorev((prev) => ({ ...prev, yorumlar: yeniYorumlar }))
+    setGorev(prev => ({ ...prev, yorumlar: yeniYorumlar }))
     setYeniYorum('')
     toast.success('Yorum eklendi.')
   }
 
-  const duzenlemeBaslat = (yorum) => {
-    setDuzenleYorumId(yorum.id)
-    setDuzenleIcerik(yorum.icerik)
-  }
-
-  const duzenlemeIptal = () => {
-    setDuzenleYorumId(null)
-    setDuzenleIcerik('')
-  }
+  const duzenlemeBaslat = (yorum) => { setDuzenleYorumId(yorum.id); setDuzenleIcerik(yorum.icerik) }
+  const duzenlemeIptal  = () => { setDuzenleYorumId(null); setDuzenleIcerik('') }
 
   const yorumGuncelle = async () => {
     if (!duzenleIcerik.trim()) return
@@ -103,9 +101,7 @@ function GorevDetay() {
     const onay = await confirm({
       baslik: 'Yorumu Sil',
       mesaj: 'Bu yorum kalıcı olarak silinecek. Emin misiniz?',
-      onayMetin: 'Evet, Sil',
-      iptalMetin: 'Vazgeç',
-      tip: 'tehlikeli',
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
     const yeniYorumlar = (gorev.yorumlar || []).filter(y => y.id !== yorumId)
@@ -120,192 +116,216 @@ function GorevDetay() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div style={{ padding: 24, maxWidth: 880, margin: '0 auto' }}>
 
+      {/* Geri */}
       <button
         onClick={() => navigate('/gorevler')}
-        className="text-sm text-blue-600 hover:text-blue-800 mb-6 flex items-center gap-1 transition"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
       >
-        ← Görevlere dön
+        <ArrowLeft size={14} strokeWidth={1.5} /> Görevlere dön
       </button>
 
-      {/* Görev başlık kartı */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${oncelik?.renk}`}>
-                {oncelik?.isim}
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${durum?.renk}`}>
-                {durum?.isim}
-              </span>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">{gorev.baslik}</h2>
-            {gorev.aciklama && (
-              <p className="text-gray-500 text-sm leading-relaxed">{gorev.aciklama}</p>
-            )}
-          </div>
+      {/* Başlık kartı */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
+          {durum   && <Badge tone={durum.tone}>{durum.isim}</Badge>}
         </div>
+        <h1 className="t-h1" style={{ marginBottom: 8 }}>{gorev.baslik}</h1>
+        {gorev.aciklama && (
+          <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+            {gorev.aciklama}
+          </p>
+        )}
 
-        <div className="border-t border-gray-100 mt-4 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Atanan</p>
-            <p className="font-medium text-gray-700">{atananKisi?.ad || 'Bilinmiyor'}</p>
+            <div className="t-label" style={{ marginBottom: 4 }}>ATANAN</div>
+            {atananKisi ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                <Avatar name={atananKisi.ad} size="xs" />
+                {atananKisi.ad}
+              </span>
+            ) : <span style={{ color: 'var(--text-tertiary)' }}>Bilinmiyor</span>}
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Son Tarih</p>
-            <p className="font-medium text-gray-700">{gorev.sonTarih || '—'}</p>
+            <div className="t-label" style={{ marginBottom: 4 }}>SON TARİH</div>
+            <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{gorev.sonTarih || '—'}</span>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Oluşturan</p>
-            <p className="font-medium text-gray-700">{gorev.olusturanAd || '—'}</p>
+            <div className="t-label" style={{ marginBottom: 4 }}>OLUŞTURAN</div>
+            <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.olusturanAd || '—'}</span>
           </div>
           {gorev.musteriAdi && (
             <div>
-              <p className="text-xs text-gray-400 mb-1">İlgili Müşteri</p>
-              <p className="font-medium text-gray-700">{gorev.musteriAdi}</p>
+              <div className="t-label" style={{ marginBottom: 4 }}>İLGİLİ MÜŞTERİ</div>
+              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.musteriAdi}</div>
               {gorev.firmaAdi && (
                 <button
                   onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(gorev.firmaAdi)}`)}
-                  className="text-xs text-blue-500 hover:underline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)', marginTop: 2 }}
                 >
-                  🏢 {gorev.firmaAdi}
+                  <Building2 size={11} strokeWidth={1.5} /> {gorev.firmaAdi}
                 </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Görüşme bağlantısı */}
+        {/* Bağlı görüşme */}
         {gorev.gorusmeId && (
-          <div className="border-t border-gray-100 mt-4 pt-4">
-            <p className="text-xs text-gray-400 mb-2">Bağlı Görüşme</p>
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <div className="t-label" style={{ marginBottom: 8 }}>BAĞLI GÖRÜŞME</div>
             <button
               onClick={() => navigate(`/gorusmeler/${gorev.gorusmeId}`)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-blue-50 border border-blue-100 hover:bg-blue-100 transition w-full text-left"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', textAlign: 'left',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--brand-primary-soft)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer',
+                transition: 'border-color 120ms',
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand-primary)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
             >
-              <span className="text-base">🤝</span>
-              <div>
-                <span className="font-medium text-blue-700">{gorev.gorusmeFirma}</span>
-                <span className="text-gray-400 ml-2 text-xs">{gorev.gorusmeAktNo}</span>
-              </div>
-              <span className="ml-auto text-xs text-blue-400">Görüşmeye git →</span>
+              <Handshake size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+              <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.gorusmeFirma}</span>
+              {gorev.gorusmeAktNo && (
+                <span style={{ font: '400 12px/16px var(--font-mono)', color: 'var(--text-tertiary)' }}>{gorev.gorusmeAktNo}</span>
+              )}
+              <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}>
+                Görüşmeye git <ArrowRight size={12} strokeWidth={1.5} />
+              </span>
             </button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Durum güncelle */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
-        <p className="text-sm font-medium text-gray-700 mb-3">Durumu Güncelle</p>
-        <div className="flex gap-2 flex-wrap">
-          {durumlar.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => durumGuncelle(d.id)}
-              className={`text-sm px-4 py-2 rounded-lg border transition font-medium ${
-                gorev.durum === d.id
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              {d.isim}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Card style={{ marginBottom: 16 }}>
+        <p className="t-label" style={{ marginBottom: 8 }}>DURUMU GÜNCELLE</p>
+        <SegmentedControl
+          options={durumlar.map(d => ({ value: d.id, label: d.isim }))}
+          value={gorev.durum}
+          onChange={durumGuncelle}
+        />
+      </Card>
 
       {/* Yorumlar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <p className="text-sm font-medium text-gray-700 mb-4">
-          Yorumlar ({gorev.yorumlar?.length || 0})
-        </p>
+      <Card>
+        <div style={{ marginBottom: 16 }}>
+          <CardTitle>Yorumlar</CardTitle>
+          <p className="t-caption" style={{ marginTop: 2 }}>
+            <span className="tabular-nums">{gorev.yorumlar?.length || 0}</span> yorum
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-3 mb-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {(gorev.yorumlar || []).length === 0 && (
-            <p className="text-sm text-gray-400">Henüz yorum yok.</p>
+            <p className="t-caption">Henüz yorum yok.</p>
           )}
-          {(gorev.yorumlar || []).map((yorum) => {
+          {(gorev.yorumlar || []).map(yorum => {
             const benimMi = kendisiMi(yorum)
             const duzenlemede = duzenleYorumId === yorum.id
             return (
-              <div key={yorum.id} className="bg-gray-50 rounded-lg p-3 group">
-                <div className="flex items-center justify-between mb-1 gap-2">
-                  <span className="text-sm font-medium text-gray-700">{yorum.yazar}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
+              <div
+                key={yorum.id}
+                className="group"
+                style={{
+                  background: 'var(--surface-sunken)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar name={yorum.yazar} size="xs" />
+                    <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{yorum.yazar}</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                       {yorum.tarih}
-                      {yorum.duzenlendi && <span className="ml-1 italic">(düzenlendi)</span>}
+                      {yorum.duzenlendi && <span style={{ fontStyle: 'italic', marginLeft: 4 }}>(düzenlendi)</span>}
                     </span>
                     {benimMi && !duzenlemede && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <div style={{ display: 'inline-flex', gap: 4 }}>
                         <button
+                          aria-label="Düzenle"
                           onClick={() => duzenlemeBaslat(yorum)}
-                          className="text-xs text-blue-500 hover:text-blue-700 px-2 py-0.5 rounded border border-blue-100 hover:bg-blue-50 transition"
-                          title="Düzenle"
+                          style={{
+                            width: 24, height: 24,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-secondary)', cursor: 'pointer',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                         >
-                          ✏️
+                          <Pencil size={11} strokeWidth={1.5} />
                         </button>
                         <button
+                          aria-label="Sil"
                           onClick={() => yorumSil(yorum.id)}
-                          className="text-xs text-red-400 hover:text-red-600 px-2 py-0.5 rounded border border-red-100 hover:bg-red-50 transition"
-                          title="Sil"
+                          style={{
+                            width: 24, height: 24,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-secondary)', cursor: 'pointer',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                         >
-                          🗑️
+                          <Trash2 size={11} strokeWidth={1.5} />
                         </button>
                       </div>
                     )}
                   </div>
                 </div>
                 {duzenlemede ? (
-                  <div className="space-y-2 mt-2">
-                    <textarea
-                      value={duzenleIcerik}
-                      onChange={e => setDuzenleIcerik(e.target.value)}
-                      rows={3}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={yorumGuncelle}
-                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
-                      >
-                        Kaydet
-                      </button>
-                      <button
-                        onClick={duzenlemeIptal}
-                        className="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
-                      >
-                        İptal
-                      </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                    <Textarea value={duzenleIcerik} onChange={e => setDuzenleIcerik(e.target.value)} rows={3} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button variant="primary" size="sm" onClick={yorumGuncelle}>Kaydet</Button>
+                      <Button variant="secondary" size="sm" onClick={duzenlemeIptal}>İptal</Button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{yorum.icerik}</p>
+                  <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {yorum.icerik}
+                  </p>
                 )}
               </div>
             )
           })}
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <textarea
+        <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+          <Textarea
             value={yeniYorum}
-            onChange={(e) => setYeniYorum(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+            onChange={e => setYeniYorum(e.target.value)}
             rows={3}
-            placeholder="Yorum yaz..."
+            placeholder="Yorum yaz…"
+            style={{ marginBottom: 8 }}
           />
-          <button
-            onClick={yorumEkle}
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Yorum Ekle
-          </button>
+          <Button variant="primary" onClick={yorumEkle}>Yorum ekle</Button>
         </div>
-      </div>
-
+      </Card>
     </div>
   )
 }

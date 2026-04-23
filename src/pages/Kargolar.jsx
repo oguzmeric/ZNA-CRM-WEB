@@ -1,88 +1,80 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Plus, Package, ArrowUpRight, ArrowDownLeft, Truck, AlertTriangle, Check,
+  Trash2, ChevronRight,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
-import { useKargo, KARGO_FIRMALARI, DURUM_LISTESI } from '../context/KargoContext'
+import { useKargo, KARGO_FIRMALARI } from '../context/KargoContext'
 import CustomSelect from '../components/CustomSelect'
+import {
+  Button, SearchInput, Input, Textarea, Label,
+  Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
+} from '../components/ui'
+
+const KARGO_DURUM_TONE = {
+  hazirlaniyor:    'beklemede',
+  kargoya_verildi: 'lead',
+  yolda:           'lead',
+  dagitimda:       'beklemede',
+  teslim_edildi:   'aktif',
+  iade:            'kayip',
+  kayip:           'kayip',
+}
 
 const bosForm = {
   tip: 'giden',
   kargoFirmasi: '',
   takipNo: '',
-  gonderenAd: '',
-  gonderenFirma: '',
-  gonderenAdres: '',
-  gonderenTelefon: '',
-  aliciAd: '',
-  aliciFirma: '',
-  aliciAdres: '',
-  aliciTelefon: '',
-  icerik: '',
-  agirlik: '',
-  desi: '',
-  ucret: '',
-  odemeYontemi: 'gonderici',
-  tahminiTeslim: '',
-  ilgiliKullaniciIds: [],
-  ilgiliModul: null,
+  gonderenAd: '', gonderenFirma: '', gonderenAdres: '', gonderenTelefon: '',
+  aliciAd: '', aliciFirma: '', aliciAdres: '', aliciTelefon: '',
+  icerik: '', agirlik: '', desi: '', ucret: '',
+  odemeYontemi: 'gonderici', tahminiTeslim: '',
+  ilgiliKullaniciIds: [], ilgiliModul: null,
 }
 
 export default function Kargolar() {
   const navigate = useNavigate()
   const { kullanici, kullanicilar } = useAuth()
   const { bildirimEkle } = useBildirim()
-  const { kargolar, kargoOlustur, KARGO_FIRMALARI: firmalar, DURUM_LISTESI: durumlar } = useKargo()
+  const { kargolar, kargoOlustur, kargoSil, KARGO_FIRMALARI: firmalar, DURUM_LISTESI: durumlar } = useKargo()
 
   const [formAcik, setFormAcik] = useState(false)
   const [form, setForm] = useState({ ...bosForm })
-  const [adim, setAdim] = useState(1) // 1=temel, 2=taraf bilgileri, 3=detay+bildirim
+  const [adim, setAdim] = useState(1)
   const [aramaMetni, setAramaMetni] = useState('')
   const [durumFiltre, setDurumFiltre] = useState('hepsi')
   const [tipFiltre, setTipFiltre] = useState('hepsi')
   const [silOnayId, setSilOnayId] = useState(null)
 
-  const { kargoSil } = useKargo()
+  const znaKullanicilar = kullanicilar.filter(k => k.tip !== 'musteri')
 
-  const znaKullanicilar = kullanicilar.filter((k) => k.tip !== 'musteri')
-
-  // Kargo oluştururken form varsayılanlarını hazırla
   const yeniKargoAc = () => {
-    const varsayilan = { ...bosForm }
+    const v = { ...bosForm }
     if (kullanici) {
-      if (varsayilan.tip === 'giden') {
-        varsayilan.gonderenFirma = 'ZNA Teknoloji'
-        varsayilan.gonderenAd = kullanici.ad
-      }
-      if (!varsayilan.ilgiliKullaniciIds.includes(kullanici.id.toString())) {
-        varsayilan.ilgiliKullaniciIds = [kullanici.id.toString()]
+      if (v.tip === 'giden') { v.gonderenFirma = 'ZNA Teknoloji'; v.gonderenAd = kullanici.ad }
+      if (!v.ilgiliKullaniciIds.includes(kullanici.id.toString())) {
+        v.ilgiliKullaniciIds = [kullanici.id.toString()]
       }
     }
-    setForm(varsayilan)
-    setAdim(1)
-    setFormAcik(true)
+    setForm(v); setAdim(1); setFormAcik(true)
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50)
   }
 
   const handleTipDegis = (tip) => {
-    const guncellenmis = { ...form, tip }
-    if (tip === 'giden') {
-      guncellenmis.gonderenFirma = 'ZNA Teknoloji'
-      guncellenmis.gonderenAd = kullanici?.ad || ''
-    } else {
-      if (guncellenmis.gonderenFirma === 'ZNA Teknoloji') {
-        guncellenmis.gonderenFirma = ''
-        guncellenmis.gonderenAd = ''
-      }
-    }
-    setForm(guncellenmis)
+    const g = { ...form, tip }
+    if (tip === 'giden') { g.gonderenFirma = 'ZNA Teknoloji'; g.gonderenAd = kullanici?.ad || '' }
+    else if (g.gonderenFirma === 'ZNA Teknoloji') { g.gonderenFirma = ''; g.gonderenAd = '' }
+    setForm(g)
   }
 
   const ilgiliToggle = (userId) => {
     const id = userId.toString()
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       ilgiliKullaniciIds: prev.ilgiliKullaniciIds.includes(id)
-        ? prev.ilgiliKullaniciIds.filter((x) => x !== id)
+        ? prev.ilgiliKullaniciIds.filter(x => x !== id)
         : [...prev.ilgiliKullaniciIds, id],
     }))
   }
@@ -94,312 +86,282 @@ export default function Kargolar() {
   }
 
   const kaydet = async () => {
-    if (!form.kargoFirmasi) { alert('Kargo firması seçiniz!'); return }
-    if (!form.icerik) { alert('Gönderi içeriğini belirtiniz!'); return }
+    if (!form.kargoFirmasi) { alert('Kargo firması seçiniz.'); return }
+    if (!form.icerik)        { alert('Gönderi içeriğini belirtiniz.'); return }
 
-    const yeniKargo = await kargoOlustur(form, kullanici)
-    if (!yeniKargo) { alert('Kargo kaydedilemedi, tekrar deneyin.'); return }
+    const y = await kargoOlustur(form, kullanici)
+    if (!y) { alert('Kargo kaydedilemedi, tekrar deneyin.'); return }
 
-    // İlgili kişilere bildirim gönder (oluşturan hariç)
     form.ilgiliKullaniciIds
-      .filter((id) => id !== kullanici.id.toString())
-      .forEach((id) => {
-        const firma = firmalar.find((f) => f.id === form.kargoFirmasi)
+      .filter(id => id !== kullanici.id.toString())
+      .forEach(id => {
+        const firma = firmalar.find(f => f.id === form.kargoFirmasi)
         const taraf = form.tip === 'giden'
           ? `→ ${form.aliciFirma || form.aliciAd}`
           : `← ${form.gonderenFirma || form.gonderenAd}`
-        bildirimEkle(
-          id,
-          'Yeni Kargo Kaydı',
-          `${yeniKargo.kargoNo} — ${firma?.isim} ${taraf}. İçerik: ${form.icerik}`,
-          'bilgi',
-          `/kargolar/${yeniKargo.id}`
-        )
+        bildirimEkle(id, 'Yeni Kargo Kaydı',
+          `${y.kargoNo} — ${firma?.isim} ${taraf}. İçerik: ${form.icerik}`,
+          'bilgi', `/kargolar/${y.id}`)
       })
 
-    setFormAcik(false)
-    setForm({ ...bosForm })
-    setAdim(1)
-    navigate(`/kargolar/${yeniKargo.id}`)
+    setFormAcik(false); setForm({ ...bosForm }); setAdim(1)
+    navigate(`/kargolar/${y.id}`)
   }
 
-  const filtreliKargolar = kargolar
-    .filter((k) => durumFiltre === 'hepsi' || k.durum === durumFiltre)
-    .filter((k) => tipFiltre === 'hepsi' || k.tip === tipFiltre)
-    .filter((k) => {
+  const filtreli = kargolar
+    .filter(k => durumFiltre === 'hepsi' || k.durum === durumFiltre)
+    .filter(k => tipFiltre === 'hepsi' || k.tip === tipFiltre)
+    .filter(k => {
       if (!aramaMetni) return true
       const q = aramaMetni.toLowerCase()
-      return (
-        k.kargoNo?.toLowerCase().includes(q) ||
-        k.alici?.ad?.toLowerCase().includes(q) ||
-        k.alici?.firma?.toLowerCase().includes(q) ||
-        k.gonderen?.ad?.toLowerCase().includes(q) ||
-        k.gonderen?.firma?.toLowerCase().includes(q) ||
-        k.takipNo?.toLowerCase().includes(q) ||
-        k.icerik?.toLowerCase().includes(q)
-      )
+      return [k.kargoNo, k.alici?.ad, k.alici?.firma, k.gonderen?.ad, k.gonderen?.firma, k.takipNo, k.icerik]
+        .some(v => (v || '').toLowerCase().includes(q))
     })
 
-  const istatistik = {
-    toplam:   kargolar.length,
-    aktif:    kargolar.filter((k) => !['teslim_edildi','iade'].includes(k.durum)).length,
-    teslim:   kargolar.filter((k) => k.durum === 'teslim_edildi').length,
-    iade:     kargolar.filter((k) => k.durum === 'iade').length,
-    dagitimda:kargolar.filter((k) => k.durum === 'dagitimda').length,
+  const ist = {
+    toplam: kargolar.length,
+    aktif: kargolar.filter(k => !['teslim_edildi', 'iade'].includes(k.durum)).length,
+    teslim: kargolar.filter(k => k.durum === 'teslim_edildi').length,
+    iade: kargolar.filter(k => k.durum === 'iade').length,
+    dagitimda: kargolar.filter(k => k.durum === 'dagitimda').length,
   }
 
   return (
-    <div className="p-6">
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* Başlık */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Kargo Takip</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{kargolar.length} kayıt · {istatistik.aktif} aktif</p>
+          <h1 className="t-h1">Kargo Takip</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            <span className="tabular-nums">{kargolar.length}</span> kayıt · <span className="tabular-nums">{ist.aktif}</span> aktif
+          </p>
         </div>
-        <button
-          onClick={yeniKargoAc}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-1.5"
-        >
-          + Yeni Kargo
-        </button>
+        <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={yeniKargoAc}>
+          Yeni kargo
+        </Button>
       </div>
 
-      {/* İstatistik kartlar */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        {[
-          { etiket: 'Toplam', sayi: istatistik.toplam, renk: '#0176D3', bg: 'rgba(1,118,211,0.08)' },
-          { etiket: 'Aktif', sayi: istatistik.aktif, renk: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-          { etiket: 'Dağıtımda', sayi: istatistik.dagitimda, renk: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-          { etiket: 'Teslim Edildi', sayi: istatistik.teslim, renk: '#10b981', bg: 'rgba(16,185,129,0.08)' },
-          { etiket: 'İade', sayi: istatistik.iade, renk: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-        ].map((s) => (
-          <div key={s.etiket} className="rounded-xl p-4 text-center" style={{ background: s.bg, border: `1px solid ${s.renk}25` }}>
-            <p className="text-2xl font-bold" style={{ color: s.renk }}>{s.sayi}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.etiket}</p>
-          </div>
-        ))}
+      {/* KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <KPICard label="TOPLAM"       value={ist.toplam}    icon={<Package size={16} strokeWidth={1.5} />} />
+        <KPICard label="AKTİF"        value={ist.aktif}     footer={<span style={{ color: 'var(--warning)' }}>İşlemde</span>} />
+        <KPICard label="DAĞITIMDA"    value={ist.dagitimda} footer={<span style={{ color: 'var(--warning)' }}>Yolda</span>} />
+        <KPICard label="TESLİM"       value={ist.teslim}    footer={<span style={{ color: 'var(--success)' }}>Tamamlandı</span>} />
+        <KPICard label="İADE"         value={ist.iade}      footer={ist.iade > 0 ? <span style={{ color: 'var(--danger)' }}>Var</span> : <span style={{ color: 'var(--text-tertiary)' }}>Yok</span>} />
       </div>
 
-      {/* Yeni Kargo Formu */}
+      {/* Form */}
       {formAcik && (
-        <div className="rounded-2xl p-6 mb-6" style={{
-          background: 'rgba(255,255,255,0.95)',
-          border: '1px solid rgba(1,118,211,0.2)',
-          boxShadow: '0 8px 32px rgba(1,118,211,0.12)',
-        }}>
-          {/* Form başlık + adım göstergesi */}
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-semibold text-gray-800">Yeni Kargo Kaydı</h3>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3].map((a) => (
-                <div key={a} className="flex items-center gap-1">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                    style={{
-                      background: adim >= a ? 'var(--primary)' : '#f1f5f9',
-                      color: adim >= a ? 'white' : '#9ca3af',
-                    }}
-                  >{a}</div>
-                  {a < 3 && <div className="w-6 h-0.5" style={{ background: adim > a ? 'var(--primary)' : '#e5e7eb' }} />}
+        <Card style={{ marginBottom: 20 }}>
+          {/* Başlık + adım göstergesi */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <h2 className="t-h2" style={{ margin: 0 }}>Yeni Kargo Kaydı</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {[1, 2, 3].map(a => (
+                <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: 26, height: 26,
+                    borderRadius: '50%',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    font: '600 12px/1 var(--font-sans)',
+                    background: adim >= a ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+                    color: adim >= a ? '#fff' : 'var(--text-tertiary)',
+                    border: adim >= a ? 'none' : '1px solid var(--border-default)',
+                  }}>
+                    {a}
+                  </div>
+                  {a < 3 && <div style={{ width: 24, height: 1, background: adim > a ? 'var(--brand-primary)' : 'var(--border-default)' }} />}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Adım 1: Temel Bilgiler */}
+          {/* Adım 1 */}
           {adim === 1 && (
             <div>
-              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-4">Temel Bilgiler</p>
+              <p className="t-label" style={{ marginBottom: 16 }}>TEMEL BİLGİLER</p>
 
-              {/* Giden / Gelen toggle */}
-              <div className="mb-5">
-                <label className="text-sm text-gray-600 mb-2 block">Kargo Tipi *</label>
-                <div className="flex gap-3">
+              <div style={{ marginBottom: 20 }}>
+                <Label required>Kargo tipi</Label>
+                <div style={{ display: 'flex', gap: 10 }}>
                   {[
-                    { id: 'giden', isim: 'Giden Kargo', aciklama: 'ZNA\'dan gönderilen', ikon: '📤' },
-                    { id: 'gelen', isim: 'Gelen Kargo', aciklama: 'ZNA\'ya gelen', ikon: '📥' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleTipDegis(t.id)}
-                      className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition text-left"
-                      style={{
-                        borderColor: form.tip === t.id ? 'var(--primary)' : '#e5e7eb',
-                        background: form.tip === t.id ? 'rgba(1,118,211,0.06)' : 'var(--bg-card)',
-                      }}
-                    >
-                      <span className="text-2xl">{t.ikon}</span>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: form.tip === t.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{t.isim}</p>
-                        <p className="text-xs text-gray-400">{t.aciklama}</p>
-                      </div>
-                    </button>
-                  ))}
+                    { id: 'giden', isim: 'Giden Kargo', aciklama: 'ZNA\'dan gönderilen', C: ArrowUpRight },
+                    { id: 'gelen', isim: 'Gelen Kargo', aciklama: 'ZNA\'ya gelen',       C: ArrowDownLeft },
+                  ].map(t => {
+                    const active = form.tip === t.id
+                    const IconC = t.C
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => handleTipDegis(t.id)}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '12px 16px',
+                          borderRadius: 'var(--radius-md)',
+                          background: active ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                          border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'all 120ms',
+                        }}
+                      >
+                        <span style={{
+                          width: 32, height: 32,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--surface-card)',
+                          border: '1px solid var(--border-default)',
+                          color: active ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                        }}>
+                          <IconC size={16} strokeWidth={1.5} />
+                        </span>
+                        <div>
+                          <div style={{ font: '500 14px/20px var(--font-sans)', color: active ? 'var(--brand-primary)' : 'var(--text-primary)' }}>
+                            {t.isim}
+                          </div>
+                          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                            {t.aciklama}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Kargo Firması */}
-              <div className="mb-5">
-                <label className="text-sm text-gray-600 mb-2 block">Kargo Firması *</label>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-                  {firmalar.map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => setForm({ ...form, kargoFirmasi: f.id })}
-                      className="px-3 py-2.5 rounded-xl text-xs font-semibold border-2 transition"
-                      style={{
-                        borderColor: form.kargoFirmasi === f.id ? f.renk : '#e5e7eb',
-                        background: form.kargoFirmasi === f.id ? f.bg : 'var(--bg-card)',
-                        color: form.kargoFirmasi === f.id ? f.renk : 'var(--text-muted)',
-                      }}
-                    >{f.isim}</button>
-                  ))}
+              <div style={{ marginBottom: 20 }}>
+                <Label required>Kargo firması</Label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                  {firmalar.map(f => {
+                    const active = form.kargoFirmasi === f.id
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setForm({ ...form, kargoFirmasi: f.id })}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: active ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                          border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                          color: active ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          font: '500 12px/16px var(--font-sans)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {f.isim}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Takip No */}
-              <div className="mb-5">
-                <label className="text-sm text-gray-600 mb-1 block">Takip Numarası</label>
-                <input
-                  type="text"
+              <div>
+                <Label>Takip numarası</Label>
+                <Input
                   value={form.takipNo}
-                  onChange={(e) => setForm({ ...form, takipNo: e.target.value })}
-                  className="premium-input max-w-xs"
+                  onChange={e => setForm({ ...form, takipNo: e.target.value })}
                   placeholder="Kargo takip numarası (opsiyonel)"
+                  style={{ maxWidth: 360 }}
                 />
               </div>
             </div>
           )}
 
-          {/* Adım 2: Taraf Bilgileri */}
+          {/* Adım 2 */}
           {adim === 2 && (
             <div>
-              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-4">Gönderen & Alıcı Bilgileri</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Gönderen */}
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <span>📤</span> Gönderen
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Ad Soyad</label>
-                      <input type="text" value={form.gonderenAd} onChange={(e) => setForm({...form, gonderenAd: e.target.value})} className="premium-input" placeholder="Ad Soyad" />
+              <p className="t-label" style={{ marginBottom: 16 }}>GÖNDEREN & ALICI BİLGİLERİ</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+                {[
+                  { baslik: 'Gönderen', icon: ArrowUpRight, prefix: 'gonderen' },
+                  { baslik: 'Alıcı',    icon: ArrowDownLeft, prefix: 'alici' },
+                ].map(sec => {
+                  const IconC = sec.icon
+                  return (
+                    <div key={sec.prefix}>
+                      <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 12 }}>
+                        <IconC size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} /> {sec.baslik}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div><Label>Ad Soyad</Label>
+                          <Input value={form[sec.prefix + 'Ad']} onChange={e => setForm({ ...form, [sec.prefix + 'Ad']: e.target.value })} placeholder="Ad Soyad" />
+                        </div>
+                        <div><Label>Firma</Label>
+                          <Input value={form[sec.prefix + 'Firma']} onChange={e => setForm({ ...form, [sec.prefix + 'Firma']: e.target.value })} placeholder="Firma adı" />
+                        </div>
+                        <div><Label>Telefon</Label>
+                          <Input value={form[sec.prefix + 'Telefon']} onChange={e => setForm({ ...form, [sec.prefix + 'Telefon']: e.target.value })} placeholder="0532 000 00 00" />
+                        </div>
+                        <div><Label>Adres</Label>
+                          <Textarea value={form[sec.prefix + 'Adres']} onChange={e => setForm({ ...form, [sec.prefix + 'Adres']: e.target.value })} rows={2} placeholder="Adres" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Firma</label>
-                      <input type="text" value={form.gonderenFirma} onChange={(e) => setForm({...form, gonderenFirma: e.target.value})} className="premium-input" placeholder="Firma adı" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Telefon</label>
-                      <input type="text" value={form.gonderenTelefon} onChange={(e) => setForm({...form, gonderenTelefon: e.target.value})} className="premium-input" placeholder="0532 000 00 00" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Adres</label>
-                      <textarea value={form.gonderenAdres} onChange={(e) => setForm({...form, gonderenAdres: e.target.value})} className="premium-input" rows={2} placeholder="Gönderim adresi" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Alıcı */}
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <span>📥</span> Alıcı
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Ad Soyad</label>
-                      <input type="text" value={form.aliciAd} onChange={(e) => setForm({...form, aliciAd: e.target.value})} className="premium-input" placeholder="Ad Soyad" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Firma</label>
-                      <input type="text" value={form.aliciFirma} onChange={(e) => setForm({...form, aliciFirma: e.target.value})} className="premium-input" placeholder="Firma adı" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Telefon</label>
-                      <input type="text" value={form.aliciTelefon} onChange={(e) => setForm({...form, aliciTelefon: e.target.value})} className="premium-input" placeholder="0532 000 00 00" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Adres</label>
-                      <textarea value={form.aliciAdres} onChange={(e) => setForm({...form, aliciAdres: e.target.value})} className="premium-input" rows={2} placeholder="Teslimat adresi" />
-                    </div>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
             </div>
           )}
 
-          {/* Adım 3: Detaylar + Bildirimler */}
+          {/* Adım 3 */}
           {adim === 3 && (
             <div>
-              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-4">Gönderi Detayları & Bildirimler</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="md:col-span-2">
-                  <label className="text-sm text-gray-600 mb-1 block">Gönderi İçeriği / Açıklama *</label>
-                  <textarea
-                    value={form.icerik}
-                    onChange={(e) => setForm({ ...form, icerik: e.target.value })}
-                    className="premium-input"
-                    rows={3}
-                    placeholder="Gönderilen ürün/doküman açıklaması..."
-                  />
+              <p className="t-label" style={{ marginBottom: 16 }}>GÖNDERİ DETAYLARI & BİLDİRİMLER</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <Label required>Gönderi içeriği / açıklama</Label>
+                  <Textarea value={form.icerik} onChange={e => setForm({ ...form, icerik: e.target.value })} rows={3} placeholder="Gönderilen ürün/doküman açıklaması…" />
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Ağırlık (kg)</label>
-                  <input type="number" value={form.agirlik} onChange={(e) => setForm({...form, agirlik: e.target.value})} className="premium-input" placeholder="0.00" step="0.1" />
+                <div><Label>Ağırlık (kg)</Label>
+                  <Input type="number" step="0.1" value={form.agirlik} onChange={e => setForm({ ...form, agirlik: e.target.value })} placeholder="0.00" />
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Desi</label>
-                  <input type="number" value={form.desi} onChange={(e) => setForm({...form, desi: e.target.value})} className="premium-input" placeholder="0" />
+                <div><Label>Desi</Label>
+                  <Input type="number" value={form.desi} onChange={e => setForm({ ...form, desi: e.target.value })} placeholder="0" />
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Kargo Ücreti (₺)</label>
-                  <input type="number" value={form.ucret} onChange={(e) => setForm({...form, ucret: e.target.value})} className="premium-input" placeholder="0.00" />
+                <div><Label>Kargo ücreti (₺)</Label>
+                  <Input type="number" value={form.ucret} onChange={e => setForm({ ...form, ucret: e.target.value })} placeholder="0.00" />
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Ödeme Yöntemi</label>
-                  <CustomSelect value={form.odemeYontemi} onChange={(e) => setForm({...form, odemeYontemi: e.target.value})} className="premium-input">
+                <div><Label>Ödeme yöntemi</Label>
+                  <CustomSelect value={form.odemeYontemi} onChange={e => setForm({ ...form, odemeYontemi: e.target.value })}>
                     <option value="gonderici">Gönderici Öder</option>
                     <option value="alici">Alıcı Öder</option>
                     <option value="kapida">Kapıda Ödeme</option>
                   </CustomSelect>
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Tahmini Teslimat</label>
-                  <input type="date" value={form.tahminiTeslim} onChange={(e) => setForm({...form, tahminiTeslim: e.target.value})} className="premium-input" />
+                <div><Label>Tahmini teslimat</Label>
+                  <Input type="date" value={form.tahminiTeslim} onChange={e => setForm({ ...form, tahminiTeslim: e.target.value })} />
                 </div>
               </div>
 
-              {/* Bildirim alacak kişiler */}
               <div>
-                <label className="text-sm text-gray-600 mb-2 block">
-                  Bildirim Alacak Personel
-                  <span className="text-xs text-gray-400 ml-2">(durum değişikliklerinde bildirim gönderilir)</span>
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {znaKullanicilar.map((k) => {
+                <Label>Bildirim alacak personel</Label>
+                <p className="t-caption" style={{ marginBottom: 8 }}>Durum değişikliklerinde bildirim gönderilir.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                  {znaKullanicilar.map(k => {
                     const secili = form.ilgiliKullaniciIds.includes(k.id?.toString())
                     return (
                       <button
                         key={k.id}
                         onClick={() => ilgiliToggle(k.id)}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 transition text-left"
                         style={{
-                          borderColor: secili ? 'var(--primary)' : '#e5e7eb',
-                          background: secili ? 'rgba(1,118,211,0.07)' : 'var(--bg-card)',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '8px 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: secili ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                          border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                          textAlign: 'left', cursor: 'pointer',
                         }}
                       >
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                          style={{ background: 'var(--primary)' }}
-                        >
-                          {k.ad?.charAt(0) || "?"}
-                        </div>
-                        <span className="text-sm truncate" style={{ color: secili ? 'var(--primary)' : 'var(--text-secondary)', fontWeight: secili ? 600 : 400 }}>
+                        <Avatar name={k.ad} size="xs" />
+                        <span style={{
+                          font: secili ? '600 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                          color: secili ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1,
+                        }}>
                           {k.ad}
                         </span>
-                        {secili && <span className="ml-auto text-indigo-500 text-xs">✓</span>}
+                        {secili && <Check size={14} strokeWidth={2} style={{ color: 'var(--brand-primary)' }} />}
                       </button>
                     )
                   })}
@@ -408,162 +370,137 @@ export default function Kargolar() {
             </div>
           )}
 
-          {/* Form butonlar */}
-          <div className="flex gap-3 mt-6 pt-5" style={{ borderTop: '1px solid rgba(1,118,211,0.1)' }}>
-            {adim > 1 && (
-              <button
-                onClick={() => setAdim(adim - 1)}
-                className="px-5 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition"
-                style={{ border: '1px solid #e5e7eb' }}
-              >
-                ← Geri
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            {adim > 1 && <Button variant="secondary" onClick={() => setAdim(adim - 1)}>← Geri</Button>}
             {adim < 3 ? (
-              <button
-                onClick={() => adimGecerli() && setAdim(adim + 1)}
-                className="px-6 py-2 rounded-xl text-sm text-white font-medium transition"
-                style={{
-                  background: adimGecerli() ? 'var(--primary)' : '#d1d5db',
-                  cursor: adimGecerli() ? 'pointer' : 'not-allowed',
-                }}
-              >
+              <Button variant="primary" disabled={!adimGecerli()} onClick={() => adimGecerli() && setAdim(adim + 1)}>
                 Devam →
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={kaydet}
-                className="px-6 py-2 rounded-xl text-sm text-white font-medium transition"
-                style={{ background: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
-              >
-                Kargoyu Kaydet
-              </button>
+              <Button variant="primary" onClick={kaydet}>Kargoyu kaydet</Button>
             )}
-            <button
-              onClick={() => { setFormAcik(false); setAdim(1) }}
-              className="px-5 py-2 rounded-xl border text-sm text-gray-500 hover:bg-gray-50 transition"
-              style={{ border: '1px solid #e5e7eb' }}
-            >
-              İptal
-            </button>
+            <Button variant="tertiary" onClick={() => { setFormAcik(false); setAdim(1) }}>İptal</Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Filtreler */}
-      <div className="flex gap-3 mb-4 flex-wrap items-center">
-        <input
-          type="text"
-          value={aramaMetni}
-          onChange={(e) => setAramaMetni(e.target.value)}
-          placeholder="Kargo no, alıcı, takip no, içerik ara..."
-          className="flex-1 min-w-48 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 240, maxWidth: 480 }}>
+          <SearchInput
+            value={aramaMetni}
+            onChange={e => setAramaMetni(e.target.value)}
+            placeholder="Kargo no, alıcı, takip no, içerik ara…"
+          />
+        </div>
+        <div style={{ minWidth: 160 }}>
+          <CustomSelect value={tipFiltre} onChange={e => setTipFiltre(e.target.value)}>
+            <option value="hepsi">Tüm tipler</option>
+            <option value="giden">Giden</option>
+            <option value="gelen">Gelen</option>
+          </CustomSelect>
+        </div>
+        <div style={{ minWidth: 180 }}>
+          <CustomSelect value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)}>
+            <option value="hepsi">Tüm durumlar</option>
+            {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
+          </CustomSelect>
+        </div>
+      </div>
+
+      {/* Liste */}
+      {filtreli.length === 0 ? (
+        <EmptyState
+          icon={<Package size={32} strokeWidth={1.5} />}
+          title={aramaMetni || durumFiltre !== 'hepsi' ? 'Arama sonucu bulunamadı' : 'Henüz kargo kaydı eklenmedi'}
         />
-        <CustomSelect
-          value={tipFiltre}
-          onChange={(e) => setTipFiltre(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        >
-          <option value="hepsi">Tüm Tipler</option>
-          <option value="giden">Giden</option>
-          <option value="gelen">Gelen</option>
-        </CustomSelect>
-        <CustomSelect
-          value={durumFiltre}
-          onChange={(e) => setDurumFiltre(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        >
-          <option value="hepsi">Tüm Durumlar</option>
-          {durumlar.map((d) => (
-            <option key={d.id} value={d.id}>{d.ikon} {d.isim}</option>
-          ))}
-        </CustomSelect>
-      </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtreli.map(kargo => {
+            const durum = durumlar.find(d => d.id === kargo.durum)
+            const firma = KARGO_FIRMALARI.find(f => f.id === kargo.kargoFirmasi)
+            const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date()
+              && !['teslim_edildi', 'iade'].includes(kargo.durum)
+            const TipIcon = kargo.tip === 'giden' ? ArrowUpRight : ArrowDownLeft
 
-      {/* Kargo Listesi */}
-      <div className="flex flex-col gap-3">
-        {filtreliKargolar.length === 0 && (
-          <div className="text-center py-16 text-gray-400">
-            <p className="text-4xl mb-3">📦</p>
-            <p className="text-sm">{aramaMetni || durumFiltre !== 'hepsi' ? 'Arama sonucu bulunamadı' : 'Henüz kargo kaydı eklenmedi'}</p>
-          </div>
-        )}
-
-        {filtreliKargolar.map((kargo) => {
-          const durum = durumlar.find((d) => d.id === kargo.durum)
-          const firma = KARGO_FIRMALARI.find((f) => f.id === kargo.kargoFirmasi)
-          const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date() && !['teslim_edildi','iade'].includes(kargo.durum)
-
-          return (
-            <div key={kargo.id}>
-              <div
-                onClick={() => navigate(`/kargolar/${kargo.id}`)}
-                className="rounded-2xl px-5 py-4 cursor-pointer transition-all hover-lift flex items-center gap-4"
-                style={{
-                  background: 'rgba(255,255,255,0.92)',
-                  border: gecikti ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(1,118,211,0.1)',
-                  boxShadow: '0 2px 8px rgba(1,118,211,0.06)',
-                }}
-              >
-                {/* Tip ikon */}
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                  style={{ background: kargo.tip === 'giden' ? 'rgba(1,118,211,0.1)' : 'rgba(16,185,129,0.1)' }}
+            return (
+              <div key={kargo.id}>
+                <Card
+                  onClick={() => navigate(`/kargolar/${kargo.id}`)}
+                  padding={16}
+                  style={{
+                    cursor: 'pointer',
+                    borderLeft: `3px solid ${gecikti ? 'var(--danger)' : 'var(--border-default)'}`,
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
                 >
-                  {kargo.tip === 'giden' ? '📤' : '📥'}
-                </div>
-
-                {/* Ana bilgi */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-xs font-mono text-gray-400">{kargo.kargoNo}</span>
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{ background: firma?.bg || '#f1f5f9', color: firma?.renk || '#6b7280' }}
-                    >
-                      {firma?.isim || kargo.kargoFirmasi}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{
+                      width: 36, height: 36,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 'var(--radius-sm)',
+                      background: kargo.tip === 'giden' ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
+                      color: kargo.tip === 'giden' ? 'var(--brand-primary)' : 'var(--success)',
+                      flexShrink: 0,
+                    }}>
+                      <TipIcon size={16} strokeWidth={1.5} />
                     </span>
-                    {kargo.takipNo && (
-                      <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{kargo.takipNo}</span>
-                    )}
-                    {gecikti && (
-                      <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">⚠️ Gecikti</span>
-                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <CodeBadge>{kargo.kargoNo}</CodeBadge>
+                        {firma && <Badge tone="brand">{firma.isim}</Badge>}
+                        {kargo.takipNo && <CodeBadge>{kargo.takipNo}</CodeBadge>}
+                        {gecikti && <Badge tone="kayip" icon={<AlertTriangle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
+                      </div>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {kargo.gonderen?.firma || kargo.gonderen?.ad || '?'}
+                        <span style={{ color: 'var(--text-tertiary)', margin: '0 8px' }}>→</span>
+                        {kargo.alici?.firma || kargo.alici?.ad || '?'}
+                      </div>
+                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {kargo.icerik}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                      {durum && <Badge tone={KARGO_DURUM_TONE[durum.id] ?? 'neutral'}>{durum.isim}</Badge>}
+                      <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {kargo.tahminiTeslim ? `Tah. ${kargo.tahminiTeslim}` : new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR')}
+                      </span>
+                    </div>
+
+                    <ChevronRight size={16} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                   </div>
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {kargo.gonderen?.firma || kargo.gonderen?.ad || '?'}
-                    <span className="text-gray-300 mx-2">→</span>
-                    {kargo.alici?.firma || kargo.alici?.ad || '?'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{kargo.icerik}</p>
-                </div>
+                </Card>
 
-                {/* Meta */}
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0 text-right">
-                  <span
-                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={{ background: durum?.bg, color: durum?.renk }}
-                  >
-                    {durum?.ikon} {durum?.isim}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {kargo.tahminiTeslim ? `Tah. ${kargo.tahminiTeslim}` : new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR')}
-                  </span>
-                </div>
+                {silOnayId === kargo.id && (
+                  <div style={{
+                    margin: '0 8px',
+                    padding: '10px 16px',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    background: 'var(--danger-soft)',
+                    border: '1px solid var(--danger-border)',
+                    borderTop: 'none',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    <AlertTriangle size={14} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />
+                    <span style={{ flex: 1, font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
+                      Bu kargoyu silmek istediğinize emin misiniz?
+                    </span>
+                    <Button variant="danger" size="sm" iconLeft={<Trash2 size={12} strokeWidth={1.5} />} onClick={() => { kargoSil(kargo.id); setSilOnayId(null) }}>
+                      Evet, sil
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setSilOnayId(null)}>İptal</Button>
+                  </div>
+                )}
               </div>
-
-              {/* Sil onayı */}
-              {silOnayId === kargo.id && (
-                <div className="mx-2 px-4 py-3 rounded-b-xl flex items-center gap-3 bg-red-50 border border-red-100 border-t-0 text-sm">
-                  <span className="text-red-700 flex-1">Bu kargoyu silmek istediğinize emin misiniz?</span>
-                  <button onClick={() => { kargoSil(kargo.id); setSilOnayId(null) }} className="text-red-600 font-semibold hover:text-red-800 px-3 py-1 border border-red-200 rounded-lg">Evet, Sil</button>
-                  <button onClick={() => setSilOnayId(null)} className="text-gray-500 hover:text-gray-700 px-3 py-1 border border-gray-200 rounded-lg">İptal</button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

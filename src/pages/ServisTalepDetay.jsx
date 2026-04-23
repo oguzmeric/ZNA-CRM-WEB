@@ -1,9 +1,30 @@
 import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
+  Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
-import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import CustomSelect from '../components/CustomSelect'
+import {
+  Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
+} from '../components/ui'
+
+const ACIL_TONE = {
+  acil:    'kayip',
+  yuksek:  'beklemede',
+  normal:  'lead',
+  dusuk:   'neutral',
+}
+const DURUM_TONE = {
+  bekliyor:     'pasif',
+  inceleniyor:  'beklemede',
+  atandi:       'lead',
+  devam_ediyor: 'beklemede',
+  tamamlandi:   'aktif',
+  iptal:        'kayip',
+}
 
 export default function ServisTalepDetay() {
   const { id } = useParams()
@@ -13,11 +34,8 @@ export default function ServisTalepDetay() {
 
   const [yeniNot, setYeniNot] = useState('')
   const [notTip, setNotTip] = useState('ic')
-  const [duzenlemeModu, setDuzenlemeModu] = useState(false)
-  const [duzenForm, setDuzenForm] = useState({})
   const [silOnayGoster, setSilOnayGoster] = useState(false)
 
-  // Memnuniyet değerlendirmesi
   const [degPuan, setDegPuan] = useState(0)
   const [degHover, setDegHover] = useState(0)
   const [degYorum, setDegYorum] = useState('')
@@ -28,31 +46,30 @@ export default function ServisTalepDetay() {
     } catch { return null }
   })
 
-  const talep = talepler.find((t) => t.id === parseInt(id))
+  const talep = talepler.find(t => t.id === parseInt(id))
 
   if (!talep) {
     return (
-      <div style={{ padding: '24px' }} className="text-center py-20">
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Talep bulunamadı</p>
-        <button onClick={() => navigate('/servis-talepleri')} style={{ color: 'var(--primary)' }} className="mt-4 text-sm">
-          ← Taleplere Dön
-        </button>
+      <div style={{ padding: 24 }}>
+        <EmptyState
+          title="Talep bulunamadı"
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/servis-talepleri')}>Taleplere dön</Button>}
+        />
       </div>
     )
   }
 
-  const anaTur = ANA_TURLER.find((t) => t.id === talep.anaTur)
-  const durum = DURUM_LISTESI.find((d) => d.id === talep.durum)
-  const aciliyet = ACILIYET_SEVIYELERI.find((a) => a.id === talep.aciliyet)
-
-  const znaKullanicilar = kullanicilar.filter((k) => k.tip !== 'musteri')
+  const anaTur = ANA_TURLER.find(t => t.id === talep.anaTur)
+  const durum = DURUM_LISTESI.find(d => d.id === talep.durum)
+  const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
+  const znaKullanicilar = kullanicilar.filter(k => k.tip !== 'musteri')
 
   const durumGuncelle = (yeniDurum, aciklama = '') => {
     talepGuncelle(talep.id, { durum: yeniDurum }, kullanici.ad, aciklama)
   }
 
   const atamayapGuncelle = (kullaniciId) => {
-    const k = kullanicilar.find((x) => x.id.toString() === kullaniciId)
+    const k = kullanicilar.find(x => x.id.toString() === kullaniciId)
     talepGuncelle(
       talep.id,
       { atananKullaniciId: k?.id || null, atananKullaniciAd: k?.ad || null, durum: k ? 'atandi' : talep.durum },
@@ -62,7 +79,8 @@ export default function ServisTalepDetay() {
   }
 
   const planliTarihGuncelle = (tarih) => {
-    talepGuncelle(talep.id, { planliTarih: tarih || null }, kullanici.ad, tarih ? `Planlı tarih: ${new Date(tarih).toLocaleDateString('tr-TR')}` : 'Planlı tarih kaldırıldı')
+    talepGuncelle(talep.id, { planliTarih: tarih || null }, kullanici.ad,
+      tarih ? `Planlı tarih: ${new Date(tarih).toLocaleDateString('tr-TR')}` : 'Planlı tarih kaldırıldı')
   }
 
   const degerlendirmeKaydet = () => {
@@ -70,15 +88,10 @@ export default function ServisTalepDetay() {
     const puanlar = JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
     const yeni = {
       id: crypto.randomUUID(),
-      servisTalepId: talep.id,
-      talepNo: talep.talepNo,
-      musteriAd: talep.musteriAd,
-      firmaAdi: talep.firmaAdi || '',
-      konu: talep.konu,
-      puan: degPuan,
-      yorum: degYorum.trim(),
-      tarih: new Date().toISOString(),
-      kaydeden: kullanici.ad,
+      servisTalepId: talep.id, talepNo: talep.talepNo,
+      musteriAd: talep.musteriAd, firmaAdi: talep.firmaAdi || '',
+      konu: talep.konu, puan: degPuan, yorum: degYorum.trim(),
+      tarih: new Date().toISOString(), kaydeden: kullanici.ad,
     }
     puanlar.push(yeni)
     localStorage.setItem('memnuniyet_puanlari', JSON.stringify(puanlar))
@@ -91,463 +104,472 @@ export default function ServisTalepDetay() {
     setYeniNot('')
   }
 
-  const tarihFormat = (tarih) =>
-    new Date(tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const tarihFormat = (t) =>
+    new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  const META_ICONS = {
+    lokasyon: MapPin, cihazTuru: Monitor, ilgiliKisi: User,
+    telefon: Phone, uygunZaman: Clock,
+  }
+
+  const ekBilgiler = [
+    { k: 'Lokasyon',    v: talep.lokasyon,  Icon: MapPin },
+    { k: 'Cihaz/Sistem', v: talep.cihazTuru, Icon: Monitor },
+    { k: 'İlgili Kişi', v: talep.ilgiliKisi, Icon: User },
+    { k: 'Telefon',     v: talep.telefon,    Icon: Phone },
+    { k: 'Uygun Zaman', v: talep.uygunZaman, Icon: Clock },
+  ].filter(x => x.v)
 
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Geri + başlık */}
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+
+      {/* Geri */}
       <button
         onClick={() => navigate('/servis-talepleri')}
-        className="text-sm flex items-center gap-1 mb-5 transition-colors"
-        style={{ color: 'var(--primary)' }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
       >
-        ← Taleplere Dön
+        <ArrowLeft size={14} strokeWidth={1.5} /> Taleplere dön
       </button>
 
       {/* Başlık kartı */}
-      <div
-        className="rounded-2xl p-5 mb-5"
-        style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.12)', boxShadow: '0 4px 16px rgba(1,118,211,0.08)' }}
-      >
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-4">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-              style={{ background: anaTur?.bg }}
-            >
-              {anaTur?.ikon}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>{talep.talepNo}</span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: durum?.bg, color: durum?.renk }}>
-                  {durum?.ikon} {durum?.isim}
-                </span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: aciliyet?.bg, color: aciliyet?.renk }}>
-                  {aciliyet?.ikon} {aciliyet?.isim}
-                </span>
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <CodeBadge>{talep.talepNo}</CodeBadge>
+                {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
+                {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
+                {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
               </div>
-              <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>{talep.konu}</h1>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                <span style={{ fontWeight: 600 }}>{talep.firmaAdi || talep.musteriAd}</span>
-                {talep.firmaAdi && <span style={{ color: 'var(--text-muted)' }}> · {talep.musteriAd}</span>}
+              <h1 className="t-h1">{talep.konu}</h1>
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 6 }}>
+                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{talep.firmaAdi || talep.musteriAd}</span>
+                {talep.firmaAdi && <span style={{ color: 'var(--text-tertiary)' }}> · {talep.musteriAd}</span>}
               </p>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                {tarihFormat(talep.olusturmaTarihi)}
-              </p>
+              <p className="t-caption" style={{ marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{tarihFormat(talep.olusturmaTarihi)}</p>
             </div>
           </div>
 
           {/* Hızlı aksiyonlar */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
             {talep.durum !== 'tamamlandi' && talep.durum !== 'iptal' && (
               <>
                 {talep.durum === 'bekliyor' && (
-                  <button
-                    onClick={() => durumGuncelle('inceleniyor', 'İncelemeye alındı')}
-                    className="px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: 'rgba(1,118,211,0.1)', color: 'var(--primary)', border: '1px solid rgba(1,118,211,0.2)' }}
-                  >
-                    🔍 İncelemeye Al
-                  </button>
+                  <Button variant="secondary" iconLeft={<Search size={14} strokeWidth={1.5} />} onClick={() => durumGuncelle('inceleniyor', 'İncelemeye alındı')}>
+                    İncelemeye al
+                  </Button>
                 )}
                 {talep.durum === 'devam_ediyor' && (
-                  <button
+                  <Button
+                    style={{ background: 'var(--success)', color: '#fff', border: '1px solid var(--success)' }}
+                    iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
                     onClick={() => durumGuncelle('tamamlandi', 'Talep tamamlandı')}
-                    className="px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}
                   >
-                    ✅ Tamamlandı
-                  </button>
+                    Tamamlandı
+                  </Button>
                 )}
               </>
             )}
-            <button
-              onClick={() => setSilOnayGoster(true)}
-              className="px-4 py-2 rounded-xl text-sm font-medium"
-              style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
-            >
-              🗑️ Sil
-            </button>
+            <Button variant="tertiary" size="md" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={() => setSilOnayGoster(true)}>
+              Sil
+            </Button>
           </div>
-
-          {/* Silme onay kutusu */}
-          <AnimatePresence>
-            {silOnayGoster && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="w-full mt-4 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap"
-                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <span style={{ fontSize: '16px' }}>⚠️</span>
-                  <p style={{ fontSize: '13px', color: '#dc2626', fontWeight: 500 }}>
-                    <strong>{talep.talepNo}</strong> numaralı talep kalıcı olarak silinecek. Emin misiniz?
-                  </p>
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => setSilOnayGoster(false)}
-                    className="px-4 py-1.5 rounded-lg text-sm"
-                    style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-                  >
-                    İptal
-                  </button>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => { talepSil(talep.id); navigate('/servis-talepleri') }}
-                    className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white"
-                    style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}
-                  >
-                    Evet, Sil
-                  </motion.button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Sol: Ana içerik */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* Silme onayı */}
+        {silOnayGoster && (
+          <Alert
+            variant="danger"
+            title={<>Bu <strong>{talep.talepNo}</strong> numaralı talep kalıcı olarak silinecek. Emin misiniz?</>}
+            action={
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" size="sm" onClick={() => setSilOnayGoster(false)}>İptal</Button>
+                <Button variant="danger" size="sm" onClick={() => { talepSil(talep.id); navigate('/servis-talepleri') }}>Evet, sil</Button>
+              </div>
+            }
+            style={{ marginTop: 16 }}
+          />
+        )}
+      </Card>
 
-          {/* Talep açıklaması */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              📄 Talep İçeriği
-            </h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr) minmax(280px, 320px))', gap: 20 }}>
+
+        {/* Sol — Ana içerik */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Açıklama */}
+          <Card>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+              <CardTitle style={{ margin: 0 }}>Talep İçeriği</CardTitle>
+            </div>
+            <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
               {talep.aciklama}
             </p>
-            <div className="grid grid-cols-2 gap-3 mt-4 pt-4" style={{ borderTop: '1px solid rgba(1,118,211,0.08)' }}>
-              {[
-                { k: 'Lokasyon', v: talep.lokasyon, ikon: '📍' },
-                { k: 'Cihaz/Sistem', v: talep.cihazTuru, ikon: '🖥️' },
-                { k: 'İlgili Kişi', v: talep.ilgiliKisi, ikon: '👤' },
-                { k: 'Telefon', v: talep.telefon, ikon: '📞' },
-                { k: 'Uygun Zaman', v: talep.uygunZaman, ikon: '🕐' },
-              ].filter((x) => x.v).map(({ k, v, ikon }) => (
-                <div key={k}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{ikon} {k}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{v}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+            {ekBilgiler.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                {ekBilgiler.map(({ k, v, Icon }) => (
+                  <div key={k}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                      <Icon size={11} strokeWidth={1.5} /> {k}
+                    </div>
+                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
 
           {/* Yazışmalar */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(1,118,211,0.08)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>💬 Notlar & Yazışmalar</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setNotTip('ic')}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{
-                    background: notTip === 'ic' ? 'rgba(1,118,211,0.1)' : 'transparent',
-                    color: notTip === 'ic' ? 'var(--primary)' : 'var(--text-muted)',
-                  }}
-                >
-                  🔒 İç Not
-                </button>
-                <button
-                  onClick={() => setNotTip('musteri')}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{
-                    background: notTip === 'musteri' ? 'rgba(16,185,129,0.1)' : 'transparent',
-                    color: notTip === 'musteri' ? '#10b981' : 'var(--text-muted)',
-                  }}
-                >
-                  👤 Müşteriye
-                </button>
+          <Card padding={0}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <MessageSquare size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <CardTitle style={{ margin: 0 }}>Notlar & Yazışmalar</CardTitle>
+              </div>
+              <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+                {[
+                  { id: 'ic',      label: 'İç Not',      C: Lock },
+                  { id: 'musteri', label: 'Müşteriye',   C: Mail },
+                ].map(t => {
+                  const active = notTip === t.id
+                  const IconC = t.C
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setNotTip(t.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: 'calc(var(--radius-sm) - 2px)',
+                        background: active ? 'var(--surface-card)' : 'transparent',
+                        boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        border: 'none', cursor: 'pointer',
+                        font: '500 12px/16px var(--font-sans)',
+                      }}
+                    >
+                      <IconC size={11} strokeWidth={1.5} /> {t.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div style={{ minHeight: '160px', maxHeight: '360px', overflowY: 'auto', padding: '16px' }}>
+            <div style={{ minHeight: 160, maxHeight: 360, overflowY: 'auto', padding: 16 }}>
               {(talep.notlar || []).length === 0 ? (
-                <div className="text-center py-8">
-                  <p style={{ color: '#cbd5e1', fontSize: '13px' }}>Henüz not eklenmedi</p>
-                </div>
+                <EmptyState title="Henüz not eklenmedi" />
               ) : (
-                <div className="space-y-3">
-                  {(talep.notlar || []).map((not) => {
-                    const znaTeam = not.tip === 'ic'
-                    const musteriNot = not.tip === 'musteri' && not.kullaniciId !== kullanici?.id
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(talep.notlar || []).map(not => {
+                    const icNot = not.tip === 'ic'
+                    const IconC = icNot ? Lock : Mail
+                    const tone = icNot ? 'brand' : 'aktif'
                     return (
-                      <motion.div key={not.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                        <div
-                          className="rounded-2xl px-4 py-3"
-                          style={{
-                            background: znaTeam ? 'rgba(1,118,211,0.05)' : musteriNot ? 'rgba(245,158,11,0.05)' : 'rgba(16,185,129,0.05)',
-                            border: `1px solid ${znaTeam ? 'rgba(1,118,211,0.12)' : musteriNot ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.12)'}`,
-                          }}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: znaTeam ? 'var(--primary)' : musteriNot ? '#f59e0b' : '#10b981' }}>
-                              {znaTeam ? '🔒 İç Not · ' : musteriNot ? '👤 Müşteri · ' : '✉️ Müşteriye · '}
-                              {not.kullaniciAd}
+                      <div
+                        key={not.id}
+                        style={{
+                          padding: 12,
+                          background: icNot ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
+                          border: `1px solid ${icNot ? 'var(--border-default)' : 'var(--success-border)'}`,
+                          borderRadius: 'var(--radius-sm)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <IconC size={11} strokeWidth={1.5} style={{ color: icNot ? 'var(--brand-primary)' : 'var(--success)' }} />
+                            <span style={{ font: '600 12px/16px var(--font-sans)', color: icNot ? 'var(--brand-primary)' : 'var(--success)' }}>
+                              {icNot ? 'İç not' : 'Müşteriye'}
                             </span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              {new Date(not.tarih).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-                            </span>
+                            <span style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>· {not.kullaniciAd}</span>
                           </div>
-                          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{not.metin}</p>
+                          <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                            {new Date(not.tarih).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                          </span>
                         </div>
-                      </motion.div>
+                        <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                          {not.metin}
+                        </p>
+                      </div>
                     )
                   })}
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(1,118,211,0.08)', background: 'var(--bg-hover)' }}>
-              <div
-                className="text-xs px-3 py-2 rounded-lg mb-3"
-                style={{
-                  background: notTip === 'ic' ? 'rgba(1,118,211,0.06)' : 'rgba(16,185,129,0.06)',
-                  color: notTip === 'ic' ? 'var(--primary)' : '#10b981',
-                }}
-              >
-                {notTip === 'ic' ? '🔒 İç not — müşteri görmeyecek' : '✉️ Bu not müşteriye de görünür'}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                marginBottom: 10,
+                background: notTip === 'ic' ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
+                color: notTip === 'ic' ? 'var(--brand-primary)' : 'var(--success)',
+                font: '500 12px/16px var(--font-sans)',
+              }}>
+                {notTip === 'ic'
+                  ? <><Lock size={11} strokeWidth={1.5} /> İç not — müşteri görmeyecek</>
+                  : <><Mail size={11} strokeWidth={1.5} /> Bu not müşteriye de görünür</>}
               </div>
-              <div className="flex gap-3">
-                <textarea
-                  value={yeniNot}
-                  onChange={(e) => setYeniNot(e.target.value)}
-                  placeholder="Not ekle..."
-                  rows={2}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
-                  style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-card)' }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
-                />
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <Textarea
+                    value={yeniNot}
+                    onChange={e => setYeniNot(e.target.value)}
+                    placeholder="Not ekle…"
+                    rows={2}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  iconLeft={<Send size={14} strokeWidth={1.5} />}
                   onClick={notGonder}
                   disabled={!yeniNot.trim()}
-                  className="px-4 rounded-xl text-sm font-medium text-white self-start mt-0 flex-shrink-0"
-                  style={{
-                    background: yeniNot.trim() ? 'var(--primary)' : '#e2e8f0',
-                    color: yeniNot.trim() ? 'white' : 'var(--text-muted)',
-                    padding: '10px 16px',
-                  }}
+                  style={{ alignSelf: 'flex-start' }}
                 >
                   Ekle
-                </motion.button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Durum geçmişi */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-              🕐 Durum Geçmişi
-            </h3>
-            <div className="relative">
-              <div className="absolute left-4 top-0 bottom-0 w-px" style={{ background: 'rgba(1,118,211,0.15)' }} />
-              <div className="space-y-4 pl-10">
+          <Card>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <Clock size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+              <CardTitle style={{ margin: 0 }}>Durum Geçmişi</CardTitle>
+            </div>
+            {(talep.durumGecmisi || []).length === 0 ? (
+              <p className="t-caption">Henüz durum değişikliği yok.</p>
+            ) : (
+              <div style={{ position: 'relative', paddingLeft: 24 }}>
+                <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
                 {[...(talep.durumGecmisi || [])].reverse().map((g, i) => {
-                  const d = DURUM_LISTESI.find((x) => x.id === g.durum)
+                  const d = DURUM_LISTESI.find(x => x.id === g.durum)
                   return (
-                    <div key={i} className="relative">
-                      <div
-                        className="absolute -left-6 w-4 h-4 rounded-full"
-                        style={{ background: d?.bg, border: `2px solid ${d?.renk || 'var(--primary)'}` }}
-                      />
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: d?.renk }}>
-                        {d?.ikon} {d?.isim}
-                      </span>
-                      {g.aciklama && (
-                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{g.aciklama}</p>
-                      )}
-                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {g.kullaniciAd} · {tarihFormat(g.tarih)}
-                      </p>
+                    <div key={i} style={{ position: 'relative', paddingBottom: i < (talep.durumGecmisi?.length || 1) - 1 ? 16 : 0 }}>
+                      <span style={{
+                        position: 'absolute', left: -20, top: 2,
+                        width: 17, height: 17, borderRadius: '50%',
+                        background: 'var(--surface-card)',
+                        border: '2px solid var(--brand-primary)',
+                      }} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                          {d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
+                        </div>
+                        {g.aciklama && (
+                          <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: '0 0 2px' }}>
+                            {g.aciklama}
+                          </p>
+                        )}
+                        <p className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {g.kullaniciAd} · {tarihFormat(g.tarih)}
+                        </p>
+                      </div>
                     </div>
                   )
                 })}
               </div>
-            </div>
-          </div>
+            )}
+          </Card>
         </div>
 
-        {/* Sağ: Yönetim paneli */}
-        <div className="space-y-4">
+        {/* Sağ — Yönetim paneli */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Durum değiştir */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-              Durum
-            </h3>
-            <div className="space-y-2">
-              {DURUM_LISTESI.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => durumGuncelle(d.id, `Durum "${d.isim}" olarak güncellendi`)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
-                  style={{
-                    background: talep.durum === d.id ? d.bg : 'var(--bg-hover)',
-                    border: `1px solid ${talep.durum === d.id ? d.renk + '44' : 'rgba(1,118,211,0.08)'}`,
-                    color: talep.durum === d.id ? d.renk : 'var(--text-secondary)',
-                    fontWeight: talep.durum === d.id ? 600 : 400,
-                  }}
-                >
-                  <span>{d.ikon}</span>
-                  <span>{d.isim}</span>
-                  {talep.durum === d.id && <span className="ml-auto text-xs">✓</span>}
-                </button>
-              ))}
+          <Card>
+            <p className="t-label" style={{ marginBottom: 10 }}>DURUM</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {DURUM_LISTESI.map(d => {
+                const active = talep.durum === d.id
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => durumGuncelle(d.id, `Durum "${d.isim}" olarak güncellendi`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: active ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                      border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                      color: active ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                      font: active ? '600 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>{d.isim}</span>
+                    {active && <Check size={14} strokeWidth={2} />}
+                  </button>
+                )
+              })}
             </div>
-          </div>
+          </Card>
 
           {/* Atama */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-              Atama
-            </h3>
-            <CustomSelect
-              value={talep.atananKullaniciId?.toString() || ''}
-              onChange={(e) => atamayapGuncelle(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none cursor-pointer"
-              style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-            >
+          <Card>
+            <p className="t-label" style={{ marginBottom: 10 }}>ATAMA</p>
+            <CustomSelect value={talep.atananKullaniciId?.toString() || ''} onChange={e => atamayapGuncelle(e.target.value)}>
               <option value="">— Atanmadı —</option>
-              {znaKullanicilar.map((k) => (
-                <option key={k.id} value={k.id?.toString()}>{k.ad}</option>
-              ))}
+              {znaKullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
             </CustomSelect>
             {talep.atananKullaniciAd && (
-              <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(1,118,211,0.06)' }}>
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ background: 'var(--primary)' }}
-                >
-                  {talep.atananKullaniciAd.charAt(0)}
-                </div>
-                <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 500 }}>{talep.atananKullaniciAd}</span>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', marginTop: 10,
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--brand-primary-soft)',
+              }}>
+                <Avatar name={talep.atananKullaniciAd} size="xs" />
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                  {talep.atananKullaniciAd}
+                </span>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Planlı tarih */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-              Planlı Servis Tarihi
-            </h3>
+          <Card>
+            <p className="t-label" style={{ marginBottom: 10 }}>PLANLI SERVİS TARİHİ</p>
             <input
               type="date"
               value={talep.planliTarih ? talep.planliTarih.split('T')[0] : ''}
-              onChange={(e) => planliTarihGuncelle(e.target.value || null)}
-              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-              style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-              onBlur={(e) => (e.target.style.borderColor = 'rgba(1,118,211,0.2)')}
+              onChange={e => planliTarihGuncelle(e.target.value || null)}
+              style={{
+                width: '100%', height: 36, padding: '0 12px',
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                fontFamily: 'var(--font-sans)', fontSize: 14,
+                color: 'var(--text-primary)', outline: 'none',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.boxShadow = 'var(--focus-ring)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none' }}
             />
-          </div>
+          </Card>
 
-          {/* Müşteri Memnuniyet Değerlendirmesi */}
+          {/* Müşteri memnuniyet değerlendirmesi */}
           {talep.durum === 'tamamlandi' && (
-            <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.2)', boxShadow: '0 2px 8px rgba(245,158,11,0.06)' }}>
-              <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-                ⭐ Müşteri Değerlendirmesi
-              </h3>
+            <Card style={{ borderColor: 'var(--warning-border)' }}>
+              <p className="t-label" style={{ marginBottom: 10 }}>MÜŞTERİ DEĞERLENDİRMESİ</p>
               {mevcutDeg ? (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
                     {[1,2,3,4,5].map(i => (
-                      <span key={i} style={{ fontSize: '22px', color: i <= mevcutDeg.puan ? '#f59e0b' : '#e2e8f0' }}>★</span>
+                      <Star
+                        key={i}
+                        size={22}
+                        strokeWidth={1.5}
+                        fill={i <= mevcutDeg.puan ? 'var(--warning)' : 'transparent'}
+                        style={{ color: i <= mevcutDeg.puan ? 'var(--warning)' : 'var(--border-default)' }}
+                      />
                     ))}
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b', marginLeft: '4px' }}>
+                    <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--warning)', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>
                       {mevcutDeg.puan}/5
                     </span>
                   </div>
                   {mevcutDeg.yorum && (
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '8px' }}>
+                    <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 8 }}>
                       "{mevcutDeg.yorum}"
                     </p>
                   )}
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  <p className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {new Date(mevcutDeg.tarih).toLocaleDateString('tr-TR')} · {mevcutDeg.kaydeden}
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                    Müşterinin hizmet memnuniyetini kaydedin
-                  </p>
-                  {/* Yıldız seçici */}
-                  <div className="flex gap-1 mb-3">
-                    {[1,2,3,4,5].map(i => (
-                      <button key={i}
-                        onClick={() => setDegPuan(i)}
-                        onMouseEnter={() => setDegHover(i)}
-                        onMouseLeave={() => setDegHover(0)}
-                        style={{
-                          fontSize: '28px',
-                          color: i <= (degHover || degPuan) ? '#f59e0b' : '#e2e8f0',
-                          transition: 'color 0.1s, transform 0.1s',
-                          transform: i <= (degHover || degPuan) ? 'scale(1.15)' : 'scale(1)',
-                          background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px',
-                        }}>
-                        ★
-                      </button>
-                    ))}
+                  <p className="t-caption" style={{ marginBottom: 10 }}>Müşterinin hizmet memnuniyetini kaydedin.</p>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                    {[1,2,3,4,5].map(i => {
+                      const filled = i <= (degHover || degPuan)
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setDegPuan(i)}
+                          onMouseEnter={() => setDegHover(i)}
+                          onMouseLeave={() => setDegHover(0)}
+                          aria-label={`${i} yıldız`}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            padding: 2,
+                            transform: filled ? 'scale(1.1)' : 'scale(1)',
+                            transition: 'transform 120ms',
+                          }}
+                        >
+                          <Star
+                            size={28}
+                            strokeWidth={1.5}
+                            fill={filled ? 'var(--warning)' : 'transparent'}
+                            style={{ color: filled ? 'var(--warning)' : 'var(--border-default)' }}
+                          />
+                        </button>
+                      )
+                    })}
                   </div>
                   {degPuan > 0 && (
-                    <p className="text-xs mb-2" style={{ color: degPuan >= 4 ? '#10b981' : degPuan === 3 ? '#f59e0b' : '#ef4444' }}>
-                      {['','Çok Kötü','Kötü','Orta','İyi','Mükemmel'][degPuan]}
+                    <p style={{
+                      font: '500 13px/18px var(--font-sans)',
+                      color: degPuan >= 4 ? 'var(--success)' : degPuan === 3 ? 'var(--warning)' : 'var(--danger)',
+                      marginBottom: 10,
+                    }}>
+                      {['', 'Çok Kötü', 'Kötü', 'Orta', 'İyi', 'Mükemmel'][degPuan]}
                     </p>
                   )}
-                  <textarea
+                  <Textarea
                     value={degYorum}
                     onChange={e => setDegYorum(e.target.value)}
-                    placeholder="Yorum (isteğe bağlı)..."
+                    placeholder="Yorum (isteğe bağlı)…"
                     rows={2}
-                    className="w-full px-3 py-2 rounded-xl text-xs resize-none outline-none mb-3"
-                    style={{ border: '1px solid rgba(1,118,211,0.2)', background: 'var(--bg-hover)' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(1,118,211,0.2)'}
+                    style={{ marginBottom: 10 }}
                   />
-                  <button
-                    onClick={degerlendirmeKaydet}
+                  <Button
+                    variant="primary"
                     disabled={!degPuan}
-                    className="w-full py-2 rounded-xl text-sm font-semibold text-white transition"
-                    style={{
-                      background: degPuan ? 'linear-gradient(135deg,#f59e0b,#f97316)' : '#e2e8f0',
-                      color: degPuan ? 'white' : 'var(--text-muted)',
-                      boxShadow: degPuan ? '0 4px 12px rgba(245,158,11,0.3)' : 'none',
-                    }}>
-                    ⭐ Değerlendirmeyi Kaydet
-                  </button>
+                    iconLeft={<Star size={14} strokeWidth={1.5} fill={degPuan ? '#fff' : 'none'} />}
+                    onClick={degerlendirmeKaydet}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Değerlendirmeyi kaydet
+                  </Button>
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
-          {/* Talep özeti */}
-          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid rgba(1,118,211,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-              Müşteri Bilgisi
-            </h3>
-            <div className="space-y-2">
+          {/* Müşteri bilgileri */}
+          <Card>
+            <p className="t-label" style={{ marginBottom: 10 }}>MÜŞTERİ BİLGİSİ</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { k: 'Müşteri', v: talep.musteriAd },
+                { k: 'Müşteri',     v: talep.musteriAd },
                 talep.firmaAdi && { k: 'Firma', v: talep.firmaAdi },
                 { k: 'İlgili Kişi', v: talep.ilgiliKisi },
-                talep.telefon && { k: 'Telefon', v: talep.telefon },
+                talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
                 talep.uygunZaman && { k: 'Uygun Zaman', v: talep.uygunZaman },
-              ].filter(Boolean).map(({ k, v }) => (
+              ].filter(Boolean).map(({ k, v, tabular }) => (
                 <div key={k}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{k}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{v}</p>
+                  <div className="t-label" style={{ marginBottom: 2 }}>{k.toUpperCase()}</div>
+                  <div style={{
+                    font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                    fontVariantNumeric: tabular ? 'tabular-nums' : 'normal',
+                  }}>
+                    {v}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

@@ -1,20 +1,48 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line,
 } from 'recharts'
+import { X as XIcon, AlertTriangle, Package } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import CustomSelect from '../components/CustomSelect'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { stokHareketleriniGetir, stokUrunleriniGetir } from '../services/stokService'
+import {
+  Button, Card, KPICard, Badge, Avatar, EmptyState, Alert,
+} from '../components/ui'
 
-const RENKLER = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+const RENKLER = ['#1E5AA8', '#2F7D4F', '#B77516', '#B23A3A', '#6B4A8E', '#2B6A9E']
 const aylar = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const formatTutar = v => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0 }).format(v)
+
+const chartAxisStyle = { fontSize: 11, fill: 'var(--text-tertiary)', fontFamily: 'var(--font-sans)' }
+const chartTooltipStyle = {
+  contentStyle: {
+    background: 'var(--surface-card)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 6,
+    fontSize: 13,
+    fontFamily: 'var(--font-sans)',
+    boxShadow: 'var(--shadow-md)',
+    padding: '8px 12px',
+  },
+  labelStyle: { color: 'var(--text-primary)', fontWeight: 500 },
+}
+
+function ChartCard({ title, children, height = 240 }) {
+  return (
+    <Card>
+      <p className="t-body-strong" style={{ marginBottom: 14 }}>{title}</p>
+      <div style={{ width: '100%', height }}>{children}</div>
+    </Card>
+  )
+}
 
 function Raporlar() {
-  const { kullanici, kullanicilar } = useAuth()
+  const { kullanicilar } = useAuth()
   const [aktifSekme, setAktifSekme] = useState('teklifler')
   const [seciliPersonel, setSeciliPersonel] = useState('hepsi')
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -26,601 +54,519 @@ function Raporlar() {
   const [stokUrunler, setStokUrunler] = useState([])
 
   useEffect(() => {
-    const verileriYukle = async () => {
+    (async () => {
       setYukleniyor(true)
       const [t, g, gr, sh, su] = await Promise.all([
-        teklifleriGetir(),
-        gorusmeleriGetir(),
-        gorevleriGetir(),
-        stokHareketleriniGetir(),
-        stokUrunleriniGetir(),
+        teklifleriGetir(), gorusmeleriGetir(), gorevleriGetir(),
+        stokHareketleriniGetir(), stokUrunleriniGetir(),
       ])
-      setTeklifler(t || [])
-      setGorusmeler(g || [])
-      setGorevler(gr || [])
-      setStokHareketler(sh || [])
-      setStokUrunler(su || [])
+      setTeklifler(t || []); setGorusmeler(g || []); setGorevler(gr || [])
+      setStokHareketler(sh || []); setStokUrunler(su || [])
       setYukleniyor(false)
-    }
-    verileriYukle()
+    })()
   }, [])
 
   const sekmeler = [
-    { id: 'teklifler', isim: 'Teklifler' },
+    { id: 'teklifler',  isim: 'Teklifler' },
     { id: 'gorusmeler', isim: 'Görüşmeler' },
-    { id: 'gorevler', isim: 'Görevler' },
-    { id: 'stok', isim: 'Stok' },
+    { id: 'gorevler',   isim: 'Görevler' },
+    { id: 'stok',       isim: 'Stok' },
   ]
 
-  const filtreliTeklifler = seciliPersonel === 'hepsi'
-    ? teklifler
-    : teklifler.filter((t) => t.hazirlayan === seciliPersonel)
-
-  const filtreliGorusmeler = seciliPersonel === 'hepsi'
-    ? gorusmeler
-    : gorusmeler.filter((g) => g.gorusen === seciliPersonel)
-
+  const filtreliTeklifler = seciliPersonel === 'hepsi' ? teklifler : teklifler.filter(t => t.hazirlayan === seciliPersonel)
+  const filtreliGorusmeler = seciliPersonel === 'hepsi' ? gorusmeler : gorusmeler.filter(g => g.gorusen === seciliPersonel)
   const filtreliGorevler = seciliPersonel === 'hepsi'
     ? gorevler
-    : gorevler.filter((g) => {
-        const k = kullanicilar.find((k) => k.ad === seciliPersonel)
+    : gorevler.filter(g => {
+        const k = kullanicilar.find(k => k.ad === seciliPersonel)
         return g.atanan === k?.id?.toString()
       })
 
   const aylikTeklifVerisi = aylar.map((ay, i) => {
-    const ayT = filtreliTeklifler.filter((t) => {
+    const ayT = filtreliTeklifler.filter(t => {
       const tarih = new Date(t.tarih)
       return tarih.getMonth() === i && tarih.getFullYear() === new Date().getFullYear()
     })
     return {
       ay,
       toplam: ayT.length,
-      tutar: ayT.reduce((sum, t) => sum + (t.genelToplam || 0), 0),
-      kabul: ayT.filter((t) => t.onayDurumu === 'kabul').length,
+      tutar: ayT.reduce((s, t) => s + (t.genelToplam || 0), 0),
+      kabul: ayT.filter(t => t.onayDurumu === 'kabul').length,
     }
   })
 
   const teklifDurumVerisi = [
-    { isim: 'Takipte', deger: filtreliTeklifler.filter((t) => t.onayDurumu === 'takipte').length },
-    { isim: 'Kabul', deger: filtreliTeklifler.filter((t) => t.onayDurumu === 'kabul').length },
-    { isim: 'Vazgeçildi', deger: filtreliTeklifler.filter((t) => t.onayDurumu === 'vazgecildi').length },
-    { isim: 'Revizyon', deger: filtreliTeklifler.filter((t) => t.onayDurumu === 'revizyon').length },
-  ].filter((d) => d.deger > 0)
+    { isim: 'Takipte',    deger: filtreliTeklifler.filter(t => t.onayDurumu === 'takipte').length },
+    { isim: 'Kabul',      deger: filtreliTeklifler.filter(t => t.onayDurumu === 'kabul').length },
+    { isim: 'Vazgeçildi', deger: filtreliTeklifler.filter(t => t.onayDurumu === 'vazgecildi').length },
+    { isim: 'Revizyon',   deger: filtreliTeklifler.filter(t => t.onayDurumu === 'revizyon').length },
+  ].filter(d => d.deger > 0)
 
-  const personelTeklifVerisi = kullanicilar.map((k) => ({
-    isim: k.ad.split(' ')[0],
-    ad: k.ad,
-    adet: teklifler.filter((t) => t.hazirlayan === k.ad).length,
-    tutar: teklifler.filter((t) => t.hazirlayan === k.ad).reduce((sum, t) => sum + (t.genelToplam || 0), 0),
-    kabul: teklifler.filter((t) => t.hazirlayan === k.ad && t.onayDurumu === 'kabul').length,
-  })).filter((k) => k.adet > 0)
+  const personelTeklifVerisi = kullanicilar.map(k => ({
+    isim: k.ad.split(' ')[0], ad: k.ad,
+    adet: teklifler.filter(t => t.hazirlayan === k.ad).length,
+    tutar: teklifler.filter(t => t.hazirlayan === k.ad).reduce((s, t) => s + (t.genelToplam || 0), 0),
+    kabul: teklifler.filter(t => t.hazirlayan === k.ad && t.onayDurumu === 'kabul').length,
+  })).filter(k => k.adet > 0)
 
   const aylikGorusmeVerisi = aylar.map((ay, i) => {
-    const ayG = filtreliGorusmeler.filter((g) => {
-      const tarih = new Date(g.tarih)
-      return tarih.getMonth() === i && tarih.getFullYear() === new Date().getFullYear()
+    const ayG = filtreliGorusmeler.filter(g => {
+      const t = new Date(g.tarih)
+      return t.getMonth() === i && t.getFullYear() === new Date().getFullYear()
     })
-    return { ay, toplam: ayG.length, kapali: ayG.filter((g) => g.durum === 'kapali').length }
+    return { ay, toplam: ayG.length, kapali: ayG.filter(g => g.durum === 'kapali').length }
   })
 
   const konuGorusmeVerisi = () => {
-    const konuMap = {}
-    filtreliGorusmeler.forEach((g) => {
-      konuMap[g.konu] = (konuMap[g.konu] || 0) + 1
-    })
-    return Object.entries(konuMap)
-      .map(([konu, adet]) => ({ konu, adet }))
-      .sort((a, b) => b.adet - a.adet)
-      .slice(0, 6)
+    const m = {}
+    filtreliGorusmeler.forEach(g => { m[g.konu] = (m[g.konu] || 0) + 1 })
+    return Object.entries(m).map(([konu, adet]) => ({ konu, adet }))
+      .sort((a, b) => b.adet - a.adet).slice(0, 6)
   }
 
-  const personelGorusmeVerisi = kullanicilar.map((k) => ({
-    isim: k.ad.split(' ')[0],
-    ad: k.ad,
-    adet: gorusmeler.filter((g) => g.gorusen === k.ad).length,
-  })).filter((k) => k.adet > 0)
+  const personelGorusmeVerisi = kullanicilar.map(k => ({
+    isim: k.ad.split(' ')[0], ad: k.ad,
+    adet: gorusmeler.filter(g => g.gorusen === k.ad).length,
+  })).filter(k => k.adet > 0)
 
   const gorevDurumVerisi = [
-    { isim: 'Bekliyor', deger: filtreliGorevler.filter((g) => g.durum === 'bekliyor').length },
-    { isim: 'Devam Ediyor', deger: filtreliGorevler.filter((g) => g.durum === 'devam').length },
-    { isim: 'Tamamlandı', deger: filtreliGorevler.filter((g) => g.durum === 'tamamlandi').length },
-  ].filter((d) => d.deger > 0)
+    { isim: 'Bekliyor',     deger: filtreliGorevler.filter(g => g.durum === 'bekliyor').length },
+    { isim: 'Devam Ediyor', deger: filtreliGorevler.filter(g => g.durum === 'devam').length },
+    { isim: 'Tamamlandı',   deger: filtreliGorevler.filter(g => g.durum === 'tamamlandi').length },
+  ].filter(d => d.deger > 0)
 
-  const personelGorevVerisi = kullanicilar.map((k) => {
-    const pg = gorevler.filter((g) => g.atanan === k.id?.toString())
+  const personelGorevVerisi = kullanicilar.map(k => {
+    const pg = gorevler.filter(g => g.atanan === k.id?.toString())
     return {
-      isim: k.ad.split(' ')[0],
-      ad: k.ad,
+      isim: k.ad.split(' ')[0], ad: k.ad,
       toplam: pg.length,
-      tamamlanan: pg.filter((g) => g.durum === 'tamamlandi').length,
-      bekleyen: pg.filter((g) => g.durum === 'bekliyor').length,
+      tamamlanan: pg.filter(g => g.durum === 'tamamlandi').length,
+      bekleyen: pg.filter(g => g.durum === 'bekliyor').length,
     }
-  }).filter((k) => k.toplam > 0)
+  }).filter(k => k.toplam > 0)
 
   const stokCikisVerisi = () => {
-    const urunMap = {}
-    stokHareketler.filter((h) => h.tur === 'cikis').forEach((h) => {
-      const urun = stokUrunler.find((u) => u.stokKodu === h.stokKodu)
+    const m = {}
+    stokHareketler.filter(h => h.tur === 'cikis').forEach(h => {
+      const urun = stokUrunler.find(u => u.stokKodu === h.stokKodu)
       const ad = urun?.stokAdi || h.stokKodu
-      urunMap[ad] = (urunMap[ad] || 0) + Number(h.miktar)
+      m[ad] = (m[ad] || 0) + Number(h.miktar)
     })
-    return Object.entries(urunMap)
-      .map(([ad, miktar]) => ({ ad: ad.substring(0, 15), miktar }))
-      .sort((a, b) => b.miktar - a.miktar)
-      .slice(0, 8)
+    return Object.entries(m).map(([ad, miktar]) => ({ ad: ad.substring(0, 15), miktar }))
+      .sort((a, b) => b.miktar - a.miktar).slice(0, 8)
   }
 
-  const kritikStokVerisi = stokUrunler.filter((u) => {
-    const bakiye = stokHareketler
-      .filter((h) => h.stokKodu === u.stokKodu)
-      .reduce((sum, h) => {
-        if (h.tur === 'giris' || h.tur === 'transfer_giris') return sum + Number(h.miktar)
-        return sum - Number(h.miktar)
-      }, 0)
+  const kritikStokVerisi = stokUrunler.filter(u => {
+    const bakiye = stokHareketler.filter(h => h.stokKodu === u.stokKodu).reduce((s, h) => {
+      if (h.tur === 'giris' || h.tur === 'transfer_giris') return s + Number(h.miktar)
+      return s - Number(h.miktar)
+    }, 0)
     return u.minStok && bakiye <= Number(u.minStok)
   })
 
-  const formatTutar = (v) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0 }).format(v)
+  const gecikenler = filtreliGorevler.filter(g => g.durum !== 'tamamlandi' && g.sonTarih && new Date(g.sonTarih) < new Date())
 
-  const secilenKisiAdi = seciliPersonel === 'hepsi' ? 'Tüm Personel' : seciliPersonel
-
-  if (yukleniyor) {
-    return (
-      <div className="p-6 flex items-center justify-center h-64">
-        <p className="text-sm text-gray-400">Yükleniyor...</p>
-      </div>
-    )
-  }
+  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Raporlar</h2>
-          <p className="text-sm text-gray-400 mt-1">Genel performans ve analiz</p>
+          <h1 className="t-h1">Raporlar</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>Genel performans ve analiz</p>
         </div>
-        {/* Personel filtresi */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-500">Personel:</label>
-          <CustomSelect
-            value={seciliPersonel}
-            onChange={(e) => setSeciliPersonel(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="hepsi">Tüm Personel</option>
-            {kullanicilar.map((k) => (
-              <option key={k.id} value={k.ad}>{k.ad}</option>
-            ))}
-          </CustomSelect>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="t-caption">Personel:</span>
+          <div style={{ minWidth: 200 }}>
+            <CustomSelect value={seciliPersonel} onChange={e => setSeciliPersonel(e.target.value)}>
+              <option value="hepsi">Tüm personel</option>
+              {kullanicilar.map(k => <option key={k.id} value={k.ad}>{k.ad}</option>)}
+            </CustomSelect>
+          </div>
           {seciliPersonel !== 'hepsi' && (
-            <button
-              onClick={() => setSeciliPersonel('hepsi')}
-              className="text-xs text-gray-400 hover:text-red-500 transition"
-            >
-              ✕ Temizle
-            </button>
+            <Button variant="tertiary" size="sm" iconLeft={<XIcon size={12} strokeWidth={1.5} />} onClick={() => setSeciliPersonel('hepsi')}>
+              Temizle
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Personel seçili ise banner */}
+      {/* Personel banner */}
       {seciliPersonel !== 'hepsi' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-semibold">
-            {seciliPersonel.charAt(0)}
-          </div>
-          <p className="text-sm text-blue-700 font-medium">
-            {seciliPersonel} için filtrelenmiş veriler gösteriliyor
-          </p>
-        </div>
+        <Alert variant="info" style={{ marginBottom: 20 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Avatar name={seciliPersonel} size="xs" />
+            <strong>{seciliPersonel}</strong> için filtrelenmiş veriler gösteriliyor
+          </span>
+        </Alert>
       )}
 
       {/* Sekmeler */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
-        {sekmeler.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setAktifSekme(s.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              aktifSekme === s.id
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {s.isim}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border-default)', overflowX: 'auto' }}>
+        {sekmeler.map(s => {
+          const aktif = aktifSekme === s.id
+          return (
+            <button
+              key={s.id}
+              onClick={() => setAktifSekme(s.id)}
+              style={{
+                padding: '10px 14px',
+                background: 'transparent', border: 'none',
+                borderBottom: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                marginBottom: -1,
+                color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {s.isim}
+            </button>
+          )
+        })}
       </div>
 
-      {/* TEKLİF RAPORLARI */}
+      {/* TEKLİFLER */}
       {aktifSekme === 'teklifler' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Toplam Teklif</p>
-              <p className="text-2xl font-bold text-gray-800">{filtreliTeklifler.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Kabul Oranı</p>
-              <p className="text-2xl font-bold text-green-600">
-                {filtreliTeklifler.length > 0
-                  ? Math.round((filtreliTeklifler.filter((t) => t.onayDurumu === 'kabul').length / filtreliTeklifler.length) * 100)
-                  : 0}%
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Kabul Tutarı</p>
-              <p className="text-2xl font-bold text-blue-600">
-                ₺{formatTutar(filtreliTeklifler.filter((t) => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0))}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Ort. Teklif Tutarı</p>
-              <p className="text-2xl font-bold text-gray-800">
-                ₺{filtreliTeklifler.length > 0
-                  ? formatTutar(filtreliTeklifler.reduce((s, t) => s + (t.genelToplam || 0), 0) / filtreliTeklifler.length)
-                  : 0}
-              </p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <KPICard label="TOPLAM TEKLİF" value={filtreliTeklifler.length} />
+            <KPICard
+              label="KABUL ORANI"
+              value={`%${filtreliTeklifler.length > 0 ? Math.round((filtreliTeklifler.filter(t => t.onayDurumu === 'kabul').length / filtreliTeklifler.length) * 100) : 0}`}
+              footer={<span style={{ color: 'var(--success)' }}>Başarı oranı</span>}
+            />
+            <KPICard
+              label="KABUL TUTARI"
+              value={`₺${formatTutar(filtreliTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0))}`}
+            />
+            <KPICard
+              label="ORT. TEKLİF TUTARI"
+              value={`₺${filtreliTeklifler.length > 0 ? formatTutar(filtreliTeklifler.reduce((s, t) => s + (t.genelToplam || 0), 0) / filtreliTeklifler.length) : 0}`}
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Aylık Teklif Tutarı</p>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={aylikTeklifVerisi}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                  <XAxis dataKey="ay" tick={{ fontSize: 11 }}/>
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={formatTutar}/>
-                  <Tooltip formatter={(v) => `₺${formatTutar(v)}`}/>
-                  <Bar dataKey="tutar" fill="#3B82F6" radius={[4,4,0,0]} name="Tutar"/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
+            <ChartCard title="Aylık Teklif Tutarı">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={aylikTeklifVerisi} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                  <XAxis dataKey="ay" tick={chartAxisStyle} />
+                  <YAxis tick={chartAxisStyle} tickFormatter={formatTutar} />
+                  <Tooltip formatter={v => `₺${formatTutar(v)}`} {...chartTooltipStyle} />
+                  <Bar dataKey="tutar" fill="var(--brand-primary)" radius={[2, 2, 0, 0]} name="Tutar" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCard>
 
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Durum Dağılımı</p>
+            <ChartCard title="Durum Dağılımı">
               {teklifDurumVerisi.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={teklifDurumVerisi} dataKey="deger" nameKey="isim" cx="50%" cy="50%" outerRadius={80} label={({ isim, deger }) => `${isim}: ${deger}`}>
-                      {teklifDurumVerisi.map((_, i) => <Cell key={i} fill={RENKLER[i % RENKLER.length]}/>)}
+                      {teklifDurumVerisi.map((_, i) => <Cell key={i} fill={RENKLER[i % RENKLER.length]} />)}
                     </Pie>
-                    <Tooltip/>
+                    <Tooltip {...chartTooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-              )}
-            </div>
+              ) : <EmptyState title="Henüz veri yok" />}
+            </ChartCard>
 
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Aylık Teklif Adedi</p>
-              <ResponsiveContainer width="100%" height={220}>
+            <ChartCard title="Aylık Teklif Adedi">
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={aylikTeklifVerisi}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                  <XAxis dataKey="ay" tick={{ fontSize: 11 }}/>
-                  <YAxis tick={{ fontSize: 11 }}/>
-                  <Tooltip/>
-                  <Line type="monotone" dataKey="toplam" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} name="Toplam"/>
-                  <Line type="monotone" dataKey="kabul" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} name="Kabul"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                  <XAxis dataKey="ay" tick={chartAxisStyle} />
+                  <YAxis tick={chartAxisStyle} />
+                  <Tooltip {...chartTooltipStyle} />
+                  <Line type="monotone" dataKey="toplam" stroke="var(--brand-primary)" strokeWidth={2} dot={{ r: 3 }} name="Toplam" />
+                  <Line type="monotone" dataKey="kabul" stroke="var(--success)" strokeWidth={2} dot={{ r: 3 }} name="Kabul" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCard>
 
             {seciliPersonel === 'hepsi' && (
-              <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                <p className="text-sm font-medium text-gray-700 mb-4">Personel Bazlı Teklif</p>
+              <ChartCard title="Personel Bazlı Teklif">
                 {personelTeklifVerisi.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={personelTeklifVerisi}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                      <XAxis dataKey="isim" tick={{ fontSize: 11 }}/>
-                      <YAxis tick={{ fontSize: 11 }}/>
-                      <Tooltip/>
-                      <Bar dataKey="adet" fill="#8B5CF6" radius={[4,4,0,0]} name="Teklif Sayısı"/>
-                      <Bar dataKey="kabul" fill="#10B981" radius={[4,4,0,0]} name="Kabul"/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis dataKey="isim" tick={chartAxisStyle} />
+                      <YAxis tick={chartAxisStyle} />
+                      <Tooltip {...chartTooltipStyle} />
+                      <Bar dataKey="adet" fill="var(--info)" radius={[2, 2, 0, 0]} name="Teklif" />
+                      <Bar dataKey="kabul" fill="var(--success)" radius={[2, 2, 0, 0]} name="Kabul" />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-                )}
-              </div>
+                ) : <EmptyState title="Henüz veri yok" />}
+              </ChartCard>
             )}
           </div>
 
           {seciliPersonel === 'hepsi' && personelTeklifVerisi.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-700">Personel Teklif Detayı</p>
+            <Card padding={0}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                <p className="t-body-strong">Personel Teklif Detayı</p>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-xs text-gray-400 uppercase">
-                    <th className="text-left px-5 py-3">Personel</th>
-                    <th className="text-right px-5 py-3">Teklif</th>
-                    <th className="text-right px-5 py-3">Kabul</th>
-                    <th className="text-right px-5 py-3">Kabul Oranı</th>
-                    <th className="text-right px-5 py-3">Toplam Tutar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {personelTeklifVerisi.map((p, i) => (
-                    <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => setSeciliPersonel(p.ad)}>
-                      <td className="px-5 py-3 font-medium text-gray-800 flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-semibold">
-                          {p.isim.charAt(0)}
-                        </div>
-                        {p.ad}
-                      </td>
-                      <td className="px-5 py-3 text-right text-gray-600">{p.adet}</td>
-                      <td className="px-5 py-3 text-right text-green-600">{p.kabul}</td>
-                      <td className="px-5 py-3 text-right text-gray-600">
-                        {p.adet > 0 ? Math.round((p.kabul / p.adet) * 100) : 0}%
-                      </td>
-                      <td className="px-5 py-3 text-right font-medium text-gray-800">₺{formatTutar(p.tutar)}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  <thead>
+                    <tr>
+                      {[
+                        { l: 'Personel' }, { l: 'Teklif', a: 'right' }, { l: 'Kabul', a: 'right' },
+                        { l: 'Kabul Oranı', a: 'right' }, { l: 'Toplam Tutar', a: 'right' },
+                      ].map((h, i) => (
+                        <th key={i} style={{
+                          background: 'var(--surface-sunken)',
+                          padding: '10px 20px', textAlign: h.a || 'left',
+                          font: '600 11px/16px var(--font-sans)',
+                          color: 'var(--text-tertiary)',
+                          textTransform: 'uppercase', letterSpacing: '0.04em',
+                          borderBottom: '1px solid var(--border-default)',
+                        }}>{h.l}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="text-xs text-gray-400 px-5 py-2 border-t border-gray-100">Satıra tıklayarak o personele filtrele</p>
-            </div>
+                  </thead>
+                  <tbody>
+                    {personelTeklifVerisi.map((p, i) => (
+                      <tr key={i}
+                        onClick={() => setSeciliPersonel(p.ad)}
+                        style={{ cursor: 'pointer', transition: 'background 120ms' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <Avatar name={p.ad} size="xs" />
+                            <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{p.ad}</span>
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{p.adet}</td>
+                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--success)', fontWeight: 500 }}>{p.kabul}</td>
+                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>%{p.adet > 0 ? Math.round((p.kabul / p.adet) * 100) : 0}</td>
+                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-primary)', fontWeight: 600 }}>₺{formatTutar(p.tutar)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="t-caption" style={{ padding: '10px 20px', borderTop: '1px solid var(--border-default)' }}>
+                Satıra tıklayarak o personele filtrele.
+              </p>
+            </Card>
           )}
         </div>
       )}
 
-      {/* GÖRÜŞME RAPORLARI */}
+      {/* GÖRÜŞMELER */}
       {aktifSekme === 'gorusmeler' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Toplam Görüşme</p>
-              <p className="text-2xl font-bold text-gray-800">{filtreliGorusmeler.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Açık</p>
-              <p className="text-2xl font-bold text-blue-600">{filtreliGorusmeler.filter((g) => g.durum === 'acik').length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Beklemede</p>
-              <p className="text-2xl font-bold text-amber-500">{filtreliGorusmeler.filter((g) => g.durum === 'beklemede').length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Kapalı</p>
-              <p className="text-2xl font-bold text-green-600">{filtreliGorusmeler.filter((g) => g.durum === 'kapali').length}</p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <KPICard label="TOPLAM GÖRÜŞME" value={filtreliGorusmeler.length} />
+            <KPICard label="AÇIK"       value={filtreliGorusmeler.filter(g => g.durum === 'acik').length}      footer={<span style={{ color: 'var(--info)' }}>Devam eden</span>} />
+            <KPICard label="BEKLEMEDE"  value={filtreliGorusmeler.filter(g => g.durum === 'beklemede').length} footer={<span style={{ color: 'var(--warning)' }}>Takip</span>} />
+            <KPICard label="KAPALI"     value={filtreliGorusmeler.filter(g => g.durum === 'kapali').length}    footer={<span style={{ color: 'var(--success)' }}>Tamamlandı</span>} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Aylık Görüşme Trendi</p>
-              <ResponsiveContainer width="100%" height={220}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
+            <ChartCard title="Aylık Görüşme Trendi">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={aylikGorusmeVerisi}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                  <XAxis dataKey="ay" tick={{ fontSize: 11 }}/>
-                  <YAxis tick={{ fontSize: 11 }}/>
-                  <Tooltip/>
-                  <Bar dataKey="toplam" fill="#3B82F6" radius={[4,4,0,0]} name="Toplam"/>
-                  <Bar dataKey="kapali" fill="#10B981" radius={[4,4,0,0]} name="Kapalı"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                  <XAxis dataKey="ay" tick={chartAxisStyle} />
+                  <YAxis tick={chartAxisStyle} />
+                  <Tooltip {...chartTooltipStyle} />
+                  <Bar dataKey="toplam" fill="var(--brand-primary)" radius={[2, 2, 0, 0]} name="Toplam" />
+                  <Bar dataKey="kapali" fill="var(--success)" radius={[2, 2, 0, 0]} name="Kapalı" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCard>
 
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Konu Bazlı Dağılım</p>
+            <ChartCard title="Konu Bazlı Dağılım">
               {konuGorusmeVerisi().length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={konuGorusmeVerisi()} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                    <XAxis type="number" tick={{ fontSize: 11 }}/>
-                    <YAxis dataKey="konu" type="category" tick={{ fontSize: 10 }} width={80}/>
-                    <Tooltip/>
-                    <Bar dataKey="adet" fill="#8B5CF6" radius={[0,4,4,0]} name="Adet"/>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                    <XAxis type="number" tick={chartAxisStyle} />
+                    <YAxis dataKey="konu" type="category" tick={chartAxisStyle} width={80} />
+                    <Tooltip {...chartTooltipStyle} />
+                    <Bar dataKey="adet" fill="var(--info)" radius={[0, 2, 2, 0]} name="Adet" />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-              )}
-            </div>
+              ) : <EmptyState title="Henüz veri yok" />}
+            </ChartCard>
 
             {seciliPersonel === 'hepsi' && (
-              <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 md:col-span-2">
-                <p className="text-sm font-medium text-gray-700 mb-4">Personel Bazlı Görüşme</p>
+              <ChartCard title="Personel Bazlı Görüşme" height={260}>
                 {personelGorusmeVerisi.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={personelGorusmeVerisi}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                      <XAxis dataKey="isim" tick={{ fontSize: 11 }}/>
-                      <YAxis tick={{ fontSize: 11 }}/>
-                      <Tooltip/>
-                      <Bar dataKey="adet" fill="#EC4899" radius={[4,4,0,0]} name="Görüşme Sayısı" onClick={(d) => setSeciliPersonel(d.ad)}/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis dataKey="isim" tick={chartAxisStyle} />
+                      <YAxis tick={chartAxisStyle} />
+                      <Tooltip {...chartTooltipStyle} />
+                      <Bar dataKey="adet" fill="var(--brand-primary)" radius={[2, 2, 0, 0]} name="Görüşme"
+                        onClick={d => d?.ad && setSeciliPersonel(d.ad)} style={{ cursor: 'pointer' }} />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-                )}
-                <p className="text-xs text-gray-400 mt-2">Bara tıklayarak o personele filtrele</p>
-              </div>
+                ) : <EmptyState title="Henüz veri yok" />}
+              </ChartCard>
             )}
           </div>
         </div>
       )}
 
-      {/* GÖREV RAPORLARI */}
+      {/* GÖREVLER */}
       {aktifSekme === 'gorevler' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Toplam Görev</p>
-              <p className="text-2xl font-bold text-gray-800">{filtreliGorevler.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Tamamlanan</p>
-              <p className="text-2xl font-bold text-green-600">{filtreliGorevler.filter((g) => g.durum === 'tamamlandi').length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Devam Eden</p>
-              <p className="text-2xl font-bold text-blue-600">{filtreliGorevler.filter((g) => g.durum === 'devam').length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Tamamlanma Oranı</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {filtreliGorevler.length > 0
-                  ? Math.round((filtreliGorevler.filter((g) => g.durum === 'tamamlandi').length / filtreliGorevler.length) * 100)
-                  : 0}%
-              </p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <KPICard label="TOPLAM GÖREV"     value={filtreliGorevler.length} />
+            <KPICard label="TAMAMLANAN"       value={filtreliGorevler.filter(g => g.durum === 'tamamlandi').length} footer={<span style={{ color: 'var(--success)' }}>Bitti</span>} />
+            <KPICard label="DEVAM EDEN"       value={filtreliGorevler.filter(g => g.durum === 'devam').length} footer={<span style={{ color: 'var(--info)' }}>İşlemde</span>} />
+            <KPICard
+              label="TAMAMLANMA ORANI"
+              value={`%${filtreliGorevler.length > 0 ? Math.round((filtreliGorevler.filter(g => g.durum === 'tamamlandi').length / filtreliGorevler.length) * 100) : 0}`}
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-4">Durum Dağılımı</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
+            <ChartCard title="Durum Dağılımı">
               {gorevDurumVerisi.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={gorevDurumVerisi} dataKey="deger" nameKey="isim" cx="50%" cy="50%" outerRadius={80} label={({ isim, deger }) => `${isim}: ${deger}`}>
-                      {gorevDurumVerisi.map((_, i) => <Cell key={i} fill={RENKLER[i % RENKLER.length]}/>)}
+                      {gorevDurumVerisi.map((_, i) => <Cell key={i} fill={RENKLER[i % RENKLER.length]} />)}
                     </Pie>
-                    <Tooltip/>
+                    <Tooltip {...chartTooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-              )}
-            </div>
+              ) : <EmptyState title="Henüz veri yok" />}
+            </ChartCard>
 
             {seciliPersonel === 'hepsi' && (
-              <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                <p className="text-sm font-medium text-gray-700 mb-4">Personel Bazlı Görev</p>
+              <ChartCard title="Personel Bazlı Görev">
                 {personelGorevVerisi.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={personelGorevVerisi}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                      <XAxis dataKey="isim" tick={{ fontSize: 11 }}/>
-                      <YAxis tick={{ fontSize: 11 }}/>
-                      <Tooltip/>
-                      <Bar dataKey="toplam" fill="#3B82F6" radius={[4,4,0,0]} name="Toplam"/>
-                      <Bar dataKey="tamamlanan" fill="#10B981" radius={[4,4,0,0]} name="Tamamlanan"/>
-                      <Bar dataKey="bekleyen" fill="#F59E0B" radius={[4,4,0,0]} name="Bekleyen"/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis dataKey="isim" tick={chartAxisStyle} />
+                      <YAxis tick={chartAxisStyle} />
+                      <Tooltip {...chartTooltipStyle} />
+                      <Bar dataKey="toplam" fill="var(--brand-primary)" radius={[2, 2, 0, 0]} name="Toplam" />
+                      <Bar dataKey="tamamlanan" fill="var(--success)" radius={[2, 2, 0, 0]} name="Tamamlanan" />
+                      <Bar dataKey="bekleyen" fill="var(--warning)" radius={[2, 2, 0, 0]} name="Bekleyen" />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz veri yok</div>
-                )}
-              </div>
+                ) : <EmptyState title="Henüz veri yok" />}
+              </ChartCard>
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700">Geciken Görevler</p>
-              <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                {filtreliGorevler.filter((g) => g.durum !== 'tamamlandi' && g.sonTarih && new Date(g.sonTarih) < new Date()).length} adet
-              </span>
+          <Card padding={0}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+              <p className="t-body-strong">Geciken Görevler</p>
+              <Badge tone="kayip">{gecikenler.length} adet</Badge>
             </div>
-            <div>
-              {filtreliGorevler
-                .filter((g) => g.durum !== 'tamamlandi' && g.sonTarih && new Date(g.sonTarih) < new Date())
-                .map((g) => {
-                  const atanan = kullanicilar.find((k) => k.id?.toString() === g.atanan)
-                  return (
-                    <div key={g.id} className="px-5 py-3 border-b border-gray-100 last:border-0 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{g.baslik}</p>
-                        <p className="text-xs text-gray-400">Atanan: {atanan?.ad || '—'}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-red-500">Son tarih: {g.sonTarih}</p>
-                        <p className="text-xs text-red-400">
-                          {Math.ceil((new Date() - new Date(g.sonTarih)) / (1000 * 60 * 60 * 24))} gün gecikti
-                        </p>
-                      </div>
+            {gecikenler.length === 0 ? (
+              <div style={{ padding: 40 }}>
+                <EmptyState icon={<AlertTriangle size={28} strokeWidth={1.5} />} title="Geciken görev yok" />
+              </div>
+            ) : (
+              gecikenler.map(g => {
+                const atanan = kullanicilar.find(k => k.id?.toString() === g.atanan)
+                const gun = Math.ceil((new Date() - new Date(g.sonTarih)) / 86400000)
+                return (
+                  <div key={g.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 20px',
+                    borderBottom: '1px solid var(--border-default)',
+                  }}>
+                    <div>
+                      <p style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>{g.baslik}</p>
+                      <p className="t-caption" style={{ marginTop: 2 }}>Atanan: {atanan?.ad || '—'}</p>
                     </div>
-                  )
-                })}
-              {filtreliGorevler.filter((g) => g.durum !== 'tamamlandi' && g.sonTarih && new Date(g.sonTarih) < new Date()).length === 0 && (
-                <div className="px-5 py-8 text-center text-gray-400 text-sm">Geciken görev yok</div>
-              )}
-            </div>
-          </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--danger)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>Son tarih: {g.sonTarih}</p>
+                      <p className="t-caption" style={{ color: 'var(--danger)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{gun} gün gecikti</p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </Card>
         </div>
       )}
 
-      {/* STOK RAPORLARI */}
+      {/* STOK */}
       {aktifSekme === 'stok' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Toplam Ürün</p>
-              <p className="text-2xl font-bold text-gray-800">{stokUrunler.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Toplam Hareket</p>
-              <p className="text-2xl font-bold text-blue-600">{stokHareketler.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Kritik Stok</p>
-              <p className="text-2xl font-bold text-red-500">{kritikStokVerisi.length}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">Müşteri Çıkışı</p>
-              <p className="text-2xl font-bold text-gray-800">{stokHareketler.filter((h) => h.tur === 'cikis').length}</p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <KPICard label="TOPLAM ÜRÜN"     value={stokUrunler.length}    icon={<Package size={16} strokeWidth={1.5} />} />
+            <KPICard label="TOPLAM HAREKET"  value={stokHareketler.length} footer={<span style={{ color: 'var(--text-tertiary)' }}>Tüm zamanlar</span>} />
+            <KPICard label="KRİTİK STOK"     value={kritikStokVerisi.length} footer={kritikStokVerisi.length > 0 ? <><AlertTriangle size={12} strokeWidth={1.5} style={{ color: 'var(--danger)' }} /><span style={{ color: 'var(--danger)' }}>Tükeniyor</span></> : <span style={{ color: 'var(--text-tertiary)' }}>Yok</span>} />
+            <KPICard label="MÜŞTERİ ÇIKIŞI"  value={stokHareketler.filter(h => h.tur === 'cikis').length} />
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-4">En Çok Çıkış Yapılan Ürünler</p>
+          <ChartCard title="En Çok Çıkış Yapılan Ürünler">
             {stokCikisVerisi().length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stokCikisVerisi()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                  <XAxis dataKey="ad" tick={{ fontSize: 10 }}/>
-                  <YAxis tick={{ fontSize: 11 }}/>
-                  <Tooltip/>
-                  <Bar dataKey="miktar" fill="#F59E0B" radius={[4,4,0,0]} name="Miktar"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                  <XAxis dataKey="ad" tick={chartAxisStyle} />
+                  <YAxis tick={chartAxisStyle} />
+                  <Tooltip {...chartTooltipStyle} />
+                  <Bar dataKey="miktar" fill="var(--warning)" radius={[2, 2, 0, 0]} name="Miktar" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Henüz çıkış verisi yok</div>
-            )}
-          </div>
+            ) : <EmptyState title="Henüz çıkış verisi yok" />}
+          </ChartCard>
 
           {kritikStokVerisi.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <p className="text-sm font-medium text-red-600">Kritik Stok Uyarıları</p>
+            <Card padding={0}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />
+                <p className="t-body-strong" style={{ color: 'var(--danger)' }}>Kritik Stok Uyarıları</p>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-xs text-gray-400 uppercase">
-                    <th className="text-left px-5 py-3">Stok Kodu</th>
-                    <th className="text-left px-5 py-3">Ürün Adı</th>
-                    <th className="text-right px-5 py-3">Mevcut</th>
-                    <th className="text-right px-5 py-3">Min.</th>
-                    <th className="text-right px-5 py-3">Birim</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {kritikStokVerisi.map((u) => {
-                    const bakiye = stokHareketler
-                      .filter((h) => h.stokKodu === u.stokKodu)
-                      .reduce((sum, h) => {
-                        if (h.tur === 'giris' || h.tur === 'transfer_giris') return sum + Number(h.miktar)
-                        return sum - Number(h.miktar)
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  <thead>
+                    <tr>
+                      {[
+                        { l: 'Stok Kodu' }, { l: 'Ürün Adı' },
+                        { l: 'Mevcut', a: 'right' }, { l: 'Min.', a: 'right' }, { l: 'Birim', a: 'right' },
+                      ].map((h, i) => (
+                        <th key={i} style={{
+                          background: 'var(--surface-sunken)',
+                          padding: '10px 20px', textAlign: h.a || 'left',
+                          font: '600 11px/16px var(--font-sans)',
+                          color: 'var(--text-tertiary)',
+                          textTransform: 'uppercase', letterSpacing: '0.04em',
+                          borderBottom: '1px solid var(--border-default)',
+                        }}>{h.l}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kritikStokVerisi.map(u => {
+                      const bakiye = stokHareketler.filter(h => h.stokKodu === u.stokKodu).reduce((s, h) => {
+                        if (h.tur === 'giris' || h.tur === 'transfer_giris') return s + Number(h.miktar)
+                        return s - Number(h.miktar)
                       }, 0)
-                    return (
-                      <tr key={u.id} className="border-t border-gray-100 bg-red-50">
-                        <td className="px-5 py-3 font-mono text-xs text-gray-600">{u.stokKodu}</td>
-                        <td className="px-5 py-3 font-medium text-gray-800">{u.stokAdi}</td>
-                        <td className="px-5 py-3 text-right text-red-600 font-bold">{bakiye.toFixed(2)}</td>
-                        <td className="px-5 py-3 text-right text-gray-500">{u.minStok}</td>
-                        <td className="px-5 py-3 text-right text-gray-500">{u.birim}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      return (
+                        <tr key={u.id} style={{ background: 'var(--danger-soft)' }}>
+                          <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)', font: '500 12px/16px var(--font-mono)', color: 'var(--text-secondary)' }}>{u.stokKodu}</td>
+                          <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{u.stokAdi}</td>
+                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--danger)', fontWeight: 600 }}>{bakiye.toFixed(0)}</td>
+                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{u.minStok}</td>
+                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>{u.birim}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
         </div>
       )}

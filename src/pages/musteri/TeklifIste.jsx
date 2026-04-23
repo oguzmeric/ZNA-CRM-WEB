@@ -1,9 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import {
+  ArrowLeft, FileText, Package, Search, ShoppingCart, X, Plus, Minus,
+  CheckCircle2, Check,
+} from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { katalogUrunleriniGetir } from '../../services/stokService'
 import CustomSelect from '../../components/CustomSelect'
+import {
+  Button, SearchInput, Input, Textarea, Label,
+  Card, Badge, EmptyState, Modal,
+} from '../../components/ui'
 
 export default function TeklifIste() {
   const { kullanici } = useAuth()
@@ -12,17 +19,11 @@ export default function TeklifIste() {
   const ayarlar = JSON.parse(localStorage.getItem('sistem_ayarlari') || '{}')
   const datasheetUrl = ayarlar.datasheetUrl || ''
 
-  // Katalog
   const [katalogUrunler, setKatalogUrunler] = useState([])
   const [katalogYukleniyor, setKatalogYukleniyor] = useState(true)
   const [arama, setArama] = useState('')
   const [seciliGrup, setSeciliGrup] = useState('hepsi')
-
-  // Sepet (seçilen ürünler)
-  const [sepet, setSepet] = useState([]) // [{ urun, adet }]
-
-  // Form
-  const [gorünüm, setGörünüm] = useState('katalog') // 'katalog' | 'form'
+  const [sepet, setSepet] = useState([])
   const [aciklama, setAciklama] = useState('')
   const [butce, setButce] = useState('')
   const [iletisimKisi, setIletisimKisi] = useState(kullanici?.ad || '')
@@ -32,21 +33,17 @@ export default function TeklifIste() {
   const [buyukGorsel, setBuyukGorsel] = useState(null)
 
   useEffect(() => {
-    katalogUrunleriniGetir().then((data) => {
-      setKatalogUrunler(data || [])
-      setKatalogYukleniyor(false)
-    })
+    katalogUrunleriniGetir().then(d => { setKatalogUrunler(d || []); setKatalogYukleniyor(false) })
   }, [])
 
-  const gruplar = useMemo(() => {
-    const gs = [...new Set(katalogUrunler.map(u => u.grupKodu).filter(Boolean))]
-    return gs.sort()
-  }, [katalogUrunler])
+  const gruplar = useMemo(
+    () => [...new Set(katalogUrunler.map(u => u.grupKodu).filter(Boolean))].sort(),
+    [katalogUrunler]
+  )
 
   const filtreliUrunler = useMemo(() =>
     katalogUrunler.filter(u => {
-      const aramaUygun = !arama ||
-        `${u.stokAdi} ${u.marka} ${u.stokKodu}`.toLowerCase().includes(arama.toLowerCase())
+      const aramaUygun = !arama || `${u.stokAdi} ${u.marka} ${u.stokKodu}`.toLowerCase().includes(arama.toLowerCase())
       const grupUygun = seciliGrup === 'hepsi' || u.grupKodu === seciliGrup
       return aramaUygun && grupUygun
     }),
@@ -55,24 +52,18 @@ export default function TeklifIste() {
 
   const sepeteEkle = (urun) => {
     setSepet(prev => {
-      const var_ = prev.find(s => s.urun.id === urun.id)
-      if (var_) return prev.map(s => s.urun.id === urun.id ? { ...s, adet: s.adet + 1 } : s)
+      const v = prev.find(s => s.urun.id === urun.id)
+      if (v) return prev.map(s => s.urun.id === urun.id ? { ...s, adet: s.adet + 1 } : s)
       return [...prev, { urun, adet: 1 }]
     })
   }
 
   const sepetAdetGuncelle = (urunId, adet) => {
-    if (adet <= 0) {
-      setSepet(prev => prev.filter(s => s.urun.id !== urunId))
-    } else {
-      setSepet(prev => prev.map(s => s.urun.id === urunId ? { ...s, adet } : s))
-    }
+    if (adet <= 0) setSepet(prev => prev.filter(s => s.urun.id !== urunId))
+    else setSepet(prev => prev.map(s => s.urun.id === urunId ? { ...s, adet } : s))
   }
 
-  const sepettenCikar = (urunId) => {
-    setSepet(prev => prev.filter(s => s.urun.id !== urunId))
-  }
-
+  const sepettenCikar = (urunId) => setSepet(prev => prev.filter(s => s.urun.id !== urunId))
   const sepetteMi = (urunId) => sepet.find(s => s.urun.id === urunId)
 
   const dogrula = () => {
@@ -90,21 +81,14 @@ export default function TeklifIste() {
     const yeni = {
       id: crypto.randomUUID(),
       talepNo: `TT-${String(sayi).padStart(4, '0')}`,
-      musteriId: kullanici.id,
-      musteriAd: kullanici.ad,
+      musteriId: kullanici.id, musteriAd: kullanici.ad,
       firmaAdi: kullanici.firmaAdi || '',
       urunler: sepet.map(s => ({
-        isim: s.urun.stokAdi,
-        adet: String(s.adet),
-        stokKodu: s.urun.stokKodu,
-        marka: s.urun.marka || '',
+        isim: s.urun.stokAdi, adet: String(s.adet),
+        stokKodu: s.urun.stokKodu, marka: s.urun.marka || '',
       })),
-      aciklama,
-      butce,
-      iletisimKisi,
-      telefon,
-      tarih: new Date().toISOString(),
-      durum: 'bekliyor',
+      aciklama, butce, iletisimKisi, telefon,
+      tarih: new Date().toISOString(), durum: 'bekliyor',
     }
     localStorage.setItem('musteri_teklif_talepleri', JSON.stringify([...mevcutlar, yeni]))
     setGonderildi(true)
@@ -112,178 +96,228 @@ export default function TeklifIste() {
 
   if (gonderildi) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-          className="w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-6"
-          style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.3)' }}
-        >
-          ✓
-        </motion.div>
-        <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-          Teklif Talebiniz Alındı!
+      <div style={{ padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--success)', color: '#fff',
+          marginBottom: 20, boxShadow: 'var(--shadow-lg)',
+        }}>
+          <CheckCircle2 size={40} strokeWidth={2} />
+        </div>
+        <h2 style={{ font: '600 22px/28px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 8 }}>
+          Teklif Talebiniz Alındı
         </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', textAlign: 'center', maxWidth: '400px' }}>
+        <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 400, marginBottom: 20 }}>
           Satış ekibimiz seçtiğiniz ürünleri inceleyip en kısa sürede size teklif hazırlayacaktır.
         </p>
-        <button
-          onClick={() => navigate('/musteri-portal')}
-          className="px-6 py-2.5 rounded text-sm font-medium text-white"
-          style={{ background: 'var(--primary)' }}
-        >
-          Ana Panele Dön
-        </button>
+        <Button variant="primary" onClick={() => navigate('/musteri-portal')}>Ana panele dön</Button>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      {/* Başlık */}
-      <div className="mb-5">
-        <button onClick={() => navigate('/musteri-portal')} className="text-sm flex items-center gap-1 mb-3 transition-colors" style={{ color: 'var(--primary)' }}>
-          ← Geri Dön
-        </button>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)' }}>Teklif İste</h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-              Ürünleri seçin, miktarlarını belirleyin ve talebinizi gönderin.
-            </p>
-          </div>
-          {datasheetUrl && (
-            <a href={datasheetUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition"
-              style={{ background: 'rgba(1,118,211,0.08)', color: 'var(--primary)', border: '1px solid rgba(1,118,211,0.2)', textDecoration: 'none' }}
-            >
-              📄 Ürün Kataloğu
-            </a>
-          )}
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+
+      {/* Header */}
+      <button
+        onClick={() => navigate('/musteri-portal')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
+          marginBottom: 12,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} /> Geri dön
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="t-h1">Teklif İste</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            Ürünleri seçin, miktarlarını belirleyin ve talebinizi gönderin.
+          </p>
         </div>
+        {datasheetUrl && (
+          <a
+            href={datasheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 36, padding: '0 16px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--brand-primary-soft)',
+              color: 'var(--brand-primary)',
+              border: '1px solid var(--border-default)',
+              font: '500 13px/18px var(--font-sans)',
+              textDecoration: 'none',
+            }}
+          >
+            <FileText size={14} strokeWidth={1.5} /> Ürün kataloğu
+          </a>
+        )}
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'flex-start' }}>
         {/* Sol: Katalog */}
-        <div className="flex-1 min-w-0">
-          {/* Arama + Filtre */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <input
-              type="text"
-              value={arama}
-              onChange={(e) => setArama(e.target.value)}
-              placeholder="Ürün ara..."
-              className="flex-1 min-w-[180px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <CustomSelect
-              value={seciliGrup}
-              onChange={(e) => setSeciliGrup(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              <option value="hepsi">Tüm Kategoriler</option>
-              {gruplar.map(g => <option key={g} value={g}>{g}</option>)}
-            </CustomSelect>
+        <div>
+          {/* Arama + filter */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <SearchInput value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün ara…" />
+            </div>
+            <div style={{ minWidth: 200 }}>
+              <CustomSelect value={seciliGrup} onChange={e => setSeciliGrup(e.target.value)}>
+                <option value="hepsi">Tüm kategoriler</option>
+                {gruplar.map(g => <option key={g} value={g}>{g}</option>)}
+              </CustomSelect>
+            </div>
           </div>
 
-          {/* Ürün Grid */}
           {katalogYukleniyor ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="rounded-xl bg-gray-100 animate-pulse" style={{ height: '200px' }} />
+                <div key={i} style={{
+                  height: 220, borderRadius: 'var(--radius-md)',
+                  background: 'var(--surface-sunken)',
+                  border: '1px solid var(--border-default)',
+                }} className="shimmer" />
               ))}
             </div>
           ) : filtreliUrunler.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <p className="text-3xl mb-3">📦</p>
-              <p className="text-sm">{arama ? 'Arama sonucu bulunamadı' : 'Katalogda ürün bulunamadı'}</p>
-            </div>
+            <EmptyState
+              icon={<Package size={32} strokeWidth={1.5} />}
+              title={arama ? 'Arama sonucu bulunamadı' : 'Katalogda ürün bulunamadı'}
+            />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {filtreliUrunler.map((urun) => {
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+              {filtreliUrunler.map(urun => {
                 const secili = sepetteMi(urun.id)
                 return (
-                  <motion.div
+                  <div
                     key={urun.id}
-                    layout
-                    whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(1,118,211,0.12)' }}
-                    className="rounded-xl overflow-hidden cursor-pointer transition-all"
-                    style={{
-                      border: secili ? '2px solid var(--primary)' : '1px solid #e8ecf0',
-                      background: secili ? 'rgba(1,118,211,0.04)' : 'white',
-                    }}
                     onClick={() => sepeteEkle(urun)}
+                    style={{
+                      borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      background: secili ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                      border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                      transition: 'all 120ms',
+                    }}
                   >
                     {/* Görsel */}
-                    <div
-                      className="relative bg-gray-50 flex items-center justify-center overflow-hidden"
-                      style={{ height: '130px' }}
-                    >
+                    <div style={{
+                      position: 'relative',
+                      height: 130,
+                      background: 'var(--surface-sunken)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
                       {urun.gorselUrl ? (
                         <img
                           src={urun.gorselUrl}
                           alt={urun.stokAdi}
-                          className="w-full h-full object-contain p-3"
-                          onClick={(e) => { e.stopPropagation(); setBuyukGorsel(urun) }}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 12 }}
+                          onClick={e => { e.stopPropagation(); setBuyukGorsel(urun) }}
                         />
                       ) : (
-                        <div className="text-gray-200 text-5xl">📦</div>
+                        <Package size={40} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
                       )}
                       {secili && (
-                        <div
-                          className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          style={{ background: 'var(--primary)' }}
-                        >
+                        <span style={{
+                          position: 'absolute', top: 8, right: 8,
+                          minWidth: 24, height: 24, padding: '0 7px',
+                          borderRadius: 'var(--radius-pill)',
+                          background: 'var(--brand-primary)',
+                          color: '#fff',
+                          font: '600 12px/1 var(--font-sans)',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
                           {secili.adet}
-                        </div>
+                        </span>
                       )}
                       {urun.grupKodu && (
-                        <div className="absolute top-2 left-2">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/80 text-gray-500 border border-gray-100">
-                            {urun.grupKodu}
-                          </span>
+                        <div style={{ position: 'absolute', top: 8, left: 8 }}>
+                          <Badge tone="neutral">{urun.grupKodu}</Badge>
                         </div>
                       )}
                     </div>
 
                     {/* Bilgi */}
-                    <div className="p-3">
-                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight mb-1">
+                    <div style={{ padding: 12 }}>
+                      <p style={{
+                        font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                        margin: 0,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      }}>
                         {urun.stokAdi}
                       </p>
                       {urun.marka && (
-                        <p className="text-xs text-gray-400">{urun.marka}</p>
+                        <p className="t-caption" style={{ marginTop: 2 }}>{urun.marka}</p>
                       )}
-                      <div className="mt-2">
+                      <div style={{ marginTop: 8 }}>
                         {secili ? (
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <div onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <button
+                              aria-label="Azalt"
                               onClick={() => sepetAdetGuncelle(urun.id, secili.adet - 1)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold"
-                              style={{ background: 'rgba(1,118,211,0.1)', color: 'var(--primary)' }}
-                            >−</button>
+                              style={{
+                                width: 26, height: 26, borderRadius: 'var(--radius-sm)',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'var(--brand-primary-soft)',
+                                border: '1px solid var(--border-default)',
+                                color: 'var(--brand-primary)', cursor: 'pointer',
+                              }}
+                            >
+                              <Minus size={12} strokeWidth={2} />
+                            </button>
                             <input
                               type="number"
                               value={secili.adet}
                               min={1}
-                              onChange={(e) => sepetAdetGuncelle(urun.id, Number(e.target.value))}
-                              className="w-10 text-center text-sm font-semibold border border-blue-200 rounded focus:outline-none"
-                              style={{ color: 'var(--primary)' }}
+                              onChange={e => sepetAdetGuncelle(urun.id, Number(e.target.value))}
+                              style={{
+                                width: 42, height: 26, textAlign: 'center',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--radius-sm)',
+                                font: '600 13px/1 var(--font-sans)',
+                                color: 'var(--brand-primary)',
+                                background: 'var(--surface-card)',
+                                outline: 'none',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
                             />
                             <button
+                              aria-label="Artır"
                               onClick={() => sepetAdetGuncelle(urun.id, secili.adet + 1)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold"
-                              style={{ background: 'rgba(1,118,211,0.1)', color: 'var(--primary)' }}
-                            >+</button>
+                              style={{
+                                width: 26, height: 26, borderRadius: 'var(--radius-sm)',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'var(--brand-primary-soft)',
+                                border: '1px solid var(--border-default)',
+                                color: 'var(--brand-primary)', cursor: 'pointer',
+                              }}
+                            >
+                              <Plus size={12} strokeWidth={2} />
+                            </button>
                           </div>
                         ) : (
-                          <span className="text-xs" style={{ color: 'var(--primary)' }}>
-                            + Sepete Ekle
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            font: '500 12px/16px var(--font-sans)',
+                            color: 'var(--brand-primary)',
+                          }}>
+                            <Plus size={12} strokeWidth={1.5} /> Sepete ekle
                           </span>
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )
               })}
             </div>
@@ -291,154 +325,154 @@ export default function TeklifIste() {
         </div>
 
         {/* Sağ: Sepet + Form */}
-        <div className="w-72 flex-shrink-0 sticky top-6">
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-            {/* Sepet başlık */}
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800">Seçilen Ürünler</h3>
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: 'rgba(1,118,211,0.1)', color: 'var(--primary)' }}>
-                {sepet.length} ürün
-              </span>
-            </div>
-
-            {/* Sepet içerik */}
-            <div className="max-h-60 overflow-y-auto">
-              {sepet.length === 0 ? (
-                <div className="p-6 text-center text-gray-400">
-                  <p className="text-2xl mb-1">🛒</p>
-                  <p className="text-xs">Soldan ürün seçin</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {sepet.map(({ urun, adet }) => (
-                    <div key={urun.id} className="px-3 py-2.5 flex items-center gap-2">
-                      {urun.gorselUrl ? (
-                        <img src={urun.gorselUrl} alt="" className="w-8 h-8 rounded object-contain border border-gray-100 flex-shrink-0" />
-                      ) : (
-                        <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 text-sm">📦</div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-700 truncate">{urun.stokAdi}</p>
-                        <p className="text-xs text-gray-400">{adet} {urun.birim}</p>
-                      </div>
-                      <button onClick={() => sepettenCikar(urun.id)} className="text-gray-300 hover:text-red-400 transition text-sm">✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {hatalar.sepet && (
-              <p className="text-xs text-red-500 px-4 pb-2">{hatalar.sepet}</p>
-            )}
-
-            {/* Form alanları */}
-            <div className="p-4 border-t border-gray-100 space-y-3">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">
-                  Açıklama <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  value={aciklama}
-                  onChange={(e) => setAciklama(e.target.value)}
-                  placeholder="Kullanım amacı, kurulum yeri, özel istekler..."
-                  rows={3}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
-                  style={{ borderColor: hatalar.aciklama ? '#ef4444' : undefined }}
-                />
-                {hatalar.aciklama && <p className="text-xs text-red-400 mt-0.5">{hatalar.aciklama}</p>}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Bütçe <span className="text-gray-400 font-normal">(opsiyonel)</span></label>
-                <input
-                  type="text"
-                  value={butce}
-                  onChange={(e) => setButce(e.target.value)}
-                  placeholder="Örn: 50.000 TL"
-                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">İlgili Kişi</label>
-                <input
-                  type="text"
-                  value={iletisimKisi}
-                  onChange={(e) => setIletisimKisi(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Telefon</label>
-                <input
-                  type="tel"
-                  value={telefon}
-                  onChange={(e) => setTelefon(e.target.value)}
-                  placeholder="0xxx xxx xx xx"
-                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                />
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={gonder}
-                disabled={sepet.length === 0}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}
-              >
-                ✓ Teklif Talebi Gönder
-              </motion.button>
-            </div>
+        <Card padding={0} style={{ position: 'sticky', top: 16 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border-default)',
+          }}>
+            <h3 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+              <ShoppingCart size={14} strokeWidth={1.5} /> Seçilen ürünler
+            </h3>
+            <Badge tone="brand">
+              <span className="tabular-nums">{sepet.length}</span> ürün
+            </Badge>
           </div>
-        </div>
+
+          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+            {sepet.length === 0 ? (
+              <div style={{ padding: 24 }}>
+                <EmptyState icon={<ShoppingCart size={24} strokeWidth={1.5} />} title="Soldan ürün seçin" />
+              </div>
+            ) : (
+              <div>
+                {sepet.map(({ urun, adet }) => (
+                  <div key={urun.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px',
+                    borderBottom: '1px solid var(--border-default)',
+                  }}>
+                    {urun.gorselUrl ? (
+                      <img src={urun.gorselUrl} alt="" style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', objectFit: 'contain', border: '1px solid var(--border-default)', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface-sunken)',
+                        border: '1px solid var(--border-default)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text-tertiary)', flexShrink: 0,
+                      }}>
+                        <Package size={14} strokeWidth={1.5} />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {urun.stokAdi}
+                      </p>
+                      <p className="t-caption" style={{ marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                        {adet} {urun.birim}
+                      </p>
+                    </div>
+                    <button
+                      aria-label="Çıkar"
+                      onClick={() => sepettenCikar(urun.id)}
+                      style={{
+                        background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+                        color: 'var(--text-tertiary)',
+                        display: 'inline-flex',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                    >
+                      <X size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {hatalar.sepet && (
+            <p style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--danger)', padding: '0 16px 8px' }}>{hatalar.sepet}</p>
+          )}
+
+          <div style={{ padding: 16, borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <Label required>Açıklama</Label>
+              <Textarea
+                value={aciklama}
+                onChange={e => setAciklama(e.target.value)}
+                placeholder="Kullanım amacı, kurulum yeri, özel istekler…"
+                rows={3}
+                style={hatalar.aciklama ? { borderColor: 'var(--danger)' } : {}}
+              />
+              {hatalar.aciklama && <p style={{ color: 'var(--danger)', font: '500 11px/16px var(--font-sans)', marginTop: 4 }}>{hatalar.aciklama}</p>}
+            </div>
+
+            <div>
+              <Label>Bütçe <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(opsiyonel)</span></Label>
+              <Input value={butce} onChange={e => setButce(e.target.value)} placeholder="Örn: 50.000 TL" />
+            </div>
+
+            <div>
+              <Label>İlgili kişi</Label>
+              <Input value={iletisimKisi} onChange={e => setIletisimKisi(e.target.value)} />
+            </div>
+
+            <div>
+              <Label>Telefon</Label>
+              <Input type="tel" value={telefon} onChange={e => setTelefon(e.target.value)} placeholder="0xxx xxx xx xx" />
+            </div>
+
+            <Button
+              variant="primary"
+              iconLeft={<Check size={14} strokeWidth={2} />}
+              onClick={gonder}
+              disabled={sepet.length === 0}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              Teklif talebi gönder
+            </Button>
+          </div>
+        </Card>
       </div>
 
-      {/* Büyük Görsel Modal */}
-      <AnimatePresence>
-        {buyukGorsel && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.7)' }}
-            onClick={() => setBuyukGorsel(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.85 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.85 }}
-              className="bg-white rounded-2xl overflow-hidden max-w-lg w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{buyukGorsel.stokAdi}</p>
-                  {buyukGorsel.marka && <p className="text-xs text-gray-400">{buyukGorsel.marka}</p>}
-                </div>
-                <button onClick={() => setBuyukGorsel(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-              </div>
-              <div className="p-4 bg-gray-50 flex items-center justify-center" style={{ minHeight: '300px' }}>
-                <img src={buyukGorsel.gorselUrl} alt={buyukGorsel.stokAdi} className="max-h-80 max-w-full object-contain" />
-              </div>
-              <div className="p-4 flex items-center justify-between">
-                {buyukGorsel.aciklama && <p className="text-xs text-gray-500">{buyukGorsel.aciklama}</p>}
-                <button
-                  onClick={() => { sepeteEkle(buyukGorsel); setBuyukGorsel(null) }}
-                  className="ml-auto text-sm px-4 py-2 rounded-lg text-white font-medium"
-                  style={{ background: 'var(--primary)' }}
-                >
-                  + Sepete Ekle
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Büyük görsel modal */}
+      {buyukGorsel && (
+        <Modal
+          open={!!buyukGorsel}
+          onClose={() => setBuyukGorsel(null)}
+          title={
+            <div>
+              <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{buyukGorsel.stokAdi}</div>
+              {buyukGorsel.marka && <div className="t-caption" style={{ marginTop: 2 }}>{buyukGorsel.marka}</div>}
+            </div>
+          }
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setBuyukGorsel(null)}>Kapat</Button>
+              <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => { sepeteEkle(buyukGorsel); setBuyukGorsel(null) }}>
+                Sepete ekle
+              </Button>
+            </>
+          }
+          width={600}
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, minHeight: 300,
+            background: 'var(--surface-sunken)',
+            borderRadius: 'var(--radius-sm)',
+          }}>
+            <img src={buyukGorsel.gorselUrl} alt={buyukGorsel.stokAdi} style={{ maxHeight: 320, maxWidth: '100%', objectFit: 'contain' }} />
+          </div>
+          {buyukGorsel.aciklama && (
+            <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 12 }}>
+              {buyukGorsel.aciklama}
+            </p>
+          )}
+        </Modal>
+      )}
     </div>
   )
 }

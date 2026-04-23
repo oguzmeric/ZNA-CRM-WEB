@@ -1,50 +1,52 @@
+import { useNavigate } from 'react-router-dom'
+import {
+  Plus, Clock, Loader, CheckCircle2, AlertOctagon, Inbox, Briefcase, ArrowRight, MapPin, User,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Button, Card, Badge, Alert, EmptyState } from '../../components/ui'
 
-function DurumRozeti({ durum, DURUM_LISTESI }) {
-  const d = DURUM_LISTESI.find((x) => x.id === durum) || DURUM_LISTESI[0]
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
-      style={{ background: d.bg, color: d.renk }}
-    >
-      <span>{d.ikon}</span>
-      <span>{d.isim}</span>
-    </span>
-  )
+const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
+const DURUM_TONE = {
+  bekliyor: 'pasif', inceleniyor: 'beklemede', atandi: 'lead',
+  devam_ediyor: 'beklemede', tamamlandi: 'aktif', iptal: 'kayip',
 }
 
-function AciliyetRozeti({ aciliyet, ACILIYET_SEVIYELERI }) {
-  const a = ACILIYET_SEVIYELERI.find((x) => x.id === aciliyet) || ACILIYET_SEVIYELERI[1]
+function StatKart({ sayi, baslik, Icon, renk, onClick }) {
   return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-      style={{ background: a.bg, color: a.renk }}
-    >
-      {a.ikon} {a.isim}
-    </span>
-  )
-}
-
-function StatKart({ sayi, baslik, ikon, renk, bg, onClick }) {
-  return (
-    <motion.div
-      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+    <Card
       onClick={onClick}
-      className="rounded p-5 cursor-pointer"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+      style={{ cursor: 'pointer', transition: 'border-color 120ms, box-shadow 120ms' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: bg }}>
-          {ikon}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{
+          width: 36, height: 36,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--surface-sunken)',
+          borderRadius: 'var(--radius-sm)',
+          color: renk,
+        }}>
+          <Icon size={18} strokeWidth={1.5} />
         </div>
-        <span className="text-3xl font-bold" style={{ color: renk }}>{sayi}</span>
+        <span style={{ font: '600 28px/1 var(--font-sans)', color: renk, fontVariantNumeric: 'tabular-nums' }}>{sayi}</span>
       </div>
-      <p className="text-sm font-medium text-gray-600">{baslik}</p>
-    </motion.div>
+      <p style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: 0 }}>{baslik}</p>
+    </Card>
   )
+}
+
+function tarihFormat(tarih) {
+  const d = new Date(tarih)
+  const fark = Date.now() - d.getTime()
+  const dk = Math.floor(fark / 60000)
+  const saat = Math.floor(dk / 60)
+  const gun = Math.floor(saat / 24)
+  if (dk < 60) return `${dk} dk önce`
+  if (saat < 24) return `${saat} saat önce`
+  if (gun < 7) return `${gun} gün önce`
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export default function MusteriDashboard() {
@@ -53,243 +55,215 @@ export default function MusteriDashboard() {
   const navigate = useNavigate()
 
   const talepler = musteriTalepleri(kullanici?.id)
-
   const izinliTurler = kullanici?.izinliTurler
-  const filtreliTurler =
-    izinliTurler && izinliTurler.length > 0
-      ? ANA_TURLER.filter((t) => izinliTurler.includes(t.id))
-      : ANA_TURLER
-  const acik = talepler.filter((t) => t.durum === 'bekliyor')
-  const devam = talepler.filter((t) => ['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum))
-  const tamamlandi = talepler.filter((t) => t.durum === 'tamamlandi')
-  const acil = talepler.filter((t) => t.aciliyet === 'acil' && !['tamamlandi', 'iptal'].includes(t.durum))
+  const filtreliTurler = izinliTurler && izinliTurler.length > 0
+    ? ANA_TURLER.filter(t => izinliTurler.includes(t.id))
+    : ANA_TURLER
+  const acik = talepler.filter(t => t.durum === 'bekliyor')
+  const devam = talepler.filter(t => ['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum))
+  const tamamlandi = talepler.filter(t => t.durum === 'tamamlandi')
+  const acil = talepler.filter(t => t.aciliyet === 'acil' && !['tamamlandi', 'iptal'].includes(t.durum))
 
-  const sonTalepler = [...talepler].sort((a, b) => new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi)).slice(0, 5)
-
-  const tarihFormat = (tarih) => {
-    const d = new Date(tarih)
-    const simdi = new Date()
-    const fark = simdi - d
-    const dk = Math.floor(fark / 60000)
-    const saat = Math.floor(dk / 60)
-    const gun = Math.floor(saat / 24)
-    if (dk < 60) return `${dk} dk önce`
-    if (saat < 24) return `${saat} saat önce`
-    if (gun < 7) return `${gun} gün önce`
-    return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
-  }
+  const sonTalepler = [...talepler]
+    .sort((a, b) => new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi))
+    .slice(0, 5)
 
   return (
-    <div>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+
       {/* Hoşgeldin */}
-      <div
-        className="rounded p-6 mb-6"
-        style={{
-          background: 'var(--primary)',
-          borderRadius: '4px',
-          padding: '24px',
-          marginBottom: '24px',
-        }}
-      >
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      <div style={{
+        background: 'var(--brand-primary)',
+        borderRadius: 'var(--radius-md)',
+        padding: 24,
+        marginBottom: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', marginBottom: '4px' }}>
-              Hoş geldiniz,
-            </p>
-            <h2 style={{ color: 'white', fontSize: '24px', fontWeight: 700 }}>{kullanici?.ad}</h2>
+            <p style={{ color: 'rgba(255,255,255,0.75)', font: '400 13px/18px var(--font-sans)', marginBottom: 4 }}>Hoş geldiniz,</p>
+            <h1 style={{ color: '#fff', font: '600 24px/32px var(--font-sans)', margin: 0 }}>{kullanici?.ad}</h1>
             {kullanici?.firmaAdi && (
-              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginTop: '4px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.75)', font: '400 13px/18px var(--font-sans)', marginTop: 4 }}>
                 {kullanici.firmaAdi}
               </p>
             )}
           </div>
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
+          <Button
+            variant="secondary"
+            iconLeft={<Plus size={14} strokeWidth={1.5} />}
             onClick={() => navigate('/musteri-portal/yeni-talep')}
-            className="flex items-center gap-2 px-5 py-3 rounded text-sm font-semibold"
-            style={{ background: 'var(--bg-card)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
           >
-            <span style={{ fontSize: '16px' }}>➕</span>
-            Yeni Talep Oluştur
-          </motion.button>
+            Yeni talep oluştur
+          </Button>
         </div>
       </div>
 
-      {/* İstatistik kartları */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatKart
-          sayi={acik.length}
-          baslik="Bekleyen Talepler"
-          ikon="⏳"
-          renk="#6b7280"
-          bg="rgba(107,114,128,0.1)"
-          onClick={() => navigate('/musteri-portal/taleplerim?durum=bekliyor')}
-        />
-        <StatKart
-          sayi={devam.length}
-          baslik="Devam Eden"
-          ikon="🔄"
-          renk="#f59e0b"
-          bg="rgba(245,158,11,0.1)"
-          onClick={() => navigate('/musteri-portal/taleplerim?durum=devam')}
-        />
-        <StatKart
-          sayi={tamamlandi.length}
-          baslik="Tamamlanan"
-          ikon="✅"
-          renk="#10b981"
-          bg="rgba(16,185,129,0.1)"
-          onClick={() => navigate('/musteri-portal/taleplerim?durum=tamamlandi')}
-        />
-        <StatKart
-          sayi={acil.length}
-          baslik="Acil Talepler"
-          ikon="🔴"
-          renk="#ef4444"
-          bg="rgba(239,68,68,0.1)"
-          onClick={() => navigate('/musteri-portal/taleplerim?aciliyet=acil')}
-        />
+      {/* KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatKart sayi={acik.length}       baslik="Bekleyen Talepler" Icon={Clock}        renk="var(--text-secondary)" onClick={() => navigate('/musteri-portal/taleplerim?durum=bekliyor')} />
+        <StatKart sayi={devam.length}      baslik="Devam Eden"         Icon={Loader}       renk="var(--warning)"        onClick={() => navigate('/musteri-portal/taleplerim?durum=devam')} />
+        <StatKart sayi={tamamlandi.length} baslik="Tamamlanan"         Icon={CheckCircle2} renk="var(--success)"        onClick={() => navigate('/musteri-portal/taleplerim?durum=tamamlandi')} />
+        <StatKart sayi={acil.length}       baslik="Acil Talepler"      Icon={AlertOctagon} renk="var(--danger)"         onClick={() => navigate('/musteri-portal/taleplerim?aciliyet=acil')} />
       </div>
 
-      {/* Acil talepler uyarısı */}
+      {/* Acil uyarı */}
       {acil.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded p-4 mb-6 flex items-center gap-3"
-          style={{
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.2)',
-          }}
+        <Alert
+          variant="danger"
+          title={<><span className="tabular-nums">{acil.length}</span> acil talebiniz işlemde</>}
+          style={{ marginBottom: 20 }}
         >
-          <span style={{ fontSize: '20px' }}>🚨</span>
-          <div>
-            <p style={{ fontSize: '14px', fontWeight: 600, color: '#dc2626' }}>
-              {acil.length} acil talebiniz işlemde
-            </p>
-            <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '2px' }}>
-              Ekibimiz en kısa sürede dönüş yapacaktır.
-            </p>
-          </div>
-        </motion.div>
+          Ekibimiz en kısa sürede dönüş yapacaktır.
+        </Alert>
       )}
 
       {/* Son talepler */}
-      <div
-        className="rounded"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-      >
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#3e3e3c' }}>Son Talepler</h3>
+      <Card padding={0} style={{ marginBottom: 16 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 20px', borderBottom: '1px solid var(--border-default)',
+        }}>
+          <h2 className="t-h2" style={{ margin: 0 }}>Son Talepler</h2>
           <button
             onClick={() => navigate('/musteri-portal/taleplerim')}
-            className="text-sm transition-colors"
-            style={{ color: 'var(--primary)' }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)',
+            }}
           >
-            Tümünü Gör →
+            Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
           </button>
         </div>
 
         {sonTalepler.length === 0 ? (
-          <div className="py-12 text-center">
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📭</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '4px' }}>Henüz talep oluşturmadınız</p>
-            <p style={{ color: '#cbd5e1', fontSize: '13px' }}>İlk talebinizi oluşturmak için yukarıdaki butona tıklayın</p>
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<Inbox size={32} strokeWidth={1.5} />}
+              title="Henüz talep oluşturmadınız"
+              description="İlk talebinizi oluşturmak için yukarıdaki butona tıklayın."
+            />
           </div>
         ) : (
           <div>
-            {sonTalepler.map((talep, i) => {
-              const anaTur = ANA_TURLER.find((t) => t.id === talep.anaTur)
+            {sonTalepler.map(talep => {
+              const anaTur = ANA_TURLER.find(t => t.id === talep.anaTur)
+              const durum = DURUM_LISTESI.find(d => d.id === talep.durum)
+              const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
               return (
-                <motion.div
+                <div
                   key={talep.id}
-                  whileHover={{ background: 'rgba(1,118,211,0.03)' }}
                   onClick={() => navigate(`/musteri-portal/talep/${talep.id}`)}
-                  className="flex items-center gap-4 px-6 py-4 cursor-pointer transition-colors"
                   style={{
-                    borderBottom: i < sonTalepler.length - 1 ? '1px solid var(--border)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--border-default)',
+                    cursor: 'pointer',
+                    transition: 'background 120ms',
                   }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                    style={{ background: anaTur?.bg || 'rgba(1,118,211,0.1)' }}
-                  >
-                    {anaTur?.ikon || '📋'}
+                  <div style={{
+                    width: 36, height: 36,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--brand-primary-soft)',
+                    color: 'var(--brand-primary)',
+                    borderRadius: 'var(--radius-sm)',
+                    flexShrink: 0,
+                    font: '600 13px/1 var(--font-sans)',
+                  }}>
+                    {anaTur?.isim?.charAt(0) || '·'}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                      <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                         {talep.talepNo}
                       </span>
-                      <AciliyetRozeti aciliyet={talep.aciliyet} ACILIYET_SEVIYELERI={ACILIYET_SEVIYELERI} />
+                      {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
                     </div>
-                    <p className="text-sm text-gray-600 truncate mt-0.5">{talep.konu}</p>
+                    <p style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {talep.konu}
+                    </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <DurumRozeti durum={talep.durum} DURUM_LISTESI={DURUM_LISTESI} />
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{tarihFormat(talep.olusturmaTarihi)}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                    {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
+                    <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>{tarihFormat(talep.olusturmaTarihi)}</span>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Teklif İste kartı — sadece teklif izni varsa */}
-      {filtreliTurler.some((t) => t.id === 'teklif') && (
-        <motion.div
-          whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(16,185,129,0.15)' }}
+      {/* Teklif İste kartı */}
+      {filtreliTurler.some(t => t.id === 'teklif') && (
+        <Card
           onClick={() => navigate('/musteri-portal/teklif-iste')}
-          className="rounded p-5 mb-6 cursor-pointer flex items-center gap-4"
           style={{
-            background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.06))',
-            border: '1px solid rgba(16,185,129,0.2)',
+            cursor: 'pointer',
+            borderColor: 'var(--success-border)',
+            background: 'var(--success-soft)',
+            marginBottom: 20,
+            display: 'flex', alignItems: 'center', gap: 14,
           }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--success)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--success-border)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
         >
-          <div
-            className="w-12 h-12 rounded flex items-center justify-center text-2xl flex-shrink-0"
-            style={{ background: '#10b981', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
-          >
-            💼
+          <div style={{
+            width: 44, height: 44,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--success)',
+            color: '#fff',
+            borderRadius: 'var(--radius-md)',
+            flexShrink: 0,
+          }}>
+            <Briefcase size={22} strokeWidth={1.5} />
           </div>
-          <div className="flex-1">
-            <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Ürün Teklifi İste</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Ürün kataloğumuzu inceleyin, ilgilendiğiniz ürünler için fiyat teklifi alın
+          <div style={{ flex: 1 }}>
+            <p style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>Ürün Teklifi İste</p>
+            <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>
+              Ürün kataloğumuzu inceleyin, ilgilendiğiniz ürünler için fiyat teklifi alın.
             </p>
           </div>
-          <span style={{ fontSize: '20px', color: '#10b981' }}>→</span>
-        </motion.div>
+          <ArrowRight size={20} strokeWidth={1.5} style={{ color: 'var(--success)', flexShrink: 0 }} />
+        </Card>
       )}
 
-      {/* Hızlı talep kategorileri */}
-      <div className="mt-6">
-        <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Hızlı Talep Aç
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {filtreliTurler.map((tur) => (
-            <motion.button
+      {/* Hızlı kategoriler */}
+      <div>
+        <h3 className="t-label" style={{ marginBottom: 10 }}>HIZLI TALEP AÇ</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          {filtreliTurler.map(tur => (
+            <button
               key={tur.id}
-              whileHover={{ y: -3, boxShadow: `0 4px 8px rgba(0,0,0,0.1)` }}
-              whileTap={{ scale: 0.97 }}
               onClick={() => navigate(`/musteri-portal/yeni-talep?tur=${tur.id}`)}
-              className="flex flex-col items-center gap-2 p-4 rounded text-sm font-medium"
               style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                color: tur.renk,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: 14,
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                transition: 'all 120ms',
+                font: '500 12px/16px var(--font-sans)',
+                color: 'var(--text-secondary)',
               }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none' }}
             >
-              <span style={{ fontSize: '22px' }}>{tur.ikon}</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{tur.isim}</span>
-            </motion.button>
+              <span style={{
+                width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                background: 'var(--brand-primary-soft)',
+                color: 'var(--brand-primary)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                font: '600 14px/1 var(--font-sans)',
+              }}>
+                {tur.isim.charAt(0)}
+              </span>
+              <span>{tur.isim}</span>
+            </button>
           ))}
         </div>
       </div>

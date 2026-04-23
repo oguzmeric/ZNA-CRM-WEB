@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
-  satisGetir,
-  satisEkle,
-  satisGuncelle,
-  satisSil,
-  tahsilatEkle,
-  tahsilatSil,
-  yeniFaturaNo,
-  stokDusumYap,
+  ArrowLeft, Plus, Trash2, Printer, Mail, Save, Send, CheckCircle2,
+  Search, Package, Link as LinkIcon, Inbox,
+} from 'lucide-react'
+import {
+  satisGetir, satisEkle, satisGuncelle, satisSil,
+  tahsilatEkle, tahsilatSil, yeniFaturaNo, stokDusumYap,
 } from '../services/satisService'
 import { musterileriGetir } from '../services/musteriService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { useConfirm } from '../context/ConfirmContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
+import {
+  Button, Input, Textarea, Label, Card, Badge, CodeBadge,
+  EmptyState, Modal, Table, THead, TBody, TR, TH, TD,
+} from '../components/ui'
 
 const bosForm = {
   faturaNo: '',
@@ -67,19 +68,19 @@ const tarihFormat = (tarih) => {
   return new Date(tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const durumBadgeStyle = (durum, vadeTarihi) => {
+const durumBilgi = (durum, vadeTarihi) => {
   const bugun = new Date()
   bugun.setHours(0, 0, 0, 0)
   const gosterim =
     durum === 'gonderildi' && vadeTarihi && new Date(vadeTarihi) < bugun ? 'gecikti' : durum
   const map = {
-    taslak: { label: 'Taslak', bg: 'rgba(107,114,128,0.12)', color: '#6b7280' },
-    gonderildi: { label: 'Gönderildi', bg: 'rgba(1,118,211,0.1)', color: 'var(--primary)' },
-    odendi: { label: 'Ödendi', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
-    gecikti: { label: 'Gecikti', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
-    iptal: { label: 'İptal', bg: 'rgba(156,163,175,0.15)', color: '#9ca3af' },
+    taslak:     { label: 'Taslak',     tone: 'pasif' },
+    gonderildi: { label: 'Gönderildi', tone: 'lead' },
+    odendi:     { label: 'Ödendi',     tone: 'aktif' },
+    gecikti:    { label: 'Gecikti',    tone: 'kayip' },
+    iptal:      { label: 'İptal',      tone: 'pasif' },
   }
-  return map[gosterim] || map['taslak']
+  return map[gosterim] || map.taslak
 }
 
 const BIRIM_SECENEKLERI = [
@@ -117,6 +118,14 @@ const PARA_BIRIMLERI = [
   { value: 'EUR', label: '€ EUR' },
 ]
 
+const VADE_SECENEKLERI = [
+  { label: 'Aynı gün', gun: 0 },
+  { label: '7 gün', gun: 7 },
+  { label: '14 gün', gun: 14 },
+  { label: '30 gün', gun: 30 },
+  { label: '60 gün', gun: 60 },
+]
+
 function SatisDetay() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -130,10 +139,9 @@ function SatisDetay() {
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [musteriler, setMusteriler] = useState([])
   const [stoklar, setStoklar] = useState([])
-  const [stokArama, setStokArama] = useState({}) // satirId → arama metni
-  const [stokOneri, setStokOneri] = useState({}) // satirId → göster/gizle
+  const [stokArama, setStokArama] = useState({})
+  const [stokOneri, setStokOneri] = useState({})
 
-  // Tahsilat formu
   const [tahsilatForm, setTahsilatForm] = useState({
     tarih: new Date().toISOString().split('T')[0],
     tutar: '',
@@ -155,7 +163,6 @@ function SatisDetay() {
       yeniFaturaNo().then((no) => {
         setForm((prev) => ({ ...prev, faturaNo: no }))
       })
-      // Teklif'ten gelen ön doldurma
       const onDoldurum = localStorage.getItem('satis_on_doldurum')
       if (onDoldurum) {
         try {
@@ -171,7 +178,6 @@ function SatisDetay() {
     } else {
       satisGetir(id).then((data) => {
         if (data) {
-          // Supabase null kolonları için güvenli default'lar
           setForm({
             ...data,
             satirlar: Array.isArray(data.satirlar) ? data.satirlar : [],
@@ -188,24 +194,17 @@ function SatisDetay() {
       ...prev,
       satirlar: prev.satirlar.map((s) => {
         if (s.id !== satirId) return s
-        const guncellenmis = { ...s, [alan]: deger }
-        return satirHesapla(guncellenmis)
+        return satirHesapla({ ...s, [alan]: deger })
       }),
     }))
   }
 
   const satirEkle = () => {
-    setForm((prev) => ({
-      ...prev,
-      satirlar: [...prev.satirlar, bosSatir()],
-    }))
+    setForm((prev) => ({ ...prev, satirlar: [...prev.satirlar, bosSatir()] }))
   }
 
   const satirSilLocal = (satirId) => {
-    setForm((prev) => ({
-      ...prev,
-      satirlar: prev.satirlar.filter((s) => s.id !== satirId),
-    }))
+    setForm((prev) => ({ ...prev, satirlar: prev.satirlar.filter((s) => s.id !== satirId) }))
   }
 
   const toplamlar = form.satirlar.reduce(
@@ -225,10 +224,7 @@ function SatisDetay() {
     }
     setKaydediliyor(true)
     try {
-      const payload = {
-        ...form,
-        ...toplamlar,
-      }
+      const payload = { ...form, ...toplamlar }
       if (yeniMod) {
         const yeni = await satisEkle(payload)
         toast.success('Fatura oluşturuldu.')
@@ -252,14 +248,12 @@ function SatisDetay() {
     try {
       if (yeniMod) {
         const yeni = await satisEkle(payload)
-        // Stok düşümü
         await stokDusumYap(form.satirlar, form.faturaNo, form.firmaAdi)
         toast.success('Fatura gönderildi olarak kaydedildi.')
         navigate(`/satislar/${yeni.id}`)
       } else {
         await satisGuncelle(id, payload)
         setForm((prev) => ({ ...prev, durum: 'gonderildi' }))
-        // Stok düşümü
         await stokDusumYap(form.satirlar, form.faturaNo, form.firmaAdi)
         toast.success('Durum "Gönderildi" olarak güncellendi.')
       }
@@ -280,11 +274,7 @@ function SatisDetay() {
     setKaydediliyor(true)
     try {
       await satisGuncelle(id, payload)
-      setForm((prev) => ({
-        ...prev,
-        durum: 'odendi',
-        odenenToplam: toplamlar.genelToplam,
-      }))
+      setForm((prev) => ({ ...prev, durum: 'odendi', odenenToplam: toplamlar.genelToplam }))
       toast.success('Fatura "Ödendi" olarak işaretlendi.')
     } catch (err) {
       toast.error('Hata oluştu.')
@@ -297,7 +287,7 @@ function SatisDetay() {
     const onay = await confirm({
       baslik: 'Faturayı Sil',
       mesaj: `${form.faturaNo} numaralı fatura kalıcı olarak silinecek. Emin misiniz?`,
-      onayMetin: 'Evet, Sil',
+      onayMetin: 'Evet, sil',
       iptalMetin: 'Vazgeç',
       tip: 'tehlikeli',
     })
@@ -342,7 +332,7 @@ function SatisDetay() {
     const onay = await confirm({
       baslik: 'Tahsilatı Sil',
       mesaj: 'Bu tahsilat silinecek. Emin misiniz?',
-      onayMetin: 'Evet, Sil',
+      onayMetin: 'Evet, sil',
       iptalMetin: 'Vazgeç',
       tip: 'tehlikeli',
     })
@@ -353,10 +343,9 @@ function SatisDetay() {
     toast.success('Tahsilat silindi.')
   }
 
-  const badge = durumBadgeStyle(form.durum, form.vadeTarihi)
+  const durum = durumBilgi(form.durum, form.vadeTarihi)
   const kalan = toplamlar.genelToplam - Number(form.odenenToplam || 0)
 
-  // Email modal
   const [emailModal, setEmailModal] = useState(false)
   const [emailForm, setEmailForm] = useState({ konu: '', icerik: '' })
 
@@ -376,289 +365,212 @@ function SatisDetay() {
     toast.success('Email istemciniz açıldı.')
   }
 
-  const inputStyle = {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    color: 'var(--text-primary)',
-    borderRadius: '10px',
-    padding: '8px 12px',
-    fontSize: '14px',
-    outline: 'none',
-    width: '100%',
-  }
-
-  const labelStyle = {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: 'var(--text-muted)',
-    marginBottom: '4px',
-    display: 'block',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  }
-
-  const cardStyle = {
-    background: 'var(--bg-card)',
-    border: '1px solid rgba(1,118,211,0.1)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-    borderRadius: '16px',
-    padding: '20px',
-    marginBottom: '16px',
-  }
-
   if (yukleniyor) {
-    return (
-      <div className="p-6 flex items-center justify-center" style={{ minHeight: '200px' }}>
-        <p style={{ color: 'var(--text-muted)' }}>Yükleniyor...</p>
-      </div>
+    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  }
+
+  const musteriAramaHandler = (e) => {
+    const q = e.target.value.toLowerCase()
+    if (!q) return
+    const bulunan = musteriler.find(
+      (m) => `${m.ad} ${m.soyad} ${m.firma}`.toLowerCase().includes(q)
     )
+    if (bulunan) {
+      setForm((p) => ({
+        ...p,
+        firmaAdi: bulunan.firma || '',
+        musteriYetkili: `${bulunan.ad} ${bulunan.soyad}`,
+        musteriEmail: bulunan.email || '',
+        musteriTelefon: bulunan.telefon || '',
+      }))
+      e.target.value = ''
+    }
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Başlık */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/satislar')}
-            className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            ← Geri
-          </button>
-          <span style={{ color: 'var(--border)' }}>|</span>
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-            {yeniMod ? 'Yeni Fatura' : form.faturaNo}
-          </h2>
-          {!yeniMod && (
-            <span
-              className="text-xs font-medium px-2.5 py-1 rounded-full"
-              style={{ background: badge.bg, color: badge.color }}
-            >
-              {badge.label}
-            </span>
-          )}
+    <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
+      <button
+        onClick={() => navigate('/satislar')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)',
+          font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} /> Satışlara dön
+      </button>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="t-h1">{yeniMod ? 'Yeni fatura' : form.faturaNo}</h1>
+          {!yeniMod && <CodeBadge>{form.faturaNo}</CodeBadge>}
+          <Badge tone={durum.tone}>{durum.label}</Badge>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!yeniMod && (
-            <button
-              onClick={handleSil}
-              className="px-3 py-2 rounded-xl text-sm transition"
-              style={{
-                color: '#ef4444',
-                border: '1px solid rgba(239,68,68,0.25)',
-                background: 'transparent',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              🗑 Sil
-            </button>
+            <Button variant="danger" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={handleSil}>
+              Sil
+            </Button>
           )}
           {!yeniMod && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<Printer size={14} strokeWidth={1.5} />}
               onClick={() => window.open(`/satislar/${id}/yazdir`, '_blank')}
-              className="px-3 py-2 rounded-xl text-sm transition"
-              style={{ border: '1px solid rgba(1,118,211,0.3)', color: 'var(--primary)', background: 'transparent' }}
             >
-              🖨 PDF
-            </button>
+              PDF
+            </Button>
           )}
           {!yeniMod && (
-            <button
-              onClick={emailModalAc}
-              className="px-3 py-2 rounded-xl text-sm transition flex items-center gap-1.5 font-medium"
-              style={{ border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', background: 'rgba(99,102,241,0.05)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.1)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.05)')}
-            >
-              ✉️ Email Gönder
-            </button>
+            <Button variant="secondary" iconLeft={<Mail size={14} strokeWidth={1.5} />} onClick={emailModalAc}>
+              Email gönder
+            </Button>
           )}
-          <button
-            onClick={kaydet}
-            disabled={kaydediliyor}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-white transition"
-            style={{ background: 'var(--primary)', opacity: kaydediliyor ? 0.7 : 1 }}
-          >
-            {kaydediliyor ? 'Kaydediliyor...' : '💾 Kaydet'}
-          </button>
           {form.durum === 'taslak' && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<Send size={14} strokeWidth={1.5} />}
               onClick={handleGonderildiIsaretle}
               disabled={kaydediliyor}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-white transition"
-              style={{ background: '#0176D3' }}
             >
-              📤 Gönderildi İşaretle
-            </button>
+              Gönderildi işaretle
+            </Button>
           )}
           {form.durum === 'gonderildi' && !yeniMod && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
               onClick={handleOdendiIsaretle}
               disabled={kaydediliyor}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-white transition"
-              style={{ background: '#10b981' }}
             >
-              ✅ Ödendi İşaretle
-            </button>
+              Ödendi işaretle
+            </Button>
           )}
+          <Button
+            variant="primary"
+            iconLeft={<Save size={14} strokeWidth={1.5} />}
+            onClick={kaydet}
+            disabled={kaydediliyor}
+          >
+            {kaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+          </Button>
         </div>
       </div>
 
-      {/* Fatura Açıklaması — Paraşüt stili prominent input */}
-      <div
-        className="rounded-2xl mb-4 flex items-center gap-4"
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid rgba(1,118,211,0.1)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          padding: '16px 20px',
-        }}
-      >
-        <div style={{ fontSize: '28px', color: 'var(--text-muted)', flexShrink: 0 }}>📄</div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
-            FATURA AÇIKLAMASI
-          </p>
-          <input
-            type="text"
-            value={form.aciklama}
-            onChange={(e) => setForm((p) => ({ ...p, aciklama: e.target.value }))}
-            placeholder="Fatura için kısa bir açıklama girin..."
-            style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontSize: '16px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              width: '100%',
-            }}
-          />
-        </div>
-      </div>
+      {/* Açıklama */}
+      <Card style={{ marginBottom: 16 }}>
+        <p className="t-label" style={{ marginBottom: 6 }}>Fatura açıklaması</p>
+        <input
+          type="text"
+          value={form.aciklama}
+          onChange={(e) => setForm((p) => ({ ...p, aciklama: e.target.value }))}
+          placeholder="Fatura için kısa bir açıklama girin…"
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 'none', outline: 'none',
+            font: '600 16px/24px var(--font-sans)',
+            color: 'var(--text-primary)',
+          }}
+        />
+      </Card>
 
-      {/* Üst bölüm: Müşteri + Fatura Bilgileri */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        {/* Müşteri Bilgileri */}
-        <div className="lg:col-span-2" style={cardStyle}>
-          <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Müşteri Bilgileri
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2 mb-2">
-              <label style={labelStyle}>Müşteri Seç (kayıtlılardan)</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Müşteri adı veya firma ara..."
-                  onChange={(e) => {
-                    const q = e.target.value.toLowerCase()
-                    if (!q) return
-                    const bulunan = musteriler.find(
-                      (m) => `${m.ad} ${m.soyad} ${m.firma}`.toLowerCase().includes(q)
-                    )
-                    if (bulunan) {
-                      setForm((p) => ({
-                        ...p,
-                        firmaAdi: bulunan.firma || '',
-                        musteriYetkili: `${bulunan.ad} ${bulunan.soyad}`,
-                        musteriEmail: bulunan.email || '',
-                        musteriTelefon: bulunan.telefon || '',
-                      }))
-                      e.target.value = ''
-                    }
-                  }}
-                  style={{ ...inputStyle, paddingLeft: '36px' }}
-                />
-                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px' }}>🔍</span>
-              </div>
+      {/* Müşteri + Fatura */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16, marginBottom: 16 }}>
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>Müşteri bilgileri</h2>
+
+          <div style={{ marginBottom: 12 }}>
+            <Label>Kayıtlı müşterilerden seç</Label>
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={14}
+                strokeWidth={1.5}
+                style={{
+                  position: 'absolute', left: 10, top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-tertiary)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <Input
+                placeholder="Müşteri adı veya firma ara…"
+                onChange={musteriAramaHandler}
+                style={{ paddingLeft: 32 }}
+              />
             </div>
-            <div className="md:col-span-2">
-              <label style={labelStyle}>Firma Adı</label>
-              <input
-                type="text"
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Firma adı</Label>
+              <Input
                 value={form.firmaAdi}
                 onChange={(e) => setForm((p) => ({ ...p, firmaAdi: e.target.value }))}
-                placeholder="Firma adını girin..."
-                style={inputStyle}
+                placeholder="Firma adını girin…"
               />
             </div>
             <div>
-              <label style={labelStyle}>Yetkili Kişi</label>
-              <input
-                type="text"
+              <Label>Yetkili kişi</Label>
+              <Input
                 value={form.musteriYetkili}
                 onChange={(e) => setForm((p) => ({ ...p, musteriYetkili: e.target.value }))}
                 placeholder="Ad Soyad"
-                style={inputStyle}
               />
             </div>
             <div>
-              <label style={labelStyle}>Telefon</label>
-              <input
-                type="text"
+              <Label>Telefon</Label>
+              <Input
                 value={form.musteriTelefon}
                 onChange={(e) => setForm((p) => ({ ...p, musteriTelefon: e.target.value }))}
                 placeholder="+90 5xx xxx xx xx"
-                style={inputStyle}
               />
             </div>
-            <div className="md:col-span-2">
-              <label style={labelStyle}>E-Posta</label>
-              <input
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>E-posta</Label>
+              <Input
                 type="email"
                 value={form.musteriEmail}
                 onChange={(e) => setForm((p) => ({ ...p, musteriEmail: e.target.value }))}
                 placeholder="ornek@firma.com"
-                style={inputStyle}
               />
             </div>
           </div>
-        </div>
+        </Card>
 
-        {/* Fatura Bilgileri */}
-        <div style={cardStyle}>
-          <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Fatura Bilgileri
-          </h3>
-          <div className="space-y-3">
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>Fatura bilgileri</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Fatura No</label>
-              <input
-                type="text"
+              <Label>Fatura no</Label>
+              <Input
                 value={form.faturaNo}
                 onChange={(e) => setForm((p) => ({ ...p, faturaNo: e.target.value }))}
-                style={{ ...inputStyle, fontWeight: '700', color: 'var(--primary)' }}
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--brand-primary)' }}
               />
             </div>
             <div>
-              <label style={labelStyle}>Fatura Tarihi</label>
-              <input
+              <Label>Fatura tarihi</Label>
+              <Input
                 type="date"
                 value={form.faturaTarihi}
                 onChange={(e) => setForm((p) => ({ ...p, faturaTarihi: e.target.value }))}
-                style={inputStyle}
               />
             </div>
             <div>
-              <label style={labelStyle}>Vade Tarihi</label>
-              <input
+              <Label>Vade tarihi</Label>
+              <Input
                 type="date"
                 value={form.vadeTarihi}
                 onChange={(e) => setForm((p) => ({ ...p, vadeTarihi: e.target.value }))}
-                style={inputStyle}
               />
-              {/* Vade hızlı seçim */}
-              <div className="flex gap-1 flex-wrap mt-1">
-                {[
-                  { label: 'Aynı Gün', gun: 0 },
-                  { label: '7 Gün', gun: 7 },
-                  { label: '14 Gün', gun: 14 },
-                  { label: '30 Gün', gun: 30 },
-                  { label: '60 Gün', gun: 60 },
-                ].map((opt) => {
+              <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                {VADE_SECENEKLERI.map((opt) => {
                   const hedef = new Date(form.faturaTarihi || new Date())
                   hedef.setDate(hedef.getDate() + opt.gun)
                   const hedefStr = hedef.toISOString().split('T')[0]
@@ -669,14 +581,13 @@ function SatisDetay() {
                       type="button"
                       onClick={() => setForm((p) => ({ ...p, vadeTarihi: hedefStr }))}
                       style={{
-                        fontSize: '11px',
+                        font: '500 11px/14px var(--font-sans)',
                         padding: '3px 8px',
-                        borderRadius: '6px',
-                        border: aktif ? '1px solid var(--primary)' : '1px solid var(--border)',
-                        background: aktif ? 'var(--primary)' : 'transparent',
-                        color: aktif ? '#fff' : 'var(--text-muted)',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${aktif ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                        background: aktif ? 'var(--brand-primary)' : 'var(--surface-card)',
+                        color: aktif ? '#fff' : 'var(--text-secondary)',
                         cursor: 'pointer',
-                        fontWeight: aktif ? 600 : 400,
                       }}
                     >
                       {opt.label}
@@ -686,565 +597,542 @@ function SatisDetay() {
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Para Birimi</label>
+              <Label>Para birimi</Label>
               <CustomSelect
                 value={form.paraBirimi}
                 onChange={(e) => setForm((p) => ({ ...p, paraBirimi: e.target.value }))}
-                style={inputStyle}
               >
-                {PARA_BIRIMLERI.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
+                {PARA_BIRIMLERI.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </CustomSelect>
             </div>
             {form.teklifNo && (
               <div>
-                <label style={labelStyle}>Bağlı Teklif</label>
-                <p className="text-sm font-medium" style={{ color: 'var(--primary)' }}>
-                  {form.teklifNo}
-                </p>
+                <Label>Bağlı teklif</Label>
+                <Badge tone="brand">{form.teklifNo}</Badge>
               </div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Ürün/Hizmet Satırları */}
-      <div
-        className="rounded-2xl mb-4"
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid rgba(1,118,211,0.1)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          overflow: 'visible',
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Ürün / Hizmet Satırları
-          </h3>
+      {/* Ürün satırları */}
+      <Card padding={0} style={{ marginBottom: 16, overflow: 'visible' }}>
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid var(--border-default)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <h2 className="t-h2" style={{ margin: 0 }}>Ürün / hizmet satırları</h2>
+          <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={satirEkle}>
+            Satır ekle
+          </Button>
         </div>
 
-        {/* Tablo başlığı */}
-        <div
-          className="grid text-xs font-semibold uppercase px-4 py-2"
-          style={{
-            gridTemplateColumns: '32px 1fr 140px 80px 90px 100px 70px 80px 110px 36px',
-            color: 'var(--text-muted)',
-            background: 'var(--bg-hover)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <div>#</div>
-          <div>Ürün / Hizmet</div>
-          <div>Açıklama</div>
-          <div className="text-center">Miktar</div>
-          <div className="text-center">Birim</div>
-          <div className="text-right">B. Fiyat</div>
-          <div className="text-right">İsk%</div>
-          <div className="text-center">KDV%</div>
-          <div className="text-right">Toplam</div>
-          <div></div>
-        </div>
-
-        {/* Satırlar */}
-        <AnimatePresence>
-          {form.satirlar.map((satir, idx) => (
-            <motion.div
-              key={satir.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="grid items-center px-4 py-2 gap-2"
-              style={{ position: 'relative', overflow: 'visible' }}
+        {form.satirlar.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<Inbox size={22} strokeWidth={1.5} />}
+              title="Henüz satır eklenmedi"
+              description={'"Satır ekle" butonuyla ilk satırı oluşturun.'}
+            />
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <div
               style={{
-                gridTemplateColumns: '32px 1fr 140px 80px 90px 100px 70px 80px 110px 36px',
-                borderBottom: '1px solid var(--border)',
+                display: 'grid',
+                gridTemplateColumns: '32px 1.6fr 140px 80px 90px 100px 70px 80px 110px 36px',
+                gap: 8,
+                padding: '10px 16px',
+                borderBottom: '1px solid var(--border-default)',
+                background: 'var(--surface-sunken)',
+                font: '600 11px/14px var(--font-sans)',
+                color: 'var(--text-tertiary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
               }}
             >
-              <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                {idx + 1}
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={stokArama[satir.id] !== undefined ? stokArama[satir.id] : satir.urunAdi}
-                  onChange={(e) => {
-                    setStokArama((prev) => ({ ...prev, [satir.id]: e.target.value }))
-                    setStokOneri((prev) => ({ ...prev, [satir.id]: true }))
-                    satirGuncelle(satir.id, 'urunAdi', e.target.value)
-                  }}
-                  onFocus={() => setStokOneri((prev) => ({ ...prev, [satir.id]: true }))}
-                  onBlur={() => setTimeout(() => setStokOneri((prev) => ({ ...prev, [satir.id]: false })), 200)}
-                  placeholder="Ürün ara veya seç..."
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px' }}
-                />
-                {satir.stokKodu && (
-                  <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    📦 {satir.stokKodu}
-                  </p>
-                )}
-                {/* Stok öneriler dropdown */}
-                {stokOneri[satir.id] && (() => {
-                  const q = (stokArama[satir.id] ?? satir.urunAdi ?? '').toLowerCase()
-                  const sonuclar = stoklar
-                    .filter((s) =>
-                      q.length === 0 ||
-                      (s.stokAdi || '').toLowerCase().includes(q) ||
-                      (s.stokKodu || '').toLowerCase().includes(q)
-                    )
-                    .slice(0, 10)
-                  if (sonuclar.length === 0) return null
-                  return (
-                    <div
-                      className="absolute left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-y-auto"
-                      style={{ top: 'calc(100% + 4px)', maxHeight: '240px', zIndex: 9999 }}
-                    >
-                      {sonuclar.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          className="w-full text-left px-3 py-2.5 hover:bg-blue-50 transition border-b border-gray-50 last:border-0"
-                          onMouseDown={() => {
-                            satirGuncelle(satir.id, 'urunAdi', s.stokAdi)
-                            satirGuncelle(satir.id, 'stokKodu', s.stokKodu || '')
-                            satirGuncelle(satir.id, 'birimFiyat', s.birimFiyat || 0)
-                            satirGuncelle(satir.id, 'birim', s.birim || 'Adet')
-                            setStokArama((prev) => ({ ...prev, [satir.id]: undefined }))
-                            setStokOneri((prev) => ({ ...prev, [satir.id]: false }))
-                          }}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-medium text-gray-800">{s.stokAdi}</p>
-                              <p className="text-xs text-gray-400">{s.stokKodu} · {s.birim}</p>
-                            </div>
-                            <p className="text-sm font-semibold text-blue-600 flex-shrink-0">
-                              {(s.birimFiyat || 0).toLocaleString('tr-TR')} ₺
-                            </p>
-                          </div>
-                        </button>
-                      ))}
+              <div>#</div>
+              <div>Ürün / hizmet</div>
+              <div>Açıklama</div>
+              <div style={{ textAlign: 'center' }}>Miktar</div>
+              <div style={{ textAlign: 'center' }}>Birim</div>
+              <div style={{ textAlign: 'right' }}>B. fiyat</div>
+              <div style={{ textAlign: 'right' }}>İsk%</div>
+              <div style={{ textAlign: 'center' }}>KDV%</div>
+              <div style={{ textAlign: 'right' }}>Toplam</div>
+              <div></div>
+            </div>
+
+            {form.satirlar.map((satir, idx) => (
+              <div
+                key={satir.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '32px 1.6fr 140px 80px 90px 100px 70px 80px 110px 36px',
+                  gap: 8,
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  borderBottom: '1px solid var(--border-default)',
+                  position: 'relative',
+                }}
+              >
+                <div className="tabular-nums" style={{
+                  font: '500 12px/16px var(--font-sans)',
+                  color: 'var(--text-tertiary)',
+                }}>
+                  {idx + 1}
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <Input
+                    value={stokArama[satir.id] !== undefined ? stokArama[satir.id] : satir.urunAdi}
+                    onChange={(e) => {
+                      setStokArama((prev) => ({ ...prev, [satir.id]: e.target.value }))
+                      setStokOneri((prev) => ({ ...prev, [satir.id]: true }))
+                      satirGuncelle(satir.id, 'urunAdi', e.target.value)
+                    }}
+                    onFocus={() => setStokOneri((prev) => ({ ...prev, [satir.id]: true }))}
+                    onBlur={() => setTimeout(() => setStokOneri((prev) => ({ ...prev, [satir.id]: false })), 200)}
+                    placeholder="Ürün ara veya seç…"
+                  />
+                  {satir.stokKodu && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      marginTop: 2,
+                      font: '500 10px/14px var(--font-mono)',
+                      color: 'var(--text-tertiary)',
+                    }}>
+                      <Package size={10} strokeWidth={1.5} /> {satir.stokKodu}
                     </div>
-                  )
-                })()}
-              </div>
-              <div>
-                <input
-                  type="text"
+                  )}
+                  {stokOneri[satir.id] && (() => {
+                    const q = (stokArama[satir.id] ?? satir.urunAdi ?? '').toLowerCase()
+                    const sonuclar = stoklar
+                      .filter((s) =>
+                        q.length === 0 ||
+                        (s.stokAdi || '').toLowerCase().includes(q) ||
+                        (s.stokKodu || '').toLowerCase().includes(q)
+                      )
+                      .slice(0, 10)
+                    if (sonuclar.length === 0) return null
+                    return (
+                      <div style={{
+                        position: 'absolute',
+                        left: 0, right: 0,
+                        top: 'calc(100% + 4px)',
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                        background: 'var(--surface-card)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-lg)',
+                        zIndex: 9999,
+                      }}>
+                        {sonuclar.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onMouseDown={() => {
+                              satirGuncelle(satir.id, 'urunAdi', s.stokAdi)
+                              satirGuncelle(satir.id, 'stokKodu', s.stokKodu || '')
+                              satirGuncelle(satir.id, 'birimFiyat', s.birimFiyat || 0)
+                              satirGuncelle(satir.id, 'birim', s.birim || 'Adet')
+                              setStokArama((prev) => ({ ...prev, [satir.id]: undefined }))
+                              setStokOneri((prev) => ({ ...prev, [satir.id]: false }))
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'left',
+                              padding: '10px 12px',
+                              background: 'transparent', border: 'none',
+                              borderBottom: '1px solid var(--border-default)',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-primary-soft)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                                  {s.stokAdi}
+                                </div>
+                                <div className="t-caption">{s.stokKodu} · {s.birim}</div>
+                              </div>
+                              <span className="tabular-nums" style={{
+                                font: '600 13px/18px var(--font-sans)',
+                                color: 'var(--brand-primary)', flexShrink: 0,
+                              }}>
+                                {(s.birimFiyat || 0).toLocaleString('tr-TR')} ₺
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <Input
                   value={satir.aciklama}
                   onChange={(e) => satirGuncelle(satir.id, 'aciklama', e.target.value)}
                   placeholder="Açıklama"
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px' }}
                 />
-              </div>
-              <div>
-                <input
+
+                <Input
                   type="number"
                   value={satir.miktar}
                   onChange={(e) => satirGuncelle(satir.id, 'miktar', parseFloat(e.target.value) || 0)}
                   min="0"
                   step="0.001"
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px', textAlign: 'center' }}
+                  style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
                 />
-              </div>
-              <div>
+
                 <CustomSelect
                   value={satir.birim}
                   onChange={(e) => satirGuncelle(satir.id, 'birim', e.target.value)}
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px' }}
                 >
-                  {BIRIM_SECENEKLERI.map((b) => (
-                    <option key={b.value} value={b.value}>{b.label}</option>
-                  ))}
+                  {BIRIM_SECENEKLERI.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
                 </CustomSelect>
-              </div>
-              <div>
-                <input
+
+                <Input
                   type="number"
                   value={satir.birimFiyat}
                   onChange={(e) => satirGuncelle(satir.id, 'birimFiyat', parseFloat(e.target.value) || 0)}
                   min="0"
                   step="0.01"
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px', textAlign: 'right' }}
+                  style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
                 />
-              </div>
-              <div>
-                <input
+
+                <Input
                   type="number"
                   value={satir.iskontoOran}
                   onChange={(e) => satirGuncelle(satir.id, 'iskontoOran', parseFloat(e.target.value) || 0)}
                   min="0"
                   max="100"
                   step="0.01"
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px', textAlign: 'right' }}
+                  style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
                 />
-              </div>
-              <div>
+
                 <CustomSelect
                   value={satir.kdvOran}
                   onChange={(e) => satirGuncelle(satir.id, 'kdvOran', parseFloat(e.target.value))}
-                  style={{ ...inputStyle, padding: '6px 8px', fontSize: '13px' }}
                 >
-                  {KDV_SECENEKLERI.map((k) => (
-                    <option key={k.value} value={k.value}>{k.label}</option>
-                  ))}
+                  {KDV_SECENEKLERI.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
                 </CustomSelect>
-              </div>
-              <div className="text-right text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {paraBirimFormat(satir.satirToplam)}
-              </div>
-              <div>
+
+                <div className="tabular-nums" style={{
+                  textAlign: 'right',
+                  font: '600 13px/18px var(--font-sans)',
+                  color: 'var(--text-primary)',
+                }}>
+                  {paraBirimFormat(satir.satirToplam)}
+                </div>
+
                 <button
+                  aria-label="Satırı sil"
                   onClick={() => satirSilLocal(satir.id)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                  style={{ color: '#ef4444' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  style={iconBtnStyle}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                 >
-                  🗑
+                  <Trash2 size={12} strokeWidth={1.5} />
                 </button>
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {/* Satır ekle */}
-        <div className="px-4 py-3">
-          <button
-            onClick={satirEkle}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl transition"
-            style={{
-              color: 'var(--primary)',
-              border: '1px dashed rgba(1,118,211,0.3)',
-              background: 'transparent',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(1,118,211,0.05)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            + Satır Ekle
-          </button>
-        </div>
-      </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Notlar + Özet */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Notlar */}
-        <div style={cardStyle}>
-          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-            Notlar
-          </h3>
-          <textarea
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 12 }}>Notlar</h2>
+          <Textarea
             value={form.notlar}
             onChange={(e) => setForm((p) => ({ ...p, notlar: e.target.value }))}
-            placeholder="Fatura notları..."
+            placeholder="Fatura notları…"
             rows={5}
-            style={{ ...inputStyle, resize: 'vertical' }}
           />
-        </div>
+        </Card>
 
-        {/* Özet */}
-        <div style={cardStyle}>
-          <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Özet
-          </h3>
-          <div className="space-y-2">
-            {[
-              { label: 'Ara Toplam', value: paraBirimFormat(toplamlar.araToplam), muted: true },
-              { label: 'İskonto', value: `- ${paraBirimFormat(toplamlar.iskontoToplam)}`, muted: true, color: '#f59e0b' },
-              { label: 'KDV', value: paraBirimFormat(toplamlar.kdvToplam), muted: true },
-            ].map((row) => (
-              <div key={row.label} className="flex justify-between items-center py-1">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{row.label}</span>
-                <span className="text-sm font-medium" style={{ color: row.color || 'var(--text-secondary)' }}>
-                  {row.value}
-                </span>
-              </div>
-            ))}
-            <div
-              className="flex justify-between items-center py-3 mt-2"
-              style={{ borderTop: '2px solid var(--border)' }}
-            >
-              <span className="font-bold" style={{ color: 'var(--text-primary)' }}>GENEL TOPLAM</span>
-              <span className="text-lg font-bold" style={{ color: 'var(--primary)' }}>
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>Özet</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">Ara toplam</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>
+                {paraBirimFormat(toplamlar.araToplam)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">İskonto</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--warning)' }}>
+                −{paraBirimFormat(toplamlar.iskontoToplam)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">KDV</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>
+                {paraBirimFormat(toplamlar.kdvToplam)}
+              </span>
+            </div>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              padding: '12px 0 0',
+              marginTop: 6,
+              borderTop: '1px solid var(--border-default)',
+            }}>
+              <span className="t-body-strong">Genel toplam</span>
+              <span className="tabular-nums" style={{
+                font: '600 16px/24px var(--font-sans)',
+                color: 'var(--brand-primary)',
+              }}>
                 {paraBirimFormat(toplamlar.genelToplam)}
               </span>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Tahsilatlar (sadece kayıtlı fatura) */}
+      {/* Tahsilatlar */}
       {!yeniMod && (
-        <div style={cardStyle}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Tahsilatlar
-            </h3>
-            <button
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h2 className="t-h2" style={{ margin: 0 }}>Tahsilatlar</h2>
+            <Button
+              variant="secondary"
+              iconLeft={<Plus size={14} strokeWidth={1.5} />}
               onClick={() => setTahsilatPanelAcik(!tahsilatPanelAcik)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium text-white transition"
-              style={{ background: '#10b981' }}
             >
-              + Tahsilat Al
-            </button>
+              Tahsilat al
+            </Button>
           </div>
 
-          {/* Tahsilat ekleme formu */}
-          <AnimatePresence>
-            {tahsilatPanelAcik && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-4 rounded-xl p-4"
-                style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)' }}
-              >
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                  <div>
-                    <label style={labelStyle}>Tarih</label>
-                    <input
-                      type="date"
-                      value={tahsilatForm.tarih}
-                      onChange={(e) => setTahsilatForm((p) => ({ ...p, tarih: e.target.value }))}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Tutar</label>
-                    <input
-                      type="number"
-                      value={tahsilatForm.tutar}
-                      onChange={(e) => setTahsilatForm((p) => ({ ...p, tutar: e.target.value }))}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Ödeme Yöntemi</label>
-                    <CustomSelect
-                      value={tahsilatForm.odemeYontemi}
-                      onChange={(e) => setTahsilatForm((p) => ({ ...p, odemeYontemi: e.target.value }))}
-                      style={inputStyle}
-                    >
-                      {ODEME_YONTEMLERI.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </CustomSelect>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Açıklama</label>
-                    <input
-                      type="text"
-                      value={tahsilatForm.aciklama}
-                      onChange={(e) => setTahsilatForm((p) => ({ ...p, aciklama: e.target.value }))}
-                      placeholder="İsteğe bağlı..."
-                      style={inputStyle}
-                    />
-                  </div>
+          {tahsilatPanelAcik && (
+            <div style={{
+              marginBottom: 16,
+              padding: 16,
+              background: 'var(--success-soft)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: 12, marginBottom: 12,
+              }}>
+                <div>
+                  <Label>Tarih</Label>
+                  <Input
+                    type="date"
+                    value={tahsilatForm.tarih}
+                    onChange={(e) => setTahsilatForm((p) => ({ ...p, tarih: e.target.value }))}
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleTahsilatEkle}
-                    disabled={tahsilatEkleniyor}
-                    className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-                    style={{ background: '#10b981', opacity: tahsilatEkleniyor ? 0.7 : 1 }}
-                  >
-                    {tahsilatEkleniyor ? 'Ekleniyor...' : 'Ekle'}
-                  </button>
-                  <button
-                    onClick={() => setTahsilatPanelAcik(false)}
-                    className="px-4 py-2 rounded-xl text-sm"
-                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                  >
-                    İptal
-                  </button>
+                <div>
+                  <Label>Tutar</Label>
+                  <Input
+                    type="number"
+                    value={tahsilatForm.tutar}
+                    onChange={(e) => setTahsilatForm((p) => ({ ...p, tutar: e.target.value }))}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Tahsilat listesi */}
-          {(form.tahsilatlar || []).length === 0 ? (
-            <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
-              Henüz tahsilat girilmedi
-            </p>
-          ) : (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ border: '1px solid var(--border)' }}
-            >
-              <div
-                className="grid text-xs font-semibold uppercase px-4 py-2"
-                style={{
-                  gridTemplateColumns: '110px 120px 130px 1fr 36px',
-                  color: 'var(--text-muted)',
-                  background: 'var(--bg-hover)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                <div>Tarih</div>
-                <div className="text-right">Tutar</div>
-                <div>Yöntem</div>
-                <div>Açıklama</div>
-                <div></div>
+                <div>
+                  <Label>Ödeme yöntemi</Label>
+                  <CustomSelect
+                    value={tahsilatForm.odemeYontemi}
+                    onChange={(e) => setTahsilatForm((p) => ({ ...p, odemeYontemi: e.target.value }))}
+                  >
+                    {ODEME_YONTEMLERI.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </CustomSelect>
+                </div>
+                <div>
+                  <Label>Açıklama</Label>
+                  <Input
+                    value={tahsilatForm.aciklama}
+                    onChange={(e) => setTahsilatForm((p) => ({ ...p, aciklama: e.target.value }))}
+                    placeholder="İsteğe bağlı…"
+                  />
+                </div>
               </div>
-              {(form.tahsilatlar || []).map((t) => (
-                <div
-                  key={t.id}
-                  className="grid items-center px-4 py-3 text-sm"
-                  style={{
-                    gridTemplateColumns: '110px 120px 130px 1fr 36px',
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                >
-                  <div style={{ color: 'var(--text-secondary)' }}>{tarihFormat(t.tarih)}</div>
-                  <div className="text-right font-semibold" style={{ color: '#10b981' }}>
-                    {paraBirimFormat(t.tutar)}
-                  </div>
-                  <div style={{ color: 'var(--text-secondary)' }}>
-                    {ODEME_YONTEMLERI.find((o) => o.value === t.odemeYontemi)?.label || t.odemeYontemi}
-                  </div>
-                  <div style={{ color: 'var(--text-muted)' }}>{t.aciklama || '—'}</div>
-                  <div>
-                    <button
-                      onClick={() => handleTahsilatSil(t.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg transition"
-                      style={{ color: '#ef4444' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      🗑
-                    </button>
-                  </div>
-                </div>
-              ))}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="primary" onClick={handleTahsilatEkle} disabled={tahsilatEkleniyor}>
+                  {tahsilatEkleniyor ? 'Ekleniyor…' : 'Ekle'}
+                </Button>
+                <Button variant="secondary" onClick={() => setTahsilatPanelAcik(false)}>
+                  İptal
+                </Button>
+              </div>
             </div>
           )}
 
-          {/* Özet alt kısım */}
-          <div className="flex items-center justify-end gap-6 mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Ödenen: <strong style={{ color: '#10b981' }}>{paraBirimFormat(form.odenenToplam)}</strong>
+          {(form.tahsilatlar || []).length === 0 ? (
+            <EmptyState title="Henüz tahsilat girilmedi" />
+          ) : (
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Tarih</TH>
+                  <TH align="right">Tutar</TH>
+                  <TH>Yöntem</TH>
+                  <TH>Açıklama</TH>
+                  <TH></TH>
+                </TR>
+              </THead>
+              <TBody>
+                {(form.tahsilatlar || []).map((t) => (
+                  <TR key={t.id}>
+                    <TD><span className="tabular-nums">{tarihFormat(t.tarih)}</span></TD>
+                    <TD align="right">
+                      <span className="tabular-nums" style={{
+                        font: '600 13px/18px var(--font-sans)',
+                        color: 'var(--success)',
+                      }}>
+                        {paraBirimFormat(t.tutar)}
+                      </span>
+                    </TD>
+                    <TD>{ODEME_YONTEMLERI.find((o) => o.value === t.odemeYontemi)?.label || t.odemeYontemi}</TD>
+                    <TD>{t.aciklama || '—'}</TD>
+                    <TD align="right">
+                      <button
+                        aria-label="Tahsilatı sil"
+                        onClick={() => handleTahsilatSil(t.id)}
+                        style={iconBtnStyle}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      >
+                        <Trash2 size={12} strokeWidth={1.5} />
+                      </button>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+
+          <div style={{
+            display: 'flex', justifyContent: 'flex-end', gap: 24,
+            marginTop: 16, paddingTop: 12,
+            borderTop: '1px solid var(--border-default)',
+          }}>
+            <span className="t-caption">
+              Ödenen: <span className="tabular-nums" style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--success)' }}>
+                {paraBirimFormat(form.odenenToplam)}
+              </span>
             </span>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Kalan: <strong style={{ color: kalan > 0 ? '#f59e0b' : '#10b981' }}>{paraBirimFormat(kalan)}</strong>
+            <span className="t-caption">
+              Kalan: <span className="tabular-nums" style={{
+                font: '600 13px/18px var(--font-sans)',
+                color: kalan > 0 ? 'var(--warning)' : 'var(--success)',
+              }}>
+                {paraBirimFormat(kalan)}
+              </span>
             </span>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Email Modal */}
-      {emailModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setEmailModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal başlık */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">✉️</span>
-                <div>
-                  <h3 className="font-semibold text-gray-800">Fatura Email Gönder</h3>
-                  <p className="text-xs text-gray-400">{form.faturaNo} — {form.firmaAdi}</p>
-                </div>
+      <Modal
+        open={emailModal}
+        onClose={() => setEmailModal(false)}
+        title={`Fatura email — ${form.faturaNo}`}
+        width={560}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEmailModal(false)}>İptal</Button>
+            <Button variant="primary" iconLeft={<Mail size={14} strokeWidth={1.5} />} onClick={emailGonder}>
+              Email istemcisini aç
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <Label>Alıcı email</Label>
+            <Input
+              type="email"
+              value={form.musteriEmail || ''}
+              onChange={(e) => setForm((prev) => ({ ...prev, musteriEmail: e.target.value }))}
+              placeholder="musteri@email.com"
+            />
+            {!form.musteriEmail && (
+              <p className="t-caption" style={{ marginTop: 4, color: 'var(--warning)' }}>
+                Müşteri e-posta adresi girilmemiş.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label>Konu</Label>
+            <Input
+              value={emailForm.konu}
+              onChange={(e) => setEmailForm((prev) => ({ ...prev, konu: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <Label>İçerik</Label>
+            <Textarea
+              value={emailForm.icerik}
+              onChange={(e) => setEmailForm((prev) => ({ ...prev, icerik: e.target.value }))}
+              rows={8}
+            />
+          </div>
+
+          <div style={{
+            padding: 12,
+            background: 'var(--brand-primary-soft)',
+            borderRadius: 'var(--radius-md)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>Fatura tutarı</div>
+              <div className="tabular-nums" style={{
+                font: '600 16px/24px var(--font-sans)',
+                color: 'var(--brand-primary)',
+              }}>
+                {paraBirimFormat(toplamlar.genelToplam)}
               </div>
-              <button onClick={() => setEmailModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
-
-            <div className="p-6 space-y-4">
-              {/* Alıcı */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Alıcı Email</label>
-                <input
-                  type="email"
-                  value={form.musteriEmail || ''}
-                  onChange={(e) => setForm((prev) => ({ ...prev, musteriEmail: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="musteri@email.com"
-                />
-                {!form.musteriEmail && (
-                  <p className="text-xs text-amber-500 mt-1">⚠️ Müşteri emaili girilmemiş</p>
-                )}
+            <div style={{ textAlign: 'right' }}>
+              <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>Vade</div>
+              <div className="tabular-nums" style={{
+                font: '600 13px/18px var(--font-sans)',
+                color: 'var(--brand-primary)',
+              }}>
+                {form.vadeTarihi || '—'}
               </div>
-
-              {/* Konu */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Konu</label>
-                <input
-                  type="text"
-                  value={emailForm.konu}
-                  onChange={(e) => setEmailForm((prev) => ({ ...prev, konu: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-
-              {/* İçerik */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">İçerik</label>
-                <textarea
-                  value={emailForm.icerik}
-                  onChange={(e) => setEmailForm((prev) => ({ ...prev, icerik: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  rows={8}
-                />
-              </div>
-
-              {/* Özet bilgi */}
-              <div className="bg-indigo-50 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-indigo-500 font-medium">Fatura Tutarı</p>
-                  <p className="text-lg font-bold text-indigo-700">{paraBirimFormat(toplamlar.genelToplam)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-indigo-500 font-medium">Vade</p>
-                  <p className="text-sm font-semibold text-indigo-700">{form.vadeTarihi || '—'}</p>
-                </div>
-              </div>
-
-              {/* PDF kopyala */}
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/satislar/${id}/yazdir`)
-                  toast.success('PDF bağlantısı kopyalandı.')
-                }}
-                className="w-full py-2 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition flex items-center justify-center gap-2"
-              >
-                📎 PDF Bağlantısını Kopyala
-              </button>
-            </div>
-
-            {/* Butonlar */}
-            <div className="flex gap-3 px-6 pb-6">
-              <button
-                onClick={() => setEmailModal(false)}
-                className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
-              >
-                İptal
-              </button>
-              <button
-                onClick={emailGonder}
-                className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition flex items-center justify-center gap-2"
-                style={{ background: '#6366f1' }}
-              >
-                ✉️ Email İstemcisini Aç
-              </button>
             </div>
           </div>
+
+          <Button
+            variant="secondary"
+            iconLeft={<LinkIcon size={14} strokeWidth={1.5} />}
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/satislar/${id}/yazdir`)
+              toast.success('PDF bağlantısı kopyalandı.')
+            }}
+          >
+            PDF bağlantısını kopyala
+          </Button>
         </div>
-      )}
+      </Modal>
     </div>
   )
+}
+
+const iconBtnStyle = {
+  width: 28, height: 28,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: 'transparent',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
 }
 
 export default SatisDetay

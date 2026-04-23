@@ -4,271 +4,98 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Not: Enterprise token'ları main.jsx içinde tokens.css ve typography.css
+   dosyalarından yüklenir. Bu dosya sadece legacy alias'ları ve migrate
+   edilmemiş eski utility sınıflarını tutar. Faz 4'te sayfa bazında temizlenir. */
 
+/* ── Legacy değişkenler (eski kodun kırılmaması için yeni token'lara eşlenir) ── */
 :root {
-  color-scheme: light;
-  /* Marka renkleri — ThemeContext tarafından dinamik güncellenir */
-  --primary: #0176D3;
-  --primary-dark: #014486;
-  --primary-light: #0176D3;
+  --primary:        var(--brand-primary);
+  --primary-dark:   var(--brand-primary-hover);
+  --primary-light:  var(--brand-primary);
 
-  /* Semantic renkler */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --bg-page:       var(--surface-bg);
+  --bg-card:       var(--surface-card);
+  --bg-hover:      var(--surface-sunken);
+  --bg-input:      var(--surface-card);
+  --bg-sidebar:    var(--surface-sidebar);
+  --bg-header:     var(--surface-card);
 
-  /* Açık tema değişkenleri */
-  --bg-page:       #f4f6f9;
-  --bg-card:       #ffffff;
-  --bg-hover:      #f8fafc;
-  --bg-input:      #ffffff;
-  --bg-sidebar:    linear-gradient(180deg, #032D60 0%, #014486 50%, #032D60 100%);
-  --bg-header:     #ffffff;
-  --text-primary:  #1e293b;
-  --text-secondary:#374151;
-  --text-muted:    #9ca3af;
-  --border:        #dddbda;
-  --border-light:  #f0f0f0;
-  --shadow-sm:     0 1px 4px rgba(0,0,0,0.07);
-  --shadow-md:     0 2px 8px rgba(0,0,0,0.10);
-
-  /* Legacy */
-  --glass-bg: rgba(255,255,255,0.08);
-  --glass-border: rgba(255,255,255,0.12);
-  --glass-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  --card-bg: rgba(255,255,255,0.92);
-  --card-border: rgba(226,232,240,0.8);
-}
-
-/* ── Dark mode Tailwind overrides ─────────────────────────── */
-[data-theme="dark"] .bg-white { background-color: var(--bg-card) !important; }
-[data-theme="dark"] .bg-gray-50 { background-color: var(--bg-hover) !important; }
-[data-theme="dark"] .bg-gray-100 { background-color: var(--bg-hover) !important; }
-[data-theme="dark"] .text-gray-900 { color: var(--text-primary) !important; }
-[data-theme="dark"] .text-gray-800 { color: var(--text-primary) !important; }
-[data-theme="dark"] .text-gray-700 { color: var(--text-secondary) !important; }
-[data-theme="dark"] .text-gray-600 { color: var(--text-secondary) !important; }
-[data-theme="dark"] .text-gray-500 { color: var(--text-muted) !important; }
-[data-theme="dark"] .text-gray-400 { color: var(--text-muted) !important; }
-[data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
-[data-theme="dark"] .border-gray-100 { border-color: var(--border-light) !important; }
-[data-theme="dark"] .divide-gray-100 > * + * { border-color: var(--border-light) !important; }
-[data-theme="dark"] .divide-gray-200 > * + * { border-color: var(--border) !important; }
-
-/* ── DARK MODE ────────────────────────────────────────── */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-page:       #111827;
-  --bg-card:       #1f2937;
-  --bg-hover:      #2d3748;
-  --bg-input:      #1f2937;
-  --bg-header:     #1a2234;
-  --text-primary:  #f1f5f9;
-  --text-secondary:#d1d5db;
-  --text-muted:    #6b7280;
-  --border:        #374151;
-  --border-light:  #2d3748;
-  --shadow-sm:     0 1px 4px rgba(0,0,0,0.3);
-  --shadow-md:     0 2px 8px rgba(0,0,0,0.4);
-}
-
-/* Body arkaplanı */
-body { background-color: var(--bg-page); }
-[data-theme="dark"] body { background-color: #111827 !important; }
-
-/* ── Tailwind sınıf override'ları (dark modda) ─────────── */
-[data-theme="dark"] .bg-white      { background-color: #1f2937 !important; }
-[data-theme="dark"] .bg-gray-50    { background-color: #2d3748 !important; }
-[data-theme="dark"] .bg-gray-100   { background-color: #374151 !important; }
-[data-theme="dark"] .bg-gray-200   { background-color: #4b5563 !important; }
-
-[data-theme="dark"] .text-gray-800 { color: #f1f5f9 !important; }
-[data-theme="dark"] .text-gray-700 { color: #e5e7eb !important; }
-[data-theme="dark"] .text-gray-600 { color: #d1d5db !important; }
-[data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
-[data-theme="dark"] .text-gray-400 { color: #6b7280 !important; }
-
-[data-theme="dark"] .border-gray-100 { border-color: #374151 !important; }
-[data-theme="dark"] .border-gray-200 { border-color: #4b5563 !important; }
-
-[data-theme="dark"] .shadow-sm { box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important; }
-
-/* Liste/kart container flash önleme */
-.bg-white { background-color: #ffffff; }
-.bg-gray-50 { background-color: #f9fafb; }
-
-/* Input / select / textarea — light mode default */
-input:not([type="radio"]):not([type="checkbox"]),
-select,
-textarea {
-  background-color: #ffffff;
-  color: #1e293b;
-  color-scheme: light;
-}
-select option {
-  background-color: #ffffff;
-  color: #1e293b;
-}
-
-/* Input / select / textarea — dark mode override */
-[data-theme="dark"] input:not([type="radio"]):not([type="checkbox"]),
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-  background-color: #1f2937 !important;
-  color: #f1f5f9 !important;
-  border-color: #374151 !important;
-  color-scheme: dark !important;
-}
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder { color: #6b7280 !important; }
-[data-theme="dark"] select option { background-color: #1f2937 !important; color: #f1f5f9 !important; }
-
-/* Tablolar */
-[data-theme="dark"] table { color: #f1f5f9; }
-[data-theme="dark"] th    { color: #9ca3af !important; }
-
-/* Scrollbar dark */
-[data-theme="dark"] ::-webkit-scrollbar-track { background: #1f2937; }
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(100,120,180,0.4); }
-
-/* Status badge dark modda okunabilir kalsın */
-[data-theme="dark"] .status-badge-text { color: #e5e7eb !important; }
-
-/* ── ACCENT COLOR OVERRİDE'LARI ───────────────────────────
-   Mavi dışında bir aksent seçildiğinde Tailwind'in bg-blue-*
-   ve text-blue-* sınıflarını var(--primary) ile ezdik.       */
-:root:not([data-accent="mavi"]) .bg-blue-600,
-:root:not([data-accent="mavi"]) .bg-blue-500 {
-  background-color: var(--primary) !important;
-}
-:root:not([data-accent="mavi"]) .hover\:bg-blue-700:hover,
-:root:not([data-accent="mavi"]) .hover\:bg-blue-600:hover {
-  background-color: var(--primary-dark) !important;
-}
-:root:not([data-accent="mavi"]) .text-blue-600,
-:root:not([data-accent="mavi"]) .text-blue-500,
-:root:not([data-accent="mavi"]) .text-blue-400 {
-  color: var(--primary) !important;
-}
-:root:not([data-accent="mavi"]) .hover\:text-blue-600:hover {
-  color: var(--primary-dark) !important;
-}
-:root:not([data-accent="mavi"]) .border-blue-600,
-:root:not([data-accent="mavi"]) .border-blue-500,
-:root:not([data-accent="mavi"]) .border-blue-300,
-:root:not([data-accent="mavi"]) .border-blue-100 {
-  border-color: var(--primary) !important;
-}
-:root:not([data-accent="mavi"]) .ring-blue-500,
-:root:not([data-accent="mavi"]) .focus\:ring-blue-500:focus,
-:root:not([data-accent="mavi"]) .focus\:ring-2:focus {
-  --tw-ring-color: var(--primary) !important;
-}
-/* Seçili filtre butonları */
-:root:not([data-accent="mavi"]) .border-blue-600.bg-blue-600 {
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
-}
-/* Sekme aktif çizgisi */
-:root:not([data-accent="mavi"]) .border-b-2.border-blue-600 {
-  border-bottom-color: var(--primary) !important;
-}
-:root:not([data-accent="mavi"]) .text-blue-600.border-blue-600 {
-  color: var(--primary) !important;
-  border-color: var(--primary) !important;
+  --text-muted:    var(--text-tertiary);
+  --border:        var(--border-default);
+  --border-light:  var(--border-default);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: #f8fafc;
+  background: var(--surface-bg);
 }
 
+/* ── Scrollbar ─────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(241, 245, 249, 0.8);
-  border-radius: 10px;
+  background: var(--surface-sunken);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(1, 118, 211, 0.45);
-  border-radius: 10px;
-  border: 2px solid rgba(241, 245, 249, 0.8);
+  background: var(--border-strong);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(1, 118, 211, 0.75);
-}
-::-webkit-scrollbar-thumb:active {
-  background: rgba(1, 118, 211, 0.9);
+  background: var(--text-tertiary);
 }
 
+/* ── Legacy utility sınıfları (sayfalar tarafından hâlâ kullanılıyor) ──
+   Faz 4'te sayfa sayfa temizlenecek. Şimdilik token'lara bağlı kalıyorlar. */
+
 .glass-card {
-  background: #ffffff;
-  border: 1px solid #dddbda;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-sm);
 }
 .glass-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-primary {
-  background: #0176D3;
-  color: white;
+  background: var(--brand-primary);
+  color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 8px 20px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  transition: background 120ms;
 }
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  background: #014486;
-}
-.btn-primary:active {
-  transform: translateY(0);
+  background: var(--brand-primary-hover);
 }
 
 .gradient-text {
-  color: #0176D3;
-}
-
-.glow {
-  box-shadow: 0 0 20px rgba(1, 118, 211, 0.4);
+  color: var(--brand-primary);
 }
 
 .sidebar-gradient {
-  background: linear-gradient(180deg, #032D60 0%, #014486 50%, #032D60 100%);
+  background: var(--surface-sidebar);
 }
 
 .premium-input {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 10px;
-  padding: 9px 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: border-color 120ms, box-shadow 120ms;
   outline: none;
   width: 100%;
 }
 .premium-input:focus {
-  border-color: rgba(1, 118, 211, 0.5);
-  box-shadow: 0 0 0 3px rgba(1, 118, 211, 0.12);
-  background: white;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 .status-dot {
@@ -276,56 +103,50 @@ body {
   height: 8px;
   border-radius: 50%;
   display: inline-block;
-  animation: pulse-dot 2s infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.2); }
+  background: var(--success);
 }
 
+/* Shimmer loading */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
+  0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--border-default) 50%, var(--surface-sunken) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-.hover-lift {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* ── Focus-visible ring (klavye erişilebilirliği) ─────── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-.gradient-border {
-  position: relative;
-  background: white;
-  border-radius: 14px;
-}
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 5px;
-  background: #0176D3;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.gradient-border:hover::before {
-  opacity: 1;
-}
+/* ── Dark mode: mevcut Tailwind gri sınıflarını token'a ez ──
+   Eski sayfalar bg-white/text-gray-* kullanıyor. Faz 4'te kaldırılacak. */
+[data-theme="dark"] .bg-white       { background-color: var(--surface-card) !important; }
+[data-theme="dark"] .bg-gray-50     { background-color: var(--surface-sunken) !important; }
+[data-theme="dark"] .bg-gray-100    { background-color: var(--surface-sunken) !important; }
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800  { color: var(--text-primary) !important; }
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-600  { color: var(--text-secondary) !important; }
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400  { color: var(--text-tertiary) !important; }
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200{ border-color: var(--border-default) !important; }
+[data-theme="dark"] .divide-gray-100 > * + *,
+[data-theme="dark"] .divide-gray-200 > * + * { border-color: var(--border-default) !important; }
 
-* {
-  transition-property: color, background-color, border-color, box-shadow;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Dark modda input/select/textarea */
+[data-theme="dark"] input:not([type="radio"]):not([type="checkbox"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--surface-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+  color-scheme: dark !important;
 }
-button, a {
-  transition-property: all;
-  transition-duration: 200ms;
-}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--text-tertiary) !important; }

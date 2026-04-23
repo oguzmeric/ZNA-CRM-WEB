@@ -11,6 +11,8 @@ import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import { HatirlatmaProvider } from './context/HatirlatmaContext'
 import { ThemeProvider } from './context/ThemeContext'
+import './styles/tokens.css'
+import './styles/typography.css'
 import './index.css'
 import App from './App.jsx'
 

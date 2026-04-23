@@ -27,6 +27,7 @@ import Profil from './pages/Profil'
 import FirmaGecmisi from './pages/FirmaGecmisi'
 import ServisTalepleri from './pages/ServisTalepleri'
 import ServisTalepDetay from './pages/ServisTalepDetay'
+import ServisRaporlari from './pages/ServisRaporlari'
 import Kargolar from './pages/Kargolar'
 import KargoDetay from './pages/KargoDetay'
 import Takvim from './pages/Takvim'
@@ -40,10 +41,19 @@ import MusteriTalepDetay from './pages/musteri/MusteriTalepDetay'
 import TeklifIste from './pages/musteri/TeklifIste'
 import TeklifYazdir from './pages/TeklifYazdir'
 import FaturaYazdir from './pages/FaturaYazdir'
+import DesignSystemPage from './pages/DesignSystemPage'
 
 function App() {
   const { kullanici } = useAuth()
   const location = useLocation()
+
+  if (location.pathname === '/design-system') {
+    return (
+      <Routes>
+        <Route path="/design-system" element={<DesignSystemPage />} />
+      </Routes>
+    )
+  }
 
   if (!kullanici) {
     return (
@@ -107,6 +117,7 @@ function App() {
         <Route path="/firma-gecmisi/:firmaAdi" element={<FirmaGecmisi />} />
         <Route path="/servis-talepleri" element={<ServisTalepleri />} />
         <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />
+        <Route path="/servis-raporlari" element={<ServisRaporlari />} />
         <Route path="/dokuman-merkezi" element={<DokümanMerkezi />} />
         <Route path="/kargolar" element={<Kargolar />} />
         <Route path="/kargolar/:id" element={<KargoDetay />} />

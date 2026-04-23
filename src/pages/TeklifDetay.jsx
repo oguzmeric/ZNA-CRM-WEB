@@ -1,21 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
+  CheckCircle2, Receipt, Inbox,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import { useToast } from '../context/ToastContext'
-import { teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle, teklifSil as dbTeklifSil } from '../services/teklifService'
+import {
+  teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle,
+} from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import CustomSelect from '../components/CustomSelect'
+import {
+  Button, Input, Textarea, Label, Card, Badge, CodeBadge,
+  Alert, EmptyState, Table, THead, TBody, TR, TH, TD, SegmentedControl,
+} from '../components/ui'
 
 const onayDurumlari = [
-  { id: 'takipte', isim: 'Takipte', renk: 'bg-blue-100 text-blue-700' },
-  { id: 'kabul', isim: 'Kabul Edildi', renk: 'bg-green-100 text-green-700' },
-  { id: 'vazgecildi', isim: 'Vazgeçildi', renk: 'bg-red-100 text-red-600' },
-  { id: 'revizyon', isim: 'Revizyon', renk: 'bg-amber-100 text-amber-700' },
+  { id: 'takipte',    isim: 'Takipte',      tone: 'lead' },
+  { id: 'kabul',      isim: 'Kabul',        tone: 'aktif' },
+  { id: 'revizyon',   isim: 'Revizyon',     tone: 'beklemede' },
+  { id: 'vazgecildi', isim: 'Vazgeçildi',   tone: 'kayip' },
 ]
 
 const paraBirimleri = [
@@ -25,7 +35,7 @@ const paraBirimleri = [
 ]
 
 const odemeSecenekleri = [
-  'Peşin', 'Havale', 'Kredi Kartı', '30 Gün Vadeli', '60 Gün Vadeli', '90 Gün Vadeli'
+  'Peşin', 'Havale', 'Kredi Kartı', '30 Gün Vadeli', '60 Gün Vadeli', '90 Gün Vadeli',
 ]
 
 const kdvOranlari = [0, 1, 10, 20]
@@ -39,6 +49,22 @@ const bosUrun = {
   iskonto: 0,
   kdv: 20,
 }
+
+const gecerlilikSecenekleri = [
+  { label: 'Aynı gün', gun: 0 },
+  { label: '7 gün', gun: 7 },
+  { label: '14 gün', gun: 14 },
+  { label: '30 gün', gun: 30 },
+  { label: '60 gün', gun: 60 },
+]
+
+const hatirlatmaSecenekleri = [
+  { gun: 0, label: 'Yok' },
+  { gun: 3, label: '3 gün' },
+  { gun: 7, label: '1 hafta' },
+  { gun: 14, label: '2 hafta' },
+  { gun: 30, label: '1 ay' },
+]
 
 function TeklifDetay() {
   const { id } = useParams()
@@ -137,7 +163,6 @@ function TeklifDetay() {
     }
   }, [veriYuklendi, mevcutTeklif])
 
-  // Para birimi değişince kurları otomatik doldur
   useEffect(() => {
     if (!form) return
     if (form.paraBirimi === 'USD' && kurlar.USD && !form.dovizKuru) {
@@ -152,7 +177,7 @@ function TeklifDetay() {
   }, [form?.paraBirimi, kurlar])
 
   if (!veriYuklendi || !form) {
-    return <div className="p-6 text-center text-gray-400">Yükleniyor...</div>
+    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
   }
 
   const handleMusteriSec = (musteriId) => {
@@ -226,9 +251,11 @@ function TeklifDetay() {
     ? genelToplam * Number(form.dovizKuru)
     : null
 
+  const fmtPara = (n) => `${paraBirimi?.sembol || ''}${n.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+
   const kaydet = async () => {
     if (!form.firmaAdi || !form.konu) {
-      toast.warning('Firma ve konu zorunludur!')
+      toast.warning('Firma ve konu zorunludur.')
       return
     }
     const kaydedilecek = {
@@ -244,7 +271,7 @@ function TeklifDetay() {
           if (hatirlatmaGun > 0) {
             hatirlatmaEkle(yeniTeklif, hatirlatmaGun)
             const etiket = hatirlatmaGun === 3 ? '3 gün' : hatirlatmaGun === 7 ? '1 hafta' : hatirlatmaGun === 14 ? '2 hafta' : `${hatirlatmaGun} gün`
-            toast.success(`Teklif kaydedildi. ${etiket} sonra takip hatırlatması oluşturuldu.`)
+            toast.success(`Teklif kaydedildi. ${etiket} sonra hatırlatma oluşturuldu.`)
           } else {
             toast.success('Teklif kaydedildi.')
           }
@@ -260,9 +287,7 @@ function TeklifDetay() {
     }
   }
 
-  const revizyon = () => {
-    setForm({ ...form, revizyon: form.revizyon + 1 })
-  }
+  const revizyon = () => setForm({ ...form, revizyon: form.revizyon + 1 })
 
   const faturayaDonustur = () => {
     localStorage.setItem(
@@ -290,166 +315,142 @@ function TeklifDetay() {
     navigate('/satislar/yeni')
   }
 
-  return (
-    <div className="p-6 max-w-6xl mx-auto">
+  const aktifDurum = onayDurumlari.find(d => d.id === form.onayDurumu)
 
-      {/* Müşteri teklif talebinden gelme bildirimi */}
+  return (
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      <button
+        onClick={() => navigate('/teklifler')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--text-tertiary)',
+          font: '500 13px/18px var(--font-sans)',
+          marginBottom: 16,
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} /> Tekliflere dön
+      </button>
+
+      {/* Müşteri talep bildirimi */}
       {form.musteriTalepNo && (
-        <div className="flex items-center gap-3 p-4 rounded-xl mb-4" style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)' }}>
-          <span style={{ fontSize: '18px' }}>📥</span>
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--primary)' }}>
-              Müşteri teklif talebinden oluşturuldu — {form.musteriTalepNo}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Firma ve ürün bilgileri otomatik dolduruldu. Fiyatları girdikten sonra kaydedin.
-            </p>
+        <Alert variant="info" style={{ marginBottom: 16 }}>
+          <div className="t-body-strong">Müşteri teklif talebinden oluşturuldu — {form.musteriTalepNo}</div>
+          <div className="t-caption" style={{ marginTop: 2 }}>
+            Firma ve ürün bilgileri otomatik dolduruldu. Fiyatları girdikten sonra kaydedin.
           </div>
-        </div>
+        </Alert>
       )}
 
-      {/* Başlık */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/teklifler')}
-            className="text-sm text-gray-400 hover:text-blue-600 transition"
-          >
-            ← Teklifler
-          </button>
-          <h2 className="text-xl font-semibold text-gray-800">
-            {yeni ? 'Yeni Teklif' : form.teklifNo}
-            {form.revizyon > 0 && (
-              <span className="text-sm text-amber-500 ml-2">Rev.{form.revizyon}</span>
-            )}
-          </h2>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="t-h1">{yeni ? 'Yeni teklif' : form.teklifNo}</h1>
+          {!yeni && <CodeBadge>{form.teklifNo}</CodeBadge>}
+          {form.revizyon > 0 && <Badge tone="beklemede">Rev. {form.revizyon}</Badge>}
+          {aktifDurum && <Badge tone={aktifDurum.tone}>{aktifDurum.isim}</Badge>}
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!yeni && (
-            <button
-              onClick={revizyon}
-              className="text-sm px-4 py-2 rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 transition"
-            >
-              + Revizyon
-            </button>
+            <Button variant="secondary" iconLeft={<RefreshCw size={14} strokeWidth={1.5} />} onClick={revizyon}>
+              Revizyon
+            </Button>
           )}
           {!yeni && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<Printer size={14} strokeWidth={1.5} />}
               onClick={() => window.open(`/teklifler/${id}/yazdir`, '_blank')}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition"
-              style={{ border: '1px solid rgba(1,118,211,0.3)', color: 'var(--primary)', background: 'transparent' }}
             >
-              🖨 PDF
-            </button>
+              PDF
+            </Button>
           )}
           {!yeni && ilgiliFatura && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
               onClick={() => navigate(`/satislar/${ilgiliFatura.id}`)}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition text-white"
-              style={{ background: '#10b981' }}
             >
-              ✅ Faturaya Git
-            </button>
+              Faturaya git
+            </Button>
           )}
           {!yeni && !ilgiliFatura && form?.onayDurumu === 'kabul' && (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<Receipt size={14} strokeWidth={1.5} />}
               onClick={faturayaDonustur}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition text-white"
-              style={{ background: '#0176D3' }}
             >
-              🧾 Fatura Oluştur
-            </button>
+              Fatura oluştur
+            </Button>
           )}
-          <button
-            onClick={kaydet}
-            className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Kaydet
-          </button>
+          <Button variant="primary" onClick={kaydet}>Kaydet</Button>
         </div>
       </div>
 
-      {/* Teklif Açıklaması — Paraşüt stili prominent input */}
-      <div
-        className="rounded-2xl mb-6 flex items-center gap-4"
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid rgba(1,118,211,0.1)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          padding: '16px 20px',
-        }}
-      >
-        <div style={{ fontSize: '28px', color: 'var(--text-muted)', flexShrink: 0 }}>📄</div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
-            TEKLİF AÇIKLAMASI
-          </p>
-          <input
-            type="text"
-            value={form.konu}
-            onChange={(e) => setForm({ ...form, konu: e.target.value })}
-            placeholder="Teklif için kısa bir başlık/açıklama girin..."
-            style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontSize: '16px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              width: '100%',
-            }}
-          />
-        </div>
-      </div>
+      {/* Konu */}
+      <Card style={{ marginBottom: 16 }}>
+        <p className="t-label" style={{ marginBottom: 6 }}>Teklif konusu</p>
+        <input
+          type="text"
+          value={form.konu}
+          onChange={(e) => setForm({ ...form, konu: e.target.value })}
+          placeholder="Teklif için kısa bir başlık girin…"
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            font: '600 16px/24px var(--font-sans)',
+            color: 'var(--text-primary)',
+          }}
+        />
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16, marginBottom: 16 }}>
         {/* Sol — Teklif Bilgileri */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <p className="text-sm font-medium text-gray-700 mb-4">Teklif Bilgileri</p>
-          <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>Teklif bilgileri</h2>
 
+          <div style={{ marginBottom: 16 }}>
+            <Label>Onay durumu</Label>
+            <SegmentedControl
+              options={onayDurumlari.map(d => ({ value: d.id, label: d.isim }))}
+              value={form.onayDurumu}
+              onChange={(v) => setForm({ ...form, onayDurumu: v })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Teklif No</label>
-              <span className="text-sm font-mono bg-gray-100 text-gray-700 px-3 py-2 rounded-lg block">
+              <Label>Teklif no</Label>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--surface-sunken)',
+                font: '500 13px/20px var(--font-mono)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+              }}>
                 {form.teklifNo}
-              </span>
+              </div>
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Onay Durumu</label>
-              <CustomSelect
-                value={form.onayDurumu}
-                onChange={(e) => setForm({ ...form, onayDurumu: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {onayDurumlari.map((d) => (
-                  <option key={d.id} value={d.id}>{d.isim}</option>
-                ))}
-              </CustomSelect>
+              <Label>Tarih</Label>
+              <Input type="date" value={form.tarih} onChange={(e) => setForm({ ...form, tarih: e.target.value })} />
             </div>
 
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tarih</label>
-              <input type="date" value={form.tarih}
-                onChange={(e) => setForm({ ...form, tarih: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Geçerlilik Tarihi</label>
-              <input type="date" value={form.gecerlilikTarihi}
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Geçerlilik tarihi</Label>
+              <Input
+                type="date"
+                value={form.gecerlilikTarihi}
                 onChange={(e) => setForm({ ...form, gecerlilikTarihi: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              {/* Geçerlilik hızlı seçim */}
-              <div className="flex gap-1 flex-wrap mt-1">
-                {[
-                  { label: 'Aynı Gün', gun: 0 },
-                  { label: '7 Gün', gun: 7 },
-                  { label: '14 Gün', gun: 14 },
-                  { label: '30 Gün', gun: 30 },
-                  { label: '60 Gün', gun: 60 },
-                ].map((opt) => {
+              />
+              <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                {gecerlilikSecenekleri.map((opt) => {
                   const hedef = new Date(form.tarih || new Date())
                   hedef.setDate(hedef.getDate() + opt.gun)
                   const hedefStr = hedef.toISOString().split('T')[0]
@@ -460,14 +461,13 @@ function TeklifDetay() {
                       type="button"
                       onClick={() => setForm({ ...form, gecerlilikTarihi: hedefStr })}
                       style={{
-                        fontSize: '11px',
+                        font: '500 11px/14px var(--font-sans)',
                         padding: '3px 8px',
-                        borderRadius: '6px',
-                        border: aktif ? '1px solid var(--primary)' : '1px solid var(--border)',
-                        background: aktif ? 'var(--primary)' : 'transparent',
-                        color: aktif ? '#fff' : 'var(--text-muted)',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${aktif ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                        background: aktif ? 'var(--brand-primary)' : 'var(--surface-card)',
+                        color: aktif ? '#fff' : 'var(--text-secondary)',
                         cursor: 'pointer',
-                        fontWeight: aktif ? 600 : 400,
                       }}
                     >
                       {opt.label}
@@ -478,10 +478,9 @@ function TeklifDetay() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Müşteri Seç</label>
-              <CustomSelect value={form.musteriId} onChange={(e) => handleMusteriSec(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Müşteri seç...</option>
+              <Label>Müşteri seç</Label>
+              <CustomSelect value={form.musteriId} onChange={(e) => handleMusteriSec(e.target.value)}>
+                <option value="">Müşteri seç…</option>
                 {musteriler.map((m) => (
                   <option key={m.id} value={m.id}>{m.ad} {m.soyad} — {m.firma}</option>
                 ))}
@@ -489,429 +488,399 @@ function TeklifDetay() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Firma Adı *</label>
-              <input type="text" value={form.firmaAdi}
+              <Label required>Firma adı</Label>
+              <Input
+                value={form.firmaAdi}
                 onChange={(e) => setForm({ ...form, firmaAdi: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Firma adı" />
+                placeholder="Firma adı"
+              />
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Müşteri Yetkilisi</label>
-              <input type="text" value={form.musteriYetkilisi}
+              <Label>Müşteri yetkilisi</Label>
+              <Input
+                value={form.musteriYetkilisi}
                 onChange={(e) => setForm({ ...form, musteriYetkilisi: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Yetkili adı" />
+                placeholder="Yetkili adı"
+              />
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Hazırlayan</label>
-              <CustomSelect value={form.hazirlayan}
+              <Label>Hazırlayan</Label>
+              <CustomSelect
+                value={form.hazirlayan}
                 onChange={(e) => setForm({ ...form, hazirlayan: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {kullanicilar.map((k) => (
-                  <option key={k.id} value={k.ad}>{k.ad}</option>
-                ))}
+              >
+                {kullanicilar.map((k) => <option key={k.id} value={k.ad}>{k.ad}</option>)}
               </CustomSelect>
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Ödeme Şekli</label>
-              <CustomSelect value={form.odemeSecenegi}
+              <Label>Ödeme şekli</Label>
+              <CustomSelect
+                value={form.odemeSecenegi}
                 onChange={(e) => setForm({ ...form, odemeSecenegi: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {odemeSecenekleri.map((o) => (
-                  <option key={o} value={o}>{o}</option>
-                ))}
+              >
+                {odemeSecenekleri.map((o) => <option key={o} value={o}>{o}</option>)}
               </CustomSelect>
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Bağlı Görüşme</label>
-              <CustomSelect value={form.gorusmeId}
+              <Label>Bağlı görüşme</Label>
+              <CustomSelect
+                value={form.gorusmeId}
                 onChange={(e) => setForm({ ...form, gorusmeId: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Görüşme seç...</option>
+              >
+                <option value="">Görüşme seç…</option>
                 {gorusmeler.map((g) => (
                   <option key={g.id} value={g.id}>{g.aktNo} — {g.firmaAdi}</option>
                 ))}
               </CustomSelect>
             </div>
 
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Teklif Konusu *</label>
-              <input type="text" value={form.konu}
-                onChange={(e) => setForm({ ...form, konu: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Teklif konusu" />
-            </div>
-
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Teklif Koşulları</label>
-              <textarea value={form.aciklama}
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Teklif koşulları</Label>
+              <Textarea
+                value={form.aciklama}
                 onChange={(e) => setForm({ ...form, aciklama: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={2} placeholder="Ek açıklama..." />
+                rows={2}
+                placeholder="Ek açıklama…"
+              />
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Sağ — Fiyat Özeti */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <p className="text-sm font-medium text-gray-700 mb-4">Fiyat Özeti</p>
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 16 }}>Fiyat özeti</h2>
 
-          {/* Para Birimi */}
-          <div className="mb-4">
-            <label className="text-xs text-gray-500 mb-1 block">Para Birimi</label>
-            <div className="flex gap-2">
-              {paraBirimleri.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setForm({ ...form, paraBirimi: p.id, dovizKuru: '' })}
-                  className={`flex-1 text-sm py-2 rounded-lg border transition font-medium ${
-                    form.paraBirimi === p.id
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  {p.sembol} {p.id}
-                </button>
-              ))}
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <Label>Para birimi</Label>
+            <SegmentedControl
+              options={paraBirimleri.map(p => ({ value: p.id, label: `${p.sembol} ${p.id}` }))}
+              value={form.paraBirimi}
+              onChange={(v) => setForm({ ...form, paraBirimi: v, dovizKuru: '' })}
+            />
           </div>
 
-          {/* Döviz Kuru Bilgisi */}
           {form.paraBirimi !== 'TL' && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-gray-500">Döviz Kuru (TL)</label>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Label style={{ margin: 0 }}>Döviz kuru (TL)</Label>
                 <button
                   onClick={kurCek}
                   disabled={yukleniyor}
-                  className="text-xs text-blue-500 hover:text-blue-700 transition disabled:opacity-40"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    color: 'var(--brand-primary)',
+                    font: '500 12px/16px var(--font-sans)',
+                    opacity: yukleniyor ? 0.5 : 1,
+                  }}
                 >
-                  {yukleniyor ? '⟳' : '↻'} Güncelle
+                  <RefreshCw size={12} strokeWidth={1.5} /> Güncelle
                 </button>
               </div>
 
-              {/* Güncel kur göstergesi */}
               {kurlar[form.paraBirimi] && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-2 flex items-center justify-between">
-                  <span className="text-xs text-green-600">
-                    Güncel: 1 {form.paraBirimi} = ₺{kurlar[form.paraBirimi]}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 12px', marginBottom: 8,
+                  background: 'var(--success-soft)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-default)',
+                }}>
+                  <span className="t-caption" style={{ color: 'var(--success)' }}>
+                    Güncel: <span className="tabular-nums">1 {form.paraBirimi} = ₺{kurlar[form.paraBirimi]}</span>
                   </span>
                   <button
                     onClick={() => setForm({ ...form, dovizKuru: kurlar[form.paraBirimi] })}
-                    className="text-xs text-green-700 font-medium hover:underline"
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      color: 'var(--success)',
+                      font: '500 12px/16px var(--font-sans)',
+                    }}
                   >
                     Kullan
                   </button>
                 </div>
               )}
 
-              <input
+              <Input
                 type="number"
                 value={form.dovizKuru}
                 onChange={(e) => setForm({ ...form, dovizKuru: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
               />
             </div>
           )}
 
-          {/* Genel İskonto */}
-          <div className="mb-4">
-            <label className="text-xs text-gray-500 mb-1 block">Genel İskonto (%)</label>
-            <input
+          <div style={{ marginBottom: 16 }}>
+            <Label>Genel iskonto (%)</Label>
+            <Input
               type="number"
               value={form.genelIskonto}
               onChange={(e) => setForm({ ...form, genelIskonto: Number(e.target.value) })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0"
               min="0"
               max="100"
             />
           </div>
 
-          {/* Toplam */}
-          <div className="border-t border-gray-100 pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Ara Toplam</span>
-              <span className="font-medium">
-                {paraBirimi?.sembol}{araToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </span>
+          <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">Ara toplam</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(araToplam)}</span>
             </div>
             {form.genelIskonto > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">İskonto ({form.genelIskonto}%)</span>
-                <span className="text-red-500">
-                  -{paraBirimi?.sembol}{genelIskontoTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="t-caption">İskonto ({form.genelIskonto}%)</span>
+                <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
+                  −{fmtPara(genelIskontoTutar)}
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">KDV Toplam</span>
-              <span className="font-medium">
-                {paraBirimi?.sembol}{kdvToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">KDV toplam</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(kdvToplam)}</span>
             </div>
-            <div className="flex justify-between text-base font-semibold border-t border-gray-100 pt-2">
-              <span className="text-gray-800">Genel Toplam</span>
-              <span className="text-blue-600">
-                {paraBirimi?.sembol}{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              paddingTop: 8, marginTop: 4,
+              borderTop: '1px solid var(--border-default)',
+            }}>
+              <span className="t-body-strong">Genel toplam</span>
+              <span className="tabular-nums" style={{ font: '600 15px/22px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                {fmtPara(genelToplam)}
               </span>
             </div>
             {tlKarsiligi !== null && (
-              <div className="flex justify-between text-xs bg-gray-50 rounded-lg px-3 py-2 mt-2">
-                <span className="text-gray-500">TL Karşılığı</span>
-                <span className="font-medium text-gray-700">
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '8px 12px', marginTop: 6,
+                background: 'var(--surface-sunken)',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+                <span className="t-caption">TL karşılığı</span>
+                <span className="tabular-nums" style={{ font: '500 12px/16px var(--font-sans)' }}>
                   ₺{tlKarsiligi.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Ürün Satırları */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-medium text-gray-700">Ürün / Hizmet Satırları</p>
-          <button
-            onClick={satirEkle}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
-          >
-            + Satır Ekle
-          </button>
+      <Card padding={0} style={{ marginBottom: 16 }}>
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid var(--border-default)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <h2 className="t-h2" style={{ margin: 0 }}>Ürün / hizmet satırları</h2>
+          <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={satirEkle}>
+            Satır ekle
+          </Button>
         </div>
 
-        {form.satirlar.length === 0 && (
-          <div className="text-center text-gray-400 text-sm py-8 border-2 border-dashed border-gray-200 rounded-lg">
-            Henüz ürün eklenmedi. "Satır Ekle" butonuna tıklayın.
+        {form.satirlar.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<Inbox size={22} strokeWidth={1.5} />}
+              title="Henüz ürün eklenmedi"
+              description={'"Satır ekle" butonuyla ilk satırı oluşturun.'}
+            />
           </div>
+        ) : (
+          <Table>
+            <THead>
+              <TR>
+                <TH>Stok</TH>
+                <TH>Ürün adı</TH>
+                <TH align="right">Miktar</TH>
+                <TH>Birim</TH>
+                <TH align="right">Birim fiyat</TH>
+                <TH align="right">İsk.%</TH>
+                <TH align="right">KDV%</TH>
+                <TH align="right">Toplam</TH>
+                <TH></TH>
+              </TR>
+            </THead>
+            <TBody>
+              {form.satirlar.map((satir, index) => {
+                const { toplam } = satirToplamHesapla(satir)
+                return (
+                  <TR key={satir.id || index}>
+                    <TD>
+                      <CustomSelect
+                        value={satir.stokKodu}
+                        onChange={(e) => stokSec(index, e.target.value)}
+                      >
+                        <option value="">Stok seç…</option>
+                        {stokUrunler.map((u) => (
+                          <option key={u.id} value={u.stokKodu}>{u.stokKodu} — {u.stokAdi}</option>
+                        ))}
+                      </CustomSelect>
+                    </TD>
+                    <TD>
+                      <Input
+                        value={satir.stokAdi}
+                        onChange={(e) => satirGuncelle(index, 'stokAdi', e.target.value)}
+                        placeholder="Ürün adı"
+                      />
+                    </TD>
+                    <TD align="right">
+                      <Input
+                        type="number"
+                        value={satir.miktar}
+                        onChange={(e) => satirGuncelle(index, 'miktar', Number(e.target.value))}
+                        min="0"
+                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                      />
+                    </TD>
+                    <TD>
+                      <Input
+                        value={satir.birim}
+                        onChange={(e) => satirGuncelle(index, 'birim', e.target.value)}
+                      />
+                    </TD>
+                    <TD align="right">
+                      <Input
+                        type="number"
+                        value={satir.birimFiyat}
+                        onChange={(e) => satirGuncelle(index, 'birimFiyat', Number(e.target.value))}
+                        min="0"
+                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                      />
+                    </TD>
+                    <TD align="right">
+                      <Input
+                        type="number"
+                        value={satir.iskonto}
+                        onChange={(e) => satirGuncelle(index, 'iskonto', Number(e.target.value))}
+                        min="0"
+                        max="100"
+                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                      />
+                    </TD>
+                    <TD align="right">
+                      <CustomSelect
+                        value={satir.kdv}
+                        onChange={(e) => satirGuncelle(index, 'kdv', Number(e.target.value))}
+                      >
+                        {kdvOranlari.map((k) => <option key={k} value={k}>%{k}</option>)}
+                      </CustomSelect>
+                    </TD>
+                    <TD align="right">
+                      <span className="tabular-nums" style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                        {fmtPara(toplam)}
+                      </span>
+                    </TD>
+                    <TD align="right">
+                      <button
+                        aria-label="Satırı sil"
+                        onClick={() => satirSil(index)}
+                        style={iconBtnStyle}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      >
+                        <Trash2 size={12} strokeWidth={1.5} />
+                      </button>
+                    </TD>
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
         )}
+      </Card>
 
-        {form.satirlar.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                  <th className="text-left py-2 pr-2 w-48">Stok</th>
-                  <th className="text-left py-2 pr-2">Ürün Adı</th>
-                  <th className="text-right py-2 pr-2 w-20">Miktar</th>
-                  <th className="text-left py-2 pr-2 w-20">Birim</th>
-                  <th className="text-right py-2 pr-2 w-28">Birim Fiyat</th>
-                  <th className="text-right py-2 pr-2 w-20">İsk.%</th>
-                  <th className="text-right py-2 pr-2 w-20">KDV%</th>
-                  <th className="text-right py-2 pr-2 w-28">Toplam</th>
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {form.satirlar.map((satir, index) => {
-                  const { toplam } = satirToplamHesapla(satir)
-                  return (
-                    <tr key={satir.id || index} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="py-2 pr-2">
-                        <CustomSelect
-                          value={satir.stokKodu}
-                          onChange={(e) => stokSec(index, e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Stok seç...</option>
-                          {stokUrunler.map((u) => (
-                            <option key={u.id} value={u.stokKodu}>
-                              {u.stokKodu} — {u.stokAdi}
-                            </option>
-                          ))}
-                        </CustomSelect>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={satir.stokAdi}
-                          onChange={(e) => satirGuncelle(index, 'stokAdi', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Ürün adı"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          value={satir.miktar}
-                          onChange={(e) => satirGuncelle(index, 'miktar', Number(e.target.value))}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          min="0"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={satir.birim}
-                          onChange={(e) => satirGuncelle(index, 'birim', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          value={satir.birimFiyat}
-                          onChange={(e) => satirGuncelle(index, 'birimFiyat', Number(e.target.value))}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          min="0"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          value={satir.iskonto}
-                          onChange={(e) => satirGuncelle(index, 'iskonto', Number(e.target.value))}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          min="0"
-                          max="100"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <CustomSelect
-                          value={satir.kdv}
-                          onChange={(e) => satirGuncelle(index, 'kdv', Number(e.target.value))}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {kdvOranlari.map((k) => (
-                            <option key={k} value={k}>%{k}</option>
-                          ))}
-                        </CustomSelect>
-                      </td>
-                      <td className="py-2 pr-2 text-right">
-                        <span className="text-sm font-medium text-gray-800">
-                          {paraBirimi?.sembol}{toplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
-                      <td className="py-2">
-                        <button
-                          onClick={() => satirSil(index)}
-                          className="text-red-400 hover:text-red-600 transition"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Hatırlatma Ayarı */}
-      <div
-        className="bg-white rounded-xl border p-5 mb-6"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0"
-              style={{ background: 'var(--primary)', fontSize: '15px' }}
-            >
-              🔔
+      {/* Hatırlatma */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 'var(--radius-md)',
+              background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Bell size={16} strokeWidth={1.5} />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-800">Takip Hatırlatması</p>
+              <p className="t-body-strong">Takip hatırlatması</p>
               {yeni ? (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Teklif kaydedildikten sonra ne zaman hatırlatılsın?
-                </p>
+                <p className="t-caption">Teklif kaydedildikten sonra ne zaman hatırlatılsın?</p>
               ) : mevcutHatirlatma ? (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--primary)' }}>
-                  Hatırlatma:{' '}
-                  {new Date(mevcutHatirlatma.hatirlatmaTarihi).toLocaleDateString('tr-TR', {
-                    day: 'numeric', month: 'long', year: 'numeric'
+                <p className="t-caption" style={{ color: 'var(--brand-primary)' }}>
+                  Hatırlatma: {new Date(mevcutHatirlatma.hatirlatmaTarihi).toLocaleDateString('tr-TR', {
+                    day: 'numeric', month: 'long', year: 'numeric',
                   })}
                 </p>
               ) : (
-                <p className="text-xs text-gray-400 mt-0.5">Aktif hatırlatma yok</p>
+                <p className="t-caption">Aktif hatırlatma yok.</p>
               )}
             </div>
           </div>
 
           {yeni ? (
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { gun: 0, label: 'Yok' },
-                { gun: 3, label: '3 Gün' },
-                { gun: 7, label: '1 Hafta' },
-                { gun: 14, label: '2 Hafta' },
-                { gun: 30, label: '1 Ay' },
-              ].map((opt) => (
-                <button
-                  key={opt.gun}
-                  onClick={() => setHatirlatmaGun(opt.gun)}
-                  className="text-xs px-3 py-1.5 rounded-lg border transition font-medium"
-                  style={
-                    hatirlatmaGun === opt.gun
-                      ? { background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' }
-                      : { background: '#fff', color: '#555', borderColor: 'var(--border)' }
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              options={hatirlatmaSecenekleri.map(h => ({ value: h.gun, label: h.label }))}
+              value={hatirlatmaGun}
+              onChange={setHatirlatmaGun}
+            />
           ) : mevcutHatirlatma ? (
-            <div className="flex gap-2">
-              <button
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                variant="secondary"
                 onClick={() => {
                   hatirlatmaEkle(mevcutTeklif, 7)
                   toast.info('Hatırlatma 1 hafta sonraya güncellendi.')
                 }}
-                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition text-gray-600"
               >
-                ⏩ 1 Hafta Ertele
-              </button>
-              <button
+                1 hafta ertele
+              </Button>
+              <Button
+                variant="danger"
                 onClick={() => {
                   hatirlatmaSil(mevcutTeklif?.id)
                   toast.info('Hatırlatma kaldırıldı.')
                 }}
-                className="text-xs px-3 py-1.5 rounded-lg border transition"
-                style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
               >
-                🗑 Kaldır
-              </button>
+                Kaldır
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
+              variant="secondary"
+              iconLeft={<Plus size={14} strokeWidth={1.5} />}
               onClick={() => {
                 hatirlatmaEkle(mevcutTeklif, 7)
                 toast.success('1 hafta sonraya hatırlatma eklendi.')
               }}
-              className="text-xs px-3 py-1.5 rounded-lg border transition font-medium"
-              style={{ background: 'rgba(1,118,211,0.08)', color: 'var(--primary)', borderColor: 'rgba(1,118,211,0.3)' }}
             >
-              + Hatırlatma Ekle
-            </button>
+              Hatırlatma ekle
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={() => navigate('/teklifler')}
-          className="text-sm px-5 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
-        >
-          İptal
-        </button>
-        <button
-          onClick={kaydet}
-          className="bg-blue-600 text-white text-sm px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
-        >
-          Kaydet
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Button variant="secondary" onClick={() => navigate('/teklifler')}>İptal</Button>
+        <Button variant="primary" onClick={kaydet}>Kaydet</Button>
       </div>
     </div>
   )
+}
+
+const iconBtnStyle = {
+  width: 28, height: 28,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: 'transparent',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
 }
 
 export default TeklifDetay
