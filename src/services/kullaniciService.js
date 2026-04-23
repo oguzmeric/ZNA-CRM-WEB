@@ -21,12 +21,13 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
   })
   if (authError || !authData?.user) return null
 
-  const { data: profil } = await supabase
+  const { data: profil, error: profilError } = await supabase
     .from('kullanicilar')
     .select('*')
     .eq('auth_id', authData.user.id)
     .single()
 
+  if (profilError) { console.warn('[kullaniciGirisKontrol] profil hatası:', profilError.message); return null }
   return profil ? toCamel(profil) : null
 }
 

@@ -12,11 +12,17 @@ function Login() {
   const { girisYap } = useAuth()
 
   const handleGiris = async () => {
-    const basarili = await girisYap(kullaniciAdi, sifre)
-    if (basarili) {
-      navigate('/dashboard')
-    } else {
-      setHata('Kullanıcı adı veya şifre hatalı.')
+    setHata('')
+    try {
+      const basarili = await girisYap(kullaniciAdi, sifre)
+      if (basarili) {
+        navigate('/dashboard', { replace: true })
+      } else {
+        setHata('Kullanıcı adı veya şifre hatalı.')
+      }
+    } catch (err) {
+      console.error('[Login] girisYap hata:', err)
+      setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
     }
   }
 

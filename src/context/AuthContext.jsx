@@ -54,7 +54,8 @@ export function AuthProvider({ children }) {
     if (bulunan) {
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
-      await kullaniciDurumGuncelle(bulunan.id, 'cevrimici')
+      // Durum güncelleme best-effort — login'i engellemez
+      try { await kullaniciDurumGuncelle(bulunan.id, 'cevrimici') } catch (e) { console.warn('[girisYap] durum güncellenemedi:', e) }
       setKullanicilar((prev) =>
         prev.map((k) => (k.id === bulunan.id ? { ...k, durum: 'cevrimici' } : k))
       )
@@ -64,10 +65,11 @@ export function AuthProvider({ children }) {
   }
 
   const cikisYap = async () => {
+    // Her çağrı best-effort; biri askıda kalırsa diğerlerini engellemesin
     if (kullanici) {
-      await kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi')
+      try { await kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi') } catch (e) { console.warn('[cikisYap] durum güncellenemedi:', e) }
     }
-    await cikisYapAuth()
+    try { await cikisYapAuth() } catch (e) { console.warn('[cikisYap] signOut hata:', e) }
     setKullanici(null)
   }
 
