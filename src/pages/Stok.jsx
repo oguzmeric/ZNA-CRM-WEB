@@ -917,14 +917,37 @@ function Stok() {
                           </div>
                         )}
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div
+                            title={u.stokAdi}
+                            style={{
+                              font: '500 13px/18px var(--font-sans)',
+                              color: 'var(--text-primary)',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              wordBreak: 'break-word',
+                            }}
+                          >
                             {u.stokAdi}
                           </div>
                           {gosterilenModel && (
                             <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>{gosterilenModel}</div>
                           )}
                           {!gosterilenModel && u.aciklama && (
-                            <div className="t-caption" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>
+                            <div
+                              title={u.aciklama}
+                              className="t-caption"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word',
+                              }}
+                            >
                               {u.aciklama}
                             </div>
                           )}

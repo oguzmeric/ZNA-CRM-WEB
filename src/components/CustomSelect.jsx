@@ -44,7 +44,7 @@ export default function CustomSelect({ value, onChange, className = '', style = 
     if (!acik || !ref.current) return
     const recalc = () => {
       const rect = ref.current.getBoundingClientRect()
-      const maxH = 260
+      const maxH = 340 // 2-line option'lara yer açmak için biraz yüksek
       const asagidaBosluk = window.innerHeight - rect.bottom
       const yukariAc = asagidaBosluk < maxH && rect.top > asagidaBosluk
       setPanelStyle({
@@ -181,14 +181,19 @@ export default function CustomSelect({ value, onChange, className = '', style = 
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
+                  lineHeight: '18px',
                   cursor: 'pointer',
                   color: secili ? 'var(--brand-primary, #1E5AA8)' : 'var(--text-secondary, #4A5A6E)',
                   background: secili ? 'var(--brand-primary-soft, rgba(30,90,168,0.08))' : 'transparent',
                   fontWeight: secili ? 600 : 400,
                   transition: 'background 0.1s',
-                  whiteSpace: 'nowrap',
+                  // 2 satır sarmalama — uzun stok adları tam görünsün
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
+                  wordBreak: 'break-word',
                 }}
                 onMouseEnter={(e) => { if (!secili) e.currentTarget.style.background = 'var(--surface-sunken, #EDF0F3)' }}
                 onMouseLeave={(e) => { if (!secili) e.currentTarget.style.background = 'transparent' }}
