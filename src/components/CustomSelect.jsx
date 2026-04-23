@@ -8,10 +8,31 @@ import { createPortal } from 'react-dom'
  *
  * API: value, onChange({ target: { value } }), className, style, children (<option> elementleri)
  */
-export default function CustomSelect({ value, onChange, className = '', style = {}, children, disabled = false }) {
+// trNormalize — Türkçe duyarlı küçük harf + aksan kaldırma
+const trNormalize = (s = '') =>
+  String(s).toLowerCase()
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/İ/gi, 'i').replace(/I/g, 'i')
+
+const labelToText = (label) => {
+  if (label == null) return ''
+  if (typeof label === 'string' || typeof label === 'number') return String(label)
+  if (Array.isArray(label)) return label.map(labelToText).join(' ')
+  if (label?.props?.children) return labelToText(label.props.children)
+  return ''
+}
+
+export default function CustomSelect({
+  value, onChange, className = '', style = {}, children, disabled = false,
+  searchable, // eski API uyumluluğu için: opsiyonel; otomatik olarak 8+ option varsa açılır
+  placeholder = 'Ara…',
+}) {
   const [acik, setAcik] = useState(false)
   const [panelStyle, setPanelStyle] = useState(null)
+  const [arama, setArama] = useState('')
   const ref = useRef(null)
+  const aramaInputRef = useRef(null)
 
   // Option'ları parse et — nested array'leri de (map()) doğru işler
   const options = []
@@ -38,6 +59,15 @@ export default function CustomSelect({ value, onChange, className = '', style = 
         : secilenOpt.label)
     : ''
   const wAuto = className.includes('w-auto')
+
+  // Otomatik searchable: explicit prop yoksa 8'den fazla seçenekte aktif
+  const aramaAcik = (searchable === undefined ? options.length > 8 : !!searchable)
+
+  // Filtrelenmiş options (arama açıksa)
+  const aramaQ = trNormalize(arama)
+  const goruntulenenOptions = aramaAcik && aramaQ
+    ? options.filter(o => trNormalize(labelToText(o.label) + ' ' + o.value).includes(aramaQ))
+    : options
 
   // Açıldığında trigger konumunu hesapla, panel için fixed pozisyon üret
   useLayoutEffect(() => {
@@ -85,7 +115,16 @@ export default function CustomSelect({ value, onChange, className = '', style = 
   const handleSecim = (val) => {
     onChange?.({ target: { value: val } })
     setAcik(false)
+    setArama('')
   }
+
+  // Açıldığında arama input'una odaklan
+  useEffect(() => {
+    if (acik && aramaAcik) {
+      setTimeout(() => aramaInputRef.current?.focus(), 0)
+    }
+    if (!acik) setArama('')
+  }, [acik, aramaAcik])
 
   return (
     <div
@@ -158,20 +197,60 @@ export default function CustomSelect({ value, onChange, className = '', style = 
             border: '1px solid var(--border-default, #D9DFE5)',
             borderRadius: 'var(--radius-md, 6px)',
             boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12))',
-            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
             zIndex: 10000,
           }}
         >
-          {options.length === 0 ? (
+          {/* Arama input — açıkken ilk satır */}
+          {aramaAcik && (
+            <div style={{
+              padding: 8,
+              borderBottom: '1px solid var(--border-default, #D9DFE5)',
+              background: 'var(--surface-card, #fff)',
+              flexShrink: 0,
+            }}>
+              <input
+                ref={aramaInputRef}
+                type="text"
+                value={arama}
+                onChange={e => setArama(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && goruntulenenOptions.length > 0) {
+                    e.preventDefault()
+                    handleSecim(goruntulenenOptions[0].value)
+                  }
+                }}
+                placeholder={placeholder}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  font: '400 13px/18px var(--font-sans)',
+                  background: 'var(--surface-sunken, #EDF0F3)',
+                  border: '1px solid transparent',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  outline: 'none',
+                  color: 'var(--text-primary)',
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--brand-primary)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'transparent'}
+              />
+            </div>
+          )}
+
+          {/* Options listesi */}
+          <div style={{ overflow: 'auto', flex: 1 }}>
+          {goruntulenenOptions.length === 0 ? (
             <div style={{
               padding: '12px',
               color: 'var(--text-tertiary)',
               font: '400 12px/16px var(--font-sans)',
               textAlign: 'center',
             }}>
-              Seçenek yok
+              {options.length === 0 ? 'Seçenek yok' : 'Sonuç bulunamadı'}
             </div>
-          ) : options.map((opt) => {
+          ) : goruntulenenOptions.map((opt) => {
             const secili = opt.value === String(value ?? '')
             return (
               <div
@@ -187,7 +266,6 @@ export default function CustomSelect({ value, onChange, className = '', style = 
                   background: secili ? 'var(--brand-primary-soft, rgba(30,90,168,0.08))' : 'transparent',
                   fontWeight: secili ? 600 : 400,
                   transition: 'background 0.1s',
-                  // 2 satır sarmalama — uzun stok adları tam görünsün
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
@@ -202,6 +280,7 @@ export default function CustomSelect({ value, onChange, className = '', style = 
               </div>
             )
           })}
+          </div>
         </div>,
         document.body,
       )}
