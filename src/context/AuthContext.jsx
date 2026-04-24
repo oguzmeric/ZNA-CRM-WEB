@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, abortAllInFlight } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
 import {
   kullanicilariGetir,
@@ -64,7 +64,12 @@ export function AuthProvider({ children }) {
       // Çok kısa switch'lerde (< 5 sn) dokunma
       if (hiddenFor < 5_000) return
 
-      // Soft recovery — pending askıda Promise'leri + stale cache'i temizle
+      // Soft recovery:
+      //  1) Aktif in-flight fetch'leri ZORLA abort et (tarayıcı tab hidden
+      //     iken onları pause etmişti, dönünce askıda kalıyor)
+      //  2) Cache + pending Map'i temizle
+      // Böylece sonraki sayfa geçişinde yeni fetch'ler anında başlar.
+      abortAllInFlight('tab-idle-recovery')
       cacheInvalidateAll()
 
       // 30+ sn gizlilikte ek olarak session refresh
