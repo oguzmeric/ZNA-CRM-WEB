@@ -129,6 +129,9 @@ export default function KullaniciYonetimi() {
       if (form.sifre.length < 8) {
         toast.warning('Şifre en az 8 karakter olmalı.'); return
       }
+      // Admin'in session'ını sakla — signUp session'ı yeni kullanıcıya döndürür
+      const { data: { session: adminSession } } = await supabase.auth.getSession()
+
       // 1. Supabase Auth kullanıcısı oluştur
       const email = `${form.kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -136,6 +139,15 @@ export default function KullaniciYonetimi() {
         password: form.sifre,
         options: { data: { ad: form.ad, kullanici_adi: form.kullaniciAdi, tip: form.tip } },
       })
+
+      // Admin session'ını hemen geri yükle (hata durumunda bile)
+      if (adminSession) {
+        await supabase.auth.setSession({
+          access_token: adminSession.access_token,
+          refresh_token: adminSession.refresh_token,
+        })
+      }
+
       if (authError || !authData?.user) {
         toast.error('Auth hatası: ' + (authError?.message || 'bilinmeyen'))
         return
