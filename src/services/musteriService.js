@@ -46,3 +46,17 @@ export const musteriSil = async (id) => {
   const { error } = await supabase.from('musteriler').delete().eq('id', id)
   if (error) console.error('musteriSil hata:', error.message)
 }
+
+// Müşteri portalı: oturumdaki müşterinin kendi musteri kaydı + atanmış temsilci
+// RLS sayesinde customer sadece kendi musteri satırını görür.
+export const benimMusteriKaydim = async () => {
+  const { data, error } = await supabase
+    .from('musteriler')
+    .select('*, temsilci:kullanicilar!temsilci_kullanici_id(id, ad, email, durum, tip)')
+    .limit(1)
+    .maybeSingle()
+  if (error) { console.error('benimMusteriKaydim hata:', error.message); return null }
+  if (!data) return null
+  const { temsilci, ...rest } = data
+  return { ...toCamel(rest), temsilci: temsilci ? toCamel(temsilci) : null }
+}

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Phone, Calendar, Package,
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
-  Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle,
+  Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import { Avatar } from '../components/ui'
@@ -74,6 +74,7 @@ const menuItems = [
   },
   { id: 'chat', isim: 'Mesajlar', Icon: MessageSquare, yol: '/chat', modul: null },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
+  { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi' },
 ]
 
 const durumRenkleri = {

@@ -4,10 +4,12 @@ import { motion } from 'framer-motion'
 import {
   Plus, Clock, Loader2, CheckCircle2, AlertTriangle, TrendingUp,
   AlertOctagon, CalendarRange, Briefcase, Phone, MessageSquare,
-  Inbox, ArrowRight, Bell, Sparkles,
+  Inbox, ArrowRight, Bell, Sparkles, User,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
+import { benimMusteriKaydim } from '../../services/musteriService'
+import { aktifDuyurulariGetir } from '../../services/duyuruService'
 import { PORTAL_BLUE } from '../../layouts/MusteriLayout'
 
 const DURUM_ROZET = {
@@ -292,6 +294,18 @@ export default function MusteriDashboard() {
   const navigate = useNavigate()
 
   const [hacimAraligi, setHacimAraligi] = useState(6)
+  const [musteriKaydi, setMusteriKaydi] = useState(null)
+  const [duyurular, setDuyurular] = useState([])
+
+  useEffect(() => {
+    let iptal = false
+    Promise.all([benimMusteriKaydim(), aktifDuyurulariGetir()]).then(([m, d]) => {
+      if (iptal) return
+      setMusteriKaydi(m)
+      setDuyurular(d || [])
+    })
+    return () => { iptal = true }
+  }, [])
 
   const talepler = musteriTalepleri(kullanici?.id)
 
@@ -314,13 +328,21 @@ export default function MusteriDashboard() {
   const sparkOrnegi = hacim.slice(-6).map(h => h.count)
   const sparkVeri = sparkOrnegi.some(v => v > 0) ? sparkOrnegi : bosSparkline
 
-  // Mock veriler — ileride Supabase'ten gelecek
-  const temsilci = { ad: 'Ali Aktepe', inisyal: 'AA', online: true, rol: 'Müşteri temsilcisi' }
-  const duyurular = [
-    { baslik: 'Yeni dönem bakım sözleşmeleri yayında', zaman: '2 gün önce', ton: PORTAL_BLUE[600] },
-    { baslik: 'Portal güncellemesi — hızlı arama eklendi', zaman: '1 hafta önce', ton: PORTAL_BLUE[400] },
-    { baslik: 'Resmi tatil bildirimi: iletişim saatleri', zaman: '2 hafta önce', ton: PORTAL_BLUE[200] },
-  ]
+  const temsilciK = musteriKaydi?.temsilci
+  const temsilciInisyal = temsilciK?.ad
+    ? temsilciK.ad.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase()
+    : ''
+  const temsilci = temsilciK
+    ? { ad: temsilciK.ad, inisyal: temsilciInisyal, online: temsilciK.durum === 'cevrimici', email: temsilciK.email }
+    : null
+  const DUYURU_TON = { info: PORTAL_BLUE[400], warning: '#B77516', success: '#2F7D4F' }
+  const duyuruListe = duyurular.slice(0, 5).map(d => ({
+    id: d.id,
+    baslik: d.baslik,
+    icerik: d.icerik,
+    zaman: tarihFormat(d.baslangicTarihi),
+    ton: DUYURU_TON[d.seviye] || PORTAL_BLUE[400],
+  }))
   const aktiviteler = sonTalepler.slice(0, 4).map(t => ({
     id: t.id,
     refId: t.talepNo,
@@ -690,76 +712,101 @@ export default function MusteriDashboard() {
             <div style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Temsilciniz
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <span
+            {temsilci ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: PORTAL_BLUE[50], color: PORTAL_BLUE[800],
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        font: '500 14px/1 var(--font-sans)',
+                      }}
+                    >
+                      {temsilci.inisyal}
+                    </span>
+                    <span
+                      aria-label={temsilci.online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                      style={{
+                        position: 'absolute', right: -1, bottom: -1,
+                        width: 11, height: 11, borderRadius: '50%',
+                        background: temsilci.online ? '#22c55e' : 'var(--text-tertiary)',
+                        border: '2px solid var(--surface-card)',
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {temsilci.ad}
+                    </div>
+                    <div style={{ font: '400 11px/16px var(--font-sans)', color: temsilci.online ? '#16a34a' : 'var(--text-tertiary)', marginTop: 2 }}>
+                      ● {temsilci.online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <a
+                    href={temsilci.email ? `mailto:${temsilci.email}` : undefined}
+                    aria-disabled={!temsilci.email}
+                    style={{
+                      flex: 1, height: 32,
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text-primary)',
+                      font: '500 12px/16px var(--font-sans)',
+                      cursor: temsilci.email ? 'pointer' : 'not-allowed',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      textDecoration: 'none',
+                      opacity: temsilci.email ? 1 : 0.5,
+                    }}
+                  >
+                    <Phone size={13} strokeWidth={1.8} /> E-posta
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/musteri-portal/yeni-talep')}
+                    style={{
+                      flex: 1, height: 32,
+                      background: PORTAL_BLUE[600],
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      color: '#fff',
+                      font: '500 12px/16px var(--font-sans)',
+                      cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = PORTAL_BLUE[800]}
+                    onMouseLeave={e => e.currentTarget.style.background = PORTAL_BLUE[600]}
+                  >
+                    <MessageSquare size={13} strokeWidth={1.8} /> Talep aç
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
                   aria-hidden="true"
                   style={{
                     width: 40, height: 40, borderRadius: '50%',
-                    background: PORTAL_BLUE[50], color: PORTAL_BLUE[800],
+                    background: 'var(--surface-sunken)', color: 'var(--text-tertiary)',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    font: '500 14px/1 var(--font-sans)',
+                    flexShrink: 0,
                   }}
                 >
-                  {temsilci.inisyal}
-                </span>
-                {temsilci.online && (
-                  <span
-                    aria-label="Çevrimiçi"
-                    style={{
-                      position: 'absolute', right: -1, bottom: -1,
-                      width: 11, height: 11, borderRadius: '50%',
-                      background: PORTAL_BLUE[600],
-                      border: '2px solid var(--surface-card)',
-                    }}
-                  />
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{temsilci.ad}</div>
-                <div style={{ font: '400 11px/16px var(--font-sans)', color: PORTAL_BLUE[600], marginTop: 2 }}>
-                  ● {temsilci.online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                  <User size={18} strokeWidth={1.6} />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>Henüz atanmadı</div>
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    En kısa sürede temsilciniz atanacaktır.
+                  </div>
                 </div>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
-                type="button"
-                style={{
-                  flex: 1, height: 32,
-                  background: 'var(--surface-card)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  font: '500 12px/16px var(--font-sans)',
-                  cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'background 120ms',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
-              >
-                <Phone size={13} strokeWidth={1.8} /> Ara
-              </button>
-              <button
-                type="button"
-                style={{
-                  flex: 1, height: 32,
-                  background: PORTAL_BLUE[600],
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  color: '#fff',
-                  font: '500 12px/16px var(--font-sans)',
-                  cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'background 120ms',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = PORTAL_BLUE[800]}
-                onMouseLeave={e => e.currentTarget.style.background = PORTAL_BLUE[600]}
-              >
-                <MessageSquare size={13} strokeWidth={1.8} /> Mesaj
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Duyurular */}
@@ -775,32 +822,45 @@ export default function MusteriDashboard() {
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
                 <Bell size={13} strokeWidth={1.8} /> Duyurular
               </div>
-              <span
-                style={{
-                  padding: '2px 8px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: PORTAL_BLUE[50],
-                  color: PORTAL_BLUE[800],
-                  font: '500 11px/16px var(--font-sans)',
-                }}
-              >
-                {duyurular.length} yeni
-              </span>
+              {duyuruListe.length > 0 && (
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: PORTAL_BLUE[50],
+                    color: PORTAL_BLUE[800],
+                    font: '500 11px/16px var(--font-sans)',
+                  }}
+                >
+                  {duyuruListe.length} aktif
+                </span>
+              )}
             </div>
-            <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {duyurular.map((d, i) => (
-                <li key={i} style={{ display: 'flex', gap: 10 }}>
-                  <span
-                    aria-hidden="true"
-                    style={{ width: 2, alignSelf: 'stretch', background: d.ton, borderRadius: 1, flexShrink: 0 }}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{d.baslik}</div>
-                    <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>{d.zaman}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {duyuruListe.length === 0 ? (
+              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                Aktif duyuru yok.
+              </div>
+            ) : (
+              <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {duyuruListe.map(d => (
+                  <li key={d.id} style={{ display: 'flex', gap: 10 }}>
+                    <span
+                      aria-hidden="true"
+                      style={{ width: 2, alignSelf: 'stretch', background: d.ton, borderRadius: 1, flexShrink: 0 }}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{d.baslik}</div>
+                      {d.icerik && (
+                        <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'pre-wrap' }}>
+                          {d.icerik}
+                        </div>
+                      )}
+                      <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>{d.zaman}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Aktiviteler */}

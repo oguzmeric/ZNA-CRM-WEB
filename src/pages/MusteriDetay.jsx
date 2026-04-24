@@ -5,6 +5,7 @@ import {
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
   CheckCircle2,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { musteriGetir, musteriGuncelle, musterileriGetir } from '../services/musteriService'
@@ -49,6 +50,8 @@ function MusteriDetay() {
   const location = useLocation()
   const { toast } = useToast()
   const { confirm } = useConfirm()
+  const { kullanicilar } = useAuth()
+  const personelListesi = (kullanicilar || []).filter(k => k.tip === 'zna')
   const lokasyonBolumRef = useRef(null)
 
   const yeniOlusturuldu = location.state?.yeniMusteri === true
@@ -184,6 +187,7 @@ function MusteriDetay() {
       firma: musteri.firma || '', kod: musteri.kod || '', sehir: musteri.sehir || '',
       vergiNo: musteri.vergiNo || '', telefon: musteri.telefon || '', email: musteri.email || '',
       durum: musteri.durum || 'aktif', notlar: musteri.notlar || '',
+      temsilciKullaniciId: musteri.temsilciKullaniciId ?? null,
     })
   }
 
@@ -273,6 +277,14 @@ function MusteriDetay() {
                     VKN: {musteri.vergiNo}
                   </span>
                 )}
+                {musteri.temsilciKullaniciId && (() => {
+                  const t = personelListesi.find(k => k.id === musteri.temsilciKullaniciId)
+                  return t ? (
+                    <Badge tone="brand" icon={<User size={11} strokeWidth={1.5} />}>
+                      Temsilci: {t.ad}
+                    </Badge>
+                  ) : null
+                })()}
               </div>
             </div>
           </div>
@@ -338,6 +350,21 @@ function MusteriDetay() {
               <div>
                 <Label>Vergi no</Label>
                 <Input value={duzenleForm.vergiNo} onChange={e => setDuzenleForm(p => ({ ...p, vergiNo: e.target.value }))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Müşteri temsilcisi</Label>
+                <CustomSelect
+                  value={duzenleForm.temsilciKullaniciId ?? ''}
+                  onChange={e => setDuzenleForm(p => ({
+                    ...p,
+                    temsilciKullaniciId: e.target.value ? Number(e.target.value) : null,
+                  }))}
+                >
+                  <option value="">— Atanmamış —</option>
+                  {personelListesi.map(k => (
+                    <option key={k.id} value={k.id}>{k.ad}</option>
+                  ))}
+                </CustomSelect>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <Label>Notlar</Label>

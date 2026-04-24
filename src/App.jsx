@@ -43,6 +43,7 @@ import TeklifIste from './pages/musteri/TeklifIste'
 import TeklifYazdir from './pages/TeklifYazdir'
 import FaturaYazdir from './pages/FaturaYazdir'
 import DesignSystemPage from './pages/DesignSystemPage'
+import Duyurular from './pages/Duyurular'
 
 function App() {
   const { kullanici } = useAuth()
@@ -97,6 +98,7 @@ function App() {
         <Route path="/gorevler" element={<Gorevler />} />
         <Route path="/gorevler/:id" element={<GorevDetay />} />
         <Route path="/kullanici-yonetimi" element={<KullaniciYonetimi />} />
+        <Route path="/duyurular" element={<Duyurular />} />
         <Route path="/musteriler" element={<Musteriler />} />
         <Route path="/musteriler/:id" element={<MusteriDetay />} />
         <Route path="/firmalar" element={<Firmalar />} />
