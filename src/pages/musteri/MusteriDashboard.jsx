@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Plus, Clock, Loader2, CheckCircle2, AlertTriangle, TrendingUp,
+  Plus, Clock, Loader2, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, Minus,
   AlertOctagon, CalendarRange, Briefcase, Phone, MessageSquare,
   Inbox, ArrowRight, Bell, Sparkles, User,
 } from 'lucide-react'
@@ -110,22 +110,33 @@ function StatKart({ sayi, baslik, Icon, bar, iconTint, trend, sparkData, onClick
         >
           <Icon size={14} strokeWidth={1.8} />
         </span>
-        {trend != null && !bos && (
-          <span
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 2,
-              padding: '2px 6px',
-              borderRadius: 'var(--radius-pill)',
-              font: '500 10px/14px var(--font-sans)',
-              color: PORTAL_BLUE[800],
-              background: PORTAL_BLUE[50],
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            <TrendingUp size={10} strokeWidth={2} />
-            %{Math.abs(trend)}
-          </span>
-        )}
+        {trend != null && !bos && (() => {
+          const pozitif = trend > 0
+          const nolla   = trend === 0
+          const Ikon = nolla ? Minus : (pozitif ? TrendingUp : TrendingDown)
+          const renkler = nolla
+            ? { bg: 'var(--surface-sunken)', fg: 'var(--text-tertiary)' }
+            : pozitif
+              ? { bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[800] }
+              : { bg: '#FBE8E8', fg: '#B23A3A' }
+          return (
+            <span
+              title="Son 30 gün / önceki 30 gün"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 2,
+                padding: '2px 6px',
+                borderRadius: 'var(--radius-pill)',
+                font: '500 10px/14px var(--font-sans)',
+                color: renkler.fg,
+                background: renkler.bg,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              <Ikon size={10} strokeWidth={2} />
+              %{Math.abs(trend)}
+            </span>
+          )
+        })()}
       </div>
       <div style={{ font: '500 22px/26px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
         {bos ? '—' : <CountUp value={sayi} />}
@@ -313,6 +324,7 @@ export default function MusteriDashboard() {
   const izinliSet = izinliTurler && izinliTurler.length > 0 ? new Set(izinliTurler) : null
   const izinli = tid => !izinliSet || izinliSet.has(tid)
 
+  // Kategoriler — olusturmaTarihi kayıtta yok olabilir, guvenlik için filtrelenir
   const acik       = talepler.filter(t => t.durum === 'bekliyor')
   const devam      = talepler.filter(t => ['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum))
   const tamamlandi = talepler.filter(t => t.durum === 'tamamlandi')
@@ -324,9 +336,32 @@ export default function MusteriDashboard() {
 
   const hacim = useMemo(() => aylikTalepHacmi(talepler, hacimAraligi), [talepler, hacimAraligi])
 
-  const bosSparkline = [1, 1, 1, 1, 1, 1]
-  const sparkOrnegi = hacim.slice(-6).map(h => h.count)
-  const sparkVeri = sparkOrnegi.some(v => v > 0) ? sparkOrnegi : bosSparkline
+  // Her kart için son 6 ayın aylık sayımı (sparkline)
+  const sparkBekleyen    = useMemo(() => aylikTalepHacmi(acik, 6).map(h => h.count), [acik])
+  const sparkDevam       = useMemo(() => aylikTalepHacmi(devam, 6).map(h => h.count), [devam])
+  const sparkTamamlandi  = useMemo(() => aylikTalepHacmi(tamamlandi, 6).map(h => h.count), [tamamlandi])
+  const sparkAcil        = useMemo(() => aylikTalepHacmi(acil, 6).map(h => h.count), [acil])
+
+  // Trend yüzdesi — son 30 gün / önceki 30 gün karşılaştırması
+  const trendHesapla = useMemo(() => {
+    const simdi = Date.now()
+    const gun30 = 30 * 24 * 60 * 60 * 1000
+    return liste => {
+      const son = liste.filter(t => simdi - new Date(t.olusturmaTarihi).getTime() <= gun30).length
+      const onceki = liste.filter(t => {
+        const fark = simdi - new Date(t.olusturmaTarihi).getTime()
+        return fark > gun30 && fark <= 2 * gun30
+      }).length
+      if (onceki === 0 && son === 0) return null
+      if (onceki === 0) return 100 * son
+      return Math.round(((son - onceki) / onceki) * 100)
+    }
+  }, [talepler.length])
+
+  const trendBekleyen   = trendHesapla(acik)
+  const trendDevam      = trendHesapla(devam)
+  const trendTamamlandi = trendHesapla(tamamlandi)
+  const trendAcil       = trendHesapla(acil)
 
   const temsilciK = musteriKaydi?.temsilci
   const temsilciInisyal = temsilciK?.ad
@@ -422,8 +457,8 @@ export default function MusteriDashboard() {
           Icon={Clock}
           bar={PORTAL_BLUE[200]}
           iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[800] }}
-          trend={8}
-          sparkData={sparkVeri}
+          trend={trendBekleyen}
+          sparkData={sparkBekleyen}
           bos={kartBos}
           onClick={() => navigate('/musteri-portal/taleplerim?durum=bekliyor')}
         />
@@ -433,8 +468,8 @@ export default function MusteriDashboard() {
           Icon={Loader2}
           bar={PORTAL_BLUE[400]}
           iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[600] }}
-          trend={12}
-          sparkData={sparkVeri}
+          trend={trendDevam}
+          sparkData={sparkDevam}
           bos={kartBos}
           onClick={() => navigate('/musteri-portal/taleplerim?durum=devam')}
         />
@@ -444,8 +479,8 @@ export default function MusteriDashboard() {
           Icon={CheckCircle2}
           bar={PORTAL_BLUE[600]}
           iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[600] }}
-          trend={24}
-          sparkData={sparkVeri}
+          trend={trendTamamlandi}
+          sparkData={sparkTamamlandi}
           bos={kartBos}
           onClick={() => navigate('/musteri-portal/taleplerim?durum=tamamlandi')}
         />
@@ -455,8 +490,8 @@ export default function MusteriDashboard() {
           Icon={AlertTriangle}
           bar={PORTAL_BLUE[900]}
           iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[900] }}
-          trend={3}
-          sparkData={sparkVeri}
+          trend={trendAcil}
+          sparkData={sparkAcil}
           bos={kartBos}
           onClick={() => navigate('/musteri-portal/taleplerim?aciliyet=acil')}
         />
