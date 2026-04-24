@@ -13,6 +13,7 @@ import {
   musteriTalepleriniGetir, musteriTalepGuncelle,
 } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
+import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, EmptyState,
@@ -131,7 +132,7 @@ export default function Teklifler() {
 
   const filtreli = [...teklifler]
     .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
-    .filter(t => arama === '' || `${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`.toLowerCase().includes(arama.toLowerCase()))
+    .filter(t => trContains(`${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`, arama))
 
   const gorunenTeklifler = filtreli.slice(0, gosterilecek)
   const dahaFazlaVar = filtreli.length > gosterilecek

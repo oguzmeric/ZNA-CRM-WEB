@@ -9,6 +9,7 @@ import {
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
+import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -240,9 +241,10 @@ function Gorusmeler() {
     .filter(g => filtre === 'hepsi' || g.durum === filtre)
     .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
-    .filter(g => arama === '' ||
-      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.muhatapAd || ''}`.toLowerCase().includes(arama.toLowerCase())
-    )
+    .filter(g => trContains(
+      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.muhatapAd || ''} ${g.takipNotu || ''}`,
+      arama,
+    ))
 
   const sayilari = {
     hepsi: gorusmeler.length,

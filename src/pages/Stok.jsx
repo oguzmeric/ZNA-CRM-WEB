@@ -13,6 +13,7 @@ import {
   stokKalemOzetleriniGetir, stokKalemleriToplu,
 } from '../services/stokService'
 import CustomSelect from '../components/CustomSelect'
+import { trContains } from '../lib/trSearch'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, EmptyState, Modal, KPICard, Alert,
@@ -398,10 +399,7 @@ function Stok() {
   }
 
   const gorunenUrunler = urunler.filter((u) =>
-    arama === '' ||
-    `${u.stokKodu} ${u.stokAdi} ${u.marka} ${u.grupKodu}`
-      .toLowerCase()
-      .includes(arama.toLowerCase())
+    trContains(`${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''}`, arama)
   )
 
   const toplamUrun = urunler.length

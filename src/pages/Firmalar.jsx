@@ -8,6 +8,7 @@ import { firmalariGetir, firmaEkle, firmaGuncelle, firmaSil as dbFirmaSil } from
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { lisanslariGetir } from '../services/lisansService'
+import { trContains } from '../lib/trSearch'
 import {
   Button, SearchInput, Input, Label,
   Card, Badge, CodeBadge, Avatar, EmptyState,
@@ -90,12 +91,9 @@ function Firmalar() {
     toast.success('Firma silindi.')
   }
 
-  const gorunenFirmalar = firmalar.filter(f => {
-    if (!arama) return true
-    const q = arama.toLowerCase()
-    return [f.firmaAdi, f.kod, f.vergiNo, f.sektor, f.sehir]
-      .some(v => (v || '').toLowerCase().includes(q))
-  })
+  const gorunenFirmalar = firmalar.filter(f =>
+    trContains([f.firmaAdi, f.kod, f.vergiNo, f.sektor, f.sehir].filter(Boolean).join(' '), arama)
+  )
 
   if (yukleniyor) {
     return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>

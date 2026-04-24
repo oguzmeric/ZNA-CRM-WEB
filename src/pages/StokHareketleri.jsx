@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import { stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle } from '../services/stokService'
+import { trContains } from '../lib/trSearch'
 import { musterileriGetir } from '../services/musteriService'
 import {
   Button, SearchInput, Input, Label,
@@ -105,7 +106,7 @@ export default function StokHareketleri() {
 
   const gorunenHareketler = [...hareketler]
     .filter(h => filtre === 'hepsi' || h.hareketTipi === filtre)
-    .filter(h => !arama || `${h.stokKodu} ${h.stokAdi} ${h.aciklama}`.toLowerCase().includes(arama.toLowerCase()))
+    .filter(h => trContains(`${h.stokKodu || ''} ${h.stokAdi || ''} ${h.aciklama || ''}`, arama))
 
   const h = detayHareket
   const modalTur = h ? hareketTurleri.find(t => t.id === h.hareketTipi) : null

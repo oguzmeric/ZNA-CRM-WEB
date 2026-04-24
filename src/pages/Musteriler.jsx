@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, MapPin, ArrowRight } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { musterileriGetir, musteriEkle, musteriGuncelle, musteriSil as dbMusteriSil } from '../services/musteriService'
+import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -21,11 +22,6 @@ const bosForm = {
   sehir: '', vergiNo: '', notlar: '', durum: 'aktif', kod: '',
 }
 
-const trNormalize = (str = '') =>
-  str.toLowerCase()
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    .replace(/İ/gi, 'i').replace(/I/g, 'i')
 
 function firmaKoduOlustur(firmaAdi, mevcutMusteriler, mevcutKod = '') {
   const temiz = firmaAdi.toUpperCase().replace(/[^A-ZÇĞİÖŞÜ]/g, '')
@@ -132,7 +128,7 @@ function Musteriler() {
     .filter(m => filtre === 'hepsi' || m.durum === filtre)
     .filter(m =>
       arama === '' ||
-      trNormalize(`${m.ad} ${m.soyad} ${m.firma} ${m.kod}`).includes(trNormalize(arama))
+      trContains(`${m.ad} ${m.soyad} ${m.firma} ${m.kod}`, arama)
     )
 
   const filtreSayilari = {

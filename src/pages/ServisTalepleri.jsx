@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
+import { trContains } from '../lib/trSearch'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
@@ -36,10 +37,10 @@ export default function ServisTalepleri() {
   const [gorunum, setGorunum] = useState('liste')
 
   const filtrelenmis = talepler.filter(t => {
-    if (aramaMetni) {
-      const q = aramaMetni.toLowerCase()
-      if (![t.talepNo, t.konu, t.musteriAd, t.firmaAdi].some(v => (v || '').toLowerCase().includes(q))) return false
-    }
+    if (aramaMetni && !trContains(
+      [t.talepNo, t.konu, t.musteriAd, t.firmaAdi].filter(Boolean).join(' '),
+      aramaMetni,
+    )) return false
     if (durumFiltre !== 'tumu' && t.durum !== durumFiltre) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     if (aciliyetFiltre !== 'tumu' && t.aciliyet !== aciliyetFiltre) return false

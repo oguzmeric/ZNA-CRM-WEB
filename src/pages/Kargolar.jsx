@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useKargo, KARGO_FIRMALARI } from '../context/KargoContext'
+import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -111,12 +112,10 @@ export default function Kargolar() {
   const filtreli = kargolar
     .filter(k => durumFiltre === 'hepsi' || k.durum === durumFiltre)
     .filter(k => tipFiltre === 'hepsi' || k.tip === tipFiltre)
-    .filter(k => {
-      if (!aramaMetni) return true
-      const q = aramaMetni.toLowerCase()
-      return [k.kargoNo, k.alici?.ad, k.alici?.firma, k.gonderen?.ad, k.gonderen?.firma, k.takipNo, k.icerik]
-        .some(v => (v || '').toLowerCase().includes(q))
-    })
+    .filter(k => trContains(
+      [k.kargoNo, k.alici?.ad, k.alici?.firma, k.gonderen?.ad, k.gonderen?.firma, k.takipNo, k.icerik].filter(Boolean).join(' '),
+      aramaMetni,
+    ))
 
   const ist = {
     toplam: kargolar.length,

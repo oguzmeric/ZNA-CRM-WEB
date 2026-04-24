@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Receipt, AlertTriangle, FileText } from 'lucide-react'
 import { satislariGetir, satisSil } from '../services/satisService'
+import { trContains } from '../lib/trSearch'
 import { useConfirm } from '../context/ConfirmContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -68,7 +69,7 @@ export default function Satislar() {
   }
 
   const gorunen = satislar.filter(f => {
-    const match = !arama || `${f.faturaNo} ${f.firmaAdi}`.toLowerCase().includes(arama.toLowerCase())
+    const match = trContains(`${f.faturaNo} ${f.firmaAdi}`, arama)
     if (!match) return false
     if (aktifSekme === 'hepsi') return true
     if (aktifSekme === 'gecikti') {

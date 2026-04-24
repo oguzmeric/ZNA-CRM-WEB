@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext'
 import { Plus, Pencil, Trash2, MapPin, Infinity as InfIcon, AlertTriangle } from 'lucide-react'
 import { lisanslariGetir, lisansEkle, lisansGuncelle, lisansSil as dbLisansSil } from '../services/lisansService'
 import { musterileriGetir } from '../services/musteriService'
+import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -132,12 +133,10 @@ function TrassirLisanslar() {
 
   const gorunenLisanslar = lisanslar
     .filter(l => filtre === 'hepsi' || l.durum === filtre)
-    .filter(l => {
-      if (!arama) return true
-      const q = arama.toLowerCase().trim()
-      return [l.lisansKodu, l.lisansId, l.firmaAdi, l.lokasyon, l.sunucuAdi, l.lisansTuru, l.notlar]
-        .some(v => (v || '').toLowerCase().includes(q))
-    })
+    .filter(l => trContains(
+      [l.lisansKodu, l.lisansId, l.firmaAdi, l.lokasyon, l.sunucuAdi, l.lisansTuru, l.notlar].filter(Boolean).join(' '),
+      arama,
+    ))
 
   const yakinBitenler = lisanslar.filter(l => {
     if (!l.bitisTarih || l.durum !== 'aktif' || l.lisansTipi === 'sureksiz_surekli') return false
