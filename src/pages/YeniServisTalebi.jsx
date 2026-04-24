@@ -39,7 +39,6 @@ export default function YeniServisTalebi() {
   const { talepOlusturPersonel } = useServisTalebi()
 
   const [musteriler, setMusteriler] = useState([])
-  const [musteriArama, setMusteriArama] = useState('')
   const [seciliMusteri, setSeciliMusteri] = useState(null)
   const [form, setForm] = useState(bos)
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState('')
@@ -52,15 +51,10 @@ export default function YeniServisTalebi() {
   const teknisyenler = (kullanicilar || []).filter(k => k.tip !== 'musteri')
   const altKategoriler = ALT_KATEGORILER[form.anaTur] || []
 
-  const filtrelenmis = useMemo(() => {
-    const q = trNormalize(musteriArama)
-    if (!q) return musteriler.slice(0, 8)
-    return musteriler
-      .filter(m => trNormalize(`${m.ad} ${m.soyad} ${m.firma} ${m.kod || ''}`).includes(q))
-      .slice(0, 8)
-  }, [musteriArama, musteriler])
-
-  const musteriSec = (m) => {
+  const musteriSec = (musteriId) => {
+    if (!musteriId) { setSeciliMusteri(null); return }
+    const m = musteriler.find(x => x.id?.toString() === musteriId.toString())
+    if (!m) return
     setSeciliMusteri(m)
     setForm(p => ({
       ...p,
@@ -68,7 +62,6 @@ export default function YeniServisTalebi() {
       ilgiliKisi: p.ilgiliKisi || `${m.ad} ${m.soyad}`,
       telefon: p.telefon || m.telefon || '',
     }))
-    setMusteriArama('')
   }
 
   const kaydet = async () => {
@@ -136,17 +129,33 @@ export default function YeniServisTalebi() {
       <Card style={{ marginBottom: 16 }}>
         <h2 className="t-h2" style={{ marginBottom: 16 }}>1. Müşteri</h2>
 
-        {seciliMusteri ? (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-            padding: 16,
-            background: 'var(--brand-primary-soft)',
-            border: '1px solid var(--brand-primary)',
-            borderRadius: 'var(--radius-md)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Building2 size={20} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
-              <div>
+        <div>
+          <Label required>Müşteri</Label>
+          <CustomSelect
+            value={seciliMusteri?.id?.toString() || ''}
+            onChange={e => musteriSec(e.target.value)}
+            searchable
+            placeholder="Müşteri adı, firma veya kod ara…"
+          >
+            <option value="">Müşteri seç…</option>
+            {musteriler.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.firma} — {m.ad} {m.soyad}{m.kod ? ` · ${m.kod}` : ''}
+              </option>
+            ))}
+          </CustomSelect>
+
+          {seciliMusteri && (
+            <div style={{
+              marginTop: 12,
+              padding: 12,
+              background: 'var(--brand-primary-soft)',
+              border: '1px solid var(--brand-primary)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <Building2 size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="t-body-strong" style={{ color: 'var(--brand-primary)' }}>
                   {seciliMusteri.firma}
                 </div>
@@ -157,67 +166,9 @@ export default function YeniServisTalebi() {
                 </div>
               </div>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setSeciliMusteri(null)}>
-              Değiştir
-            </Button>
-          </div>
-        ) : (
-          <>
-            <SearchInput
-              value={musteriArama}
-              onChange={e => setMusteriArama(e.target.value)}
-              placeholder="Müşteri adı, firma veya kod ara…"
-            />
-            <div style={{ marginTop: 8 }}>
-              {filtrelenmis.length === 0 ? (
-                <div style={{ padding: 24 }}>
-                  <EmptyState
-                    title="Sonuç yok"
-                    description={musteriArama ? 'Aramayı değiştir.' : 'Müşteri kayıtları yükleniyor…'}
-                  />
-                </div>
-              ) : (
-                <div style={{
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-sm)',
-                  overflow: 'hidden',
-                }}>
-                  {filtrelenmis.map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => musteriSec(m)}
-                      style={{
-                        width: '100%',
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '10px 14px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: '1px solid var(--border-default)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <Building2 size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                          {m.firma}
-                        </div>
-                        <div className="t-caption" style={{ marginTop: 1 }}>
-                          {m.ad} {m.soyad}
-                          {m.telefon && ` · ${m.telefon}`}
-                        </div>
-                      </div>
-                      {m.kod && <Badge tone="neutral">{m.kod}</Badge>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+          )}
+        </div>
+
       </Card>
 
       {/* 2. Talep türü ve kategori */}
