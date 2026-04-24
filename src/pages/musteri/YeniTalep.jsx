@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Check, ChevronRight, CheckCircle2, ClipboardList,
+  Paperclip, Upload, FileText, Image as ImageIcon, X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
@@ -18,13 +19,15 @@ const bosForm = {
 
 export default function YeniTalep() {
   const { kullanici } = useAuth()
-  const { talepOlustur, ANA_TURLER, ALT_KATEGORILER, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { talepOlustur, dosyaYukle, ANA_TURLER, ALT_KATEGORILER, ACILIYET_SEVIYELERI } = useServisTalebi()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ ...bosForm, ilgiliKisi: kullanici?.ad || '' })
   const [gonderildi, setGonderildi] = useState(false)
   const [hata, setHata] = useState({})
   const [adim, setAdim] = useState(1)
+  const [yeniDosyalar, setYeniDosyalar] = useState([])
+  const [gonderiliyor, setGonderiliyor] = useState(false)
 
   const izinliTurler = kullanici?.izinliTurler
   const filtreliTurler = izinliTurler && izinliTurler.length > 0
@@ -60,11 +63,30 @@ export default function YeniTalep() {
     return Object.keys(e).length === 0
   }
 
-  const gonder = () => {
+  const gonder = async () => {
     if (!dogrula()) return
-    const talep = talepOlustur(form, kullanici)
-    setGonderildi(true)
-    setTimeout(() => navigate(`/musteri-portal/talep/${talep.id}`), 1800)
+    setGonderiliyor(true)
+    try {
+      const talep = await talepOlustur(form, kullanici)
+      if (!talep?.id) throw new Error('Talep oluşturulamadı')
+      // Dosyaları sırayla yükle
+      for (const f of yeniDosyalar) {
+        try { await dosyaYukle(talep.id, f, kullanici.ad) }
+        catch (e) { console.error('[dosya]', f.name, e) }
+      }
+      setGonderildi(true)
+      setTimeout(() => navigate(`/musteri-portal/talep/${talep.id}`), 1500)
+    } catch (e) {
+      console.error('[gonder]', e)
+      setGonderiliyor(false)
+    }
+  }
+
+  const boyutFormatla = (bytes) => {
+    if (!bytes) return '—'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
   if (gonderildi) {
@@ -365,6 +387,67 @@ export default function YeniTalep() {
                 </div>
               </div>
 
+              {/* Dosya ekleri */}
+              <div style={{ marginBottom: 20 }}>
+                <Label>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Paperclip size={12} strokeWidth={1.5} /> Ekler (opsiyonel — fotoğraf, belge)
+                  </span>
+                </Label>
+                {yeniDosyalar.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    {yeniDosyalar.map((f, i) => (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 12px', marginBottom: 6,
+                        border: '1px dashed var(--brand-primary)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--brand-primary-soft)',
+                      }}>
+                        {f.type?.startsWith('image/')
+                          ? <ImageIcon size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                          : <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>
+                            {f.name}
+                          </div>
+                          <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>{boyutFormatla(f.size)}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setYeniDosyalar(prev => prev.filter((_, idx) => idx !== i))}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', padding: 4 }}
+                        >
+                          <X size={14} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px',
+                  border: '1px dashed var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  font: '500 13px/18px var(--font-sans)',
+                  background: 'var(--surface-card)',
+                }}>
+                  <Upload size={14} strokeWidth={1.5} /> Dosya ekle
+                  <input
+                    type="file"
+                    multiple
+                    onChange={e => {
+                      const files = Array.from(e.target.files || [])
+                      setYeniDosyalar(prev => [...prev, ...files])
+                      e.target.value = ''
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+
               {/* Özet */}
               <div style={{
                 padding: 16,
@@ -399,8 +482,9 @@ export default function YeniTalep() {
                   variant="primary"
                   iconLeft={<Check size={14} strokeWidth={2} />}
                   onClick={gonder}
+                  disabled={gonderiliyor}
                 >
-                  Talebi gönder
+                  {gonderiliyor ? 'Gönderiliyor…' : 'Talebi gönder'}
                 </Button>
               </div>
             </div>

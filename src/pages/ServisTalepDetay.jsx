@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
+  Paperclip, Upload, Download, Image as ImageIcon,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -29,7 +30,7 @@ const DURUM_TONE = {
 export default function ServisTalepDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
-  const { talepler, talepGuncelle, talepSil, notEkle, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
@@ -226,6 +227,82 @@ export default function ServisTalepDetay() {
                 ))}
               </div>
             )}
+
+            {/* Dosyalar */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <Paperclip size={11} strokeWidth={1.5} /> Ekler ({talep.dosyalar?.length || 0})
+                </div>
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '4px 10px',
+                  border: '1px dashed var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  font: '500 12px/16px var(--font-sans)',
+                  color: 'var(--text-secondary)',
+                }}>
+                  <Upload size={12} strokeWidth={1.5} /> Dosya ekle
+                  <input
+                    type="file"
+                    multiple
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || [])
+                      for (const f of files) {
+                        try { await dosyaYukle(talep.id, f, kullanici?.ad) } catch {}
+                      }
+                      e.target.value = ''
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+              {(talep.dosyalar || []).map(d => (
+                <div key={d.path} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', marginBottom: 6,
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-card)',
+                }}>
+                  {d.type?.startsWith('image/')
+                    ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                    : <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.name}>
+                      {d.name}
+                    </div>
+                    <div className="t-caption">
+                      {d.size ? `${(d.size / 1024).toFixed(0)} KB` : ''}
+                      {d.uploaderAd && ` · ${d.uploaderAd}`}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const url = await dosyaLinkiAl(d.path)
+                        window.open(url, '_blank')
+                      } catch {}
+                    }}
+                    style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                  >
+                    <Download size={12} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm('Dosya silinsin mi?')) return
+                      try { await dosyaSil(talep.id, d.path) } catch {}
+                    }}
+                    style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                  >
+                    <Trash2 size={12} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </Card>
 
           {/* Yazışmalar */}

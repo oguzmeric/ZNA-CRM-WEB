@@ -6,6 +6,7 @@ import {
   servisTalepSil,
   servisTalepGetir,
 } from '../services/servisService'
+import { supabase } from '../lib/supabase'
 
 const ServisTalebiContext = createContext(null)
 
@@ -233,8 +234,57 @@ export function ServisTalebiProvider({ children }) {
   }
 
   const talepSil = async (id) => {
+    // Bucket'taki dosyaları temizle (orphan kalmasın)
+    const talep = talepler.find(t => t.id === id)
+    const dosyaPaths = (talep?.dosyalar || []).map(d => d.path).filter(Boolean)
+    if (dosyaPaths.length > 0) {
+      await supabase.storage.from('servis-talep-dosyalari').remove(dosyaPaths)
+    }
     await servisTalepSil(id)
     setTalepler(prev => prev.filter(t => t.id !== id))
+  }
+
+  // ─── Dosya yönetimi ────────────────────────────────────────────
+  const dosyaYukle = async (talepId, file, uploaderAd = '') => {
+    const safeName = file.name.replace(/[^\w.\-]/g, '_')
+    const path = `${talepId}/${Date.now()}_${safeName}`
+    const { error } = await supabase.storage
+      .from('servis-talep-dosyalari')
+      .upload(path, file, { contentType: file.type })
+    if (error) throw error
+
+    const meta = {
+      path,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+      uploaderAd: uploaderAd || null,
+    }
+    const mevcut = talepler.find(t => t.id === talepId)
+    const yeniDosyalar = [...(mevcut?.dosyalar || []), meta]
+    const kayitli = await servisTalepGuncelle(talepId, { dosyalar: yeniDosyalar })
+    if (kayitli) setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...kayitli } : t))
+    return meta
+  }
+
+  const dosyaLinkiAl = async (path) => {
+    const { data, error } = await supabase.storage
+      .from('servis-talep-dosyalari')
+      .createSignedUrl(path, 60)
+    if (error) throw error
+    return data.signedUrl
+  }
+
+  const dosyaSil = async (talepId, path) => {
+    const { error } = await supabase.storage
+      .from('servis-talep-dosyalari')
+      .remove([path])
+    if (error) throw error
+    const mevcut = talepler.find(t => t.id === talepId)
+    const kalanlar = (mevcut?.dosyalar || []).filter(d => d.path !== path)
+    const kayitli = await servisTalepGuncelle(talepId, { dosyalar: kalanlar })
+    if (kayitli) setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...kayitli } : t))
   }
 
   const musteriTalepleri = (musteriId) =>
@@ -253,6 +303,9 @@ export function ServisTalebiProvider({ children }) {
         talepGuncelle,
         talepSil,
         notEkle,
+        dosyaYukle,
+        dosyaLinkiAl,
+        dosyaSil,
         musteriTalepleri,
         bekleyenSayisi,
         ANA_TURLER,

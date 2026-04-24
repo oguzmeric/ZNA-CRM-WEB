@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Info, FileText, MessageSquare, MapPin, Monitor, Clock,
   Check, Star, ThumbsUp, ThumbsDown, AlertTriangle, CheckCircle2, Shield, Send,
-  Frown, Meh, Smile,
+  Frown, Meh, Smile, Paperclip, Image as ImageIcon,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
@@ -45,7 +45,7 @@ function YildizGoster({ puan, boyut = 18 }) {
 export default function MusteriTalepDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
-  const { talepler, notEkle, talepGuncelle, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { talepler, notEkle, talepGuncelle, dosyaLinkiAl, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
@@ -326,6 +326,48 @@ export default function MusteriTalepDetay() {
                       <span style={{ color: 'var(--text-secondary)' }}>{talep.cihazTuru}</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Dosyalar */}
+              {(talep.dosyalar?.length || 0) > 0 && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <div className="t-label" style={{ marginBottom: 6 }}>
+                    <Paperclip size={12} strokeWidth={1.5} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+                    Ekler ({talep.dosyalar.length})
+                  </div>
+                  {talep.dosyalar.map(d => (
+                    <button
+                      key={d.path}
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const url = await dosyaLinkiAl(d.path)
+                          window.open(url, '_blank')
+                        } catch {}
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                        padding: '8px 12px', marginBottom: 6,
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface-card)',
+                        cursor: 'pointer', textAlign: 'left',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                    >
+                      {d.type?.startsWith('image/')
+                        ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                        : <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+                      <span style={{ flex: 1, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {d.name}
+                      </span>
+                      <span className="t-caption">
+                        {d.size ? `${(d.size / 1024).toFixed(0)} KB` : ''}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </Card>
