@@ -186,8 +186,11 @@ function MainLayout({ children }) {
     navigate('/login', { replace: true })
   }
 
+  // Admin tüm modülleri görür (moduller listesi ne olursa olsun)
   const gorunenMenu = menuItems.filter(
-    (m) => m.modul === null || kullanici?.moduller?.includes(m.modul)
+    (m) => m.modul === null
+      || kullanici?.rol === 'admin'
+      || kullanici?.moduller?.includes(m.modul)
   )
 
   const menuAcik = (id) => {
