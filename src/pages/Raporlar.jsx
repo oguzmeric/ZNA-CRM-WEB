@@ -36,7 +36,11 @@ function ChartCard({ title, children, height = 240 }) {
   return (
     <Card>
       <p className="t-body-strong" style={{ marginBottom: 14 }}>{title}</p>
-      <div style={{ width: '100%', height }}>{children}</div>
+      {/* position: relative + minWidth/minHeight: 0 → ResponsiveContainer
+          ilk mount'ta -1,-1 uyarısı vermesin (flex/grid child'larda gerekir) */}
+      <div style={{ position: 'relative', width: '100%', height, minWidth: 0, minHeight: 0 }}>
+        {children}
+      </div>
     </Card>
   )
 }
