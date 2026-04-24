@@ -346,6 +346,67 @@ export default function YeniTalep() {
                     })}
                   </div>
                 </div>
+
+                {/* Dosya ekleri */}
+                <div>
+                  <Label>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Paperclip size={12} strokeWidth={1.5} /> Ekler (opsiyonel — fotoğraf, belge)
+                    </span>
+                  </Label>
+                  {yeniDosyalar.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      {yeniDosyalar.map((f, i) => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 12px', marginBottom: 6,
+                          border: '1px dashed var(--brand-primary)',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--brand-primary-soft)',
+                        }}>
+                          {f.type?.startsWith('image/')
+                            ? <ImageIcon size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                            : <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>
+                              {f.name}
+                            </div>
+                            <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>{boyutFormatla(f.size)}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setYeniDosyalar(prev => prev.filter((_, idx) => idx !== i))}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', padding: 4 }}
+                          >
+                            <X size={14} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 14px',
+                    border: '1px dashed var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    font: '500 13px/18px var(--font-sans)',
+                    background: 'var(--surface-card)',
+                  }}>
+                    <Upload size={14} strokeWidth={1.5} /> Dosya ekle
+                    <input
+                      type="file"
+                      multiple
+                      onChange={e => {
+                        const files = Array.from(e.target.files || [])
+                        setYeniDosyalar(prev => [...prev, ...files])
+                        e.target.value = ''
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
@@ -387,67 +448,6 @@ export default function YeniTalep() {
                 </div>
               </div>
 
-              {/* Dosya ekleri */}
-              <div style={{ marginBottom: 20 }}>
-                <Label>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Paperclip size={12} strokeWidth={1.5} /> Ekler (opsiyonel — fotoğraf, belge)
-                  </span>
-                </Label>
-                {yeniDosyalar.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    {yeniDosyalar.map((f, i) => (
-                      <div key={i} style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 12px', marginBottom: 6,
-                        border: '1px dashed var(--brand-primary)',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--brand-primary-soft)',
-                      }}>
-                        {f.type?.startsWith('image/')
-                          ? <ImageIcon size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
-                          : <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>
-                            {f.name}
-                          </div>
-                          <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>{boyutFormatla(f.size)}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setYeniDosyalar(prev => prev.filter((_, idx) => idx !== i))}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', padding: 4 }}
-                        >
-                          <X size={14} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <label style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px',
-                  border: '1px dashed var(--border-default)',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  font: '500 13px/18px var(--font-sans)',
-                  background: 'var(--surface-card)',
-                }}>
-                  <Upload size={14} strokeWidth={1.5} /> Dosya ekle
-                  <input
-                    type="file"
-                    multiple
-                    onChange={e => {
-                      const files = Array.from(e.target.files || [])
-                      setYeniDosyalar(prev => [...prev, ...files])
-                      e.target.value = ''
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              </div>
-
               {/* Özet */}
               <div style={{
                 padding: 16,
@@ -465,6 +465,7 @@ export default function YeniTalep() {
                     { k: 'Konu',     v: form.konu },
                     { k: 'Lokasyon', v: form.lokasyon || '—' },
                     { k: 'Aciliyet', v: ACILIYET_SEVIYELERI.find(a => a.id === form.aciliyet)?.isim, tone: ACIL_TONE[form.aciliyet] },
+                    ...(yeniDosyalar.length > 0 ? [{ k: 'Ekler', v: `${yeniDosyalar.length} dosya` }] : []),
                   ].map(({ k, v, tone }) => (
                     <div key={k}>
                       <div className="t-label" style={{ marginBottom: 2 }}>{k.toUpperCase()}</div>
