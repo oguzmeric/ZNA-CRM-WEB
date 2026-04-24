@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from '../components/CustomSelect'
@@ -129,33 +130,35 @@ export default function KullaniciYonetimi() {
       if (form.sifre.length < 8) {
         toast.warning('Şifre en az 8 karakter olmalı.'); return
       }
-      // Admin'in session'ını sakla — signUp session'ı yeni kullanıcıya döndürür
-      const { data: { session: adminSession } } = await supabase.auth.getSession()
-
-      // 1. Supabase Auth kullanıcısı oluştur
+      // 1. Supabase Auth kullanıcısı oluştur — ana client'ı kirletmeden,
+      // persistSession: false olan ayrı bir client ile. Böylece admin
+      // oturumu hiç değişmez, RLS problem yaşanmaz.
       const email = `${form.kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const tempClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+      )
+      const { data: authData, error: authError } = await tempClient.auth.signUp({
         email,
         password: form.sifre,
         options: { data: { ad: form.ad, kullanici_adi: form.kullaniciAdi, tip: form.tip } },
       })
-
-      // Admin session'ını hemen geri yükle (hata durumunda bile)
-      if (adminSession) {
-        await supabase.auth.setSession({
-          access_token: adminSession.access_token,
-          refresh_token: adminSession.refresh_token,
-        })
-      }
-
       if (authError || !authData?.user) {
         toast.error('Auth hatası: ' + (authError?.message || 'bilinmeyen'))
         return
       }
-      // 2. kullanicilar tablosuna profil satırı
+
+      // 2. kullanicilar tablosuna profil satırı — ana (admin) client üzerinden
       const { sifre, ...profil } = form
-      await kullaniciEkle({ ...profil, authId: authData.user.id, email })
-      toast.success(`${form.ad} eklendi.`)
+      try {
+        await kullaniciEkle({ ...profil, authId: authData.user.id, email })
+        toast.success(`${form.ad} eklendi.`)
+      } catch (err) {
+        console.error('[KullaniciYonetimi] profil insert hata:', err)
+        toast.error('Profil oluşturulamadı: ' + (err?.message || 'bilinmeyen'))
+        return
+      }
     }
     setForm(bos); setGoster(false)
   }
