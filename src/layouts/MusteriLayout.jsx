@@ -184,7 +184,7 @@ export default function MusteriLayout({ children }) {
   const location = useLocation()
   const [mobileAcik, setMobileAcik] = useState(false)
 
-  const talepler = musteriTalepleri(kullanici?.id)
+  const talepler = musteriTalepleri(kullanici?.musteriId)
   const acikTalepler = talepler.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
 
   const izinliTurler = kullanici?.izinliTurler

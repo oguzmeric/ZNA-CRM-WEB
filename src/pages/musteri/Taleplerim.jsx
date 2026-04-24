@@ -21,7 +21,7 @@ export default function Taleplerim() {
   const [durumFiltre, setDurumFiltre] = useState(searchParams.get('durum') || 'tumu')
   const [turFiltre, setTurFiltre] = useState('tumu')
 
-  const talepler = musteriTalepleri(kullanici?.id)
+  const talepler = musteriTalepleri(kullanici?.musteriId)
 
   const filtrelenmis = talepler.filter(t => {
     if (aramaMetni && !t.konu.toLowerCase().includes(aramaMetni.toLowerCase()) && !t.talepNo.toLowerCase().includes(aramaMetni.toLowerCase())) return false

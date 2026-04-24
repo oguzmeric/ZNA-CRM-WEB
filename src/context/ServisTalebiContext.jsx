@@ -105,9 +105,12 @@ export function ServisTalebiProvider({ children }) {
   }, [])
 
   const talepOlustur = async (formData, kullanici) => {
+    if (!kullanici?.musteriId) {
+      throw new Error('Müşteri kaydı bulunamadı. Lütfen admin ile iletişime geçin.')
+    }
     const yeniTalep = {
       talepNo: talepNoUret(talepler),
-      musteriId: kullanici.id,
+      musteriId: kullanici.musteriId,
       musteriAd: kullanici.ad,
       firmaAdi: kullanici.firmaAdi || '',
       anaTur: formData.anaTur,

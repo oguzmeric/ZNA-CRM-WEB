@@ -307,7 +307,7 @@ export default function MusteriDashboard() {
     return () => { iptal = true }
   }, [])
 
-  const talepler = musteriTalepleri(kullanici?.id)
+  const talepler = musteriTalepleri(kullanici?.musteriId)
 
   const izinliTurler = kullanici?.izinliTurler
   const izinliSet = izinliTurler && izinliTurler.length > 0 ? new Set(izinliTurler) : null

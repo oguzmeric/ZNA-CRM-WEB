@@ -1,4 +1,4 @@
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import {
   Plus, Pencil, Trash2, Shield, User, Check, AlertTriangle, Settings,
   LogIn, LogOut, FileText, Clock, CheckCircle2,
@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
+import { musterileriGetir } from '../services/musteriService'
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -24,7 +25,7 @@ const tumModuller = [
   { id: 'servis_talepleri',  isim: 'Servis Talepleri' },
 ]
 
-const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [] }
+const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [], musteriId: null }
 
 const LOG_TIP = {
   kullanici_giris: { isim: 'Giriş',           tone: 'aktif',     C: LogIn },
@@ -53,6 +54,12 @@ export default function KullaniciYonetimi() {
   const [isPending, startTransition] = useTransition()
   const [ayarlar, setAyarlar] = useState(() => JSON.parse(localStorage.getItem('sistem_ayarlari') || '{}'))
   const [ayarKaydedildi, setAyarKaydedildi] = useState(false)
+  const [musteriler, setMusteriler] = useState([])
+
+  // Müşteri listesini bir kez yükle — "Bağlı müşteri" dropdown'u için
+  useEffect(() => {
+    musterileriGetir().then(setMusteriler)
+  }, [])
 
   const ayarGuncelle = (alan, deger) => setAyarlar(p => ({ ...p, [alan]: deger }))
 
@@ -168,6 +175,7 @@ export default function KullaniciYonetimi() {
       ad: k.ad, kullaniciAdi: k.kullaniciAdi, sifre: '',
       moduller: k.moduller || [], tip: k.tip || 'zna',
       firmaAdi: k.firmaAdi || '', izinliTurler: k.izinliTurler || [],
+      musteriId: k.musteriId ?? null,
     })
     setDuzenle(k.id); setGoster(true)
   }
@@ -318,8 +326,37 @@ export default function KullaniciYonetimi() {
               {form.tip === 'musteri' && (
                 <>
                   <div style={{ marginBottom: 16 }}>
-                    <Label>Firma adı</Label>
+                    <Label>Firma adı <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(görünen ad)</span></Label>
                     <Input value={form.firmaAdi} onChange={e => setForm({ ...form, firmaAdi: e.target.value })} placeholder="ABC Teknoloji A.Ş." />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <Label required>
+                      Bağlı müşteri kaydı
+                      <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 6 }}>
+                        (talep açabilmek için zorunlu)
+                      </span>
+                    </Label>
+                    <CustomSelect
+                      value={form.musteriId ?? ''}
+                      onChange={e => {
+                        const id = e.target.value ? Number(e.target.value) : null
+                        const m = musteriler.find(x => x.id === id)
+                        setForm(p => ({ ...p, musteriId: id, firmaAdi: m?.firma || p.firmaAdi }))
+                      }}
+                    >
+                      <option value="">— Müşteri seç —</option>
+                      {musteriler.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.firma}{m.kod ? ` · ${m.kod}` : ''}
+                        </option>
+                      ))}
+                    </CustomSelect>
+                    {!form.musteriId && (
+                      <p style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--warning)', marginTop: 6 }}>
+                        <AlertTriangle size={12} strokeWidth={1.5} />
+                        Bağlı müşteri seçilmezse kullanıcı portala giriş yapabilir ama talep açamaz.
+                      </p>
+                    )}
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <Label>İzin verilen talep türleri <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(boş bırakılırsa tüm türler açık)</span></Label>
