@@ -386,6 +386,106 @@ function MusteriDetay() {
         )}
       </Card>
 
+      {/* Özet KPI 4'lü */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+        {[
+          { key: 'gorusme', isim: 'Görüşme', sayi: gorusmeler.length, Icon: Phone },
+          { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
+          { key: 'fatura',  isim: 'Fatura',  sayi: satislar.length,   Icon: Receipt },
+          { key: 'gorev',   isim: 'Görev',   sayi: gorevler.length,   Icon: CheckSquare },
+        ].map(k => (
+          <button
+            key={k.key}
+            onClick={() => setAktifSekme(k.key)}
+            style={{
+              textAlign: 'left',
+              background: 'var(--surface-card)',
+              border: `1px solid ${aktifSekme === k.key ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-md)',
+              padding: 16,
+              cursor: 'pointer',
+              transition: 'all 120ms',
+              boxShadow: aktifSekme === k.key ? 'var(--shadow-sm)' : 'none',
+            }}
+            onMouseEnter={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-strong)' }}
+            onMouseLeave={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-default)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, color: 'var(--text-tertiary)' }}>
+              <span className="t-label">{k.isim}</span>
+              <k.Icon size={14} strokeWidth={1.5} />
+            </div>
+            <div style={{ font: '600 24px/1 var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {k.sayi}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
+      <Card padding={0} style={{ marginBottom: 16 }}>
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
+          <SegmentedControl
+            options={[
+              { value: 'hepsi',   label: 'Tümü',       count: tumOlaylar.length },
+              { value: 'gorusme', label: 'Görüşmeler', count: gorusmeler.length },
+              { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
+              { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
+              { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
+            ]}
+            value={aktifSekme}
+            onChange={setAktifSekme}
+          />
+        </div>
+        <div style={{ padding: 16, maxHeight: 360, overflowY: 'auto' }}>
+          {filtreliOlaylar.length === 0 ? (
+            <EmptyState icon={<Inbox size={28} strokeWidth={1.5} />} title="Bu kategoride kayıt bulunamadı" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {filtreliOlaylar.map(olay => {
+                const IconC = TIMELINE_ICONS[olay.tip] ?? FileText
+                const renk = TIMELINE_RENK[olay.tip] ?? 'var(--brand-primary)'
+                return (
+                  <div
+                    key={olay.id}
+                    onClick={() => navigate(olay.hedef)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--surface-sunken)',
+                      color: renk,
+                      flexShrink: 0,
+                    }}>
+                      <IconC size={14} strokeWidth={1.5} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.baslik}
+                      </div>
+                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.detay}
+                      </div>
+                    </div>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {olay.tarih}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* İlgili kişiler */}
       <Card padding={0} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
@@ -641,41 +741,6 @@ function MusteriDetay() {
         )}
       </Card>
 
-      {/* Özet KPI 4'lü */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
-        {[
-          { key: 'gorusme', isim: 'Görüşme', sayi: gorusmeler.length, Icon: Phone },
-          { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
-          { key: 'fatura',  isim: 'Fatura',  sayi: satislar.length,   Icon: Receipt },
-          { key: 'gorev',   isim: 'Görev',   sayi: gorevler.length,   Icon: CheckSquare },
-        ].map(k => (
-          <button
-            key={k.key}
-            onClick={() => setAktifSekme(k.key)}
-            style={{
-              textAlign: 'left',
-              background: 'var(--surface-card)',
-              border: `1px solid ${aktifSekme === k.key ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-              borderRadius: 'var(--radius-md)',
-              padding: 16,
-              cursor: 'pointer',
-              transition: 'all 120ms',
-              boxShadow: aktifSekme === k.key ? 'var(--shadow-sm)' : 'none',
-            }}
-            onMouseEnter={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-strong)' }}
-            onMouseLeave={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-default)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, color: 'var(--text-tertiary)' }}>
-              <span className="t-label">{k.isim}</span>
-              <k.Icon size={14} strokeWidth={1.5} />
-            </div>
-            <div style={{ font: '600 24px/1 var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-              {k.sayi}
-            </div>
-          </button>
-        ))}
-      </div>
-
       {/* Finansal özet */}
       {satislar.length > 0 && (
         <Card style={{ marginBottom: 16 }}>
@@ -754,70 +819,6 @@ function MusteriDetay() {
         </Card>
       )}
 
-      {/* Timeline */}
-      <Card padding={0}>
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
-          <SegmentedControl
-            options={[
-              { value: 'hepsi',   label: 'Tümü',       count: tumOlaylar.length },
-              { value: 'gorusme', label: 'Görüşmeler', count: gorusmeler.length },
-              { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
-              { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
-              { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
-            ]}
-            value={aktifSekme}
-            onChange={setAktifSekme}
-          />
-        </div>
-        <div style={{ padding: 16 }}>
-          {filtreliOlaylar.length === 0 ? (
-            <EmptyState icon={<Inbox size={28} strokeWidth={1.5} />} title="Bu kategoride kayıt bulunamadı" />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {filtreliOlaylar.map(olay => {
-                const IconC = TIMELINE_ICONS[olay.tip] ?? FileText
-                const renk = TIMELINE_RENK[olay.tip] ?? 'var(--brand-primary)'
-                return (
-                  <div
-                    key={olay.id}
-                    onClick={() => navigate(olay.hedef)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      transition: 'background 120ms',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{
-                      width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'var(--surface-sunken)',
-                      color: renk,
-                      flexShrink: 0,
-                    }}>
-                      <IconC size={14} strokeWidth={1.5} />
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {olay.baslik}
-                      </div>
-                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {olay.detay}
-                      </div>
-                    </div>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {olay.tarih}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   )
 }
