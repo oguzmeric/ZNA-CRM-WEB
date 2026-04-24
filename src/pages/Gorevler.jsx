@@ -280,7 +280,22 @@ function Gorevler() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const filtreliGorevler = gorevler.filter(g => {
+  // Rol bazlı görünürlük — admin her şeyi görür, diğerleri kendi görevlerini
+  // ("atanan" veya "olusturan" kullanıcı).
+  const isAdmin = kullanici?.rol === 'admin'
+  const gorunurGorevler = isAdmin
+    ? gorevler
+    : gorevler.filter(g => {
+        if (!g) return false
+        const banaAtanmis =
+          String(g.atanan ?? '') === String(kullanici?.id ?? '___') ||
+          String(g.atananId ?? '') === String(kullanici?.id ?? '___') ||
+          g.atananAd === kullanici?.ad
+        const benYarattim = g.olusturanAd === kullanici?.ad
+        return banaAtanmis || benYarattim
+      })
+
+  const filtreliGorevler = gorunurGorevler.filter(g => {
     if (!g) return false
     if (kisiFiltre && g.atanan?.toString() !== kisiFiltre) return false
     if (gorunumModu === 'kanban') return true
@@ -300,16 +315,18 @@ function Gorevler() {
           <p className="t-caption" style={{ marginTop: 4 }}>
             {kisiFiltre
               ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — {kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad}</>
-              : <><span className="tabular-nums">{gorevler.length}</span> görev</>}
+              : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev{!isAdmin && ' (kendi görevleriniz)'}</>}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 180 }}>
-            <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)}>
-              <option value="">Tüm kişiler</option>
-              {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
-            </CustomSelect>
-          </div>
+          {isAdmin && (
+            <div style={{ minWidth: 180 }}>
+              <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)}>
+                <option value="">Tüm kişiler</option>
+                {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
+              </CustomSelect>
+            </div>
+          )}
           <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
             <button
               onClick={() => setGorunumModu('kanban')}
