@@ -1,13 +1,14 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { pagedFetch } from '../lib/pagedFetch'
+import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
-export const stokUrunleriniGetir = async () => {
+export const stokUrunleriniGetir = () => cached('stokUrunler:list', async () => {
   const data = await pagedFetch((off, size) =>
     supabase.from('stok_urunler').select('*').order('stok_adi').range(off, off + size - 1)
   )
   return arrayToCamel(data)
-}
+})
 
 export const stokUrunGetir = async (id) => {
   const { data } = await supabase.from('stok_urunler').select('*').eq('id', id).single()
@@ -53,14 +54,16 @@ export const stokUrunEkle = async (urun) => {
   if (error) {
     console.error('stokUrunEkle hata:', error.code, error.message, error.details, error.hint)
     if (error.code === 'PGRST204') {
-      console.warn('Schema cache eski — fallback ile yeniden deneniyor (grup_kodu dahil temel kolonlar)...')
+      console.warn('Schema cache eski — fallback ile yeniden deneniyor...')
       const temel = sadecOrijinalKolonlar(urun)
       const { data: d2, error: e2 } = await supabase.from('stok_urunler').insert(toSnake(temel)).select().single()
       if (e2) { console.error('stokUrunEkle (fallback) hata:', e2.message); return null }
+      invalidatePrefix('stok')
       return toCamel(d2)
     }
     return null
   }
+  invalidatePrefix('stok')
   return toCamel(data)
 }
 
@@ -73,16 +76,19 @@ export const stokUrunGuncelle = async (id, guncellenmis) => {
       const temel = sadecOrijinalKolonlar(guncellenmis)
       const { data: d2, error: e2 } = await supabase.from('stok_urunler').update(toSnake(temel)).eq('id', id).select().single()
       if (e2) { console.error('stokUrunGuncelle (fallback) hata:', e2.message); return null }
+      invalidatePrefix('stok')
       return toCamel(d2)
     }
     console.error('stokUrunGuncelle hata:', error.message, error.details)
     return null
   }
+  invalidatePrefix('stok')
   return toCamel(data)
 }
 
 export const stokUrunSil = async (id) => {
   await supabase.from('stok_urunler').delete().eq('id', id)
+  invalidatePrefix('stok')
 }
 
 export const gorselYukle = async (file, stokKodu) => {
@@ -112,12 +118,12 @@ export const katalogUrunleriniGetir = async () => {
   return arrayToCamel(data)
 }
 
-export const stokHareketleriniGetir = async () => {
+export const stokHareketleriniGetir = () => cached('stokHareketleri:list', async () => {
   const data = await pagedFetch((off, size) =>
     supabase.from('stok_hareketleri').select('*').order('tarih', { ascending: false }).range(off, off + size - 1)
   )
   return arrayToCamel(data)
-}
+})
 
 // ──────────────────────────────────────────────────────────────
 // S/N TAKIPLI KALEMLER (stok_kalemleri) — mobile ile senkron
@@ -135,7 +141,7 @@ export const DURUMLAR = [
 export const durumBul = (id) => DURUMLAR.find((d) => d.id === id)
 
 // Her stok kodu için S/N kalemlerinin özetini getir (marka/model + durum sayıları)
-export const stokKalemOzetleriniGetir = async () => {
+export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async () => {
   const kalemler = await pagedFetch((off, size) =>
     supabase
       .from('stok_kalemleri')
@@ -173,7 +179,7 @@ export const stokKalemOzetleriniGetir = async () => {
     if (!row.model && k.model) row.model = k.model
   }
   return map
-}
+})
 
 // Belirli stok_kodu için S/N'li tüm kalemleri getir
 export const modelKalemleriniGetir = async (stokKodu) => {
@@ -220,5 +226,6 @@ export const stokHareketEkle = async (hareket) => {
   const { id, olusturmaTarih, ...rest } = hareket
   const { data, error } = await supabase.from('stok_hareketleri').insert(toSnake(rest)).select().single()
   if (error) { console.error('stokHareketEkle hata:', error); return null }
+  invalidate('stokHareketleri:list', 'stokUrunler:list')
   return toCamel(data)
 }

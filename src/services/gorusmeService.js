@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { cached, invalidate } from '../lib/cache'
 
-export const gorusmeleriGetir = async () => {
+export const gorusmeleriGetir = () => cached('gorusmeler:list', async () => {
   const hepsi = []
   const sayfa = 1000
   let off = 0
@@ -14,17 +15,18 @@ export const gorusmeleriGetir = async () => {
     off += sayfa
   }
   return arrayToCamel(hepsi)
-}
+})
 
-export const gorusmeGetir = async (id) => {
+export const gorusmeGetir = (id) => cached(`gorusme:${id}`, async () => {
   const { data } = await supabase.from('gorusmeler').select('*').eq('id', id).single()
   return toCamel(data)
-}
+})
 
 export const gorusmeEkle = async (gorusme) => {
   const { id, olusturmaTarih, manuelKonu, ...rest } = gorusme
   const { data, error } = await supabase.from('gorusmeler').insert(toSnake(rest)).select().single()
   if (error) { console.error('gorusmeEkle hata:', error.message); return null }
+  invalidate('gorusmeler:list')
   return toCamel(data)
 }
 
@@ -32,17 +34,18 @@ export const gorusmeGuncelle = async (id, guncellenmis) => {
   const { id: _id, olusturmaTarih, manuelKonu, ...rest } = guncellenmis
   const { data, error } = await supabase.from('gorusmeler').update(toSnake(rest)).eq('id', id).select().single()
   if (error) { console.error('gorusmeGuncelle hata:', error.message); return null }
+  invalidate('gorusmeler:list', `gorusme:${id}`)
   return toCamel(data)
 }
 
 export const gorusmeSil = async (id) => {
-  // Önce bucket'taki dosyaları temizle (orphan kalmasın)
   const { data: g } = await supabase.from('gorusmeler').select('dosyalar').eq('id', id).single()
   const dosyaPaths = (g?.dosyalar || []).map(d => d.path).filter(Boolean)
   if (dosyaPaths.length > 0) {
     await supabase.storage.from('gorusme-dosyalari').remove(dosyaPaths)
   }
   await supabase.from('gorusmeler').delete().eq('id', id)
+  invalidate('gorusmeler:list', `gorusme:${id}`)
 }
 
 // ─────────────────────────────────────────────────────────────────────

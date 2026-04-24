@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { pagedFetch } from '../lib/pagedFetch'
+import { cached, invalidate } from '../lib/cache'
 
 // Form (camelCase) → DB (snake_case)
 const formToDb = (l) => ({
@@ -41,31 +42,34 @@ const dbToForm = (row) => {
   }
 }
 
-export const lisanslariGetir = async () => {
+export const lisanslariGetir = () => cached('lisanslar:list', async () => {
   const data = await pagedFetch((off, size) =>
     supabase.from('trassir_lisanslar').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + size - 1)
   )
   return (data || []).map(dbToForm)
-}
+})
 
-export const lisansGetir = async (id) => {
+export const lisansGetir = (id) => cached(`lisans:${id}`, async () => {
   const { data, error } = await supabase.from('trassir_lisanslar').select('*').eq('id', id).single()
   if (error) { console.error('lisansGetir hata:', error.message); return null }
   return dbToForm(data)
-}
+})
 
 export const lisansEkle = async (lisans) => {
   const { data, error } = await supabase.from('trassir_lisanslar').insert(formToDb(lisans)).select().single()
   if (error) { console.error('lisansEkle hata:', error.message); return null }
+  invalidate('lisanslar:list')
   return dbToForm(data)
 }
 
 export const lisansGuncelle = async (id, guncellenmis) => {
   const { data, error } = await supabase.from('trassir_lisanslar').update(formToDb(guncellenmis)).eq('id', id).select().single()
   if (error) { console.error('lisansGuncelle hata:', error.message); return null }
+  invalidate('lisanslar:list', `lisans:${id}`)
   return dbToForm(data)
 }
 
 export const lisansSil = async (id) => {
   await supabase.from('trassir_lisanslar').delete().eq('id', id)
+  invalidate('lisanslar:list', `lisans:${id}`)
 }

@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { cached, invalidate } from '../lib/cache'
 
-export const teklifleriGetir = async () => {
+export const teklifleriGetir = () => cached('teklifler:list', async () => {
   const hepsi = []
   const sayfa = 1000
   let off = 0
@@ -14,17 +15,18 @@ export const teklifleriGetir = async () => {
     off += sayfa
   }
   return arrayToCamel(hepsi)
-}
+})
 
-export const teklifGetir = async (id) => {
+export const teklifGetir = (id) => cached(`teklif:${id}`, async () => {
   const { data } = await supabase.from('teklifler').select('*').eq('id', id).single()
   return toCamel(data)
-}
+})
 
 export const teklifEkle = async (teklif) => {
   const { id, olusturmaTarih, ...rest } = teklif
   const { data, error } = await supabase.from('teklifler').insert(toSnake(rest)).select().single()
   if (error) { console.error('teklifEkle hata:', error.message); throw error }
+  invalidate('teklifler:list')
   return toCamel(data)
 }
 
@@ -32,11 +34,13 @@ export const teklifGuncelle = async (id, guncellenmis) => {
   const { id: _id, olusturmaTarih, ...rest } = guncellenmis
   const { data, error } = await supabase.from('teklifler').update(toSnake(rest)).eq('id', id).select().single()
   if (error) { console.error('teklifGuncelle hata:', error.message); throw error }
+  invalidate('teklifler:list', `teklif:${id}`)
   return toCamel(data)
 }
 
 export const teklifSil = async (id) => {
   await supabase.from('teklifler').delete().eq('id', id)
+  invalidate('teklifler:list', `teklif:${id}`)
 }
 
 export const musteriTalepleriniGetir = async () => {

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
 import {
   kullanicilariGetir,
   kullaniciGirisKontrol,
@@ -62,7 +63,8 @@ export function AuthProvider({ children }) {
       try {
         const { error } = await supabase.auth.refreshSession()
         if (error) throw error
-        // Başarılı refresh — onAuthStateChange tetiklenir, kullanici state güncellenir
+        // Başarılı refresh — cache'i temizle ki stale data göstermesin
+        cacheInvalidateAll()
       } catch (e) {
         console.warn('[AuthContext] session refresh fail:', e?.message)
         // Refresh fail olduysa local state bozuk olabilir — tam reset yap
@@ -108,6 +110,8 @@ export function AuthProvider({ children }) {
       try { await kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi') } catch (e) { console.warn('[cikisYap] durum güncellenemedi:', e) }
     }
     try { await cikisYapAuth() } catch (e) { console.warn('[cikisYap] signOut hata:', e) }
+    // Diğer kullanıcılara stale data sızmasın
+    cacheInvalidateAll()
     setKullanici(null)
   }
 

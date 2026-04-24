@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
 // Fatura no üret: FAT-2026-001
 export const yeniFaturaNo = async () => {
@@ -16,7 +17,7 @@ export const yeniFaturaNo = async () => {
 }
 
 // Satışları getir (satirlarla birlikte)
-export const satislariGetir = async () => {
+export const satislariGetir = () => cached('satislar:list', async () => {
   const satisData = []
   const sayfa = 1000
   let off = 0
@@ -45,7 +46,7 @@ export const satislariGetir = async () => {
     satirlar: arrayToCamel((satirData || []).filter(s => s.satis_id === row.id)),
     tahsilatlar: arrayToCamel((tahsilatData || []).filter(t => t.satis_id === row.id)),
   }))
-}
+})
 
 // Date string normalize (YYYY-MM-DD)
 const normalizeDate = (d) => {
@@ -90,6 +91,7 @@ export const satisEkle = async (satis) => {
       satirlar.map((s, i) => toSnake({ ...s, satisId: satisData.id, sira: i }))
     )
   }
+  invalidate('satislar:list')
   return toCamel(satisData)
 }
 
@@ -128,12 +130,14 @@ export const satisGuncelle = async (id, satis) => {
       if (satirError) console.error('Satır kayıt hatası:', satirError.message)
     }
   }
+  invalidate('satislar:list')
   return toCamel(data)
 }
 
 // Satış sil
 export const satisSil = async (id) => {
   await supabase.from('satislar').delete().eq('id', id)
+  invalidate('satislar:list')
 }
 
 // Tahsilat ekle
@@ -148,6 +152,7 @@ export const tahsilatEkle = async (tahsilat) => {
   const { data: satis } = await supabase.from('satislar').select('genel_toplam').eq('id', tahsilat.satisId).single()
   const yeniDurum = odenanToplam >= Number(satis?.genel_toplam) ? 'odendi' : 'gonderildi'
   await supabase.from('satislar').update({ odenen_toplam: odenanToplam, durum: yeniDurum, updated_at: new Date().toISOString() }).eq('id', tahsilat.satisId)
+  invalidate('satislar:list')
   return toCamel(data)
 }
 
@@ -159,6 +164,7 @@ export const tahsilatSil = async (tahsilatId, satisId) => {
   const { data: satis } = await supabase.from('satislar').select('genel_toplam').eq('id', satisId).single()
   const yeniDurum = odenanToplam >= Number(satis?.genel_toplam) ? 'odendi' : 'gonderildi'
   await supabase.from('satislar').update({ odenen_toplam: odenanToplam, durum: yeniDurum, updated_at: new Date().toISOString() }).eq('id', satisId)
+  invalidate('satislar:list')
 }
 
 // Fatura gönderildiğinde stok düşümü
