@@ -79,12 +79,14 @@ function Stok() {
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       stokKalemOzetleriniGetir(),
-    ]).then(([urunData, hareketData, kalemOzet]) => {
-      setUrunler(urunData)
-      setHareketler(hareketData)
-      setKalemOzetleri(kalemOzet)
-      setYukleniyor(false)
-    })
+    ])
+      .then(([urunData, hareketData, kalemOzet]) => {
+        setUrunler(urunData || [])
+        setHareketler(hareketData || [])
+        setKalemOzetleri(kalemOzet || new Map())
+      })
+      .catch(err => console.error('[Stok yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   const stokBakiye = (stokKodu) => {

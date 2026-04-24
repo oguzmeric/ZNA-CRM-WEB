@@ -60,9 +60,10 @@ function TrassirLisanslar() {
   const [kodModu, setKodModu] = useState('otomatik')
 
   useEffect(() => {
-    Promise.all([lisanslariGetir(), musterileriGetir()]).then(([l, m]) => {
-      setLisanslar(l); setMusteriler(m); setYukleniyor(false)
-    })
+    Promise.all([lisanslariGetir(), musterileriGetir()])
+      .then(([l, m]) => { setLisanslar(l || []); setMusteriler(m || []) })
+      .catch(err => console.error('[TrassirLisanslar yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   const formAc = () => {

@@ -56,7 +56,9 @@ export default function StokHareketleri() {
 
   useEffect(() => {
     Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), musterileriGetir()])
-      .then(([u, h, m]) => { setUrunler(u || []); setHareketler(h || []); setMusteriler(m || []); setYukleniyor(false) })
+      .then(([u, h, m]) => { setUrunler(u || []); setHareketler(h || []); setMusteriler(m || []) })
+      .catch(err => console.error('[StokHareketleri yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>

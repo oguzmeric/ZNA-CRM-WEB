@@ -71,7 +71,9 @@ export default function Teklifler() {
 
   useEffect(() => {
     Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satislariGetir()])
-      .then(([t, tl, s]) => { setTeklifler(t); setMusteriTalepleri(tl); setSatislar(s); setYukleniyor(false) })
+      .then(([t, tl, s]) => { setTeklifler(t || []); setMusteriTalepleri(tl || []); setSatislar(s || []) })
+      .catch(err => console.error('[Teklifler yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>

@@ -68,15 +68,17 @@ function ModelDetay() {
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       musterileriGetir(),
-    ]).then(([k, u, h, m]) => {
-      setKalemler(k || [])
-      setUrun((u || []).find(x => x.stokKodu === stokKodu) || null)
-      setHareketler((h || []).filter(x => x.stokKodu === stokKodu))
-      const map = new Map()
-      ;(m || []).forEach(x => map.set(x.id, x))
-      setMusteriMap(map)
-      setYukleniyor(false)
-    })
+    ])
+      .then(([k, u, h, m]) => {
+        setKalemler(k || [])
+        setUrun((u || []).find(x => x.stokKodu === stokKodu) || null)
+        setHareketler((h || []).filter(x => x.stokKodu === stokKodu))
+        const map = new Map()
+        ;(m || []).forEach(x => map.set(x.id, x))
+        setMusteriMap(map)
+      })
+      .catch(err => console.error('[ModelDetay yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [stokKodu])
 
   const sayilar = useMemo(() => {

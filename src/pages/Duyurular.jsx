@@ -51,9 +51,14 @@ export default function Duyurular() {
 
   const yukle = async () => {
     setYukleniyor(true)
-    const data = await duyurulariGetir()
-    setDuyurular(data)
-    setYukleniyor(false)
+    try {
+      const data = await duyurulariGetir()
+      setDuyurular(data || [])
+    } catch (err) {
+      console.error('[Duyurular yükle]', err)
+    } finally {
+      setYukleniyor(false)
+    }
   }
 
   useEffect(() => { yukle() }, [])

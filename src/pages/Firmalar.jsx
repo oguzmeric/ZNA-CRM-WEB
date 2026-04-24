@@ -39,10 +39,13 @@ function Firmalar() {
   const [arama, setArama] = useState('')
 
   useEffect(() => {
-    firmalariGetir().then(data => { setFirmalar(data); setYukleniyor(false) })
-    gorusmeleriGetir().then(setGorusmeler)
-    teklifleriGetir().then(setTeklifler)
-    lisanslariGetir().then(setLisanslar)
+    firmalariGetir()
+      .then(data => setFirmalar(data || []))
+      .catch(err => console.error('[Firmalar yükle]', err))
+      .finally(() => setYukleniyor(false))
+    gorusmeleriGetir().then(setGorusmeler).catch(err => console.error('[Firmalar gorusmeler]', err))
+    teklifleriGetir().then(setTeklifler).catch(err => console.error('[Firmalar teklifler]', err))
+    lisanslariGetir().then(setLisanslar).catch(err => console.error('[Firmalar lisanslar]', err))
   }, [])
 
   const firmaKoduOlustur = (mevcut) => `FRM-${String(mevcut.length + 1).padStart(4, '0')}`

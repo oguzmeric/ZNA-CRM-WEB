@@ -37,7 +37,10 @@ function GorevDetay() {
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
 
   useEffect(() => {
-    gorevGetir(id).then(d => { setGorev(d); setYukleniyor(false) })
+    gorevGetir(id)
+      .then(d => setGorev(d))
+      .catch(err => console.error('[GorevDetay yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [id])
 
   if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>

@@ -79,27 +79,32 @@ function MusteriDetay() {
   useEffect(() => {
     const yukle = async () => {
       const musteriIdNum = Number(id)
-      const [m, k, l, g, t, s, gv] = await Promise.all([
-        musteriGetir(musteriIdNum),
-        musteriKisileriniGetir(musteriIdNum),
-        musteriLokasyonlariniGetir(musteriIdNum),
-        gorusmeleriGetir(),
-        teklifleriGetir(),
-        satislariGetir(),
-        gorevleriGetir(),
-      ])
-      setMusteri(m); setKisiler(k); setLokasyonlar(l)
-      if (m?.firma) {
-        const firma = m.firma.toLowerCase().trim()
-        setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
-        setTeklifler((t || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
-        setSatislar((s || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
-        setGorevler((gv || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
-      }
-      setYukleniyor(false)
-      if (yeniOlusturuldu) {
-        setKisiForm({ ...bosKisi })
-        setTimeout(() => lokasyonBolumRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400)
+      try {
+        const [m, k, l, g, t, s, gv] = await Promise.all([
+          musteriGetir(musteriIdNum),
+          musteriKisileriniGetir(musteriIdNum),
+          musteriLokasyonlariniGetir(musteriIdNum),
+          gorusmeleriGetir(),
+          teklifleriGetir(),
+          satislariGetir(),
+          gorevleriGetir(),
+        ])
+        setMusteri(m); setKisiler(k); setLokasyonlar(l)
+        if (m?.firma) {
+          const firma = m.firma.toLowerCase().trim()
+          setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+          setTeklifler((t || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+          setSatislar((s || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+          setGorevler((gv || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+        }
+        if (yeniOlusturuldu) {
+          setKisiForm({ ...bosKisi })
+          setTimeout(() => lokasyonBolumRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400)
+        }
+      } catch (err) {
+        console.error('[MusteriDetay yükle]', err)
+      } finally {
+        setYukleniyor(false)
       }
     }
     yukle()

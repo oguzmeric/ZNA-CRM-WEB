@@ -176,16 +176,18 @@ function SatisDetay() {
         localStorage.removeItem('satis_on_doldurum')
       }
     } else {
-      satisGetir(id).then((data) => {
-        if (data) {
-          setForm({
-            ...data,
-            satirlar: Array.isArray(data.satirlar) ? data.satirlar : [],
-            tahsilatlar: Array.isArray(data.tahsilatlar) ? data.tahsilatlar : [],
-          })
-        }
-        setYukleniyor(false)
-      })
+      satisGetir(id)
+        .then((data) => {
+          if (data) {
+            setForm({
+              ...data,
+              satirlar: Array.isArray(data.satirlar) ? data.satirlar : [],
+              tahsilatlar: Array.isArray(data.tahsilatlar) ? data.tahsilatlar : [],
+            })
+          }
+        })
+        .catch(err => console.error('[SatisDetay yükle]', err))
+        .finally(() => setYukleniyor(false))
     }
   }, [id, yeniMod])
 

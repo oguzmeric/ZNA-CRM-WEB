@@ -310,11 +310,13 @@ export default function MusteriDashboard() {
 
   useEffect(() => {
     let iptal = false
-    Promise.all([benimMusteriKaydim(), aktifDuyurulariGetir()]).then(([m, d]) => {
-      if (iptal) return
-      setMusteriKaydi(m)
-      setDuyurular(d || [])
-    })
+    Promise.all([benimMusteriKaydim(), aktifDuyurulariGetir()])
+      .then(([m, d]) => {
+        if (iptal) return
+        setMusteriKaydi(m)
+        setDuyurular(d || [])
+      })
+      .catch(err => console.error('[MusteriDashboard yükle]', err))
     return () => { iptal = true }
   }, [])
 

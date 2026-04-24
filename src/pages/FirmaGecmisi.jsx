@@ -137,14 +137,19 @@ function FirmaGecmisi() {
   useEffect(() => {
     (async () => {
       setYukleniyor(true)
-      const [g, t, l, gr] = await Promise.all([
-        gorusmeleriGetir(), teklifleriGetir(), lisanslariGetir(), gorevleriGetir(),
-      ])
-      setGorusmeler((g || []).filter(i => i.firmaAdi === firma))
-      setTeklifler((t || []).filter(i => i.firmaAdi === firma))
-      setLisanslar((l || []).filter(i => i.firmaAdi === firma))
-      setGorevler((gr || []).filter(i => i.firmaAdi === firma))
-      setYukleniyor(false)
+      try {
+        const [g, t, l, gr] = await Promise.all([
+          gorusmeleriGetir(), teklifleriGetir(), lisanslariGetir(), gorevleriGetir(),
+        ])
+        setGorusmeler((g || []).filter(i => i.firmaAdi === firma))
+        setTeklifler((t || []).filter(i => i.firmaAdi === firma))
+        setLisanslar((l || []).filter(i => i.firmaAdi === firma))
+        setGorevler((gr || []).filter(i => i.firmaAdi === firma))
+      } catch (err) {
+        console.error('[FirmaGecmisi yükle]', err)
+      } finally {
+        setYukleniyor(false)
+      }
     })()
   }, [firma])
 

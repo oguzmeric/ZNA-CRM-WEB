@@ -56,13 +56,18 @@ function Raporlar() {
   useEffect(() => {
     (async () => {
       setYukleniyor(true)
-      const [t, g, gr, sh, su] = await Promise.all([
-        teklifleriGetir(), gorusmeleriGetir(), gorevleriGetir(),
-        stokHareketleriniGetir(), stokUrunleriniGetir(),
-      ])
-      setTeklifler(t || []); setGorusmeler(g || []); setGorevler(gr || [])
-      setStokHareketler(sh || []); setStokUrunler(su || [])
-      setYukleniyor(false)
+      try {
+        const [t, g, gr, sh, su] = await Promise.all([
+          teklifleriGetir(), gorusmeleriGetir(), gorevleriGetir(),
+          stokHareketleriniGetir(), stokUrunleriniGetir(),
+        ])
+        setTeklifler(t || []); setGorusmeler(g || []); setGorevler(gr || [])
+        setStokHareketler(sh || []); setStokUrunler(su || [])
+      } catch (err) {
+        console.error('[Raporlar yükle]', err)
+      } finally {
+        setYukleniyor(false)
+      }
     })()
   }, [])
 

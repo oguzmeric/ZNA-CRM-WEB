@@ -191,9 +191,10 @@ function Gorevler() {
   const [kisiFiltre, setKisiFiltre] = useState('')
 
   useEffect(() => {
-    Promise.all([gorevleriGetir(), musterileriGetir()]).then(([g, m]) => {
-      setGorevler(g || []); setMusteriler(m || []); setYukleniyor(false)
-    })
+    Promise.all([gorevleriGetir(), musterileriGetir()])
+      .then(([g, m]) => { setGorevler(g || []); setMusteriler(m || []) })
+      .catch(err => console.error('[Gorevler yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))

@@ -75,9 +75,10 @@ function Gorusmeler() {
   const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
 
   useEffect(() => {
-    Promise.all([gorusmeleriGetir(), musterileriGetir()]).then(([g, m]) => {
-      setGorusmeler(g); setMusteriler(m); setYukleniyor(false)
-    })
+    Promise.all([gorusmeleriGetir(), musterileriGetir()])
+      .then(([g, m]) => { setGorusmeler(g || []); setMusteriler(m || []) })
+      .catch(err => console.error('[Gorusmeler yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   const benzersizFirmalar = [...new Map(

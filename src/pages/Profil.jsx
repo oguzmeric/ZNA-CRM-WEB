@@ -54,9 +54,14 @@ function Profil() {
   useEffect(() => {
     (async () => {
       setYukleniyor(true)
-      const [t, g, gr] = await Promise.all([teklifleriGetir(), gorevleriGetir(), gorusmeleriGetir()])
-      setTeklifler(t || []); setGorevler(g || []); setGorusmeler(gr || [])
-      setYukleniyor(false)
+      try {
+        const [t, g, gr] = await Promise.all([teklifleriGetir(), gorevleriGetir(), gorusmeleriGetir()])
+        setTeklifler(t || []); setGorevler(g || []); setGorusmeler(gr || [])
+      } catch (err) {
+        console.error('[Profil yükle]', err)
+      } finally {
+        setYukleniyor(false)
+      }
     })()
   }, [])
 

@@ -46,7 +46,10 @@ export default function Satislar() {
   const [arama, setArama] = useState('')
 
   useEffect(() => {
-    satislariGetir().then(d => { setSatislar(d); setYukleniyor(false) })
+    satislariGetir()
+      .then(d => setSatislar(d || []))
+      .catch(err => console.error('[Satislar yükle]', err))
+      .finally(() => setYukleniyor(false))
   }, [])
 
   const bugun = new Date(); bugun.setHours(0, 0, 0, 0)

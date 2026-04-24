@@ -115,7 +115,9 @@ function TeklifDetay() {
         setIlgiliFatura(data.find(s => s.teklifId === id) || null)
       }))
     }
-    Promise.all(promises).then(() => setVeriYuklendi(true))
+    Promise.all(promises)
+      .catch(err => console.error('[TeklifDetay yükle]', err))
+      .finally(() => setVeriYuklendi(true))
   }, [id])
 
   const mevcutHatirlatma = yeni ? null : teklifHatirlatmasi(mevcutTeklif?.id)
