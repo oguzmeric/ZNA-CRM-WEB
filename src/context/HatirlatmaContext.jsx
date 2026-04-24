@@ -39,6 +39,7 @@ export function HatirlatmaProvider({ children }) {
     tarih.setDate(tarih.getDate() + gunSayisi)
 
     const yeni = {
+      tip: 'teklif',
       teklifId: teklifData.id,
       teklifNo: teklifData.teklifNo,
       firmaAdi: teklifData.firmaAdi,
@@ -50,7 +51,6 @@ export function HatirlatmaProvider({ children }) {
     }
     const kayitli = await hatirlatmaEkleDB(yeni)
     if (kayitli) {
-      // Remove old pending reminder for same teklif and add new one
       setHatirlatmalar(prev => [
         ...prev.filter(h => !(h.teklifId === teklifData.id && h.durum === 'bekliyor')),
         kayitli,
@@ -58,6 +58,38 @@ export function HatirlatmaProvider({ children }) {
     }
     return kayitli
   }
+
+  // Görüşme hatırlatması — hem preset gün sayısı hem özel ISO tarih kabul eder
+  const gorusmeHatirlatmaEkle = async (gorusmeData, { gunSayisi, tarihIso, aciklama = '' } = {}) => {
+    const tarih = tarihIso
+      ? new Date(tarihIso)
+      : (() => { const d = new Date(); d.setDate(d.getDate() + (gunSayisi || 7)); return d })()
+    if (isNaN(tarih.getTime())) return null
+
+    const yeni = {
+      tip: 'gorusme',
+      gorusmeId: gorusmeData.id,
+      firmaAdi: gorusmeData.firmaAdi,
+      musteriAd: gorusmeData.musteriAdi,
+      konu: gorusmeData.konu || '',
+      aciklama,
+      hatirlatmaTarihi: tarih.toISOString(),
+      olusturmaTarih: new Date().toISOString(),
+      durum: 'bekliyor',
+      gunSayisi: gunSayisi || null,
+    }
+    const kayitli = await hatirlatmaEkleDB(yeni)
+    if (kayitli) {
+      setHatirlatmalar(prev => [
+        ...prev.filter(h => !(h.gorusmeId === gorusmeData.id && h.durum === 'bekliyor')),
+        kayitli,
+      ])
+    }
+    return kayitli
+  }
+
+  const gorusmeHatirlatmasi = (gorusmeId) =>
+    hatirlatmalar.find(h => h.gorusmeId === gorusmeId && h.durum === 'bekliyor') || null
 
   const tamamla = async (id) => {
     const kayitli = await hatirlatmaGuncelle(id, {
@@ -97,7 +129,7 @@ export function HatirlatmaProvider({ children }) {
 
   return (
     <HatirlatmaContext.Provider
-      value={{ hatirlatmalar, hatirlatmaEkle, tamamla, ertele, teklifHatirlatmasi, hatirlatmaSil }}
+      value={{ hatirlatmalar, hatirlatmaEkle, gorusmeHatirlatmaEkle, tamamla, ertele, teklifHatirlatmasi, gorusmeHatirlatmasi, hatirlatmaSil }}
     >
       {children}
 
@@ -142,10 +174,10 @@ export function HatirlatmaProvider({ children }) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-800 text-base">
-                      Teklif Takip Hatırlatması
+                      Takip Hatırlatması
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {vadesiGelenler.length} teklif için takip zamanı geldi
+                      {vadesiGelenler.length} kayıt için takip zamanı geldi
                     </p>
                   </div>
                 </div>
@@ -156,6 +188,10 @@ export function HatirlatmaProvider({ children }) {
                     const gunFarki = Math.floor(
                       (new Date() - new Date(h.olusturmaTarih)) / (1000 * 60 * 60 * 24)
                     )
+                    const isGorusme = h.tip === 'gorusme'
+                    const hedefYol = isGorusme ? `/gorusmeler/${h.gorusmeId}` : `/teklifler/${h.teklifId}`
+                    const acButonLabel = isGorusme ? '📞 Görüşmeyi Aç' : '📄 Teklifi Aç'
+                    const etiket = isGorusme ? 'GÖRÜŞME' : h.teklifNo
                     return (
                       <div
                         key={h.id}
@@ -168,20 +204,22 @@ export function HatirlatmaProvider({ children }) {
                               className="text-xs font-mono px-2 py-0.5 rounded"
                               style={{ background: '#fff', border: '1px solid #dddbda', color: '#0176D3' }}
                             >
-                              {h.teklifNo}
+                              {etiket}
                             </span>
                             <span className="text-sm font-semibold text-gray-800">{h.firmaAdi}</span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{h.konu}</p>
+                          {h.konu && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{h.konu}</p>}
+                          {h.aciklama && <p className="text-xs text-gray-600 mt-1 line-clamp-2 italic">{h.aciklama}</p>}
                         </div>
 
                         <div className="flex items-center gap-1.5 text-xs mb-3"
                           style={{ color: '#b45309' }}>
                           <span>⏱</span>
                           <span>
-                            {gunFarki === 0
-                              ? 'Bugün verildi'
-                              : `${gunFarki} gün önce verildi`}
+                            {isGorusme
+                              ? (gunFarki === 0 ? 'Bugün planlandı' : `${gunFarki} gün önce planlandı`)
+                              : (gunFarki === 0 ? 'Bugün verildi' : `${gunFarki} gün önce verildi`)
+                            }
                             {' — '}takip bekleniyor
                           </span>
                         </div>
@@ -189,7 +227,7 @@ export function HatirlatmaProvider({ children }) {
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
                             onClick={() => {
-                              navigate(`/teklifler/${h.teklifId}`)
+                              navigate(hedefYol)
                               setGosterModal(false)
                             }}
                             className="text-xs px-3 py-1.5 rounded-lg transition font-medium"
@@ -199,7 +237,7 @@ export function HatirlatmaProvider({ children }) {
                               background: 'rgba(1,118,211,0.06)',
                             }}
                           >
-                            📄 Teklifi Aç
+                            {acButonLabel}
                           </button>
                           <button
                             onClick={() => ertele(h.id, 3)}

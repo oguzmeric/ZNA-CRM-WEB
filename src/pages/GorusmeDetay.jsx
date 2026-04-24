@@ -3,15 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
+  BellRing, Clock, Check, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
+import { useHatirlatma } from '../context/HatirlatmaContext'
+import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import {
   Button, Input, Textarea, Label,
-  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl,
+  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal,
 } from '../components/ui'
 
 const varsayilanKonular = [
@@ -56,7 +59,10 @@ function GorusmeDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
   const { bildirimEkle } = useBildirim()
+  const { gorusmeHatirlatmaEkle, gorusmeHatirlatmasi, tamamla: hatirlatmaTamamla } = useHatirlatma()
+  const { toast } = useToast()
   const navigate = useNavigate()
+  const [hatirlatmaModalAcik, setHatirlatmaModalAcik] = useState(false)
 
   const [gorusme, setGorusme] = useState(null)
   const [gorevler, setGorevler] = useState([])
@@ -180,13 +186,40 @@ function GorusmeDetay() {
               </p>
             )}
           </div>
-          <Button
-            variant={duzenleAcik ? 'secondary' : 'primary'}
-            iconLeft={duzenleAcik ? null : undefined}
-            onClick={duzenleAcik ? () => setDuzenleAcik(false) : duzenleAc}
-          >
-            {duzenleAcik ? 'İptal' : 'Düzenle'}
-          </Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {(() => {
+              const mevcutHat = gorusmeHatirlatmasi(gorusme.id)
+              if (mevcutHat) {
+                const tarihStr = new Date(mevcutHat.hatirlatmaTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
+                return (
+                  <Button
+                    variant="secondary"
+                    iconLeft={<BellRing size={14} strokeWidth={1.5} style={{ color: 'var(--warning)' }} />}
+                    onClick={() => setHatirlatmaModalAcik(true)}
+                    title={`Mevcut hatırlatma: ${tarihStr}`}
+                  >
+                    Hatırlatma: {tarihStr}
+                  </Button>
+                )
+              }
+              return (
+                <Button
+                  variant="secondary"
+                  iconLeft={<BellRing size={14} strokeWidth={1.5} />}
+                  onClick={() => setHatirlatmaModalAcik(true)}
+                >
+                  Hatırlat
+                </Button>
+              )
+            })()}
+            <Button
+              variant={duzenleAcik ? 'secondary' : 'primary'}
+              iconLeft={duzenleAcik ? null : undefined}
+              onClick={duzenleAcik ? () => setDuzenleAcik(false) : duzenleAc}
+            >
+              {duzenleAcik ? 'İptal' : 'Düzenle'}
+            </Button>
+          </div>
         </div>
 
         {/* Görüntüleme modu */}
@@ -440,7 +473,170 @@ function GorusmeDetay() {
           </div>
         )}
       </Card>
+
+      {/* Hatırlatma modalı — preset gün veya özel tarih */}
+      <HatirlatmaModal
+        acik={hatirlatmaModalAcik}
+        onKapat={() => setHatirlatmaModalAcik(false)}
+        gorusme={gorusme}
+        mevcutHatirlatma={gorusmeHatirlatmasi(gorusme.id)}
+        onKaydet={async ({ gunSayisi, tarihIso, aciklama }) => {
+          try {
+            await gorusmeHatirlatmaEkle(gorusme, { gunSayisi, tarihIso, aciklama })
+            toast.success('Hatırlatma kaydedildi.')
+            setHatirlatmaModalAcik(false)
+          } catch (e) { toast.error(e?.message || 'Hatırlatma kaydedilemedi.') }
+        }}
+        onTamamla={async (id) => {
+          try {
+            await hatirlatmaTamamla(id)
+            toast.success('Hatırlatma tamamlandı olarak işaretlendi.')
+            setHatirlatmaModalAcik(false)
+          } catch (e) { toast.error(e?.message || 'İşlem başarısız.') }
+        }}
+      />
     </div>
+  )
+}
+
+// ───── Hatırlatma modalı ─────
+function HatirlatmaModal({ acik, onKapat, gorusme, mevcutHatirlatma, onKaydet, onTamamla }) {
+  const PRESETLER = [
+    { gun: 1,  label: 'Yarın' },
+    { gun: 3,  label: '3 gün sonra' },
+    { gun: 7,  label: '1 hafta sonra' },
+    { gun: 14, label: '2 hafta sonra' },
+    { gun: 30, label: '1 ay sonra' },
+  ]
+  const [seciliGun, setSeciliGun] = useState(7)
+  const [ozelTarih, setOzelTarih] = useState('')
+  const [aciklama, setAciklama] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  useEffect(() => {
+    if (acik) {
+      setSeciliGun(7)
+      setOzelTarih('')
+      setAciklama(mevcutHatirlatma?.aciklama || '')
+    }
+  }, [acik, mevcutHatirlatma])
+
+  const kaydet = async () => {
+    setKaydediliyor(true)
+    try {
+      if (ozelTarih) {
+        await onKaydet({ tarihIso: new Date(ozelTarih).toISOString(), aciklama })
+      } else {
+        await onKaydet({ gunSayisi: seciliGun, aciklama })
+      }
+    } finally { setKaydediliyor(false) }
+  }
+
+  if (!acik || !gorusme) return null
+
+  const hedefTarih = ozelTarih
+    ? new Date(ozelTarih)
+    : (() => { const d = new Date(); d.setDate(d.getDate() + seciliGun); return d })()
+  const hedefTarihStr = hedefTarih.toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+
+  return (
+    <Modal open={acik} onClose={onKapat} title="Takip hatırlatması">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ padding: 12, background: 'var(--brand-primary-soft)', borderRadius: 'var(--radius-sm)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--brand-primary)', fontWeight: 500 }}>{gorusme.firmaAdi}</span>
+          {gorusme.muhatapAd && <span> · {gorusme.muhatapAd}</span>}
+          {gorusme.konu && <span> · {gorusme.konu}</span>}
+        </div>
+
+        <div>
+          <Label>Hızlı seçim</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+            {PRESETLER.map(p => {
+              const aktif = !ozelTarih && seciliGun === p.gun
+              return (
+                <button
+                  key={p.gun}
+                  type="button"
+                  onClick={() => { setSeciliGun(p.gun); setOzelTarih('') }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: `1px solid ${aktif ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                    background: aktif ? 'var(--brand-primary)' : 'var(--surface-card)',
+                    color: aktif ? '#fff' : 'var(--text-primary)',
+                    font: '500 12px/16px var(--font-sans)',
+                    cursor: 'pointer',
+                    transition: 'all 120ms',
+                  }}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <Label>Veya özel tarih / saat</Label>
+          <Input
+            type="datetime-local"
+            value={ozelTarih}
+            onChange={e => setOzelTarih(e.target.value)}
+          />
+          {ozelTarih && (
+            <button
+              type="button"
+              onClick={() => setOzelTarih('')}
+              style={{ marginTop: 6, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Özel tarihi temizle
+            </button>
+          )}
+        </div>
+
+        <div>
+          <Label>Not (opsiyonel)</Label>
+          <Textarea
+            rows={2}
+            value={aciklama}
+            onChange={e => setAciklama(e.target.value)}
+            placeholder="Örn: Fiyat teyidi, teklif hazırlığı, vb."
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+          <Clock size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+          Hatırlatma tarihi: {hedefTarihStr}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {mevcutHatirlatma && (
+              <Button
+                variant="secondary"
+                iconLeft={<Check size={14} strokeWidth={1.5} />}
+                onClick={() => onTamamla(mevcutHatirlatma.id)}
+              >
+                Takip Edildi
+              </Button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" iconLeft={<X size={14} strokeWidth={1.5} />} onClick={onKapat}>
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              iconLeft={<BellRing size={14} strokeWidth={1.5} />}
+              onClick={kaydet}
+              disabled={kaydediliyor}
+            >
+              {kaydediliyor ? 'Kaydediliyor…' : (mevcutHatirlatma ? 'Güncelle' : 'Kaydet')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

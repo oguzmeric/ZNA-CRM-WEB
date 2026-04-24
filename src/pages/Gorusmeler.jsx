@@ -607,7 +607,17 @@ function Gorusmeler() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+            <table style={{ width: '100%', minWidth: 1100, tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+              <colgroup>
+                <col style={{ width: 110 }} />
+                <col style={{ width: 280 }} />
+                <col />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 140 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 150 }} />
+                <col style={{ width: 60 }} />
+              </colgroup>
               <thead>
                 <tr>
                   {['No', 'Firma / Muhatap', 'Takip Notu', 'Konu', 'Görüşen', 'Tarih', 'Durum', ''].map((h, i) => (
@@ -636,9 +646,19 @@ function Gorusmeler() {
                     <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       <CodeBadge>{g.aktNo}</CodeBadge>
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', maxWidth: 280 }}>
-                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.firmaAdi}</span>
+                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <span style={{
+                          font: '500 13px/18px var(--font-sans)',
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flex: '1 1 auto',
+                          minWidth: 0,
+                        }}>
+                          {g.firmaAdi}
+                        </span>
                         {(g.dosyalar?.length || 0) > 0 && (
                           <span title={`${g.dosyalar.length} dosya`} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 2,
@@ -654,8 +674,17 @@ function Gorusmeler() {
                         )}
                       </div>
                       {g.muhatapAd && (
-                        <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <User size={11} strokeWidth={1.5} /> {g.muhatapAd}
+                        <div style={{
+                          font: '400 12px/16px var(--font-sans)',
+                          color: 'var(--text-tertiary)',
+                          marginTop: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          minWidth: 0,
+                        }}>
+                          <User size={11} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.muhatapAd}</span>
                         </div>
                       )}
                     </td>
