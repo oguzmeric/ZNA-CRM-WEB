@@ -42,32 +42,38 @@ export function AuthProvider({ children }) {
       setKullanici(k)
     })
 
-    // === Tab idle'dan dönünce session sağlığını kontrol et ===
-    // Tab uzun süre gizli kaldığında GoTrueClient token refresh'i throttle
-    // ediliyor, token eskiyor. Tab geri geldiğinde stale token ile istek
-    // atılırsa 401 veya hang oluyor. Geri gelince:
-    //   1) Refresh'i zorla (supabase.auth.refreshSession)
-    //   2) Refresh fail olursa (refresh_token invalid, net hata vs)
-    //      tam temizlik + sayfa reload — "Ctrl+Shift+R'ı otomatik yap"
+    // === Tab idle'dan dönünce recovery ===
+    // Problem: tab 10-20 sn arka plana alındığında tarayıcı pending fetch'leri
+    // pause ediyor. Dönünce supabase client'ın pending Promise'leri askıda
+    // kalıyor → sayfa geçişleri "yüklenmiyor", refresh zorunlu oluyor.
+    //
+    // Çözüm (3 katman):
+    //  - Kısa gizlilik (>= 5 sn): cache.invalidateAll() → pending Map temizlenir,
+    //    sonraki fetch'ler taze başlar. Soft recovery, yeniden yükleme yok.
+    //  - Orta gizlilik (>= 2 dk): +  supabase.auth.refreshSession() zorla.
+    //  - Refresh fail: localStorage sb-* sil + sayfa reload (Ctrl+Shift+R otomatik).
     let hiddenAt = null
     const onVisibilityChange = async () => {
       if (document.visibilityState === 'hidden') {
         hiddenAt = Date.now()
         return
       }
-      // Visible again
       const hiddenFor = hiddenAt ? Date.now() - hiddenAt : 0
       hiddenAt = null
-      // Sadece 2+ dakika gizli kaldıysa refresh dene (kısa tab switch'lerde gereksiz)
-      if (hiddenFor < 2 * 60 * 1000) return
+
+      // Çok kısa switch'lerde (< 5 sn) dokunma
+      if (hiddenFor < 5_000) return
+
+      // Soft recovery — pending askıda Promise'leri + stale cache'i temizle
+      cacheInvalidateAll()
+
+      // 30+ sn gizlilikte ek olarak session refresh
+      if (hiddenFor < 30_000) return
       try {
         const { error } = await supabase.auth.refreshSession()
         if (error) throw error
-        // Başarılı refresh — cache'i temizle ki stale data göstermesin
-        cacheInvalidateAll()
       } catch (e) {
         console.warn('[AuthContext] session refresh fail:', e?.message)
-        // Refresh fail olduysa local state bozuk olabilir — tam reset yap
         try {
           Object.keys(localStorage)
             .filter(k => k.startsWith('sb-') || k.startsWith('supabase.'))
