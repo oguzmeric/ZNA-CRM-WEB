@@ -14,9 +14,12 @@ import Stok from './pages/Stok'
 import StokHareketleri from './pages/StokHareketleri'
 import StokOpsiyon from './pages/StokOpsiyon'
 import ModelDetay from './pages/ModelDetay'
+import SlaAyarlari from './pages/SlaAyarlari'
+import Performans from './pages/Performans'
 import TrassirLisanslar from './pages/TrassirLisanslar'
 import Teklifler from './pages/Teklifler'
 import TeklifDetay from './pages/TeklifDetay'
+import TeklifKiyasla from './pages/TeklifKiyasla'
 import Satislar from './pages/Satislar'
 import SatisDetay from './pages/SatisDetay'
 import Raporlar from './pages/Raporlar'
@@ -133,6 +136,7 @@ function App() {
         <Route path="/stok-opsiyon" element={<StokOpsiyon />} />
         <Route path="/trassir-lisanslar" element={<TrassirLisanslar />} />
         <Route path="/teklifler" element={<Teklifler />} />
+        <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />
         <Route path="/teklifler/:id" element={<TeklifDetay />} />
         <Route path="/satislar" element={<Satislar />} />
         <Route path="/satislar/:id" element={<SatisDetay />} />
@@ -150,6 +154,8 @@ function App() {
         <Route path="/kargolar/:id" element={<KargoDetay />} />
         <Route path="/takvim" element={<Takvim />} />
         <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
+        <Route path="/sla-ayarlari" element={<SlaAyarlari />} />
+        <Route path="/performans" element={<Performans />} />
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>

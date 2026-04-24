@@ -126,7 +126,7 @@ rows.forEach((r, i) => {
     irtibat_sekli: irtibatSekli,
     gorusen: temizle(r['Görüşen']) || '',
     muhatap_ad: temizle(r['Görüşülen']) || '',
-    takip_notu: temizle(r['Açıklama']).replace(/\r\n/g, '\n').trim() || '',
+    notlar: temizle(r['Açıklama']).replace(/\r\n/g, '\n').trim() || '',
     durum: 'kapali', // geçmiş kayıtlar — hepsi kapalı
     tarih,
     olusturma_tarih: new Date(tarih).toISOString(),

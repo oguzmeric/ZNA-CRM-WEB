@@ -22,8 +22,23 @@ export const teklifGetir = (id) => cached(`teklif:${id}`, async () => {
   return toCamel(data)
 })
 
+// Sayısal/ID alanlarda boş string → null, Postgres bigint hatası önlemek için
+const NUMERIC_ALANLAR = ['musteriId', 'gorusmeId', 'musteriTalepId', 'dovizKuru', 'genelIskonto', 'revizyon', 'genelToplam']
+const normalize = (obj) => {
+  const out = { ...obj }
+  NUMERIC_ALANLAR.forEach(k => {
+    if (out[k] === '' || out[k] === undefined) out[k] = null
+  })
+  // Tarih alanları da aynı şekilde
+  const TARIH_ALANLAR = ['gecerlilikTarihi', 'kabulTarihi', 'teslimTarihi', 'musteriTalepNo']
+  TARIH_ALANLAR.forEach(k => {
+    if (out[k] === '' || out[k] === undefined) out[k] = null
+  })
+  return out
+}
+
 export const teklifEkle = async (teklif) => {
-  const { id, olusturmaTarih, ...rest } = teklif
+  const { id, olusturmaTarih, ...rest } = normalize(teklif)
   const { data, error } = await supabase.from('teklifler').insert(toSnake(rest)).select().single()
   if (error) { console.error('teklifEkle hata:', error.message); throw error }
   invalidate('teklifler:list')
@@ -31,7 +46,7 @@ export const teklifEkle = async (teklif) => {
 }
 
 export const teklifGuncelle = async (id, guncellenmis) => {
-  const { id: _id, olusturmaTarih, ...rest } = guncellenmis
+  const { id: _id, olusturmaTarih, ...rest } = normalize(guncellenmis)
   const { data, error } = await supabase.from('teklifler').update(toSnake(rest)).eq('id', id).select().single()
   if (error) { console.error('teklifGuncelle hata:', error.message); throw error }
   invalidate('teklifler:list', `teklif:${id}`)

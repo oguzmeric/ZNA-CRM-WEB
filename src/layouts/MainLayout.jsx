@@ -8,6 +8,7 @@ import {
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
+  Activity, Timer,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import { Avatar } from '../components/ui'
@@ -75,6 +76,8 @@ const menuItems = [
   { id: 'chat', isim: 'Mesajlar', Icon: MessageSquare, yol: '/chat', modul: null },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi' },
+  { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi' },
+  { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi' },
 ]
 
 const durumRenkleri = {
@@ -116,6 +119,8 @@ const sayfaIsimleri = {
   '/raporlar': 'Raporlar',
   '/chat': 'Mesajlar',
   '/kullanici-yonetimi': 'Kullanıcı Yönetimi',
+  '/sla-ayarlari': 'SLA Ayarları',
+  '/performans': 'Personel Performansı',
   '/profil': 'Profilim',
 }
 
