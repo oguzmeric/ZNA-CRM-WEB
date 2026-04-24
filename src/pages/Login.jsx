@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Button, Input, Label } from '../components/ui'
@@ -9,14 +9,21 @@ function Login() {
   const [sifre, setSifre] = useState('')
   const [hata, setHata] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
   const { girisYap } = useAuth()
+
+  // Giriş sonrası gidilecek hedef — kullanıcı /login'e yönlendirildiyse
+  // geldiği sayfayı state.from ile taşıdı. Yoksa /dashboard.
+  const hedef = location.state?.from?.pathname
+    ? location.state.from.pathname + (location.state.from.search || '')
+    : '/dashboard'
 
   const handleGiris = async () => {
     setHata('')
     try {
       const basarili = await girisYap(kullaniciAdi, sifre)
       if (basarili) {
-        navigate('/dashboard', { replace: true })
+        navigate(hedef, { replace: true })
       } else {
         setHata('Kullanıcı adı veya şifre hatalı.')
       }

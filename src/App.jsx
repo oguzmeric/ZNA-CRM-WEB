@@ -46,7 +46,7 @@ import DesignSystemPage from './pages/DesignSystemPage'
 import Duyurular from './pages/Duyurular'
 
 function App() {
-  const { kullanici } = useAuth()
+  const { kullanici, oturumYuklendi } = useAuth()
   const location = useLocation()
 
   if (location.pathname === '/design-system') {
@@ -57,11 +57,34 @@ function App() {
     )
   }
 
+  // Session henüz hydrate edilmediyse hiç redirect yapma — yoksa
+  // F5 sırasında URL /login'e yazılıp kullanıcı login sonrası /dashboard'a
+  // düşüyor (bulunduğu sayfayı kaybediyor). Boş ekran göster, session
+  // yüklensin, sonra route.
+  if (!oturumYuklendi) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--surface-bg)',
+        color: 'var(--text-tertiary)',
+        font: '400 13px/18px var(--font-sans)',
+      }}>
+        Yükleniyor…
+      </div>
+    )
+  }
+
   if (!kullanici) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route
+          path="*"
+          element={<Navigate to="/login" replace state={{ from: location }} />}
+        />
       </Routes>
     )
   }
