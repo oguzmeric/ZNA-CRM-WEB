@@ -36,6 +36,8 @@ export default function ServisTalepDetay() {
   const [yeniNot, setYeniNot] = useState('')
   const [notTip, setNotTip] = useState('ic')
   const [silOnayGoster, setSilOnayGoster] = useState(false)
+  const [secilenAtanan, setSecilenAtanan] = useState('')
+  const [atamaKaydediliyor, setAtamaKaydediliyor] = useState(false)
 
   const [degPuan, setDegPuan] = useState(0)
   const [degHover, setDegHover] = useState(0)
@@ -69,14 +71,19 @@ export default function ServisTalepDetay() {
     talepGuncelle(talep.id, { durum: yeniDurum }, kullanici.ad, aciklama)
   }
 
-  const atamayapGuncelle = (kullaniciId) => {
-    const k = kullanicilar.find(x => x.id.toString() === kullaniciId)
-    talepGuncelle(
-      talep.id,
-      { atananKullaniciId: k?.id || null, atananKullaniciAd: k?.ad || null, durum: k ? 'atandi' : talep.durum },
-      kullanici.ad,
-      k ? `${k.ad} kişisine atandı` : 'Atama kaldırıldı'
-    )
+  const atamayiKaydet = async () => {
+    const k = secilenAtanan ? kullanicilar.find(x => x.id.toString() === secilenAtanan) : null
+    setAtamaKaydediliyor(true)
+    try {
+      await talepGuncelle(
+        talep.id,
+        { atananKullaniciId: k?.id || null, atananKullaniciAd: k?.ad || null, durum: k ? 'atandi' : (talep.durum === 'atandi' ? 'bekliyor' : talep.durum) },
+        kullanici.ad,
+        k ? `${k.ad} kişisine atandı` : 'Atama kaldırıldı'
+      )
+    } finally {
+      setAtamaKaydediliyor(false)
+    }
   }
 
   const planliTarihGuncelle = (tarih) => {
@@ -495,14 +502,10 @@ export default function ServisTalepDetay() {
           {/* Atama */}
           <Card>
             <p className="t-label" style={{ marginBottom: 10 }}>ATAMA</p>
-            <CustomSelect value={talep.atananKullaniciId?.toString() || ''} onChange={e => atamayapGuncelle(e.target.value)}>
-              <option value="">— Atanmadı —</option>
-              {znaKullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
-            </CustomSelect>
             {talep.atananKullaniciAd && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '6px 12px', marginTop: 10,
+                padding: '6px 12px', marginBottom: 10,
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--brand-primary-soft)',
               }}>
@@ -512,6 +515,33 @@ export default function ServisTalepDetay() {
                 </span>
               </div>
             )}
+            <CustomSelect
+              value={secilenAtanan || talep.atananKullaniciId?.toString() || ''}
+              onChange={e => setSecilenAtanan(e.target.value)}
+            >
+              <option value="">— Atanmadı —</option>
+              {znaKullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
+            </CustomSelect>
+            {(() => {
+              const mevcut = talep.atananKullaniciId?.toString() || ''
+              const secili = secilenAtanan !== '' ? secilenAtanan : mevcut
+              const degisti = secilenAtanan !== '' && secili !== mevcut
+              return (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={atamayiKaydet}
+                  disabled={!degisti || atamaKaydediliyor}
+                  style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}
+                >
+                  {atamaKaydediliyor
+                    ? 'Kaydediliyor…'
+                    : degisti
+                      ? (secili ? 'Atamayı kaydet' : 'Atamayı kaldır')
+                      : 'Değişiklik yok'}
+                </Button>
+              )
+            })()}
           </Card>
 
           {/* Planlı tarih */}
