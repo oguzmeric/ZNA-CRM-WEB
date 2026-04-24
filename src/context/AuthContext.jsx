@@ -41,7 +41,45 @@ export function AuthProvider({ children }) {
       setKullanici(k)
     })
 
-    return () => subscription.unsubscribe()
+    // === Tab idle'dan dönünce session sağlığını kontrol et ===
+    // Tab uzun süre gizli kaldığında GoTrueClient token refresh'i throttle
+    // ediliyor, token eskiyor. Tab geri geldiğinde stale token ile istek
+    // atılırsa 401 veya hang oluyor. Geri gelince:
+    //   1) Refresh'i zorla (supabase.auth.refreshSession)
+    //   2) Refresh fail olursa (refresh_token invalid, net hata vs)
+    //      tam temizlik + sayfa reload — "Ctrl+Shift+R'ı otomatik yap"
+    let hiddenAt = null
+    const onVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
+      }
+      // Visible again
+      const hiddenFor = hiddenAt ? Date.now() - hiddenAt : 0
+      hiddenAt = null
+      // Sadece 2+ dakika gizli kaldıysa refresh dene (kısa tab switch'lerde gereksiz)
+      if (hiddenFor < 2 * 60 * 1000) return
+      try {
+        const { error } = await supabase.auth.refreshSession()
+        if (error) throw error
+        // Başarılı refresh — onAuthStateChange tetiklenir, kullanici state güncellenir
+      } catch (e) {
+        console.warn('[AuthContext] session refresh fail:', e?.message)
+        // Refresh fail olduysa local state bozuk olabilir — tam reset yap
+        try {
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('sb-') || k.startsWith('supabase.'))
+            .forEach(k => localStorage.removeItem(k))
+        } catch {}
+        window.location.reload()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {
