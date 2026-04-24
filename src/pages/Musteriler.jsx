@@ -12,14 +12,13 @@ import {
 
 const durumlar = [
   { id: 'aktif', isim: 'Aktif', tone: 'aktif' },
-  { id: 'lead',  isim: 'Lead',  tone: 'lead' },
   { id: 'pasif', isim: 'Pasif', tone: 'pasif' },
   { id: 'kayip', isim: 'Kayıp', tone: 'kayip' },
 ]
 
 const bosForm = {
   ad: '', soyad: '', firma: '', unvan: '', telefon: '', email: '',
-  sehir: '', vergiNo: '', notlar: '', durum: 'lead', kod: '',
+  sehir: '', vergiNo: '', notlar: '', durum: 'aktif', kod: '',
 }
 
 const trNormalize = (str = '') =>
@@ -139,7 +138,6 @@ function Musteriler() {
   const filtreSayilari = {
     hepsi: musteriler.length,
     aktif: musteriler.filter(m => m.durum === 'aktif').length,
-    lead:  musteriler.filter(m => m.durum === 'lead').length,
     pasif: musteriler.filter(m => m.durum === 'pasif').length,
     kayip: musteriler.filter(m => m.durum === 'kayip').length,
   }
@@ -177,7 +175,6 @@ function Musteriler() {
           options={[
             { value: 'hepsi', label: 'Hepsi', count: filtreSayilari.hepsi },
             { value: 'aktif', label: 'Aktif', count: filtreSayilari.aktif },
-            { value: 'lead',  label: 'Lead',  count: filtreSayilari.lead },
             { value: 'pasif', label: 'Pasif', count: filtreSayilari.pasif },
             { value: 'kayip', label: 'Kayıp', count: filtreSayilari.kayip },
           ]}
