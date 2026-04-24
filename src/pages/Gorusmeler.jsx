@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, User, Phone, MessageCircle, Mail, Handshake,
   Building2, Monitor, Link2, Video, Send, Lightbulb, X,
+  Paperclip, Upload, FileText, Image as ImageIcon, Download,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
-import { gorusmeleriGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil } from '../services/gorusmeService'
+import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -68,6 +69,9 @@ function Gorusmeler() {
   const [konuFiltre, setKonuFiltre] = useState('')
   const [arama, setArama] = useState('')
   const [manuelKonuAc, setManuelKonuAc] = useState(false)
+  const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
+  const [mevcutDosyalar, setMevcutDosyalar] = useState([]) // Sunucudaki dosyalar
+  const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
 
   useEffect(() => {
     Promise.all([gorusmeleriGetir(), musterileriGetir()]).then(([g, m]) => {
@@ -84,6 +88,7 @@ function Gorusmeler() {
   const formAc = () => {
     setForm({ ...bosForm, gorusen: kullanici.ad, tarih: new Date().toISOString().split('T')[0] })
     setSecilenFirma(''); setManuelKonuAc(false); setDuzenleId(null); setGoster(true)
+    setYeniDosyalar([]); setMevcutDosyalar([])
   }
 
   const duzenleAc = (g) => {
@@ -103,6 +108,7 @@ function Gorusmeler() {
       tarih: g.tarih,
     })
     setManuelKonuAc(manuelMi); setDuzenleId(g.id); setGoster(true)
+    setYeniDosyalar([]); setMevcutDosyalar(g.dosyalar || [])
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -129,19 +135,87 @@ function Gorusmeler() {
     if (!form.firmaAdi || !sonKonu || !form.gorusen) {
       toast.error('Firma, konu ve görüşen zorunludur.'); return
     }
-    if (duzenleId) {
-      const g = await gorusmeGuncelle(duzenleId, { ...form, konu: sonKonu })
-      if (g) { setGorusmeler(prev => prev.map(x => x.id === duzenleId ? g : x)); toast.success('Görüşme güncellendi.') }
-      else { toast.error('Görüşme güncellenemedi.'); return }
-    } else {
-      const yeni = await gorusmeEkle({
-        ...form, konu: sonKonu, aktNo: aktNo(gorusmeler),
-        olusturanId: kullanici.id, olusturmaTarih: new Date().toISOString(),
-      })
-      if (yeni) { setGorusmeler(prev => [yeni, ...prev]); toast.success('Görüşme kaydedildi.') }
-      else { toast.error('Görüşme kaydedilemedi.'); return }
+    let gorusmeId = duzenleId
+    try {
+      if (duzenleId) {
+        const g = await gorusmeGuncelle(duzenleId, { ...form, konu: sonKonu })
+        if (!g) { toast.error('Görüşme güncellenemedi.'); return }
+        setGorusmeler(prev => prev.map(x => x.id === duzenleId ? g : x))
+      } else {
+        const yeni = await gorusmeEkle({
+          ...form, konu: sonKonu, aktNo: aktNo(gorusmeler),
+          olusturanId: kullanici.id, olusturmaTarih: new Date().toISOString(),
+        })
+        if (!yeni) { toast.error('Görüşme kaydedilemedi.'); return }
+        setGorusmeler(prev => [yeni, ...prev])
+        gorusmeId = yeni.id
+      }
+
+      // Yeni seçilen dosyaları yükle
+      if (yeniDosyalar.length > 0 && gorusmeId) {
+        setDosyaYukleniyor(true)
+        let basarili = 0
+        for (const f of yeniDosyalar) {
+          try {
+            await dosyaYukle(gorusmeId, f, kullanici.ad)
+            basarili++
+          } catch (e) {
+            console.error('[dosya yükleme]', f.name, e)
+            toast.error(`"${f.name}" yüklenemedi: ${e.message}`)
+          }
+        }
+        setDosyaYukleniyor(false)
+        if (basarili > 0) {
+          // Güncel görüşmeyi yenile (dosyalar kolonu dahil)
+          const g = await gorusmeGetir(gorusmeId)
+          if (g) setGorusmeler(prev => {
+            const varMi = prev.some(x => x.id === gorusmeId)
+            return varMi ? prev.map(x => x.id === gorusmeId ? g : x) : [g, ...prev]
+          })
+        }
+      }
+
+      toast.success(duzenleId ? 'Görüşme güncellendi.' : 'Görüşme kaydedildi.')
+    } catch (err) {
+      console.error('[gorusme kaydet]', err)
+      toast.error('Hata: ' + (err?.message || 'kaydedilemedi'))
+      return
     }
     setForm(bosForm); setSecilenFirma(''); setDuzenleId(null); setGoster(false)
+    setYeniDosyalar([]); setMevcutDosyalar([])
+  }
+
+  const dosyaIndir = async (path, name) => {
+    try {
+      const url = await dosyaLinkiAl(path)
+      const a = document.createElement('a')
+      a.href = url; a.download = name; a.target = '_blank'
+      a.click()
+    } catch (e) {
+      toast.error('Dosya açılamadı: ' + e.message)
+    }
+  }
+
+  const mevcutDosyaSil = async (path) => {
+    if (!duzenleId) return
+    try {
+      await dosyaSil(duzenleId, path)
+      setMevcutDosyalar(prev => prev.filter(d => d.path !== path))
+      // Görüşmeler state'indeki dosya listesini de güncelle
+      setGorusmeler(prev => prev.map(x =>
+        x.id === duzenleId ? { ...x, dosyalar: (x.dosyalar || []).filter(d => d.path !== path) } : x
+      ))
+      toast.success('Dosya silindi.')
+    } catch (e) {
+      toast.error('Silinemedi: ' + e.message)
+    }
+  }
+
+  const boyutFormatla = (bytes) => {
+    if (!bytes) return '—'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
   const durumGuncelle = async (id, yeniDurum) => {
@@ -157,6 +231,7 @@ function Gorusmeler() {
 
   const iptal = () => {
     setForm(bosForm); setSecilenFirma(''); setDuzenleId(null); setGoster(false); setManuelKonuAc(false)
+    setYeniDosyalar([]); setMevcutDosyalar([])
   }
 
   const gorusenler = [...new Set(gorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
@@ -363,8 +438,156 @@ function Gorusmeler() {
             />
           </div>
 
+          {/* Dosyalar */}
+          <div style={{ marginBottom: 16 }}>
+            <Label>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Paperclip size={12} strokeWidth={1.5} /> Ekler (sözleşme, fotoğraf, belge…)
+              </span>
+            </Label>
+
+            {/* Mevcut dosyalar (edit mode) */}
+            {mevcutDosyalar.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                {mevcutDosyalar.map(d => {
+                  const resim = d.type?.startsWith('image/')
+                  return (
+                    <div key={d.path} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 12px',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      marginBottom: 6,
+                      background: 'var(--surface-card)',
+                    }}>
+                      {resim
+                        ? <ImageIcon size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                        : <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.name}>
+                          {d.name}
+                        </div>
+                        <div className="t-caption" style={{ display: 'flex', gap: 8 }}>
+                          <span>{boyutFormatla(d.size)}</span>
+                          {d.uploaderAd && <span>· {d.uploaderAd}</span>}
+                          {d.uploadedAt && <span>· {new Date(d.uploadedAt).toLocaleDateString('tr-TR')}</span>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="İndir"
+                        onClick={() => dosyaIndir(d.path, d.name)}
+                        style={{
+                          width: 28, height: 28,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'transparent',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      >
+                        <Download size={12} strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Sil"
+                        onClick={() => mevcutDosyaSil(d.path)}
+                        style={{
+                          width: 28, height: 28,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'transparent',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      >
+                        <Trash2 size={12} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Yeni seçilen dosyalar (henüz yüklenmemiş) */}
+            {yeniDosyalar.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                {yeniDosyalar.map((f, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 12px',
+                    border: '1px dashed var(--brand-primary)',
+                    borderRadius: 'var(--radius-sm)',
+                    marginBottom: 6,
+                    background: 'var(--brand-primary-soft)',
+                  }}>
+                    {f.type?.startsWith('image/')
+                      ? <ImageIcon size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
+                      : <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>
+                        {f.name}
+                      </div>
+                      <div className="t-caption" style={{ color: 'var(--brand-primary)' }}>
+                        {boyutFormatla(f.size)} · Kaydederken yüklenecek
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setYeniDosyalar(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: 'var(--brand-primary)', padding: 4,
+                      }}
+                    >
+                      <X size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Dosya seç butonu */}
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              border: '1px dashed var(--border-default)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: dosyaYukleniyor ? 'not-allowed' : 'pointer',
+              color: 'var(--text-secondary)',
+              font: '500 13px/18px var(--font-sans)',
+              background: 'var(--surface-card)',
+              opacity: dosyaYukleniyor ? 0.5 : 1,
+            }}>
+              <Upload size={14} strokeWidth={1.5} />
+              {dosyaYukleniyor ? 'Yükleniyor…' : 'Dosya ekle'}
+              <input
+                type="file"
+                multiple
+                disabled={dosyaYukleniyor}
+                onChange={e => {
+                  const files = Array.from(e.target.files || [])
+                  setYeniDosyalar(prev => [...prev, ...files])
+                  e.target.value = '' // aynı dosyayı tekrar seçebilsin
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <span className="t-caption" style={{ marginLeft: 8 }}>
+              Fotoğraf, PDF, sözleşme, Word/Excel vs. (max 50 MB önerilir)
+            </span>
+          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={kaydet}>{duzenleId ? 'Güncelle' : 'Kaydet'}</Button>
+            <Button variant="primary" onClick={kaydet} disabled={dosyaYukleniyor}>
+              {dosyaYukleniyor ? 'Dosyalar yükleniyor…' : (duzenleId ? 'Güncelle' : 'Kaydet')}
+            </Button>
             <Button variant="secondary" onClick={iptal}>İptal</Button>
           </div>
         </Card>
@@ -411,8 +634,21 @@ function Gorusmeler() {
                       <CodeBadge>{g.aktNo}</CodeBadge>
                     </td>
                     <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', maxWidth: 280 }}>
-                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {g.firmaAdi}
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.firmaAdi}</span>
+                        {(g.dosyalar?.length || 0) > 0 && (
+                          <span title={`${g.dosyalar.length} dosya`} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 2,
+                            padding: '1px 6px',
+                            background: 'var(--brand-primary-soft)',
+                            color: 'var(--brand-primary)',
+                            borderRadius: 'var(--radius-pill)',
+                            font: '500 10px/14px var(--font-sans)',
+                            flexShrink: 0,
+                          }}>
+                            <Paperclip size={10} strokeWidth={1.5} /> {g.dosyalar.length}
+                          </span>
+                        )}
                       </div>
                       {g.muhatapAd && (
                         <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>

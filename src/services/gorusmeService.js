@@ -36,5 +36,64 @@ export const gorusmeGuncelle = async (id, guncellenmis) => {
 }
 
 export const gorusmeSil = async (id) => {
+  // Önce bucket'taki dosyaları temizle (orphan kalmasın)
+  const { data: g } = await supabase.from('gorusmeler').select('dosyalar').eq('id', id).single()
+  const dosyaPaths = (g?.dosyalar || []).map(d => d.path).filter(Boolean)
+  if (dosyaPaths.length > 0) {
+    await supabase.storage.from('gorusme-dosyalari').remove(dosyaPaths)
+  }
   await supabase.from('gorusmeler').delete().eq('id', id)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DOSYA yönetimi
+// ─────────────────────────────────────────────────────────────────────
+
+// Dosya yükle + dosyalar array'ini güncelle
+// Döner: yeni dosya meta objesi { path, name, type, size, uploadedAt, uploaderAd }
+export const dosyaYukle = async (gorusmeId, file, uploaderAd = '') => {
+  const safeName = file.name.replace(/[^\w.\-]/g, '_')
+  const path = `${gorusmeId}/${Date.now()}_${safeName}`
+  const { error: upError } = await supabase.storage
+    .from('gorusme-dosyalari')
+    .upload(path, file, { contentType: file.type })
+  if (upError) throw upError
+
+  const yeniMeta = {
+    path,
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+    uploaderAd: uploaderAd || null,
+  }
+
+  const { data: mevcut } = await supabase.from('gorusmeler').select('dosyalar').eq('id', gorusmeId).single()
+  const yeniDosyalar = [...(mevcut?.dosyalar || []), yeniMeta]
+  const { error: updError } = await supabase.from('gorusmeler').update({ dosyalar: yeniDosyalar }).eq('id', gorusmeId)
+  if (updError) throw updError
+
+  return yeniMeta
+}
+
+// Dosyaya geçici (60 sn) signed URL üret — bucket private olduğu için public URL yok
+export const dosyaLinkiAl = async (path) => {
+  const { data, error } = await supabase.storage
+    .from('gorusme-dosyalari')
+    .createSignedUrl(path, 60)
+  if (error) throw error
+  return data.signedUrl
+}
+
+// Dosya sil (storage + dosyalar array)
+export const dosyaSil = async (gorusmeId, path) => {
+  const { error: delError } = await supabase.storage
+    .from('gorusme-dosyalari')
+    .remove([path])
+  if (delError) throw delError
+
+  const { data: mevcut } = await supabase.from('gorusmeler').select('dosyalar').eq('id', gorusmeId).single()
+  const kalanlar = (mevcut?.dosyalar || []).filter(d => d.path !== path)
+  const { error: updError } = await supabase.from('gorusmeler').update({ dosyalar: kalanlar }).eq('id', gorusmeId)
+  if (updError) throw updError
 }
