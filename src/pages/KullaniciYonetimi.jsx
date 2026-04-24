@@ -137,7 +137,17 @@ export default function KullaniciYonetimi() {
       if (form.sifre.length < 8) {
         toast.warning('Şifre en az 8 karakter olmalı.'); return
       }
-      // 1. Supabase Auth kullanıcısı oluştur — ana client'ı kirletmeden,
+
+      // 1. Ön kontrol: kullanicilar tablosunda aynı kullanici_adi var mı?
+      const cakisma = (kullanicilar || []).find(
+        k => k.kullaniciAdi?.toLowerCase() === form.kullaniciAdi.toLowerCase()
+      )
+      if (cakisma) {
+        toast.error(`Bu kullanıcı adı zaten kullanılıyor: ${cakisma.ad}`)
+        return
+      }
+
+      // 2. Supabase Auth kullanıcısı oluştur — ana client'ı kirletmeden,
       // persistSession: false olan ayrı bir client ile. Böylece admin
       // oturumu hiç değişmez, RLS problem yaşanmaz.
       const email = `${form.kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
@@ -152,18 +162,30 @@ export default function KullaniciYonetimi() {
         options: { data: { ad: form.ad, kullanici_adi: form.kullaniciAdi, tip: form.tip } },
       })
       if (authError || !authData?.user) {
-        toast.error('Auth hatası: ' + (authError?.message || 'bilinmeyen'))
+        const msg = authError?.message || 'bilinmeyen'
+        // "User already registered" → orphan auth kaydı kalmış
+        if (/already registered|already exists/i.test(msg)) {
+          toast.error(
+            `Bu kullanıcı adı için Supabase Auth'ta kalıntı kayıt var (profil eksik). ` +
+            `Yöneticinin Supabase Dashboard → Authentication → Users'dan "${email}" satırını silmesi gerekir.`
+          )
+        } else {
+          toast.error('Auth hatası: ' + msg)
+        }
         return
       }
 
-      // 2. kullanicilar tablosuna profil satırı — ana (admin) client üzerinden
+      // 3. kullanicilar tablosuna profil satırı — ana (admin) client üzerinden
       const { sifre, ...profil } = form
       try {
         await kullaniciEkle({ ...profil, authId: authData.user.id, email })
         toast.success(`${form.ad} eklendi.`)
       } catch (err) {
         console.error('[KullaniciYonetimi] profil insert hata:', err)
-        toast.error('Profil oluşturulamadı: ' + (err?.message || 'bilinmeyen'))
+        toast.error(
+          `Profil oluşturulamadı: ${err?.message || 'bilinmeyen'}. ` +
+          `Auth kaydı oluşmuş olabilir — yönetici Supabase Authentication'dan "${email}" satırını temizlemeli.`
+        )
         return
       }
     }
