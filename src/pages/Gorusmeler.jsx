@@ -69,6 +69,8 @@ function Gorusmeler() {
   const [gorusenFiltre, setGorusenFiltre] = useState('')
   const [konuFiltre, setKonuFiltre] = useState('')
   const [arama, setArama] = useState('')
+  const [sayfa, setSayfa] = useState(1)
+  const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [manuelKonuAc, setManuelKonuAc] = useState(false)
   const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
   const [mevcutDosyalar, setMevcutDosyalar] = useState([]) // Sunucudaki dosyalar
@@ -246,6 +248,16 @@ function Gorusmeler() {
       `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.muhatapAd || ''} ${g.takipNotu || ''}`,
       arama,
     ))
+
+  const toplamSayfa = Math.max(1, Math.ceil(gorunenGorusmeler.length / sayfaBoyutu))
+  const aktifSayfa = Math.min(sayfa, toplamSayfa)
+  const sayfadakiGorusmeler = gorunenGorusmeler.slice(
+    (aktifSayfa - 1) * sayfaBoyutu,
+    aktifSayfa * sayfaBoyutu,
+  )
+
+  // Filtre değişince sayfa 1'e dön
+  useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu])
 
   const sayilari = {
     hepsi: gorusmeler.length,
@@ -636,7 +648,7 @@ function Gorusmeler() {
                 </tr>
               </thead>
               <tbody>
-                {gorunenGorusmeler.map(g => (
+                {sayfadakiGorusmeler.map(g => (
                   <tr key={g.id}
                     onClick={() => navigate(`/gorusmeler/${g.id}`)}
                     style={{ cursor: 'pointer', transition: 'background 120ms' }}
@@ -753,9 +765,94 @@ function Gorusmeler() {
                 ))}
               </tbody>
             </table>
+            <Sayfalama
+              aktifSayfa={aktifSayfa}
+              toplamSayfa={toplamSayfa}
+              toplam={gorunenGorusmeler.length}
+              sayfaBoyutu={sayfaBoyutu}
+              setSayfa={setSayfa}
+              setSayfaBoyutu={setSayfaBoyutu}
+            />
           </div>
         )}
       </Card>
+    </div>
+  )
+}
+
+function Sayfalama({ aktifSayfa, toplamSayfa, toplam, sayfaBoyutu, setSayfa, setSayfaBoyutu }) {
+  if (toplam === 0) return null
+  const ilk = (aktifSayfa - 1) * sayfaBoyutu + 1
+  const son = Math.min(aktifSayfa * sayfaBoyutu, toplam)
+
+  // Görünen sayfa numaraları: 1 ... aktif-1 aktif aktif+1 ... toplam
+  const sayfalar = []
+  const goster = (n) => sayfalar.push(n)
+  const aralik = 1
+  goster(1)
+  for (let n = aktifSayfa - aralik; n <= aktifSayfa + aralik; n++) {
+    if (n > 1 && n < toplamSayfa) goster(n)
+  }
+  if (toplamSayfa > 1) goster(toplamSayfa)
+  const tekil = [...new Set(sayfalar)].sort((a, b) => a - b)
+
+  const btnStil = (aktif, devre) => ({
+    minWidth: 32, height: 32, padding: '0 10px',
+    background: aktif ? 'var(--brand-primary)' : 'var(--surface-card)',
+    color: aktif ? '#fff' : devre ? 'var(--text-faded)' : 'var(--text-primary)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-sm)',
+    font: '500 13px/16px var(--font-sans)',
+    cursor: devre ? 'not-allowed' : 'pointer',
+    fontVariantNumeric: 'tabular-nums',
+  })
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 12, padding: '12px 16px',
+      borderTop: '1px solid var(--border-default)',
+      flexWrap: 'wrap',
+    }}>
+      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+        <span className="tabular-nums">{ilk}-{son}</span> / <span className="tabular-nums">{toplam}</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button style={btnStil(false, aktifSayfa === 1)} disabled={aktifSayfa === 1} onClick={() => setSayfa(aktifSayfa - 1)}>‹</button>
+        {tekil.map((n, i) => {
+          const onceki = tekil[i - 1]
+          const bosluk = onceki && n - onceki > 1
+          return (
+            <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {bosluk && <span style={{ color: 'var(--text-faded)', padding: '0 4px' }}>…</span>}
+              <button style={btnStil(n === aktifSayfa, false)} onClick={() => setSayfa(n)}>{n}</button>
+            </span>
+          )
+        })}
+        <button style={btnStil(false, aktifSayfa === toplamSayfa)} disabled={aktifSayfa === toplamSayfa} onClick={() => setSayfa(aktifSayfa + 1)}>›</button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>Sayfa başına</span>
+        <select
+          value={sayfaBoyutu}
+          onChange={e => setSayfaBoyutu(Number(e.target.value))}
+          style={{
+            height: 32, padding: '0 8px',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            font: '500 13px/16px var(--font-sans)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+          }}
+        >
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+          <option value={200}>200</option>
+        </select>
+      </div>
     </div>
   )
 }
