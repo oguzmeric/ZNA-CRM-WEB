@@ -87,6 +87,13 @@ export function ChatProvider({ children }) {
     return () => { supabase.removeChannel(kanal) }
   }, [kullanici?.id, kullanicilar, toast])
 
+  // DEBUG: konsoldan window.__chat ile inceleme
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__chat = { mesajlar, kullaniciId: kullanici?.id, mesajSayi: mesajlar.length }
+    }
+  }, [mesajlar, kullanici?.id])
+
   // Toplam okunmamış sayısı (alıcı = ben, okundu = false)
   useEffect(() => {
     if (!kullanici?.id) { setOkunmamis(0); return }
