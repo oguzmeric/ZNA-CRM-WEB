@@ -46,7 +46,7 @@ const dosyaBoyutFormat = (b) => {
 
 function Chat() {
   const { kullanici, kullanicilar } = useAuth()
-  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla } = useChat()
+  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla, efektifDurum } = useChat()
   const [seciliKisi, setSeciliKisi] = useState(null)
   const [yeniMesaj, setYeniMesaj] = useState('')
   const mesajSonuRef = useRef(null)
@@ -134,7 +134,7 @@ function Chat() {
             const okunmamis = okunmamisSay(k.id)
             const sonMesaj = konusmaGetir(k.id).slice(-1)[0]
             const aktif = seciliKisi?.id === k.id
-            const kisiDurum = k.durum || 'cevrimdisi'
+            const kisiDurum = efektifDurum(k)
             const sonMesajMetin = sonMesaj
               ? isDosyaMesaj(sonMesaj.icerik) ? 'Dosya' : sonMesaj.icerik
               : ''
@@ -230,7 +230,7 @@ function Chat() {
                 style={{
                   position: 'absolute', bottom: -1, right: -1,
                   width: 10, height: 10, borderRadius: '50%',
-                  background: durumRenk[seciliKisiGuncel.durum || 'cevrimdisi'],
+                  background: durumRenk[efektifDurum(seciliKisiGuncel)],
                   border: '2px solid var(--surface-card)',
                 }}
               />
@@ -239,8 +239,8 @@ function Chat() {
               <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
                 {seciliKisiGuncel.ad}
               </div>
-              <div style={{ font: '400 12px/16px var(--font-sans)', color: durumRenk[seciliKisiGuncel.durum || 'cevrimdisi'] }}>
-                {durumIsim[seciliKisiGuncel.durum || 'cevrimdisi']}
+              <div style={{ font: '400 12px/16px var(--font-sans)', color: durumRenk[efektifDurum(seciliKisiGuncel)] }}>
+                {durumIsim[efektifDurum(seciliKisiGuncel)]}
               </div>
             </div>
           </div>

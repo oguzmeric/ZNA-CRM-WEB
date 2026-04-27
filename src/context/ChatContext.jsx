@@ -31,11 +31,14 @@ const bildirimSesiCal = () => {
   } catch (e) { /* sessizce yut */ }
 }
 
+const MANUEL_DURUMLAR = ['mesgul', 'disarida', 'toplantida']
+
 export function ChatProvider({ children }) {
   const { kullanici, kullanicilar } = useAuth()
   const toast = useToast()
   const [mesajlar, setMesajlar] = useState([])
   const [okunmamis, setOkunmamis] = useState(0)
+  const [cevrimiciIdSeti, setCevrimiciIdSeti] = useState(() => new Set())
   const aktifKonusmaRef = useRef(null) // Açık olan sohbetin kisiId'si
 
   // İlk yükleme + kullanıcı değişiminde mesajları çek
@@ -86,6 +89,35 @@ export function ChatProvider({ children }) {
       .subscribe()
     return () => { supabase.removeChannel(kanal) }
   }, [kullanici?.id, kullanicilar, toast])
+
+  // Realtime Presence: kim gerçekten bağlı?
+  useEffect(() => {
+    if (!kullanici?.id) { setCevrimiciIdSeti(new Set()); return }
+    const kanal = supabase.channel('online-users', {
+      config: { presence: { key: String(kullanici.id) } },
+    })
+    kanal.on('presence', { event: 'sync' }, () => {
+      const state = kanal.presenceState()
+      setCevrimiciIdSeti(new Set(Object.keys(state).map((k) => Number(k))))
+    })
+    kanal.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await kanal.track({ id: kullanici.id, ad: kullanici.ad, at: Date.now() })
+      }
+    })
+    return () => { supabase.removeChannel(kanal) }
+  }, [kullanici?.id, kullanici?.ad])
+
+  const cevrimiciMi = useCallback((id) => cevrimiciIdSeti.has(id), [cevrimiciIdSeti])
+
+  // Görünen durum: bağlı değilse 'cevrimdisi'; bağlıysa manuel statüyü göster (yoksa 'cevrimici')
+  const efektifDurum = useCallback((k) => {
+    if (!k) return 'cevrimdisi'
+    if (k.id === kullanici?.id) return k.durum || 'cevrimici'
+    if (!cevrimiciIdSeti.has(k.id)) return 'cevrimdisi'
+    if (MANUEL_DURUMLAR.includes(k.durum)) return k.durum
+    return 'cevrimici'
+  }, [cevrimiciIdSeti, kullanici?.id])
 
   // Toplam okunmamış sayısı (alıcı = ben, okundu = false)
   useEffect(() => {
@@ -148,6 +180,8 @@ export function ChatProvider({ children }) {
       aktifKonusmaAyarla,
       konusmaGetir,
       okunmamisSay,
+      cevrimiciMi,
+      efektifDurum,
     }}>
       {children}
     </ChatContext.Provider>
