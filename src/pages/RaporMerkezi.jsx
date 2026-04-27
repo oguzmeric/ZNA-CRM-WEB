@@ -742,11 +742,13 @@ function TabloBilesenler({ modul, kayitlar }) {
         <tbody>{kayitlar.slice(0, 50).map(m => (
           <tr key={m.id} style={{ transition: 'background 120ms' }} {...rowHover}>
             <Td><CodeBadge>{m.kod}</CodeBadge></Td>
-            <Td><span style={{ fontWeight: 500 }}>{m.ad} {m.soyad}</span></Td>
-            <Td>{m.firma || '—'}</Td>
-            <Td>{m.unvan || '—'}</Td>
+            <Td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${m.ad || ''} ${m.soyad || ''}`.trim()}>
+              <span style={{ fontWeight: 500 }}>{m.ad} {m.soyad}</span>
+            </Td>
+            <Td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.firma || ''}>{m.firma || '—'}</Td>
+            <Td style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.unvan || ''}>{m.unvan || '—'}</Td>
             <Td>{m.telefon || '—'}</Td>
-            <Td>{m.sehir || '—'}</Td>
+            <Td style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.sehir || ''}>{m.sehir || '—'}</Td>
             <Td><span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)' }}>{m.durum || '—'}</span></Td>
           </tr>
         ))}</tbody>
