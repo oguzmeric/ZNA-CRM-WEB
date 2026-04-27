@@ -337,7 +337,13 @@ export default function KullaniciYonetimi() {
                 </div>
                 <div>
                   <Label required>Kullanıcı adı</Label>
-                  <Input value={form.kullaniciAdi} onChange={e => setForm({ ...form, kullaniciAdi: e.target.value })} placeholder="ahmet_y" />
+                  <Input
+                    value={form.kullaniciAdi}
+                    onChange={e => setForm({ ...form, kullaniciAdi: e.target.value })}
+                    placeholder="ahmet_y"
+                    autoComplete="off"
+                    name="kullanici_adi_yeni_kayit"
+                  />
                 </div>
                 <div>
                   <Label required={!duzenle}>Şifre</Label>
@@ -358,6 +364,8 @@ export default function KullaniciYonetimi() {
                       value={form.sifre}
                       onChange={e => setForm({ ...form, sifre: e.target.value })}
                       placeholder="En az 8 karakter"
+                      autoComplete="new-password"
+                      name="sifre_yeni_kayit"
                     />
                   )}
                 </div>
