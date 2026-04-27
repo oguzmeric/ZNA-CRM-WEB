@@ -97,10 +97,14 @@ export function ChatProvider({ children }) {
   const mesajGonder = useCallback(async (aliciId, icerik) => {
     if (!icerik?.trim() || !kullanici?.id) return
     const yeni = await dbMesajGonder(kullanici.id, aliciId, icerik)
+    if (yeni?.__error) {
+      toast?.error?.(`Mesaj gönderilemedi: ${yeni.__error}`)
+      return
+    }
     if (yeni) {
       setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
     }
-  }, [kullanici?.id])
+  }, [kullanici?.id, toast])
 
   const aktifKonusmaAyarla = useCallback((kisiId) => {
     aktifKonusmaRef.current = kisiId
