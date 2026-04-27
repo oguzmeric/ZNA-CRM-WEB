@@ -606,24 +606,24 @@ function Gorusmeler() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 1100, tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ overflowX: 'hidden' }}>
+            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <colgroup>
-                <col style={{ width: 110 }} />
-                <col style={{ width: 280 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: '22%' }} />
                 <col />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 140 }} />
+                <col style={{ width: 100 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 150 }} />
-                <col style={{ width: 60 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 50 }} />
               </colgroup>
               <thead>
                 <tr>
                   {['No', 'Firma / Muhatap', 'Takip Notu', 'Konu', 'Görüşen', 'Tarih', 'Durum', ''].map((h, i) => (
                     <th key={i} style={{
                       background: 'var(--surface-sunken)',
-                      padding: '10px 16px',
+                      padding: '10px 10px',
                       textAlign: i === 7 ? 'right' : 'left',
                       font: '600 11px/16px var(--font-sans)',
                       color: 'var(--text-tertiary)',
@@ -643,10 +643,10 @@ function Gorusmeler() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       <CodeBadge>{g.aktNo}</CodeBadge>
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                         <span style={{
                           font: '500 13px/18px var(--font-sans)',
@@ -688,21 +688,21 @@ function Gorusmeler() {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
                       <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {g.takipNotu || '—'}
                       </p>
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       <Badge tone="brand">{g.konu}</Badge>
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {g.gorusen}
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                       {g.tarih}
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)' }} onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)' }} onClick={e => e.stopPropagation()}>
                       <CustomSelect
                         value={g.durum}
                         onChange={e => durumGuncelle(g.id, e.target.value)}
@@ -711,7 +711,7 @@ function Gorusmeler() {
                         {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
                       </CustomSelect>
                     </td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 4 }}>
                         <button
                           aria-label="Düzenle"
