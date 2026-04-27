@@ -612,11 +612,11 @@ function Gorusmeler() {
                 <col style={{ width: 90 }} />
                 <col style={{ width: '22%' }} />
                 <col />
-                <col style={{ width: 100 }} />
-                <col style={{ width: 110 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 130 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 50 }} />
+                <col style={{ width: 80 }} />
               </colgroup>
               <thead>
                 <tr>
@@ -696,7 +696,7 @@ function Gorusmeler() {
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       <Badge tone="brand">{g.konu}</Badge>
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
                       {g.gorusen}
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
