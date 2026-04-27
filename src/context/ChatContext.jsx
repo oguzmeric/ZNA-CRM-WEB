@@ -96,13 +96,20 @@ export function ChatProvider({ children }) {
     const kanal = supabase.channel('online-users', {
       config: { presence: { key: String(kullanici.id) } },
     })
-    kanal.on('presence', { event: 'sync' }, () => {
+    const guncelle = () => {
       const state = kanal.presenceState()
       setCevrimiciIdSeti(new Set(Object.keys(state).map((k) => Number(k))))
-    })
+    }
+    // sync: ilk bağlantıda ve büyük güncellemelerde tetiklenir (gecikmeli olabilir)
+    // join/leave: tek bir kullanıcı bağlandığında/koptuğunda anında tetiklenir
+    kanal.on('presence', { event: 'sync' }, guncelle)
+    kanal.on('presence', { event: 'join' }, guncelle)
+    kanal.on('presence', { event: 'leave' }, guncelle)
     kanal.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await kanal.track({ id: kullanici.id, ad: kullanici.ad, at: Date.now() })
+        // Track sonrası state'i hemen yansıt (sync event'ini beklemeye gerek yok)
+        guncelle()
       }
     })
     return () => { supabase.removeChannel(kanal) }
