@@ -197,7 +197,7 @@ function Chat() {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       marginTop: 2,
                     }}>
-                      {sonMesaj.gondericId === kullanici?.id ? 'Sen: ' : ''}{sonMesajMetin}
+                      {sonMesaj.gondericiId === kullanici?.id ? 'Sen: ' : ''}{sonMesajMetin}
                     </div>
                   )}
                 </div>
@@ -264,8 +264,8 @@ function Chat() {
                 )
               }
 
-              const benimMesajim = item.gondericId === kullanici?.id
-              const gondererAd = benimMesajim ? kullanici?.ad : (kullanicilar.find(k => k.id === item.gondericId)?.ad || '?')
+              const benimMesajim = item.gondericiId === kullanici?.id
+              const gondererAd = benimMesajim ? kullanici?.ad : (kullanicilar.find(k => k.id === item.gondericiId)?.ad || '?')
               const dosyaMi = isDosyaMesaj(item.icerik)
               const dosyaBilgi = dosyaMi ? JSON.parse(item.icerik) : null
               const IconC = dosyaMi ? dosyaIcon(dosyaBilgi.dosyaTipi) : null

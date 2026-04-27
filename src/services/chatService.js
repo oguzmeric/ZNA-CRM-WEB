@@ -19,12 +19,8 @@ export const mesajGonder = async (gondericId, aliciId, icerik) => {
     .select()
     .single()
   if (error) {
-    console.error('mesajGonder hata FULL:', error)
-    return { __error: error.message || error.code || JSON.stringify(error) }
-  }
-  if (!data) {
-    console.error('mesajGonder: data null, error null — RLS SELECT engelliyor olabilir')
-    return { __error: 'Insert edildi ama row geri okunamadı (RLS SELECT?)' }
+    console.error('mesajGonder hata:', error.message)
+    return { __error: error.message }
   }
   return toCamel(data)
 }

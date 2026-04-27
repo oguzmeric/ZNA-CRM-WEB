@@ -60,9 +60,9 @@ export function ChatProvider({ children }) {
           const yeni = toCamel(payload.new)
           setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
           // Aktif sohbet bu kişi değilse bildirim göster
-          if (aktifKonusmaRef.current !== yeni.gondericId) {
+          if (aktifKonusmaRef.current !== yeni.gondericiId) {
             bildirimSesiCal()
-            const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericId)
+            const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericiId)
             const ad = gonderen?.ad || 'Yeni mesaj'
             const onizleme = (() => {
               try {
@@ -87,13 +87,6 @@ export function ChatProvider({ children }) {
     return () => { supabase.removeChannel(kanal) }
   }, [kullanici?.id, kullanicilar, toast])
 
-  // DEBUG: konsoldan window.__chat ile inceleme
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__chat = { mesajlar, kullaniciId: kullanici?.id, mesajSayi: mesajlar.length }
-    }
-  }, [mesajlar, kullanici?.id])
-
   // Toplam okunmamış sayısı (alıcı = ben, okundu = false)
   useEffect(() => {
     if (!kullanici?.id) { setOkunmamis(0); return }
@@ -109,13 +102,7 @@ export function ChatProvider({ children }) {
       return
     }
     if (yeni) {
-      console.log('[chat] insert OK, eklenen:', yeni)
-      setMesajlar((prev) => {
-        const yeniListe = prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni]
-        console.log('[chat] state size:', prev.length, '→', yeniListe.length)
-        return yeniListe
-      })
-      toast?.success?.(`✓ Mesaj kaydedildi (id:${yeni.id})`, { duration: 2000 })
+      setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
     }
   }, [kullanici?.id, toast])
 
@@ -128,7 +115,7 @@ export function ChatProvider({ children }) {
     aktifKonusmaRef.current = kisiId
     // Optimistic
     setMesajlar((prev) => prev.map((m) =>
-      m.gondericId === kisiId && m.aliciId === kullanici.id && !m.okundu
+      m.gondericiId === kisiId && m.aliciId === kullanici.id && !m.okundu
         ? { ...m, okundu: true }
         : m
     ))
@@ -139,8 +126,8 @@ export function ChatProvider({ children }) {
     if (!kullanici?.id) return []
     return mesajlar
       .filter((m) =>
-        (m.gondericId === kullanici.id && m.aliciId === kisiId) ||
-        (m.gondericId === kisiId && m.aliciId === kullanici.id)
+        (m.gondericiId === kullanici.id && m.aliciId === kisiId) ||
+        (m.gondericiId === kisiId && m.aliciId === kullanici.id)
       )
       .sort((a, b) => new Date(a.tarih) - new Date(b.tarih))
   }, [mesajlar, kullanici?.id])
@@ -148,7 +135,7 @@ export function ChatProvider({ children }) {
   const okunmamisSay = useCallback((kisiId) => {
     if (!kullanici?.id) return 0
     return mesajlar.filter((m) =>
-      m.gondericId === kisiId && m.aliciId === kullanici.id && !m.okundu
+      m.gondericiId === kisiId && m.aliciId === kullanici.id && !m.okundu
     ).length
   }, [mesajlar, kullanici?.id])
 
