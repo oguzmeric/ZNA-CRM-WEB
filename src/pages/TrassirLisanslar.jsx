@@ -185,12 +185,18 @@ function TrassirLisanslar() {
         </Alert>
       )}
 
-      {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPICard label="TOPLAM LİSANS" value={sayilari.toplam} />
-        <KPICard label="AKTİF"          value={sayilari.aktif} footer={<span style={{ color: 'var(--success)' }}>Kullanımda</span>} />
-        <KPICard label="SÜRESİ DOLDU"   value={sayilari.doldu} footer={sayilari.doldu > 0 ? <span style={{ color: 'var(--danger)' }}>Yenilenmeli</span> : <span style={{ color: 'var(--text-tertiary)' }}>Yok</span>} />
-        <KPICard label="30 GÜNDE BİTİYOR" value={sayilari.yakin} footer={sayilari.yakin > 0 ? <><AlertTriangle size={12} strokeWidth={1.5} style={{ color: 'var(--warning)' }} /><span style={{ color: 'var(--warning)' }}>Takipte</span></> : <span style={{ color: 'var(--text-tertiary)' }}>Güncel</span>} />
+      {/* KPI — kompakt */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 24,
+        padding: '10px 16px', marginBottom: 16,
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+      }}>
+        <KompaktKpi label="Toplam" value={sayilari.toplam} />
+        <KompaktKpi label="Aktif" value={sayilari.aktif} renk="var(--success)" />
+        <KompaktKpi label="Süresi doldu" value={sayilari.doldu} renk={sayilari.doldu > 0 ? 'var(--danger)' : 'var(--text-tertiary)'} />
+        <KompaktKpi label="30 günde bitiyor" value={sayilari.yakin} renk={sayilari.yakin > 0 ? 'var(--warning)' : 'var(--text-tertiary)'} />
       </div>
 
       {/* Arama + filter */}
@@ -542,6 +548,15 @@ function TrassirLisanslar() {
           </div>
         )}
       </Card>
+    </div>
+  )
+}
+
+function KompaktKpi({ label, value, renk = 'var(--text-primary)' }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <span style={{ fontSize: 22, fontWeight: 700, color: renk, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
     </div>
   )
 }
