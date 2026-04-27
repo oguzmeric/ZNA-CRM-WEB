@@ -622,10 +622,10 @@ function Gorusmeler() {
             <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <colgroup>
                 <col style={{ width: 90 }} />
-                <col style={{ width: '22%' }} />
+                <col style={{ width: '20%' }} />
                 <col />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 130 }} />
+                <col style={{ width: 160 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 110 }} />
                 <col style={{ width: 80 }} />
@@ -635,14 +635,13 @@ function Gorusmeler() {
                   {['No', 'Firma / Muhatap', 'Takip Notu', 'Konu', 'Görüşen', 'Tarih', 'Durum', ''].map((h, i) => (
                     <th key={i} style={{
                       background: 'var(--surface-sunken)',
-                      padding: i === 4 ? '10px 14px' : '10px 10px',
+                      padding: '10px 10px',
                       textAlign: i === 7 ? 'right' : 'left',
                       font: '600 11px/16px var(--font-sans)',
                       color: 'var(--text-tertiary)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em',
                       borderBottom: '1px solid var(--border-default)',
-                      borderLeft: i === 4 ? '1px solid var(--border-default)' : undefined,
                       whiteSpace: 'nowrap',
                     }}>{h}</th>
                   ))}
@@ -709,7 +708,7 @@ function Gorusmeler() {
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       <Badge tone="brand">{g.konu}</Badge>
                     </td>
-                    <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', borderLeft: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
                       {g.gorusen}
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
