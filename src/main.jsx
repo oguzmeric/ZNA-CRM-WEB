@@ -23,19 +23,19 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <ServisTalebiProvider>
           <KargoProvider>
-            <ChatProvider>
-              <BildirimProvider>
-                <AktiviteProvider>
-                  <ToastProvider>
+            <ToastProvider>
+              <ChatProvider>
+                <BildirimProvider>
+                  <AktiviteProvider>
                     <ConfirmProvider>
                       <HatirlatmaProvider>
                         <App />
                       </HatirlatmaProvider>
                     </ConfirmProvider>
-                  </ToastProvider>
-                </AktiviteProvider>
-              </BildirimProvider>
-            </ChatProvider>
+                  </AktiviteProvider>
+                </BildirimProvider>
+              </ChatProvider>
+            </ToastProvider>
           </KargoProvider>
         </ServisTalebiProvider>
       </AuthProvider>
