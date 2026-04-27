@@ -102,7 +102,13 @@ export function ChatProvider({ children }) {
       return
     }
     if (yeni) {
-      setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
+      console.log('[chat] insert OK, eklenen:', yeni)
+      setMesajlar((prev) => {
+        const yeniListe = prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni]
+        console.log('[chat] state size:', prev.length, '→', yeniListe.length)
+        return yeniListe
+      })
+      toast?.success?.(`✓ Mesaj kaydedildi (id:${yeni.id})`, { duration: 2000 })
     }
   }, [kullanici?.id, toast])
 
