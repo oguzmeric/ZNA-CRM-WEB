@@ -970,12 +970,13 @@ function Stok() {
                     <TD>{u.grupKodu ? <Badge tone="neutral">{u.grupKodu}</Badge> : '—'}</TD>
                     <TD align="right">
                       <span style={{
-                        fontWeight: 600,
-                        fontSize: 13,
+                        fontWeight: 500,
+                        fontSize: 14,
                         color: kritik ? 'var(--danger)' : 'var(--text-primary)',
-                        fontFamily: 'monospace',
+                        fontVariantNumeric: 'normal',
+                        fontFeatureSettings: 'normal',
                       }}>
-                        [{String(Math.round(Number(bakiye) || 0))}]
+                        {String(Math.round(Number(bakiye) || 0))}
                       </span>
                       {kritik && (
                         <div style={{ marginTop: 2 }}>
