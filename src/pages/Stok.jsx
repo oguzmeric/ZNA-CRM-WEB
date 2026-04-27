@@ -973,8 +973,9 @@ function Stok() {
                         fontWeight: 600,
                         fontSize: 13,
                         color: kritik ? 'var(--danger)' : 'var(--text-primary)',
+                        fontFamily: 'monospace',
                       }}>
-                        {String(Math.round(Number(bakiye) || 0))}
+                        [{String(Math.round(Number(bakiye) || 0))}]
                       </span>
                       {kritik && (
                         <div style={{ marginTop: 2 }}>
