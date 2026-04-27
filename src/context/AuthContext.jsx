@@ -89,9 +89,38 @@ export function AuthProvider({ children }) {
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
 
+    // === Aynı tab'da idle kalıp dönünce de recovery ===
+    // visibilitychange tab değişiminde fire eder. Ama kullanıcı tab'ı açık
+    // bırakıp 1-2 dk boşta kalırsa (tarayıcı throttle, websocket disconnect)
+    // bir sonraki tıklamada sayfa "donuk" geliyor — refresh zorunlu kalıyor.
+    // Çözüm: son aktivite zamanını takip et; idle süre belli eşiği geçtikten
+    // sonraki ilk aktivite olayında soft recovery uygula.
+    let sonAktivite = Date.now()
+    const IDLE_ESIK = 60_000 // 1 dakika
+
+    const aktiviteOlay = () => {
+      const simdi = Date.now()
+      const bosluk = simdi - sonAktivite
+      sonAktivite = simdi
+      if (bosluk >= IDLE_ESIK) {
+        // Askıda kalmış olabilecek istekleri iptal + cache temizle
+        abortAllInFlight('idle-recovery')
+        cacheInvalidateAll()
+        // 5+ dk idle ise session'ı da yenile
+        if (bosluk >= 300_000) {
+          supabase.auth.refreshSession().catch((e) => {
+            console.warn('[AuthContext] idle session refresh fail:', e?.message)
+          })
+        }
+      }
+    }
+    const olaylar = ['click', 'keydown', 'mousemove', 'touchstart']
+    olaylar.forEach((e) => document.addEventListener(e, aktiviteOlay, { passive: true }))
+
     return () => {
       subscription.unsubscribe()
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      olaylar.forEach((e) => document.removeEventListener(e, aktiviteOlay))
     }
   }, [])
 
