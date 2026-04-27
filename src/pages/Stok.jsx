@@ -893,7 +893,7 @@ function Stok() {
                 const bakiye = stokBakiye(u.stokKodu)
                 const opsiyon = opsiyonluMiktar(u.stokKodu)
                 const bos = bakiye - opsiyon
-                const kritik = u.minStok && bakiye <= Number(u.minStok)
+                const kritik = Boolean(u.minStok) && bakiye <= Number(u.minStok)
                 const kalemOzet = kalemOzetleri.get(u.stokKodu)
                 const seriTakipli = !!kalemOzet
                 const gosterilenMarka = kalemOzet?.marka || u.marka || ''
@@ -978,11 +978,11 @@ function Stok() {
                       }}>
                         {String(Math.round(Number(bakiye) || 0))}
                       </span>
-                      {kritik && (
+                      {kritik ? (
                         <div style={{ marginTop: 2 }}>
                           <Badge tone="kayip">Kritik</Badge>
                         </div>
-                      )}
+                      ) : null}
                     </TD>
                     <TD align="right">
                       <span className="tabular-nums" style={{
