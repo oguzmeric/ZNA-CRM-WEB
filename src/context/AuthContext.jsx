@@ -103,10 +103,12 @@ export function AuthProvider({ children }) {
       const bosluk = simdi - sonAktivite
       sonAktivite = simdi
       if (bosluk >= IDLE_ESIK) {
-        // Askıda kalmış olabilecek istekleri iptal + cache temizle
-        abortAllInFlight('idle-recovery')
+        // Cache'i temizle — sonraki fetch taze veri çekecek.
+        // abortAllInFlight ÇAĞIRMIYORUZ: tıklamayı tetikleyen olay aynı zamanda
+        // yeni bir fetch başlatmış olabilir, onu öldürmek olmaz. Hanging eski
+        // fetch'leri zaten 20sn global timeout iptal ediyor.
         cacheInvalidateAll()
-        // 5+ dk idle ise session'ı da yenile
+        // 5+ dk idle ise session'ı da yenile (refresh JWT'yi tazeler)
         if (bosluk >= 300_000) {
           supabase.auth.refreshSession().catch((e) => {
             console.warn('[AuthContext] idle session refresh fail:', e?.message)

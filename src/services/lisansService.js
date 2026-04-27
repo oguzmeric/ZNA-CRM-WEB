@@ -38,8 +38,18 @@ const dbToForm = (row) => {
     kanalSayisi: row.kamera_sayisi || '',
     notlar: row.notlar || '',
     olusturmaTarih: row.olusturma_tarih || '',
-    demoGun: '30',
+    demoGun: hesaplaDemoGun(row.baslangic_tarihi, row.bitis_tarihi),
   }
+}
+
+// Demo gün sayısını başlangıç-bitiş farkından hesapla.
+// 7/14/30/60/90 listesinden en yakını eşleşmezse '30' fallback.
+function hesaplaDemoGun(bas, bitis) {
+  if (!bas || !bitis) return '30'
+  const ms = new Date(bitis) - new Date(bas)
+  const gun = Math.round(ms / (1000 * 60 * 60 * 24))
+  const sec = [7, 14, 30, 60, 90].find((g) => g === gun)
+  return sec ? String(sec) : String(gun)
 }
 
 export const lisanslariGetir = () => cached('lisanslar:list', async () => {
