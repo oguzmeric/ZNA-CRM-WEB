@@ -969,11 +969,12 @@ function Stok() {
                     <TD>{gosterilenMarka || '—'}</TD>
                     <TD>{u.grupKodu ? <Badge tone="neutral">{u.grupKodu}</Badge> : '—'}</TD>
                     <TD align="right">
-                      <span className="tabular-nums" style={{
-                        font: '600 13px/18px var(--font-sans)',
+                      <span style={{
+                        fontWeight: 600,
+                        fontSize: 13,
                         color: kritik ? 'var(--danger)' : 'var(--text-primary)',
                       }}>
-                        {Math.round(Number(bakiye) || 0)}
+                        {String(Math.round(Number(bakiye) || 0))}
                       </span>
                       {kritik && (
                         <div style={{ marginTop: 2 }}>
