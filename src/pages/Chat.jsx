@@ -197,7 +197,7 @@ function Chat() {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       marginTop: 2,
                     }}>
-                      {sonMesaj.gondericId === kullanici?.id?.toString() ? 'Sen: ' : ''}{sonMesajMetin}
+                      {sonMesaj.gondericId === kullanici?.id ? 'Sen: ' : ''}{sonMesajMetin}
                     </div>
                   )}
                 </div>
@@ -264,7 +264,8 @@ function Chat() {
                 )
               }
 
-              const benimMesajim = item.gondericId === kullanici?.id?.toString()
+              const benimMesajim = item.gondericId === kullanici?.id
+              const gondererAd = benimMesajim ? kullanici?.ad : (kullanicilar.find(k => k.id === item.gondericId)?.ad || '?')
               const dosyaMi = isDosyaMesaj(item.icerik)
               const dosyaBilgi = dosyaMi ? JSON.parse(item.icerik) : null
               const IconC = dosyaMi ? dosyaIcon(dosyaBilgi.dosyaTipi) : null
@@ -280,7 +281,7 @@ function Chat() {
                 >
                   {!benimMesajim && (
                     <div style={{ marginRight: 8, alignSelf: 'flex-end' }}>
-                      <Avatar name={item.gondericAd} size="xs" />
+                      <Avatar name={gondererAd} size="xs" />
                     </div>
                   )}
                   <div style={{
