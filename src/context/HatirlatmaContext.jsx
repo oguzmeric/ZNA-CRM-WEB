@@ -7,6 +7,19 @@ import {
   hatirlatmaGuncelle,
   hatirlatmaSilDB,
 } from '../services/hatirlatmaService'
+import { lisanslariGetir } from '../services/lisansService'
+
+// Demo bitişi <= bu kadar gün ise hatırlatma çıkar
+const LISANS_UYARI_GUN = 3
+// Sessions arası "ertele" — localStorage'da tutulur (lisans için DB kayıt açmıyoruz)
+const SNOOZE_KEY = 'lisans_hatirlatma_snooze' // { [lisansId]: epochMs (bu zamana kadar gizle) }
+
+const snoozeOku = () => {
+  try { return JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}') } catch { return {} }
+}
+const snoozeYaz = (obj) => {
+  try { localStorage.setItem(SNOOZE_KEY, JSON.stringify(obj)) } catch {}
+}
 
 const HatirlatmaContext = createContext(null)
 
@@ -18,14 +31,44 @@ export function HatirlatmaProvider({ children }) {
   const kontrolEdildiRef = useRef(false)
 
   useEffect(() => {
-    hatirlatmalariGetir().then((liste) => {
+    Promise.all([hatirlatmalariGetir(), lisanslariGetir().catch(() => [])]).then(([liste, lisanslar]) => {
       setHatirlatmalar(liste)
       if (kontrolEdildiRef.current) return
       kontrolEdildiRef.current = true
       const simdi = new Date()
-      const vadesiGelen = liste.filter(
+
+      // Demo lisanslarda bitişe <= 3 gün kalanlar (synthetic hatirlatma)
+      const snooze = snoozeOku()
+      const lisansHatirlatmalari = (lisanslar || [])
+        .filter((l) => l.lisansTipi === 'sureksiz_demo' && l.durum === 'aktif' && l.bitisTarih)
+        .map((l) => {
+          const kalanGun = Math.ceil((new Date(l.bitisTarih) - simdi) / 86400000)
+          return { l, kalanGun }
+        })
+        .filter(({ kalanGun, l }) => {
+          if (kalanGun > LISANS_UYARI_GUN || kalanGun < 0) return false
+          // Snooze kontrolü
+          if (snooze[l.id] && snooze[l.id] > simdi.getTime()) return false
+          return true
+        })
+        .map(({ l, kalanGun }) => ({
+          id: `lisans-${l.id}`,
+          tip: 'lisans',
+          lisansId: l.id,
+          firmaAdi: l.firmaAdi,
+          konu: `Demo lisans — ${kalanGun === 0 ? 'bugün' : kalanGun + ' gün içinde'} bitiyor`,
+          aciklama: l.lisansKodu ? `Lisans no: ${l.lisansKodu}` : '',
+          bitisTarih: l.bitisTarih,
+          hatirlatmaTarihi: simdi.toISOString(),
+          olusturmaTarih: l.olusturmaTarih || simdi.toISOString(),
+          durum: 'bekliyor',
+          kalanGun,
+        }))
+
+      const vadesiGelenGercek = liste.filter(
         (h) => h.durum === 'bekliyor' && new Date(h.hatirlatmaTarihi) <= simdi
       )
+      const vadesiGelen = [...vadesiGelenGercek, ...lisansHatirlatmalari]
       if (vadesiGelen.length > 0) {
         setVadesiGelenler(vadesiGelen)
         setTimeout(() => setGosterModal(true), 800)
@@ -91,13 +134,24 @@ export function HatirlatmaProvider({ children }) {
   const gorusmeHatirlatmasi = (gorusmeId) =>
     hatirlatmalar.find(h => h.gorusmeId === gorusmeId && h.durum === 'bekliyor') || null
 
+  // Synthetic lisans reminder mı? (id "lisans-XX" formatında)
+  const lisansSentetikMi = (id) => typeof id === 'string' && id.startsWith('lisans-')
+
   const tamamla = async (id) => {
-    const kayitli = await hatirlatmaGuncelle(id, {
-      durum: 'tamamlandi',
-      tamamlanmaTarihi: new Date().toISOString(),
-    })
-    if (kayitli) {
-      setHatirlatmalar(prev => prev.map(h => h.id === id ? { ...h, ...kayitli } : h))
+    if (lisansSentetikMi(id)) {
+      // Lisans için DB kaydı yok — uzun süreli snooze (30 gün) yap
+      const snooze = snoozeOku()
+      const lisansId = String(id).replace('lisans-', '')
+      snooze[lisansId] = Date.now() + 30 * 86400000
+      snoozeYaz(snooze)
+    } else {
+      const kayitli = await hatirlatmaGuncelle(id, {
+        durum: 'tamamlandi',
+        tamamlanmaTarihi: new Date().toISOString(),
+      })
+      if (kayitli) {
+        setHatirlatmalar(prev => prev.map(h => h.id === id ? { ...h, ...kayitli } : h))
+      }
     }
     const yeniVadesi = vadesiGelenler.filter((h) => h.id !== id)
     setVadesiGelenler(yeniVadesi)
@@ -105,14 +159,21 @@ export function HatirlatmaProvider({ children }) {
   }
 
   const ertele = async (id, gunSayisi = 3) => {
-    const tarih = new Date()
-    tarih.setDate(tarih.getDate() + gunSayisi)
-    const kayitli = await hatirlatmaGuncelle(id, {
-      hatirlatmaTarihi: tarih.toISOString(),
-      durum: 'bekliyor',
-    })
-    if (kayitli) {
-      setHatirlatmalar(prev => prev.map(h => h.id === id ? { ...h, ...kayitli } : h))
+    if (lisansSentetikMi(id)) {
+      const snooze = snoozeOku()
+      const lisansId = String(id).replace('lisans-', '')
+      snooze[lisansId] = Date.now() + gunSayisi * 86400000
+      snoozeYaz(snooze)
+    } else {
+      const tarih = new Date()
+      tarih.setDate(tarih.getDate() + gunSayisi)
+      const kayitli = await hatirlatmaGuncelle(id, {
+        hatirlatmaTarihi: tarih.toISOString(),
+        durum: 'bekliyor',
+      })
+      if (kayitli) {
+        setHatirlatmalar(prev => prev.map(h => h.id === id ? { ...h, ...kayitli } : h))
+      }
     }
     const yeniVadesi = vadesiGelenler.filter((h) => h.id !== id)
     setVadesiGelenler(yeniVadesi)
@@ -189,9 +250,10 @@ export function HatirlatmaProvider({ children }) {
                       (new Date() - new Date(h.olusturmaTarih)) / (1000 * 60 * 60 * 24)
                     )
                     const isGorusme = h.tip === 'gorusme'
-                    const hedefYol = isGorusme ? `/gorusmeler/${h.gorusmeId}` : `/teklifler/${h.teklifId}`
-                    const acButonLabel = isGorusme ? '📞 Görüşmeyi Aç' : '📄 Teklifi Aç'
-                    const etiket = isGorusme ? 'GÖRÜŞME' : h.teklifNo
+                    const isLisans = h.tip === 'lisans'
+                    const hedefYol = isLisans ? '/trassir-lisanslar' : isGorusme ? `/gorusmeler/${h.gorusmeId}` : `/teklifler/${h.teklifId}`
+                    const acButonLabel = isLisans ? '🎫 Lisansı Aç' : isGorusme ? '📞 Görüşmeyi Aç' : '📄 Teklifi Aç'
+                    const etiket = isLisans ? 'DEMO' : isGorusme ? 'GÖRÜŞME' : h.teklifNo
                     return (
                       <div
                         key={h.id}
@@ -216,11 +278,13 @@ export function HatirlatmaProvider({ children }) {
                           style={{ color: '#b45309' }}>
                           <span>⏱</span>
                           <span>
-                            {isGorusme
-                              ? (gunFarki === 0 ? 'Bugün planlandı' : `${gunFarki} gün önce planlandı`)
-                              : (gunFarki === 0 ? 'Bugün verildi' : `${gunFarki} gün önce verildi`)
+                            {isLisans
+                              ? (h.kalanGun === 0 ? '⚠️ Demo BUGÜN bitiyor' : `⚠️ ${h.kalanGun} gün sonra demo bitiyor`)
+                              : isGorusme
+                                ? (gunFarki === 0 ? 'Bugün planlandı' : `${gunFarki} gün önce planlandı`)
+                                : (gunFarki === 0 ? 'Bugün verildi' : `${gunFarki} gün önce verildi`)
                             }
-                            {' — '}takip bekleniyor
+                            {!isLisans && ' — takip bekleniyor'}
                           </span>
                         </div>
 
