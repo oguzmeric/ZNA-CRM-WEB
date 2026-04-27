@@ -973,7 +973,7 @@ function Stok() {
                         font: '600 13px/18px var(--font-sans)',
                         color: kritik ? 'var(--danger)' : 'var(--text-primary)',
                       }}>
-                        {bakiye.toFixed(0)}
+                        {Math.round(Number(bakiye) || 0)}
                       </span>
                       {kritik && (
                         <div style={{ marginTop: 2 }}>
@@ -994,7 +994,7 @@ function Stok() {
                         font: '600 13px/18px var(--font-sans)',
                         color: bos <= 0 ? 'var(--danger)' : 'var(--success)',
                       }}>
-                        {bos.toFixed(0)}
+                        {Math.round(Number(bos) || 0)}
                       </span>
                     </TD>
                     <TD align="right">
