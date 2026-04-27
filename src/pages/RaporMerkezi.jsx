@@ -650,10 +650,12 @@ function TabloBilesenler({ modul, kayitlar }) {
         <tbody>{kayitlar.slice(0, 50).map(g => (
           <tr key={g.id} style={{ transition: 'background 120ms' }} {...rowHover}>
             <Td><CodeBadge>{g.aktNo}</CodeBadge></Td>
-            <Td><span style={{ fontWeight: 500 }}>{g.firmaAdi || '—'}</span></Td>
-            <Td>{g.muhatapAd || '—'}</Td>
+            <Td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.firmaAdi || ''}>
+              <span style={{ fontWeight: 500 }}>{g.firmaAdi || '—'}</span>
+            </Td>
+            <Td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.muhatapAd || ''}>{g.muhatapAd || '—'}</Td>
             <Td><Badge tone="brand">{g.konu}</Badge></Td>
-            <Td>{g.gorusen || '—'}</Td>
+            <Td style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>{g.gorusen || '—'}</Td>
             <Td>{g.tarih || '—'}</Td>
             <Td>{g.durum && <Badge tone={DURUM_GORUSME_TONE[g.durum] || 'neutral'}>{DURUM_GORUSME_ISIM[g.durum] || g.durum}</Badge>}</Td>
           </tr>
