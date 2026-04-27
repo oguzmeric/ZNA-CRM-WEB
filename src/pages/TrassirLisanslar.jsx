@@ -55,7 +55,7 @@ function TrassirLisanslar() {
   const [form, setForm] = useState(bosForm)
   const [goster, setGoster] = useState(false)
   const [duzenleId, setDuzenleId] = useState(null)
-  const [filtre, setFiltre] = useState('hepsi')
+  const [filtre, setFiltre] = useState('aktif')
   const [arama, setArama] = useState('')
   const [kodModu, setKodModu] = useState('otomatik')
 
@@ -157,15 +157,18 @@ function TrassirLisanslar() {
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      {/* Header — başlık + KPI rakamlar + yeni lisans butonu aynı satırda */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src="/trassirlogo2.jpg" alt="Trassir" style={{ height: 44, objectFit: 'contain' }} />
+          <img src="/trassirlogo2.jpg" alt="Trassir" style={{ height: 40, objectFit: 'contain' }} />
           <div>
             <h1 className="t-h1">Trassir Lisanslar</h1>
-            <p className="t-caption" style={{ marginTop: 4 }}>
-              <span className="tabular-nums">{lisanslar.length}</span> lisans kayıtlı
-            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 4 }}>
+              <KompaktKpi label="Toplam" value={sayilari.toplam} />
+              <KompaktKpi label="Aktif" value={sayilari.aktif} renk="var(--success)" />
+              <KompaktKpi label="Süresi doldu" value={sayilari.doldu} renk={sayilari.doldu > 0 ? 'var(--danger)' : 'var(--text-tertiary)'} />
+              <KompaktKpi label="30 günde bitiyor" value={sayilari.yakin} renk={sayilari.yakin > 0 ? 'var(--warning)' : 'var(--text-tertiary)'} />
+            </div>
           </div>
         </div>
         <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={formAc}>
@@ -184,20 +187,6 @@ function TrassirLisanslar() {
           {yakinBitenler.length > 5 && ` ve ${yakinBitenler.length - 5} diğeri`}
         </Alert>
       )}
-
-      {/* KPI — kompakt */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 24,
-        padding: '10px 16px', marginBottom: 16,
-        background: 'var(--surface-card)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-md)',
-      }}>
-        <KompaktKpi label="Toplam" value={sayilari.toplam} />
-        <KompaktKpi label="Aktif" value={sayilari.aktif} renk="var(--success)" />
-        <KompaktKpi label="Süresi doldu" value={sayilari.doldu} renk={sayilari.doldu > 0 ? 'var(--danger)' : 'var(--text-tertiary)'} />
-        <KompaktKpi label="30 günde bitiyor" value={sayilari.yakin} renk={sayilari.yakin > 0 ? 'var(--warning)' : 'var(--text-tertiary)'} />
-      </div>
 
       {/* Arama + filter */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
