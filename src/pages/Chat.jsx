@@ -46,7 +46,7 @@ const dosyaBoyutFormat = (b) => {
 
 function Chat() {
   const { kullanici, kullanicilar } = useAuth()
-  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay } = useChat()
+  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla } = useChat()
   const [seciliKisi, setSeciliKisi] = useState(null)
   const [yeniMesaj, setYeniMesaj] = useState('')
   const mesajSonuRef = useRef(null)
@@ -56,6 +56,7 @@ function Chat() {
   const konusma = seciliKisi ? konusmaGetir(seciliKisi.id) : []
 
   useEffect(() => { if (seciliKisi) mesajlariOku(seciliKisi.id) }, [seciliKisi, konusma.length])
+  useEffect(() => () => aktifKonusmaAyarla?.(null), [aktifKonusmaAyarla])
   useEffect(() => { mesajSonuRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [konusma.length])
 
   const gonder = () => {
