@@ -96,24 +96,25 @@ export function AuthProvider({ children }) {
     // Çözüm: son aktivite zamanını takip et; idle süre belli eşiği geçtikten
     // sonraki ilk aktivite olayında soft recovery uygula.
     let sonAktivite = Date.now()
-    const IDLE_ESIK = 60_000 // 1 dakika
+    const IDLE_ESIK_HAFIF = 60_000   // 1 dk: soft recovery (cache temizle + eski fetch'leri abort et)
+    const IDLE_ESIK_AGIR = 300_000   // 5 dk: hard recovery (sayfayı sessizce yenile)
 
     const aktiviteOlay = () => {
       const simdi = Date.now()
       const bosluk = simdi - sonAktivite
       sonAktivite = simdi
-      if (bosluk >= IDLE_ESIK) {
-        // Cache'i temizle — sonraki fetch taze veri çekecek.
+
+      // 5+ dk idle: tüm state (Supabase WebSocket, JWT, in-memory cache, page state)
+      // bozulmuş olabilir. En garanti yol: sayfayı tamamen yeniden yükle.
+      // Vite preconnect + code splitting sayesinde reload hızlı; SPA cache miss yok.
+      if (bosluk >= IDLE_ESIK_AGIR) {
+        window.location.reload()
+        return
+      }
+
+      if (bosluk >= IDLE_ESIK_HAFIF) {
         cacheInvalidateAll()
-        // 5sn'den eski askıda hanging fetch'leri iptal et (yeni başlayanları
-        // bırak — tıklamayı tetikleyen click event'inin yeni fetch'ini öldürmesin).
         abortStaleInFlight(5000, 'idle-stale')
-        // 5+ dk idle ise session'ı da yenile (refresh JWT'yi tazeler)
-        if (bosluk >= 300_000) {
-          supabase.auth.refreshSession().catch((e) => {
-            console.warn('[AuthContext] idle session refresh fail:', e?.message)
-          })
-        }
       }
     }
     const olaylar = ['click', 'keydown', 'mousemove', 'touchstart']
