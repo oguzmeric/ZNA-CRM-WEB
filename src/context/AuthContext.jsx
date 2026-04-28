@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase, abortAllInFlight } from '../lib/supabase'
+import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
 import {
   kullanicilariGetir,
@@ -104,10 +104,10 @@ export function AuthProvider({ children }) {
       sonAktivite = simdi
       if (bosluk >= IDLE_ESIK) {
         // Cache'i temizle — sonraki fetch taze veri çekecek.
-        // abortAllInFlight ÇAĞIRMIYORUZ: tıklamayı tetikleyen olay aynı zamanda
-        // yeni bir fetch başlatmış olabilir, onu öldürmek olmaz. Hanging eski
-        // fetch'leri zaten 20sn global timeout iptal ediyor.
         cacheInvalidateAll()
+        // 5sn'den eski askıda hanging fetch'leri iptal et (yeni başlayanları
+        // bırak — tıklamayı tetikleyen click event'inin yeni fetch'ini öldürmesin).
+        abortStaleInFlight(5000, 'idle-stale')
         // 5+ dk idle ise session'ı da yenile (refresh JWT'yi tazeler)
         if (bosluk >= 300_000) {
           supabase.auth.refreshSession().catch((e) => {

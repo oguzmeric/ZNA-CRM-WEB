@@ -13,13 +13,29 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // bekleme sonrası empty state veya hata toast'u gelir.
 const DEFAULT_TIMEOUT_MS = 20000
 
-// Aktif fetch'lerin AbortController'larını takip et — tab idle'dan dönüşte
-// bunları toplu iptal edebilelim (askıda kalmış istekler pending Map'i
-// kilitlemesin, sayfa geçişleri donmasın).
-const activeControllers = new Set()
+// Aktif fetch'leri başlangıç timestamp'i ile takip et.
+// abortStaleInFlight ile sadece eski (>= eşik) olanları iptal ediyoruz —
+// yeni başlayan fetch'leri öldürmüyoruz.
+const activeControllers = new Map() // controller -> startedAt
 
+/**
+ * Belirli süreden eski hanging request'leri iptal et.
+ * Default 5sn — tıklamayı tetikleyen yeni fetch'leri (taze) bırakır,
+ * idle dönüşünde askıda kalanları (eski) atar.
+ */
+export function abortStaleInFlight(maxAgeMs = 5000, reason = 'idle-stale') {
+  const now = Date.now()
+  for (const [controller, startedAt] of activeControllers) {
+    if (now - startedAt >= maxAgeMs) {
+      try { controller.abort(new DOMException(reason, 'AbortError')) } catch {}
+      activeControllers.delete(controller)
+    }
+  }
+}
+
+// Geriye uyumluluk: tümünü iptal et (sayfa kapanırken vs.)
 export function abortAllInFlight(reason = 'visibility-reset') {
-  for (const controller of activeControllers) {
+  for (const controller of activeControllers.keys()) {
     try { controller.abort(new DOMException(reason, 'AbortError')) } catch {}
   }
   activeControllers.clear()
@@ -30,7 +46,7 @@ const fetchWithTimeout = (input, init = {}) => {
   if (init.signal) return fetch(input, init)
 
   const controller = new AbortController()
-  activeControllers.add(controller)
+  activeControllers.set(controller, Date.now())
 
   const timer = setTimeout(() => {
     try {
