@@ -104,15 +104,14 @@ export function AuthProvider({ children }) {
       const bosluk = simdi - sonAktivite
       sonAktivite = simdi
 
-      // 5+ dk idle: tüm state (Supabase WebSocket, JWT, in-memory cache, page state)
-      // bozulmuş olabilir. En garanti yol: sayfayı tamamen yeniden yükle.
-      // Vite preconnect + code splitting sayesinde reload hızlı; SPA cache miss yok.
       if (bosluk >= IDLE_ESIK_AGIR) {
+        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → sayfa yenileniyor`)
         window.location.reload()
         return
       }
 
       if (bosluk >= IDLE_ESIK_HAFIF) {
+        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache temizlendi + eski fetch'ler abort`)
         cacheInvalidateAll()
         abortStaleInFlight(5000, 'idle-stale')
       }
