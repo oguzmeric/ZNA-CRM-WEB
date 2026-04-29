@@ -27,9 +27,12 @@ const labelToText = (label) => {
 // selectedDisplay → string veya (value)=>string. Verilirse trigger button'da
 // option'ın children'ı yerine bu metin gösterilir (dropdown içinde tam metin
 // kalır, kullanıcı arayabilir; ama seçim sonrası kompakt görünüm).
+// panelMinWidth → dropdown panel'i için min. genişlik (px). Trigger dar olsa
+// bile panel daha geniş açılır.
 export default function CustomSelect({
   multiline = false,
   selectedDisplay,
+  panelMinWidth,
   value, onChange, className = '', style = {}, children, disabled = false,
   searchable, // eski API uyumluluğu için: opsiyonel; otomatik olarak 8+ option varsa açılır
   placeholder = 'Ara…',
@@ -88,10 +91,15 @@ export default function CustomSelect({
       const maxH = 340 // 2-line option'lara yer açmak için biraz yüksek
       const asagidaBosluk = window.innerHeight - rect.bottom
       const yukariAc = asagidaBosluk < maxH && rect.top > asagidaBosluk
+      // Panel genişliği: trigger dar olsa bile panelMinWidth verilmişse daha geniş aç.
+      // Sağa taşmasın diye viewport'tan dışarı çıkmamasını sağla.
+      const istenenGenislik = panelMinWidth ? Math.max(panelMinWidth, rect.width) : rect.width
+      const sagBosluk = window.innerWidth - rect.left - 8
+      const panelGenislik = Math.min(istenenGenislik, sagBosluk)
       setPanelStyle({
         position: 'fixed',
         left: rect.left,
-        width: rect.width,
+        width: panelGenislik,
         top: yukariAc ? undefined : rect.bottom + 4,
         bottom: yukariAc ? window.innerHeight - rect.top + 4 : undefined,
         maxHeight: maxH,

@@ -775,6 +775,7 @@ function TeklifDetay() {
                       <CustomSelect
                         value={satir.stokKodu}
                         selectedDisplay={(v) => v || 'Stok seç…'}
+                        panelMinWidth={520}
                         onChange={(e) => stokSec(index, e.target.value)}
                       >
                         <option value="">Stok seç…</option>
