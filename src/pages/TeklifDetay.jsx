@@ -578,11 +578,16 @@ function TeklifDetay() {
               <CustomSelect
                 value={form.gorusmeId}
                 onChange={(e) => setForm({ ...form, gorusmeId: e.target.value })}
+                disabled={!form.firmaAdi}
               >
-                <option value="">Görüşme seç…</option>
-                {gorusmeler.map((g) => (
-                  <option key={g.id} value={g.id}>{g.aktNo} — {g.firmaAdi}</option>
-                ))}
+                <option value="">
+                  {form.firmaAdi ? 'Görüşme seç…' : 'Önce müşteri seçin'}
+                </option>
+                {gorusmeler
+                  .filter((g) => form.firmaAdi && (g.firmaAdi || '').trim().toLowerCase() === form.firmaAdi.trim().toLowerCase())
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>{g.aktNo} — {g.konu || '—'}</option>
+                  ))}
               </CustomSelect>
             </div>
 
