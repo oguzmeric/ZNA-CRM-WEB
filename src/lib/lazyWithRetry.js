@@ -5,7 +5,14 @@ import { lazy } from 'react'
 //  1) Native dynamic import'a 8sn timeout uygular
 //  2) Hata olursa 1 kez retry yapar
 //  3) Hâlâ fail ederse "yeni deploy var olabilir" ihtimaliyle bir kez sayfayı yeniler
+//
+// Ek olarak: prefetch listesi tutar, ana app yüklendikten sonra requestIdleCallback
+// ile arka planda tüm route chunk'larını indirir → kullanıcı tıkladığında network'e
+// gerek kalmaz (module cache hit).
 const TIMEOUT_MS = 8000
+
+const prefetchKuyrugu = []
+let prefetchBaslatildi = false
 
 const importWithTimeout = (factory, timeoutMs = TIMEOUT_MS) =>
   Promise.race([
@@ -41,6 +48,8 @@ const tekSeferlikReload = () => {
 
 export function lazyWithRetry(factory, opts = {}) {
   const { retries = 1, autoReload = true } = opts
+  // Prefetch kuyruğuna ekle — App mount sonrası background'da indirilecek
+  prefetchKuyrugu.push(factory)
   return lazy(async () => {
     let lastError
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -58,5 +67,23 @@ export function lazyWithRetry(factory, opts = {}) {
       return new Promise(() => {})
     }
     throw lastError
+  })
+}
+
+/**
+ * Tüm lazy chunk'ları arka planda indir.
+ * App mount olduktan sonra çağrılmalı (örn. App.jsx useEffect).
+ * Idle callback varsa onu kullanır → ana iş yükünden çalmaz.
+ * Hata yutulur (kullanıcı tıkladığında lazyWithRetry tekrar dener).
+ */
+export function tumChunklariOnyukle() {
+  if (prefetchBaslatildi || typeof window === 'undefined') return
+  prefetchBaslatildi = true
+  const ric = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500))
+  ric(() => {
+    prefetchKuyrugu.forEach((factory, i) => {
+      // 50ms aralıkla başlat, hepsi aynı anda gitmesin
+      setTimeout(() => { factory().catch(() => {}) }, i * 50)
+    })
   })
 }

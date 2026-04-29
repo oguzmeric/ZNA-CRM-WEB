@@ -1,5 +1,5 @@
-import { Suspense } from 'react'
-import { lazyWithRetry as lazy } from './lib/lazyWithRetry'
+import { Suspense, useEffect } from 'react'
+import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
@@ -70,6 +70,12 @@ const SayfaYukleniyor = () => (
 function App() {
   const { kullanici, oturumYuklendi } = useAuth()
   const location = useLocation()
+
+  // Login sonrası tüm route chunk'larını arka planda indir.
+  // İdle dönüşünde tıklamak için network'e gerek kalmasın → module cache'ten anlık açılsın.
+  useEffect(() => {
+    if (kullanici) tumChunklariOnyukle()
+  }, [kullanici])
 
   if (location.pathname === '/design-system') {
     return (
