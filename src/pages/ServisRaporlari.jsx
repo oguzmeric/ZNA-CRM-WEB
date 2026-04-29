@@ -51,14 +51,35 @@ export default function ServisRaporlari() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
-      .then(d => { setVeri(d); setYukleniyor(false) })
+      .then(d => {
+        // Performans: search field'ı tek seferde normalize et (her keystroke'ta tekrar değil).
+        // 11k satır × her tuş vuruşunda trNormalize() = ana thread'i kilitler.
+        const indexli = d.map(r => ({
+          ...r,
+          __ara: trNormalize(`${r.fisNo} ${r.firma} ${r.lokasyon} ${r.sonuc} ${r.teknisyen} ${r.bildirilen}`),
+        }))
+        setVeri(indexli)
+        setYukleniyor(false)
+      })
       .catch(e => { setHata(String(e)); setYukleniyor(false) })
   }, [])
 
-  const firmalar   = useMemo(() => [...new Set(veri.map(r => r.firma).filter(Boolean))].sort(), [veri])
-  const teknisyenler = useMemo(() => [...new Set(veri.map(r => r.teknisyen).filter(Boolean))].sort(), [veri])
-  const arizaKodlari = useMemo(() => [...new Set(veri.map(r => r.arizaKodu).filter(Boolean))].sort(), [veri])
-  const takipDurumlari = useMemo(() => [...new Set(veri.map(r => r.takipKodu).filter(Boolean))].sort(), [veri])
+  // Tek pass'te tüm unique listeleri çıkar (4 ayrı reduce yerine 1)
+  const { firmalar, teknisyenler, arizaKodlari, takipDurumlari } = useMemo(() => {
+    const f = new Set(), t = new Set(), a = new Set(), tk = new Set()
+    for (const r of veri) {
+      if (r.firma) f.add(r.firma)
+      if (r.teknisyen) t.add(r.teknisyen)
+      if (r.arizaKodu) a.add(r.arizaKodu)
+      if (r.takipKodu) tk.add(r.takipKodu)
+    }
+    return {
+      firmalar: [...f].sort(),
+      teknisyenler: [...t].sort(),
+      arizaKodlari: [...a].sort(),
+      takipDurumlari: [...tk].sort(),
+    }
+  }, [veri])
 
   const filtreli = useMemo(() => {
     const q = trNormalize(arama)
@@ -67,13 +88,11 @@ export default function ServisRaporlari() {
       if (teknisyenFiltre && r.teknisyen !== teknisyenFiltre) return false
       if (arizaFiltre && r.arizaKodu !== arizaFiltre) return false
       if (takipFiltre && r.takipKodu !== takipFiltre) return false
-      // Tarih aralığı — r.gidTarih ISO 'YYYY-MM-DD' formatında; string karşılaştırma doğru sıralar
       if (tarihBaslangic && (!r.gidTarih || r.gidTarih < tarihBaslangic)) return false
       if (tarihBitis && (!r.gidTarih || r.gidTarih > tarihBitis)) return false
       if (!q) return true
-      return trNormalize(
-        `${r.fisNo} ${r.firma} ${r.lokasyon} ${r.sonuc} ${r.teknisyen} ${r.bildirilen}`
-      ).includes(q)
+      // Pre-computed __ara field — trNormalize tekrar çağrılmaz
+      return r.__ara.includes(q)
     })
   }, [veri, arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
