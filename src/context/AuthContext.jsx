@@ -83,34 +83,59 @@ export function AuthProvider({ children }) {
     // bir sonraki tıklamada sayfa "donuk" geliyor — refresh zorunlu kalıyor.
     // Çözüm: son aktivite zamanını takip et; idle süre belli eşiği geçtikten
     // sonraki ilk aktivite olayında soft recovery uygula.
+    // === Aynı tab'da idle detection ===
+    // Önemli: mousemove DİNLEMİYORUZ — kullanıcı başka uygulamada çalışırken
+    // cursor browser üstünde durunca sonAktivite gereksiz yere yenileniyor,
+    // bosluk asla eşiği geçmiyor ama altta HTTP/2 keep-alive ölüyordu.
+    // Sadece anlamlı interaction'ları say: click, keydown, touchstart.
+    // window.focus de eklendi — kullanıcı başka pencereden geri döndü mü
+    // kesin sinyal verir.
     let sonAktivite = Date.now()
-    const IDLE_ESIK_HAFIF = 60_000   // 1 dk: soft recovery (cache temizle + eski fetch'leri abort et)
-    const IDLE_ESIK_AGIR = 300_000   // 5 dk: hard recovery (sayfayı sessizce yenile)
+    const IDLE_ESIK_HAFIF = 60_000   // 1 dk: cache temizle + stale abort
+    const IDLE_ESIK_AGIR = 180_000   // 3 dk: sessiz reload (chunk preload anlık)
 
-    const aktiviteOlay = () => {
+    const aktiviteOlay = (e) => {
       const simdi = Date.now()
       const bosluk = simdi - sonAktivite
       sonAktivite = simdi
 
+      // focus event'i navigasyon değil, sadece sinyal — recovery yapma
+      if (e?.type === 'focus') return
+
       if (bosluk >= IDLE_ESIK_AGIR) {
-        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → sayfa yenileniyor`)
+        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → sessiz reload`)
         window.location.reload()
         return
       }
-
       if (bosluk >= IDLE_ESIK_HAFIF) {
-        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache temizlendi + eski fetch'ler abort`)
+        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache+abort`)
         cacheInvalidateAll()
         abortStaleInFlight(5000, 'idle-stale')
       }
     }
-    const olaylar = ['click', 'keydown', 'mousemove', 'touchstart']
+
+    // window.focus — başka uygulamadan/pencereden geri dönüş
+    const onFocus = () => {
+      const bosluk = Date.now() - sonAktivite
+      if (bosluk >= IDLE_ESIK_AGIR) {
+        console.info(`[focus] ${Math.round(bosluk/1000)}sn dış uygulamada → reload`)
+        window.location.reload()
+      } else if (bosluk >= IDLE_ESIK_HAFIF) {
+        cacheInvalidateAll()
+        abortStaleInFlight(5000, 'focus-stale')
+      }
+      sonAktivite = Date.now()
+    }
+
+    const olaylar = ['click', 'keydown', 'touchstart']
     olaylar.forEach((e) => document.addEventListener(e, aktiviteOlay, { passive: true }))
+    window.addEventListener('focus', onFocus)
 
     return () => {
       subscription.unsubscribe()
       document.removeEventListener('visibilitychange', onVisibilityChange)
       olaylar.forEach((e) => document.removeEventListener(e, aktiviteOlay))
+      window.removeEventListener('focus', onFocus)
     }
   }, [])
 
