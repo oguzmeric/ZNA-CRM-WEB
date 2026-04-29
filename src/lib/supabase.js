@@ -11,7 +11,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // koyuyoruz — istek uzun sürerse AbortError'la rejekte olur, .catch çalışır,
 // .finally setYukleniyor(false) yapar. Kullanıcı deneyimi: en fazla 20sn
 // bekleme sonrası empty state veya hata toast'u gelir.
-const DEFAULT_TIMEOUT_MS = 20000
+// 8sn — idle dönüşünde HTTP/2 keep-alive ölmüş olabilir, hızlı timeout'la
+// kullanıcıyı 20sn değil 8sn'de kurtaralım. Page-level useEffect .finally
+// setYukleniyor(false) yapacak, kullanıcı menüden tekrar tıklayabilir
+// (browser yeni HTTP bağlantısı kurar).
+const DEFAULT_TIMEOUT_MS = 8000
 
 // Aktif fetch'leri başlangıç timestamp'i ile takip et.
 // abortStaleInFlight ile sadece eski (>= eşik) olanları iptal ediyoruz —

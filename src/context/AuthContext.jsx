@@ -64,26 +64,14 @@ export function AuthProvider({ children }) {
       // Çok kısa switch'lerde (< 5 sn) dokunma
       if (hiddenFor < 5_000) return
 
-      // Soft recovery:
-      //  1) Aktif in-flight fetch'leri ZORLA abort et (tarayıcı tab hidden
-      //     iken onları pause etmişti, dönünce askıda kalıyor)
-      //  2) Cache + pending Map'i temizle
-      // Böylece sonraki sayfa geçişinde yeni fetch'ler anında başlar.
+      // 5sn-2dk: soft recovery — cache temizle, eski fetch'leri iptal et
       abortAllInFlight('tab-idle-recovery')
       cacheInvalidateAll()
 
-      // 30+ sn gizlilikte ek olarak session refresh
-      if (hiddenFor < 30_000) return
-      try {
-        const { error } = await supabase.auth.refreshSession()
-        if (error) throw error
-      } catch (e) {
-        console.warn('[AuthContext] session refresh fail:', e?.message)
-        try {
-          Object.keys(localStorage)
-            .filter(k => k.startsWith('sb-') || k.startsWith('supabase.'))
-            .forEach(k => localStorage.removeItem(k))
-        } catch {}
+      // 2+ dk gizliyse: HTTP/2 keep-alive ölmüş olabilir, sessiz reload
+      // (Vite preconnect + chunk preload sayesinde reload anlık)
+      if (hiddenFor >= 120_000) {
+        console.info(`[visibility] ${Math.round(hiddenFor/1000)}sn gizliydi → sessiz reload`)
         window.location.reload()
       }
     }
