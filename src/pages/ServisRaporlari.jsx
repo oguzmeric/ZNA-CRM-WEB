@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Wrench, Download, ChevronLeft, ChevronRight,
   Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer,
@@ -6,6 +6,7 @@ import {
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
 } from '../components/ui'
+import { servisRaporlariSayfa, servisRaporFiltreSecenekleri } from '../services/servisRaporService'
 
 const SAYFA_BOYUTU = 50
 
@@ -31,11 +32,13 @@ const takipTone = (s) => {
 }
 
 export default function ServisRaporlari() {
-  const [veri, setVeri] = useState([])
+  const [gorunen, setGorunen] = useState([])         // şu anki sayfada gösterilen rapor satırları
+  const [toplam, setToplam] = useState(0)            // filtreye uyan toplam kayıt
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState(null)
 
   const [arama, setArama] = useState('')
+  const [aramaDebounced, setAramaDebounced] = useState('')
   const [firmaFiltre, setFirmaFiltre] = useState('')
   const [teknisyenFiltre, setTeknisyenFiltre] = useState('')
   const [arizaFiltre, setArizaFiltre] = useState('')
@@ -45,60 +48,54 @@ export default function ServisRaporlari() {
   const [sayfa, setSayfa] = useState(1)
   const [seciliRapor, setSeciliRapor] = useState(null)
 
+  // Filtre dropdown'ları için unique listeler — bir kez çekilir (sayfa yaşamı boyunca)
+  const [firmalar, setFirmalar] = useState([])
+  const [teknisyenler, setTeknisyenler] = useState([])
+  const [arizaKodlari, setArizaKodlari] = useState([])
+  const [takipDurumlari, setTakipDurumlari] = useState([])
+
+  // Arama input için 250ms debounce — her tuş vuruşunda DB sorgusu atmasın
   useEffect(() => {
-    fetch('/data/servis-raporlari.json')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
+    const t = setTimeout(() => setAramaDebounced(arama), 250)
+    return () => clearTimeout(t)
+  }, [arama])
+
+  // Filtre dropdown verisini bir kez çek
+  useEffect(() => {
+    servisRaporFiltreSecenekleri()
+      .then(({ firmalar, teknisyenler, arizaKodlari, takipDurumlari }) => {
+        setFirmalar(firmalar); setTeknisyenler(teknisyenler)
+        setArizaKodlari(arizaKodlari); setTakipDurumlari(takipDurumlari)
       })
-      .then(d => {
-        // Performans: search field'ı tek seferde normalize et (her keystroke'ta tekrar değil).
-        // 11k satır × her tuş vuruşunda trNormalize() = ana thread'i kilitler.
-        const indexli = d.map(r => ({
-          ...r,
-          __ara: trNormalize(`${r.fisNo} ${r.firma} ${r.lokasyon} ${r.sonuc} ${r.teknisyen} ${r.bildirilen}`),
-        }))
-        setVeri(indexli)
-        setYukleniyor(false)
-      })
-      .catch(e => { setHata(String(e)); setYukleniyor(false) })
+      .catch((e) => console.warn('servisRaporFiltreSecenekleri:', e))
   }, [])
 
-  // Tek pass'te tüm unique listeleri çıkar (4 ayrı reduce yerine 1)
-  const { firmalar, teknisyenler, arizaKodlari, takipDurumlari } = useMemo(() => {
-    const f = new Set(), t = new Set(), a = new Set(), tk = new Set()
-    for (const r of veri) {
-      if (r.firma) f.add(r.firma)
-      if (r.teknisyen) t.add(r.teknisyen)
-      if (r.arizaKodu) a.add(r.arizaKodu)
-      if (r.takipKodu) tk.add(r.takipKodu)
-    }
-    return {
-      firmalar: [...f].sort(),
-      teknisyenler: [...t].sort(),
-      arizaKodlari: [...a].sort(),
-      takipDurumlari: [...tk].sort(),
-    }
-  }, [veri])
-
-  const filtreli = useMemo(() => {
-    const q = trNormalize(arama)
-    return veri.filter(r => {
-      if (firmaFiltre && r.firma !== firmaFiltre) return false
-      if (teknisyenFiltre && r.teknisyen !== teknisyenFiltre) return false
-      if (arizaFiltre && r.arizaKodu !== arizaFiltre) return false
-      if (takipFiltre && r.takipKodu !== takipFiltre) return false
-      if (tarihBaslangic && (!r.gidTarih || r.gidTarih < tarihBaslangic)) return false
-      if (tarihBitis && (!r.gidTarih || r.gidTarih > tarihBitis)) return false
-      if (!q) return true
-      // Pre-computed __ara field — trNormalize tekrar çağrılmaz
-      return r.__ara.includes(q)
+  // Server-side fetch — filtre/arama/sayfa değişince yeniden çek
+  useEffect(() => {
+    let iptal = false
+    setYukleniyor(true)
+    setHata(null)
+    servisRaporlariSayfa({
+      offset: (sayfa - 1) * SAYFA_BOYUTU,
+      limit: SAYFA_BOYUTU,
+      arama: aramaDebounced,
+      firma: firmaFiltre,
+      teknisyen: teknisyenFiltre,
+      arizaKodu: arizaFiltre,
+      takipKodu: takipFiltre,
+      tarihBaslangic, tarihBitis,
     })
-  }, [veri, arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
+      .then(({ rows, toplam }) => {
+        if (iptal) return
+        setGorunen(rows)
+        setToplam(toplam)
+        setYukleniyor(false)
+      })
+      .catch((e) => { if (!iptal) { setHata(String(e)); setYukleniyor(false) } })
+    return () => { iptal = true }
+  }, [sayfa, aramaDebounced, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
-  const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOYUTU))
-  const baslangic = (sayfa - 1) * SAYFA_BOYUTU
-  const gorunen = filtreli.slice(baslangic, baslangic + SAYFA_BOYUTU)
+  const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUTU))
 
   useEffect(() => { setSayfa(1) }, [arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
@@ -107,14 +104,16 @@ export default function ServisRaporlari() {
     setTarihBaslangic(''); setTarihBitis('')
   }
 
-  const indirExcel = () => {
-    const link = document.createElement('a')
-    link.href = '/data/servis-raporlari.json'
-    link.download = 'servis-raporlari.json'
-    link.click()
-  }
-
-  const listePdfYazdir = () => {
+  const listePdfYazdir = async () => {
+    // PDF'e tüm filtreye uyan kayıtları yaz — sayfada görünen 50 değil.
+    // Server'dan büyük limit ile çek (max 10k cap)
+    const { rows: filtreli } = await servisRaporlariSayfa({
+      offset: 0, limit: 10000,
+      arama: aramaDebounced,
+      firma: firmaFiltre, teknisyen: teknisyenFiltre,
+      arizaKodu: arizaFiltre, takipKodu: takipFiltre,
+      tarihBaslangic, tarihBitis,
+    })
     const esc = (s) => String(s ?? '—').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]))
     const filtreOzet = []
     if (tarihBaslangic && tarihBitis) filtreOzet.push(`Tarih: ${formatTarih(tarihBaslangic)} – ${formatTarih(tarihBitis)}`)
@@ -323,23 +322,17 @@ export default function ServisRaporlari() {
         <div>
           <h1 className="t-h1">Servis Raporları</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{filtreli.length.toLocaleString('tr-TR')}</span>
-            {filtreli.length !== veri.length && (
-              <> / <span className="tabular-nums">{veri.length.toLocaleString('tr-TR')}</span></>
-            )} kayıt
+            <span className="tabular-nums">{toplam.toLocaleString('tr-TR')}</span> kayıt
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={indirExcel}>
-            JSON indir
-          </Button>
           <Button
             variant="primary"
             iconLeft={<Printer size={14} strokeWidth={1.5} />}
             onClick={listePdfYazdir}
-            disabled={filtreli.length === 0}
+            disabled={toplam === 0}
           >
-            Liste PDF ({filtreli.length.toLocaleString('tr-TR')})
+            Liste PDF ({toplam.toLocaleString('tr-TR')})
           </Button>
         </div>
       </div>
@@ -547,7 +540,9 @@ export default function ServisRaporlari() {
         )}
 
         {/* Pagination */}
-        {filtreli.length > SAYFA_BOYUTU && (
+        {toplam > SAYFA_BOYUTU && (() => {
+          const baslangic = (sayfa - 1) * SAYFA_BOYUTU
+          return (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 20px',
@@ -555,7 +550,7 @@ export default function ServisRaporlari() {
             background: 'var(--surface-card)',
           }}>
             <span className="t-caption">
-              {baslangic + 1}–{Math.min(baslangic + SAYFA_BOYUTU, filtreli.length)} / {filtreli.length.toLocaleString('tr-TR')}
+              {baslangic + 1}–{Math.min(baslangic + SAYFA_BOYUTU, toplam)} / {toplam.toLocaleString('tr-TR')}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Button
@@ -581,7 +576,8 @@ export default function ServisRaporlari() {
               </Button>
             </div>
           </div>
-        )}
+          )
+        })()}
       </Card>
 
       {/* Detay modali — satıra tıklanınca açılır */}
