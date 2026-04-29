@@ -5,7 +5,7 @@ import { lazy } from 'react'
 //  1) Native dynamic import'a 8sn timeout uygular
 //  2) Hata olursa 1 kez retry yapar
 //  3) Hâlâ fail ederse "yeni deploy var olabilir" ihtimaliyle bir kez sayfayı yeniler
-const TIMEOUT_MS = 8000
+const TIMEOUT_MS = 5000
 
 const importWithTimeout = (factory, timeoutMs = TIMEOUT_MS) =>
   Promise.race([
@@ -14,6 +14,28 @@ const importWithTimeout = (factory, timeoutMs = TIMEOUT_MS) =>
       setTimeout(() => reject(new Error('chunk import timeout')), timeoutMs),
     ),
   ])
+
+// Reload bayrağını birden fazla pencere/sekme arasında paylaşmasın diye
+// pencereye özel sessionStorage flag'i. 30sn sonra otomatik temizlenir
+// ki kullanıcı sonradan başka chunk açmak istediğinde tekrar reload yapabilsin.
+const RELOAD_KEY = 'lazy_reload_at'
+const RELOAD_COOLDOWN_MS = 30_000
+
+const tekSeferlikReload = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    const son = Number(sessionStorage.getItem(RELOAD_KEY) || 0)
+    if (Date.now() - son < RELOAD_COOLDOWN_MS) {
+      // Son 30sn içinde zaten reload yaptık — sonsuz döngü olmasın
+      return false
+    }
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()))
+    window.location.reload()
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function lazyWithRetry(factory, opts = {}) {
   const { retries = 1, autoReload = true } = opts
@@ -24,19 +46,13 @@ export function lazyWithRetry(factory, opts = {}) {
         return await importWithTimeout(factory)
       } catch (e) {
         lastError = e
-        // Kısa bekleme sonrası tekrar dene
-        await new Promise((r) => setTimeout(r, 300))
+        console.warn('[lazyWithRetry] chunk fail attempt', attempt + 1, '/', retries + 1, e?.message || e)
+        await new Promise((r) => setTimeout(r, 250))
       }
     }
-    if (autoReload && typeof window !== 'undefined') {
-      // Tek seferlik reload — sonsuz döngü önle
-      const ANAHTAR = 'lazy_reload_done'
-      if (!sessionStorage.getItem(ANAHTAR)) {
-        sessionStorage.setItem(ANAHTAR, '1')
-        window.location.reload()
-      } else {
-        sessionStorage.removeItem(ANAHTAR)
-      }
+    if (autoReload && tekSeferlikReload()) {
+      // Reload tetiklendi — bu Promise hiç resolve olmayacak (sayfa değişiyor)
+      return new Promise(() => {})
     }
     throw lastError
   })
