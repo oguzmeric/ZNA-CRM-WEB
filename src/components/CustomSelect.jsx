@@ -291,11 +291,7 @@ export default function CustomSelect({
                   background: secili ? 'var(--brand-primary-soft, rgba(30,90,168,0.08))' : 'transparent',
                   fontWeight: secili ? 600 : 400,
                   transition: 'background 0.1s',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
+                  whiteSpace: 'normal',
                   wordBreak: 'break-word',
                 }}
                 onMouseEnter={(e) => { if (!secili) e.currentTarget.style.background = 'var(--surface-sunken, #EDF0F3)' }}
