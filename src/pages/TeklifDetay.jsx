@@ -784,11 +784,13 @@ function TeklifDetay() {
                         ))}
                       </CustomSelect>
                     </TD>
-                    <TD>
-                      <Input
+                    <TD style={{ verticalAlign: 'top' }}>
+                      <Textarea
                         value={satir.stokAdi}
                         onChange={(e) => satirGuncelle(index, 'stokAdi', e.target.value)}
                         placeholder="Ürün adı"
+                        rows={2}
+                        style={{ resize: 'vertical', minHeight: 36, fontSize: 13, lineHeight: '18px', padding: '8px 12px' }}
                       />
                     </TD>
                     <TD align="right">

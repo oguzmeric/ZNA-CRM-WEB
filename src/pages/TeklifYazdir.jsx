@@ -43,8 +43,8 @@ export default function TeklifYazdir() {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         .page { max-width: 860px; margin: 0 auto; padding: 32px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 8px 10px; font-size: 12px; word-break: break-word; overflow-wrap: anywhere; vertical-align: top; }
         th { background: #f1f5f9; font-weight: 700; text-align: left; }
         tr:nth-child(even) { background: #f8fafc; }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
@@ -105,6 +105,16 @@ export default function TeklifYazdir() {
         {/* Ürünler */}
         <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Ürün / Hizmet Satırları</p>
         <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+          <colgroup>
+            <col style={{ width: '4%' }} />
+            <col />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '12%' }} />
+          </colgroup>
           <thead>
             <tr>
               <th>#</th>
