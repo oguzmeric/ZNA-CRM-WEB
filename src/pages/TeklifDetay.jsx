@@ -743,14 +743,14 @@ function TeklifDetay() {
         ) : (
           <Table style={{ tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: 240 }} />
+              <col style={{ width: 140 }} />
               <col />
               <col style={{ width: 90 }} />
               <col style={{ width: 90 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 70 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 110 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 120 }} />
               <col style={{ width: 50 }} />
             </colgroup>
             <THead>
@@ -771,10 +771,10 @@ function TeklifDetay() {
                 const { toplam } = satirToplamHesapla(satir)
                 return (
                   <TR key={satir.id || index}>
-                    <TD style={{ verticalAlign: 'top' }}>
+                    <TD>
                       <CustomSelect
-                        multiline
                         value={satir.stokKodu}
+                        selectedDisplay={(v) => v || 'Stok seç…'}
                         onChange={(e) => stokSec(index, e.target.value)}
                       >
                         <option value="">Stok seç…</option>

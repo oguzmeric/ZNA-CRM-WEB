@@ -24,8 +24,12 @@ const labelToText = (label) => {
 }
 
 // multiline=true → uzun seçim metni 2 satıra kadar sarılır (ellipsis yerine wrap)
+// selectedDisplay → string veya (value)=>string. Verilirse trigger button'da
+// option'ın children'ı yerine bu metin gösterilir (dropdown içinde tam metin
+// kalır, kullanıcı arayabilir; ama seçim sonrası kompakt görünüm).
 export default function CustomSelect({
   multiline = false,
+  selectedDisplay,
   value, onChange, className = '', style = {}, children, disabled = false,
   searchable, // eski API uyumluluğu için: opsiyonel; otomatik olarak 8+ option varsa açılır
   placeholder = 'Ara…',
@@ -55,7 +59,12 @@ export default function CustomSelect({
   processChildren(children)
 
   const secilenOpt = options.find((o) => o.value === String(value ?? ''))
-  const secilenLabel = secilenOpt
+  const customDisplay = secilenOpt && selectedDisplay
+    ? (typeof selectedDisplay === 'function' ? selectedDisplay(secilenOpt.value) : selectedDisplay)
+    : null
+  const secilenLabel = customDisplay !== null && customDisplay !== undefined
+    ? customDisplay
+    : secilenOpt
     ? (Array.isArray(secilenOpt.label)
         ? secilenOpt.label.map((l, i) => <span key={i}>{l}</span>)
         : secilenOpt.label)
