@@ -741,7 +741,18 @@ function TeklifDetay() {
             />
           </div>
         ) : (
-          <Table>
+          <Table style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: 240 }} />
+              <col />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 50 }} />
+            </colgroup>
             <THead>
               <TR>
                 <TH>Stok</TH>
@@ -760,8 +771,9 @@ function TeklifDetay() {
                 const { toplam } = satirToplamHesapla(satir)
                 return (
                   <TR key={satir.id || index}>
-                    <TD>
+                    <TD style={{ verticalAlign: 'top' }}>
                       <CustomSelect
+                        multiline
                         value={satir.stokKodu}
                         onChange={(e) => stokSec(index, e.target.value)}
                       >

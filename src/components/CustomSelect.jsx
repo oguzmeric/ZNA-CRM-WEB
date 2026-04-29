@@ -23,7 +23,9 @@ const labelToText = (label) => {
   return ''
 }
 
+// multiline=true → uzun seçim metni 2 satıra kadar sarılır (ellipsis yerine wrap)
 export default function CustomSelect({
+  multiline = false,
   value, onChange, className = '', style = {}, children, disabled = false,
   searchable, // eski API uyumluluğu için: opsiyonel; otomatik olarak 8+ option varsa açılır
   placeholder = 'Ara…',
@@ -168,8 +170,14 @@ export default function CustomSelect({
           flex: 1,
           minWidth: 0,
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          textOverflow: multiline ? 'clip' : 'ellipsis',
+          whiteSpace: multiline ? 'normal' : 'nowrap',
+          wordBreak: multiline ? 'break-word' : 'normal',
+          display: multiline ? '-webkit-box' : 'block',
+          WebkitLineClamp: multiline ? 2 : undefined,
+          WebkitBoxOrient: multiline ? 'vertical' : undefined,
+          textAlign: 'left',
+          lineHeight: multiline ? '1.3' : 'inherit',
           color: secilenOpt ? 'inherit' : 'var(--text-tertiary)',
         }}>
           {secilenLabel || <span style={{ opacity: 0.6 }}>Seç…</span>}
