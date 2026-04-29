@@ -270,16 +270,19 @@ function TeklifDetay() {
     }
 
     // BENZER TEKLİF UYARISI:
-    // Aynı stok kalemleri başka bir firmaya daha önce teklif edildiyse uyar.
-    // Yeni teklif veya farklı firmaya kopyalama senaryolarında devreye girer.
+    // Aynı stok kodu + AYNI ADET başka bir firmaya daha önce teklif edildiyse uyar.
+    // Sadece kod eşleşmesi yetersiz — aynı kameralar farklı projelerde tekrar
+    // teklif edildiği için sürekli uyarı çıkıyordu. Adet de tutuyorsa gerçek
+    // çakışma var demektir.
+    const stokMiktarKey = (s) => `${s?.stokKodu || ''}@${Number(s?.miktar) || 0}`
     const yeniStokKodlari = new Set(
-      (form.satirlar || []).map(s => s?.stokKodu).filter(Boolean)
+      (form.satirlar || []).filter(s => s?.stokKodu).map(stokMiktarKey)
     )
     if (yeniStokKodlari.size > 0) {
       const cakisanlar = (tumTeklifler || []).filter(t => {
         if (!yeni && t.id?.toString() === id?.toString()) return false // kendi kendinle karşılaştırma
         if (!t.firmaAdi || t.firmaAdi.trim().toLowerCase() === form.firmaAdi.trim().toLowerCase()) return false
-        const tStok = new Set((t.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
+        const tStok = new Set((t.satirlar || []).filter(s => s?.stokKodu).map(stokMiktarKey))
         for (const k of yeniStokKodlari) if (tStok.has(k)) return true
         return false
       })
@@ -937,9 +940,11 @@ function TeklifDetay() {
       >
         {karsilasanTeklifler.length > 0 && (() => {
           const eski = karsilasanTeklifler[aktifKarsilastirmaIdx] || karsilasanTeklifler[0]
-          const yeniSet = new Set((form.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
-          const eskiSet = new Set((eski.satirlar || []).map(s => s?.stokKodu).filter(Boolean))
+          const stokMiktarKey = (s) => `${s?.stokKodu || ''}@${Number(s?.miktar) || 0}`
+          const yeniSet = new Set((form.satirlar || []).filter(s => s?.stokKodu).map(stokMiktarKey))
+          const eskiSet = new Set((eski.satirlar || []).filter(s => s?.stokKodu).map(stokMiktarKey))
           const ortak = [...yeniSet].filter(k => eskiSet.has(k))
+          const ortakKodlari = new Set(ortak.map(k => k.split('@')[0]))
           const eskiParaSembol = (paraBirimleri.find(p => p.id === (eski.paraBirimi || 'TL')))?.sembol || '₺'
           const fmtEski = (n) => `${eskiParaSembol}${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
 
@@ -1000,7 +1005,7 @@ function TeklifDetay() {
                     {(eski.satirlar || []).length === 0 ? (
                       <div className="t-caption">Satır yok</div>
                     ) : (eski.satirlar || []).map((s, i) => {
-                      const cakisan = ortak.includes(s.stokKodu)
+                      const cakisan = ortak.includes(stokMiktarKey(s))
                       return (
                         <div key={i} style={{
                           display: 'grid',
@@ -1044,7 +1049,7 @@ function TeklifDetay() {
                     {(form.satirlar || []).length === 0 ? (
                       <div className="t-caption">Satır yok</div>
                     ) : (form.satirlar || []).map((s, i) => {
-                      const cakisan = ortak.includes(s.stokKodu)
+                      const cakisan = ortak.includes(stokMiktarKey(s))
                       const sembol = paraBirimi?.sembol || '₺'
                       return (
                         <div key={i} style={{
