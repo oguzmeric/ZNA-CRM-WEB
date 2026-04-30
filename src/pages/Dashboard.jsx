@@ -173,9 +173,11 @@ export default function Dashboard() {
   }, [veriYukle])
 
   const bugun = new Date()
+  bugun.setHours(0, 0, 0, 0) // Sadece tarih karşılaştırması — saat dahil değil
   const bugunStr = bugun.toISOString().split('T')[0]
 
   const benimGorevler = gorevler.filter(g => String(g.atanan) === String(kullanici?.id) && g.durum !== 'tamamlandi')
+  // 'Geciken' = son tarihi bugünden ÖNCE. Bugün biten görev henüz gecikmemiş sayılır.
   const benimGecikGorevler = benimGorevler.filter(g => g.sonTarih && new Date(g.sonTarih) < bugun)
   const yetkili = kullanici?.moduller?.includes('kullanici_yonetimi')
   const gorunenGorusmeler = yetkili ? gorusmeler : gorusmeler.filter(g => g.gorusen === kullanici?.ad)
