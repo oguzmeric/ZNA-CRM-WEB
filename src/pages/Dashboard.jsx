@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useDovizKuru } from '../hooks/useDovizKuru'
@@ -134,7 +134,7 @@ export default function Dashboard() {
   const [teklifler, setTeklifler] = useState([])
   const [veriYukleniyor, setVeriYukleniyor] = useState(true)
 
-  useEffect(() => {
+  const veriYukle = useCallback(() => {
     const bugun = new Date()
     bugun.setHours(0, 0, 0, 0)
     Promise.all([
@@ -154,6 +154,23 @@ export default function Dashboard() {
       setVeriYukleniyor(false)
     }).catch((e) => { console.error('Dashboard veri yüklenemedi:', e); setVeriYukleniyor(false) })
   }, [])
+
+  // İlk yükleme
+  useEffect(() => { veriYukle() }, [veriYukle])
+
+  // Tab focus aldığında veriyi tazele — başka sayfada satış silinmiş/eklenmiş
+  // olabilir, Dashboard'ın KPI'ları senkron kalsın.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') veriYukle()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', veriYukle)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', veriYukle)
+    }
+  }, [veriYukle])
 
   const bugun = new Date()
   const bugunStr = bugun.toISOString().split('T')[0]
