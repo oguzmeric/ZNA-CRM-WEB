@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { gorevGetir, gorevGuncelle } from '../services/gorevService'
+import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Textarea, Card, CardTitle, Badge, Avatar, EmptyState, SegmentedControl,
 } from '../components/ui'
@@ -27,6 +28,8 @@ function GorevDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
+  const { talepOlusturGorevden } = useServisTalebi()
+  const [servisOlusturuluyor, setServisOlusturuluyor] = useState(false)
   const { toast } = useToast()
   const { confirm } = useConfirm()
 
@@ -214,10 +217,10 @@ function GorevDetay() {
           </div>
         )}
 
-        {/* Bağlı servis talebi */}
-        {gorev.servisTalepId && (
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-            <div className="t-label" style={{ marginBottom: 8 }}>BAĞLI SERVİS TALEBİ</div>
+        {/* Bağlı / Oluşturulacak servis talebi */}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+          <div className="t-label" style={{ marginBottom: 8 }}>SERVİS TALEBİ</div>
+          {gorev.servisTalepId ? (
             <button
               onClick={() => navigate(`/servis-talepleri/${gorev.servisTalepId}`)}
               style={{
@@ -239,8 +242,38 @@ function GorevDetay() {
                 Servis talebine git <ArrowRight size={12} strokeWidth={1.5} />
               </span>
             </button>
-          </div>
-        )}
+          ) : gorev.musteriId ? (
+            <Button
+              variant="primary"
+              iconLeft={<FileText size={14} strokeWidth={1.5} />}
+              disabled={servisOlusturuluyor}
+              onClick={async () => {
+                setServisOlusturuluyor(true)
+                try {
+                  const atananKisi = kullanicilar?.find(k => k.id?.toString() === gorev.atananId?.toString())
+                  const yeni = await talepOlusturGorevden(gorev, kullanici, atananKisi)
+                  if (yeni) {
+                    toast.success('Servis talebi oluşturuldu.')
+                    navigate(`/servis-talepleri/${yeni.id}`)
+                  } else {
+                    toast.error('Servis talebi oluşturulamadı.')
+                  }
+                } catch (err) {
+                  console.error('[Servis talebine dönüştür]', err)
+                  toast.error('Hata: ' + (err?.message || 'bilinmeyen'))
+                } finally {
+                  setServisOlusturuluyor(false)
+                }
+              }}
+            >
+              {servisOlusturuluyor ? 'Oluşturuluyor…' : 'Servis talebine dönüştür'}
+            </Button>
+          ) : (
+            <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+              Servis talebi oluşturmak için önce göreve bir müşteri bağlamalısınız.
+            </p>
+          )}
+        </div>
       </Card>
 
       {/* Durum güncelle */}
