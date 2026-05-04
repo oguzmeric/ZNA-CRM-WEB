@@ -10,12 +10,14 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock,
+  Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock, MapPin, Settings,
 } from 'lucide-react'
 import {
   gorevleriGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
 } from '../services/gorevService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Card, Input, Textarea, Label,
@@ -37,9 +39,10 @@ const kolonlar = [
 const bosForm = {
   baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '',
   musteriId: '', musteriAdi: '', firmaAdi: '',
+  lokasyonId: '',
 }
 
-function GorevKarti({ gorev, kullanicilar, onClick, overlay = false }) {
+function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, overlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: gorev.id.toString() })
 
@@ -90,6 +93,23 @@ function GorevKarti({ gorev, kullanicilar, onClick, overlay = false }) {
         </p>
       )}
 
+      {lokasyonAd && (
+        <div style={{
+          font: '500 11px/14px var(--font-sans)',
+          color: 'var(--brand-primary)',
+          margin: '0 0 8px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          maxWidth: '100%',
+        }}>
+          <MapPin size={11} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={lokasyonAd}>
+            {lokasyonAd}
+          </span>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-default)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <Avatar name={atananKisi?.ad} size="xs" />
@@ -113,7 +133,7 @@ function GorevKarti({ gorev, kullanicilar, onClick, overlay = false }) {
   )
 }
 
-function DroppableKolon({ kolon, gorevler, kullanicilar, onGorevClick }) {
+function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, onGorevClick }) {
   const { setNodeRef, isOver } = useDroppable({ id: kolon.id })
 
   return (
@@ -165,7 +185,13 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, onGorevClick }) {
             </div>
           )}
           {gorevler.map(gorev => (
-            <GorevKarti key={gorev.id} gorev={gorev} kullanicilar={kullanicilar} onClick={() => onGorevClick(gorev.id)} />
+            <GorevKarti
+              key={gorev.id}
+              gorev={gorev}
+              kullanicilar={kullanicilar}
+              lokasyonAd={gorev.lokasyonId ? lokasyonMap?.get(gorev.lokasyonId)?.ad : null}
+              onClick={() => onGorevClick(gorev.id)}
+            />
           ))}
         </div>
       </SortableContext>
@@ -181,6 +207,9 @@ function Gorevler() {
 
   const [gorevler, setGorevler] = useState([])
   const [musteriler, setMusteriler] = useState([])
+  const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([]) // sadece form için (seçili müşteri)
+  const [tumLokasyonlar, setTumLokasyonlar] = useState([]) // kart üzerinde lokasyon adı göstermek için lookup
+  const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
   const [goster, setGoster] = useState(false)
@@ -191,11 +220,24 @@ function Gorevler() {
   const [kisiFiltre, setKisiFiltre] = useState('')
 
   useEffect(() => {
-    Promise.all([gorevleriGetir(), musterileriGetir()])
-      .then(([g, m]) => { setGorevler(g || []); setMusteriler(m || []) })
+    Promise.all([
+      gorevleriGetir(),
+      musterileriGetir(),
+      // Lookup için tüm lokasyonları çek
+      import('../lib/supabase').then(({ supabase }) =>
+        supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) => data || [])
+      ),
+    ])
+      .then(([g, m, l]) => {
+        setGorevler(g || []); setMusteriler(m || [])
+        // snake → camel manuel (sadece 3 alan)
+        setTumLokasyonlar((l || []).map(r => ({ id: r.id, ad: r.ad, musteriId: r.musteri_id })))
+      })
       .catch(err => console.error('[Gorevler yükle]', err))
       .finally(() => setYukleniyor(false))
   }, [])
+
+  const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -275,7 +317,14 @@ function Gorevler() {
     setForm({
       baslik: g.baslik, aciklama: g.aciklama || '', atanan: g.atanan, oncelik: g.oncelik,
       sonTarih: g.sonTarih, musteriId: g.musteriId || '', musteriAdi: g.musteriAdi || '', firmaAdi: g.firmaAdi || '',
+      lokasyonId: g.lokasyonId || '',
     })
+    // Lokasyonları çek (varsa dropdown göstereceğiz)
+    if (g.musteriId) {
+      musteriLokasyonlariniGetir(g.musteriId).then(setMusteriLokasyonlari).catch(() => setMusteriLokasyonlari([]))
+    } else {
+      setMusteriLokasyonlari([])
+    }
     setDuzenleId(g.id); setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -392,7 +441,14 @@ function Gorevler() {
                     musteriId: e.target.value,
                     musteriAdi: m ? `${m.ad} ${m.soyad}` : '',
                     firmaAdi: m ? m.firma : '',
+                    lokasyonId: '',
                   })
+                  // Müşteri değişince lokasyonları yenile
+                  if (m?.id) {
+                    musteriLokasyonlariniGetir(m.id).then(setMusteriLokasyonlari).catch(() => setMusteriLokasyonlari([]))
+                  } else {
+                    setMusteriLokasyonlari([])
+                  }
                 }}
               >
                 <option value="">Müşteri seç (opsiyonel)…</option>
@@ -404,6 +460,50 @@ function Gorevler() {
                 </p>
               )}
             </div>
+            {form.musteriId && (
+              <div>
+                <Label>
+                  Lokasyon
+                  <button
+                    type="button"
+                    onClick={() => setLokasyonModalAcik(true)}
+                    title="Lokasyon ekle/sil"
+                    style={{
+                      background: 'none', border: 'none', padding: '0 0 0 6px',
+                      cursor: 'pointer', color: 'var(--brand-primary)',
+                      font: '500 11px/14px var(--font-sans)',
+                    }}
+                  >
+                    <Settings size={11} strokeWidth={1.5} style={{ verticalAlign: -1 }} /> yönet
+                  </button>
+                </Label>
+                {musteriLokasyonlari.length > 0 ? (
+                  <CustomSelect
+                    value={form.lokasyonId || ''}
+                    onChange={e => setForm({ ...form, lokasyonId: e.target.value })}
+                  >
+                    <option value="">— Belirtilmedi</option>
+                    {musteriLokasyonlari.map(l => (
+                      <option key={l.id} value={l.id}>{l.ad}</option>
+                    ))}
+                  </CustomSelect>
+                ) : (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                    background: 'var(--surface-sunken)',
+                    border: '1px dashed var(--border-default)',
+                    font: '400 12px/16px var(--font-sans)',
+                    color: 'var(--text-tertiary)',
+                  }}>
+                    Bu müşteri için lokasyon yok. <button
+                      type="button"
+                      onClick={() => setLokasyonModalAcik(true)}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)', textDecoration: 'underline' }}
+                    >+ Lokasyon ekle</button>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label>Öncelik</Label>
               <CustomSelect value={form.oncelik} onChange={e => setForm({ ...form, oncelik: e.target.value })}>
@@ -437,6 +537,7 @@ function Gorevler() {
                 kolon={kolon}
                 gorevler={filtreliGorevler.filter(g => g.durum === kolon.id)}
                 kullanicilar={kullanicilar}
+                lokasyonMap={lokasyonMap}
                 onGorevClick={(id) => navigate(`/gorevler/${id}`)}
               />
             ))}
@@ -512,6 +613,12 @@ function Gorevler() {
                             {gorev.aciklama}
                           </p>
                         )}
+                        {gorev.lokasyonId && lokasyonMap.get(gorev.lokasyonId) && (
+                          <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--brand-primary)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <MapPin size={11} strokeWidth={1.5} />
+                            {lokasyonMap.get(gorev.lokasyonId).ad}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                         {atananKisi && (
@@ -564,6 +671,26 @@ function Gorevler() {
           )}
         </div>
       )}
+
+      {/* Lokasyon yönetim modal'ı */}
+      <LokasyonYonetModal
+        acik={lokasyonModalAcik}
+        musteriId={form.musteriId ? Number(form.musteriId) : null}
+        musteriAdi={form.musteriAdi || form.firmaAdi || ''}
+        lokasyonlar={musteriLokasyonlari}
+        onLokasyonlarChange={(yeni) => {
+          setMusteriLokasyonlari(yeni)
+          // Tüm lokasyonlar lookup'ını da güncelle (kart üzerindeki gösterim için)
+          const musteriIdNum = Number(form.musteriId)
+          const digerleri = tumLokasyonlar.filter(l => l.musteriId !== musteriIdNum)
+          setTumLokasyonlar([...digerleri, ...yeni.map(l => ({ ...l, musteriId: musteriIdNum }))])
+          // Silinen lokasyon formda seçiliyse temizle
+          if (form.lokasyonId && !yeni.some(l => l.id?.toString() === form.lokasyonId.toString())) {
+            setForm(f => ({ ...f, lokasyonId: '' }))
+          }
+        }}
+        onClose={() => setLokasyonModalAcik(false)}
+      />
     </div>
   )
 }
