@@ -126,7 +126,7 @@ export default function ServisTalepDetay() {
     { k: 'İlgili Kişi', v: talep.ilgiliKisi, Icon: User },
     { k: 'Telefon',     v: talep.telefon,    Icon: Phone },
     { k: 'Uygun Zaman', v: talep.uygunZaman, Icon: Clock },
-  ].filter(x => x.v)
+  ].filter(x => x.v && String(x.v).trim())
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
@@ -219,9 +219,16 @@ export default function ServisTalepDetay() {
               <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
               <CardTitle style={{ margin: 0 }}>Talep İçeriği</CardTitle>
             </div>
-            <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
-              {talep.aciklama}
-            </p>
+            {talep.aciklama && talep.aciklama.trim() ? (
+              <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                {talep.aciklama}
+              </p>
+            ) : (
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
+                Açıklama girilmemiş. {talep.gorevId && 'Görevden oluşturulduğu için detay yok — '}
+                Üst sağdaki <strong>İncelemeye al</strong> butonuyla durum güncellenip ekstra bilgi notlara eklenebilir.
+              </p>
+            )}
             {ekBilgiler.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
                 {ekBilgiler.map(({ k, v, Icon }) => (

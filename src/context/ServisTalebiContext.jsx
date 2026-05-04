@@ -162,8 +162,15 @@ export function ServisTalebiProvider({ children }) {
       cihazTuru: formData.cihazTuru || '',
       aciklama: formData.aciklama,
       aciliyet: formData.aciliyet || 'normal',
-      ilgiliKisi: formData.ilgiliKisi || (musteri ? `${musteri.ad} ${musteri.soyad}` : kullanici.ad),
-      telefon: formData.telefon || musteri?.telefon || '',
+      ilgiliKisi: (() => {
+        if (formData.ilgiliKisi && formData.ilgiliKisi.trim()) return formData.ilgiliKisi.trim()
+        if (musteri) {
+          const ad = `${musteri.ad || ''} ${musteri.soyad || ''}`.trim()
+          if (ad) return ad
+        }
+        return kullanici.ad || ''
+      })(),
+      telefon: (formData.telefon && formData.telefon.trim()) || musteri?.telefon || '',
       uygunZaman: formData.uygunZaman || '',
       durum: baslangicDurum,
       atananKullaniciId: atanan?.id || null,
