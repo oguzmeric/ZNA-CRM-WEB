@@ -8,7 +8,9 @@ export const gorusmeleriGetir = () => cached('gorusmeler:list', async () => {
   let off = 0
   while (true) {
     const { data, error } = await supabase.from('gorusmeler').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
-    if (error) { console.error('gorusmeleriGetir hata:', error.message); break }
+    // Error olunca break yerine throw — partial data cache'e yazılıp 60sn
+    // boyunca kullanıcıya eksik liste gösterilmesini önler.
+    if (error) { console.error('gorusmeleriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)
     if (data.length < sayfa) break

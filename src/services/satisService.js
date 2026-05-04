@@ -27,7 +27,8 @@ export const satislariGetir = () => cached('satislar:list', async () => {
       .select('*')
       .order('created_at', { ascending: false })
       .range(off, off + sayfa - 1)
-    if (error) { console.error('satislariGetir hata:', error.message); break }
+    // Error → throw (partial data cache'lenmesin, kullanıcı eksik liste görmesin)
+    if (error) { console.error('satislariGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     satisData.push(...data)
     if (data.length < sayfa) break
@@ -87,9 +88,16 @@ export const satisEkle = async (satis) => {
   if (error) throw error
 
   if (satirlar?.length) {
-    await supabase.from('satis_satirlari').insert(
+    const { error: satirError } = await supabase.from('satis_satirlari').insert(
       satirlar.map((s, i) => toSnake({ ...s, satisId: satisData.id, sira: i }))
     )
+    // Satır insert fail ettiğinde tutarsız kayıt kalmasın — başlığı temizle.
+    // Best-effort; cleanup başarısız olsa bile asıl hata fırlatılır.
+    if (satirError) {
+      console.error('satisEkle satir hata:', satirError.message)
+      try { await supabase.from('satislar').delete().eq('id', satisData.id) } catch {}
+      throw satirError
+    }
   }
   invalidate('satislar:list')
   return toCamel(satisData)
@@ -111,7 +119,6 @@ export const satisGuncelle = async (id, satis) => {
     Object.entries(tumSnake).filter(([k]) => izinliSutunlar.includes(k))
   )
 
-  console.log('satisGuncelle payload:', guncellenecek)
   const { data, error } = await supabase
     .from('satislar')
     .update(guncellenecek)
@@ -134,36 +141,54 @@ export const satisGuncelle = async (id, satis) => {
   return toCamel(data)
 }
 
-// Satış sil
+// Satış sil — ilişkili satir/tahsilat orphan kalmasın diye önce onları temizle
 export const satisSil = async (id) => {
-  await supabase.from('satislar').delete().eq('id', id)
+  // İlişkili kayıtları sil (DB'de CASCADE garantisi yok)
+  await supabase.from('satis_satirlari').delete().eq('satis_id', id)
+  await supabase.from('tahsilatlar').delete().eq('satis_id', id)
+  const { error } = await supabase.from('satislar').delete().eq('id', id)
+  if (error) { console.error('satisSil hata:', error.message); throw error }
   invalidate('satislar:list')
+}
+
+// Yardımcı: ödenen toplamı hesapla + durum güncelle.
+// .single() hatası destructure edilmediğinde Number(undefined)=NaN → durum
+// her zaman 'gonderildi' atanıyordu. Artık error check ediliyor.
+const odemeDurumGuncelle = async (satisId) => {
+  const { data: tumTahsilatlar, error: tahsilatError } = await supabase
+    .from('tahsilatlar').select('tutar').eq('satis_id', satisId)
+  if (tahsilatError) { console.error('odemeDurum tahsilat hata:', tahsilatError.message); throw tahsilatError }
+
+  const odenanToplam = (tumTahsilatlar || []).reduce((s, t) => s + Number(t.tutar), 0)
+
+  const { data: satis, error: satisError } = await supabase
+    .from('satislar').select('genel_toplam').eq('id', satisId).single()
+  if (satisError || !satis) {
+    console.error('odemeDurum satis okuma hata:', satisError?.message)
+    throw satisError || new Error('Satış bulunamadı: ' + satisId)
+  }
+
+  const yeniDurum = odenanToplam >= Number(satis.genel_toplam) ? 'odendi' : 'gonderildi'
+  const { error: updError } = await supabase.from('satislar')
+    .update({ odenen_toplam: odenanToplam, durum: yeniDurum, updated_at: new Date().toISOString() })
+    .eq('id', satisId)
+  if (updError) { console.error('odemeDurum update hata:', updError.message); throw updError }
 }
 
 // Tahsilat ekle
 export const tahsilatEkle = async (tahsilat) => {
-  const { data } = await supabase.from('tahsilatlar').insert(toSnake(tahsilat)).select().single()
-  // Odenen toplami guncelle
-  const { data: tumTahsilatlar } = await supabase
-    .from('tahsilatlar')
-    .select('tutar')
-    .eq('satis_id', tahsilat.satisId)
-  const odenanToplam = (tumTahsilatlar || []).reduce((s, t) => s + Number(t.tutar), 0)
-  const { data: satis } = await supabase.from('satislar').select('genel_toplam').eq('id', tahsilat.satisId).single()
-  const yeniDurum = odenanToplam >= Number(satis?.genel_toplam) ? 'odendi' : 'gonderildi'
-  await supabase.from('satislar').update({ odenen_toplam: odenanToplam, durum: yeniDurum, updated_at: new Date().toISOString() }).eq('id', tahsilat.satisId)
+  const { data, error } = await supabase.from('tahsilatlar').insert(toSnake(tahsilat)).select().single()
+  if (error) { console.error('tahsilatEkle hata:', error.message); throw error }
+  await odemeDurumGuncelle(tahsilat.satisId)
   invalidate('satislar:list')
   return toCamel(data)
 }
 
 // Tahsilat sil
 export const tahsilatSil = async (tahsilatId, satisId) => {
-  await supabase.from('tahsilatlar').delete().eq('id', tahsilatId)
-  const { data: tumTahsilatlar } = await supabase.from('tahsilatlar').select('tutar').eq('satis_id', satisId)
-  const odenanToplam = (tumTahsilatlar || []).reduce((s, t) => s + Number(t.tutar), 0)
-  const { data: satis } = await supabase.from('satislar').select('genel_toplam').eq('id', satisId).single()
-  const yeniDurum = odenanToplam >= Number(satis?.genel_toplam) ? 'odendi' : 'gonderildi'
-  await supabase.from('satislar').update({ odenen_toplam: odenanToplam, durum: yeniDurum, updated_at: new Date().toISOString() }).eq('id', satisId)
+  const { error } = await supabase.from('tahsilatlar').delete().eq('id', tahsilatId)
+  if (error) { console.error('tahsilatSil hata:', error.message); throw error }
+  await odemeDurumGuncelle(satisId)
   invalidate('satislar:list')
 }
 

@@ -8,7 +8,7 @@ export const gorevleriGetir = () => cached('gorevler:list', async () => {
   let off = 0
   while (true) {
     const { data, error } = await supabase.from('gorevler').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
-    if (error) { console.error('gorevleriGetir hata:', error.message); break }
+    if (error) { console.error('gorevleriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)
     if (data.length < sayfa) break

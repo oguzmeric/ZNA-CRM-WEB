@@ -87,7 +87,8 @@ export const stokUrunGuncelle = async (id, guncellenmis) => {
 }
 
 export const stokUrunSil = async (id) => {
-  await supabase.from('stok_urunler').delete().eq('id', id)
+  const { error } = await supabase.from('stok_urunler').delete().eq('id', id)
+  if (error) { console.error('stokUrunSil hata:', error.message); throw error }
   invalidatePrefix('stok')
 }
 

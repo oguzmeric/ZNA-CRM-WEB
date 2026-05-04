@@ -11,7 +11,7 @@ export const servisRaporlariniGetir = async () => {
       .select('*')
       .order('bil_tarih', { ascending: false, nullsFirst: false })
       .range(off, off + sayfa - 1)
-    if (error) { console.error('servisRaporlariniGetir hata:', error.message); break }
+    if (error) { console.error('servisRaporlariniGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)
     if (data.length < sayfa) break

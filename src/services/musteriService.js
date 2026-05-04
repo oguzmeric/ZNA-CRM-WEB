@@ -13,7 +13,7 @@ export const musterileriGetir = () => cached('musteriler:list', async () => {
       .select('*')
       .order('olusturma_tarih', { ascending: false })
       .range(offset, offset + sayfaBoyut - 1)
-    if (error) { console.error('musterileriGetir hata:', error.message); break }
+    if (error) { console.error('musterileriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)
     if (data.length < sayfaBoyut) break
