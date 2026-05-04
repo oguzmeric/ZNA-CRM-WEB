@@ -10,6 +10,11 @@ const store = new Map()                  // key -> { at: timestamp, value: any }
 const pending = new Map()                // key -> Promise (dedupe concurrent fetches)
 const DEFAULT_TTL = 60_000               // 60 sn
 
+// Invalidate token'ı: her invalidate çağrısı bunu artırır. In-flight fetch
+// resolve olduğunda token'ı karşılaştırır — değiştiyse store'a yazmaz.
+// Race fix: invalidatePrefix sonra in-flight fetch eski değeri yazmasın.
+let epoch = 0
+
 /**
  * Cache'li fetch. Aynı anahtar için son ttl ms içinde yanıt varsa onu döndürür.
  * Paralel çağrılar aynı promise'i paylaşır (dedupe).
@@ -22,10 +27,15 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
   // Aynı key için yürütülen fetch varsa ona bağlan
   if (pending.has(key)) return pending.get(key)
 
+  const baslatildigiEpoch = epoch
   const p = (async () => {
     try {
       const value = await fetcher()
-      store.set(key, { at: Date.now(), value })
+      // Bu fetch başladıktan sonra invalidate olduysa store'a yazma —
+      // aksi halde stale değer cache'e geri kaçar.
+      if (epoch === baslatildigiEpoch) {
+        store.set(key, { at: Date.now(), value })
+      }
       return value
     } finally {
       pending.delete(key)
@@ -37,6 +47,7 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
 
 /** Bir veya birden fazla key'i temizle. */
 export function invalidate(...keys) {
+  epoch++
   for (const k of keys) {
     store.delete(k)
     pending.delete(k)
@@ -45,6 +56,7 @@ export function invalidate(...keys) {
 
 /** Regex/prefix ile toplu temizle. */
 export function invalidatePrefix(prefix) {
+  epoch++
   for (const k of store.keys()) {
     if (k.startsWith(prefix)) store.delete(k)
   }
@@ -55,6 +67,7 @@ export function invalidatePrefix(prefix) {
 
 /** Komple temizle (örn. logout). */
 export function invalidateAll() {
+  epoch++
   store.clear()
   pending.clear()
 }

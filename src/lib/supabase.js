@@ -45,9 +45,21 @@ export function abortAllInFlight(reason = 'visibility-reset') {
   activeControllers.clear()
 }
 
+// Storage upload/download path'leri büyük dosyalar için 8sn'i kolayca aşar.
+// Bu istekleri timeout dışında bırak — yüklemeyi natural completion'a bırak.
+const isStorageRequest = (input) => {
+  try {
+    const url = typeof input === 'string' ? input : (input?.url || '')
+    return url.includes('/storage/v1/')
+  } catch { return false }
+}
+
 const fetchWithTimeout = (input, init = {}) => {
   // Çağıran kendi signal'ını geçiriyorsa ona dokunma
   if (init.signal) return fetch(input, init)
+
+  // Storage istekleri timeout'tan muaf — büyük dosya transferi için
+  if (isStorageRequest(input)) return fetch(input, init)
 
   const controller = new AbortController()
   activeControllers.set(controller, Date.now())

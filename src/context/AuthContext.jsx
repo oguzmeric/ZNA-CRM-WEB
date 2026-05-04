@@ -42,8 +42,15 @@ export function AuthProvider({ children }) {
         setKullanici(null)
         return
       }
-      const k = await mevcutOturumKullanici()
-      setKullanici(k)
+      // Token refresh sırasında network koparsa mevcutOturumKullanici throw eder.
+      // try/catch olmazsa unhandled rejection ve setKullanici hiç çağrılmaz →
+      // ekran stale state ile kalır. Hata durumunda mevcut kullaniciyi koru.
+      try {
+        const k = await mevcutOturumKullanici()
+        setKullanici(k)
+      } catch (e) {
+        console.warn('[auth] onAuthStateChange profil hata:', e)
+      }
     })
 
     // === Tab idle'dan dönünce recovery ===
@@ -56,6 +63,24 @@ export function AuthProvider({ children }) {
     //    sonraki fetch'ler taze başlar. Soft recovery, yeniden yükleme yok.
     //  - Orta gizlilik (>= 2 dk): +  supabase.auth.refreshSession() zorla.
     //  - Refresh fail: localStorage sb-* sil + sayfa reload (Ctrl+Shift+R otomatik).
+    // === Reload guard ===
+    // visibility (≥2dk), idle (≥3dk) ve focus (≥3dk) hepsi reload tetikleyebilir.
+    // Kullanıcı 4 dk gizli kalıp sonra tıklarsa hem visibilitychange hem
+    // aktiviteOlay çakışıp çift reload deneyebilir. Tek seferlik guard:
+    // 5sn cooldown — bu pencere içinde ikinci tetik yok sayılır.
+    const guvenliReload = (sebep) => {
+      try {
+        const son = Number(sessionStorage.getItem('auth_reload_at') || 0)
+        if (Date.now() - son < 5000) {
+          console.info(`[${sebep}] reload skip — cooldown aktif`)
+          return
+        }
+        sessionStorage.setItem('auth_reload_at', String(Date.now()))
+      } catch {}
+      console.info(`[${sebep}] sessiz reload`)
+      window.location.reload()
+    }
+
     let hiddenAt = null
     const onVisibilityChange = async () => {
       if (document.visibilityState === 'hidden') {
@@ -75,8 +100,7 @@ export function AuthProvider({ children }) {
       // 2+ dk gizliyse: HTTP/2 keep-alive ölmüş olabilir, sessiz reload
       // (Vite preconnect + chunk preload sayesinde reload anlık)
       if (hiddenFor >= 120_000) {
-        console.info(`[visibility] ${Math.round(hiddenFor/1000)}sn gizliydi → sessiz reload`)
-        window.location.reload()
+        guvenliReload(`visibility ${Math.round(hiddenFor/1000)}sn`)
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
@@ -101,16 +125,16 @@ export function AuthProvider({ children }) {
     const aktiviteOlay = (e) => {
       const simdi = Date.now()
       const bosluk = simdi - sonAktivite
-      sonAktivite = simdi
 
       // focus event'i navigasyon değil, sadece sinyal — recovery yapma
-      if (e?.type === 'focus') return
+      if (e?.type === 'focus') { sonAktivite = simdi; return }
 
       if (bosluk >= IDLE_ESIK_AGIR) {
-        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → sessiz reload`)
-        window.location.reload()
+        // sayfa zaten gidiyor — sonAktivite atamasına gerek yok
+        guvenliReload(`idle ${Math.round(bosluk/1000)}sn`)
         return
       }
+      sonAktivite = simdi
       if (bosluk >= IDLE_ESIK_HAFIF) {
         console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache+abort`)
         cacheInvalidateAll()
@@ -122,9 +146,10 @@ export function AuthProvider({ children }) {
     const onFocus = () => {
       const bosluk = Date.now() - sonAktivite
       if (bosluk >= IDLE_ESIK_AGIR) {
-        console.info(`[focus] ${Math.round(bosluk/1000)}sn dış uygulamada → reload`)
-        window.location.reload()
-      } else if (bosluk >= IDLE_ESIK_HAFIF) {
+        guvenliReload(`focus ${Math.round(bosluk/1000)}sn`)
+        return
+      }
+      if (bosluk >= IDLE_ESIK_HAFIF) {
         cacheInvalidateAll()
         abortStaleInFlight(5000, 'focus-stale')
       }
@@ -144,8 +169,15 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!kullanici) return
-    kullanicilariGetir().then(setKullanicilar)
+    if (!kullanici) {
+      // Logout sonrası eski kullanıcı listesi hafızada kalmasın —
+      // farklı kullanıcı login olursa eski liste bir an gözükmesin.
+      setKullanicilar([])
+      return
+    }
+    kullanicilariGetir().then(setKullanicilar).catch((e) => {
+      console.warn('[auth] kullanicilariGetir hata:', e)
+    })
   }, [kullanici])
 
   const girisYap = async (kullaniciAdi, sifre) => {

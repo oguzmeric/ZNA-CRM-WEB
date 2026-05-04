@@ -35,7 +35,7 @@ const tekSeferlikReload = () => {
   try {
     const son = Number(sessionStorage.getItem(RELOAD_KEY) || 0)
     if (Date.now() - son < RELOAD_COOLDOWN_MS) {
-      // Son 30sn içinde zaten reload yaptık — sonsuz döngü olmasın
+      // Son 5sn içinde zaten reload yaptık — sonsuz döngü olmasın
       return false
     }
     sessionStorage.setItem(RELOAD_KEY, String(Date.now()))
@@ -82,8 +82,17 @@ export function tumChunklariOnyukle() {
   const ric = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500))
   ric(() => {
     prefetchKuyrugu.forEach((factory, i) => {
-      // 50ms aralıkla başlat, hepsi aynı anda gitmesin
-      setTimeout(() => { factory().catch(() => {}) }, i * 50)
+      // 50ms aralıkla başlat, hepsi aynı anda gitmesin.
+      // ÖNEMLİ: prefetch fail olursa Vite import dedupe yüzünden aynı failed
+      // Promise sonraki navigasyonda dönebiliyor → kullanıcı menüye tıkladığında
+      // sayfa açılmıyor. Hatayı sadece logla — lazyWithRetry zaten kendi retry +
+      // reload mekanizmasıyla yeniden import çağıracak (yeni bir dynamic import
+      // çağrısı olduğu için Vite yeniden fetch'ler).
+      setTimeout(() => {
+        factory().catch((e) => {
+          console.warn('[prefetch] chunk fail (sonraki navigasyon retry edecek):', e?.message || e)
+        })
+      }, i * 50)
     })
   })
 }
