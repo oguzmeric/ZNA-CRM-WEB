@@ -19,6 +19,10 @@ export async function trassirExcelOlustur(teklif) {
     { width: 16 }, { width: 16 }, { width: 4 },
   ]
 
+  // ZNA logosu — content sayfalarına embed için bir kez yükle
+  const znaLogoBuf = await gorseliCek('/teklif-assets/zna-logo.jpg')
+  const znaLogoId = wb.addImage({ buffer: znaLogoBuf, extension: 'jpeg' })
+
   // ===========  Sayfa 1 — Kapak  ===========
   const kapakBuf = await gorseliCek('/teklif-assets/zna-cover.png')
   const kapakImgId = wb.addImage({ buffer: kapakBuf, extension: 'png' })
@@ -28,6 +32,12 @@ export async function trassirExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 2 — Anlatı  ===========
+  // ZNA logosu — sayfa 2 sol üst
+  const sayfa2BaslangicSatir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa2BaslangicSatir + 1 }, ext: { width: 130, height: 70 } })
+  // Logo için yer aç
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   let row = ws.addRow(['', 'Fiyat Teklifi'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 24, bold: true, color: { argb: 'FF0176D3' } }
@@ -71,6 +81,10 @@ export async function trassirExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 3 — Fiyatlandırma  ===========
+  const sayfa3BaslangicSatir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa3BaslangicSatir + 1 }, ext: { width: 130, height: 70 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', `Tarih : ${fmtTarih(teklif.tarih)}`, '', '', '', `Hazırlayan : ${teklif.hazirlayan || '—'}`])
   row.getCell(2).font = { bold: true }
   row.getCell(6).font = { bold: true }
@@ -145,6 +159,10 @@ export async function trassirExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 4 — İş Ortakları  ===========
+  const sayfa4BaslangicSatir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa4BaslangicSatir + 1 }, ext: { width: 130, height: 70 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', 'İş Ortaklarımız'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 22, bold: true, color: { argb: 'FF0176D3' } }
@@ -159,6 +177,10 @@ export async function trassirExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 5 — Referanslar  ===========
+  const sayfa5BaslangicSatir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa5BaslangicSatir + 1 }, ext: { width: 130, height: 70 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', 'Bazı Referanslarımız'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 22, bold: true, color: { argb: 'FF0176D3' } }

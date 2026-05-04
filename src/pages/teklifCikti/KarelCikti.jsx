@@ -10,6 +10,32 @@ import { TRASSIR_KARSILAMA, ZNA_HAKKINDA, HIZMETLERIMIZ } from '../../lib/teklif
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
+// Sayfa başlığı — sol üst ZNA logosu + sağ üst Karel rozeti (her içerik sayfasında)
+function SayfaBasligi() {
+  return (
+    <>
+      <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
+        style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
+      <div style={{
+        position: 'absolute',
+        top: '12mm',
+        right: '14mm',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        background: '#fff',
+        padding: '4px 8px',
+        borderRadius: 4,
+        boxShadow: '0 0 0 1px #e2e8f0',
+        zIndex: 5,
+      }}>
+        <img src="/teklif-assets/karel-is-ortagi.png" alt="Karel İş Ortağı"
+          style={{ height: 36, objectFit: 'contain' }} />
+      </div>
+    </>
+  )
+}
+
 export default function KarelCikti({ teklif }) {
   const paraSembol = teklif.paraBirimi === 'USD' ? '$' : teklif.paraBirimi === 'EUR' ? '€' : '₺'
   const fmt = (n) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
@@ -36,25 +62,6 @@ export default function KarelCikti({ teklif }) {
     background: '#fff',
     margin: '0 auto',
   }
-
-  // Karel logosu — içerik sayfalarının sağ üst köşesinde marka rozeti
-  const KarelRozeti = () => (
-    <div style={{
-      position: 'absolute',
-      top: '10mm',
-      right: '12mm',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      background: '#fff',
-      padding: '4px 8px',
-      borderRadius: 4,
-      boxShadow: '0 0 0 1px #e2e8f0',
-    }}>
-      <img src="/teklif-assets/karel-is-ortagi.png" alt="Karel İş Ortağı"
-        style={{ height: 28, objectFit: 'contain' }} />
-    </div>
-  )
 
   return (
     <>
@@ -92,9 +99,9 @@ export default function KarelCikti({ teklif }) {
 
       {/* Sayfa 2 — Anlatı */}
       <div style={{ ...sayfaStil, position: 'relative' }}>
-        <KarelRozeti />
+        <SayfaBasligi />
 
-        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
+        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginTop: 50, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
           Fiyat Teklifi
         </h1>
 
@@ -118,9 +125,9 @@ export default function KarelCikti({ teklif }) {
 
       {/* Sayfa 3 — Fiyatlandırma */}
       <div style={{ ...sayfaStil, position: 'relative' }}>
-        <KarelRozeti />
+        <SayfaBasligi />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18, fontSize: 12, color: '#475569' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 50, marginBottom: 18, fontSize: 12, color: '#475569' }}>
           <span><strong>Tarih :</strong> {fmtTarih(teklif.tarih)}</span>
           <span><strong>Hazırlayan :</strong> {teklif.hazirlayan || '—'}</span>
         </div>
@@ -186,8 +193,8 @@ export default function KarelCikti({ teklif }) {
 
       {/* Sayfa 4 — İş Ortaklarımız */}
       <div style={{ ...sayfaStil, position: 'relative' }}>
-        <KarelRozeti />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginBottom: 36, letterSpacing: '-0.3px' }}>
+        <SayfaBasligi />
+        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
           İş Ortaklarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -201,8 +208,8 @@ export default function KarelCikti({ teklif }) {
 
       {/* Sayfa 5 — Referanslar */}
       <div style={{ ...sayfaStil, position: 'relative', pageBreakAfter: 'auto' }}>
-        <KarelRozeti />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginBottom: 36, letterSpacing: '-0.3px' }}>
+        <SayfaBasligi />
+        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
           Bazı Referanslarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>

@@ -18,20 +18,30 @@ export async function karelExcelOlustur(teklif) {
     { width: 16 }, { width: 16 }, { width: 4 },
   ]
 
+  // İçerik sayfaları için ZNA logosu (sol üst) + Karel rozeti (sağ üst) — bir kez yükle, çoklu yerde kullan
+  const znaLogoBuf = await gorseliCek('/teklif-assets/zna-logo.jpg')
+  const znaLogoId = wb.addImage({ buffer: znaLogoBuf, extension: 'jpeg' })
+  const karelLogoBuf = await gorseliCek('/teklif-assets/karel-is-ortagi.png')
+  const karelLogoId = wb.addImage({ buffer: karelLogoBuf, extension: 'png' })
+
   // ===========  Sayfa 1 — Kapak (ZNA görseli + Karel rozeti)
   const kapakBuf = await gorseliCek('/teklif-assets/zna-cover.png')
   const kapakImgId = wb.addImage({ buffer: kapakBuf, extension: 'png' })
   ws.addImage(kapakImgId, { tl: { col: 0, row: 0 }, ext: { width: 595, height: 842 } })
 
   // Karel İş Ortağı logosu — kapağın sağ üst köşesine overlay
-  const karelLogoBuf = await gorseliCek('/teklif-assets/karel-is-ortagi.png')
-  const karelLogoId = wb.addImage({ buffer: karelLogoBuf, extension: 'png' })
   ws.addImage(karelLogoId, { tl: { col: 5, row: 1 }, ext: { width: 180, height: 70 } })
 
   for (let i = 0; i < 40; i++) ws.addRow([])
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 2 — Anlatı
+  // ZNA logosu (sol) + Karel rozeti (sağ) — sayfa başlığı
+  const sayfa2Satir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa2Satir + 1 }, ext: { width: 130, height: 70 } })
+  ws.addImage(karelLogoId, { tl: { col: 5, row: sayfa2Satir + 1 }, ext: { width: 130, height: 50 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   let row = ws.addRow(['', 'Fiyat Teklifi'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 24, bold: true, color: { argb: 'FF0176D3' } }
@@ -75,6 +85,11 @@ export async function karelExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 3 — Fiyatlandırma
+  const sayfa3Satir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa3Satir + 1 }, ext: { width: 130, height: 70 } })
+  ws.addImage(karelLogoId, { tl: { col: 5, row: sayfa3Satir + 1 }, ext: { width: 130, height: 50 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', `Tarih : ${fmtTarih(teklif.tarih)}`, '', '', '', `Hazırlayan : ${teklif.hazirlayan || '—'}`])
   row.getCell(2).font = { bold: true }
   row.getCell(6).font = { bold: true }
@@ -148,6 +163,11 @@ export async function karelExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 4 — İş Ortakları
+  const sayfa4Satir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa4Satir + 1 }, ext: { width: 130, height: 70 } })
+  ws.addImage(karelLogoId, { tl: { col: 5, row: sayfa4Satir + 1 }, ext: { width: 130, height: 50 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', 'İş Ortaklarımız'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 22, bold: true, color: { argb: 'FF0176D3' } }
@@ -162,6 +182,11 @@ export async function karelExcelOlustur(teklif) {
   ws.lastRow.addPageBreak = true
 
   // ===========  Sayfa 5 — Referanslar
+  const sayfa5Satir = ws.lastRow ? ws.lastRow.number : 0
+  ws.addImage(znaLogoId, { tl: { col: 0, row: sayfa5Satir + 1 }, ext: { width: 130, height: 70 } })
+  ws.addImage(karelLogoId, { tl: { col: 5, row: sayfa5Satir + 1 }, ext: { width: 130, height: 50 } })
+  for (let i = 0; i < 4; i++) ws.addRow([])
+
   row = ws.addRow(['', 'Bazı Referanslarımız'])
   ws.mergeCells(`B${row.number}:F${row.number}`)
   row.getCell(2).font = { size: 22, bold: true, color: { argb: 'FF0176D3' } }

@@ -58,8 +58,10 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 2 — Anlatı */}
-      <div style={sayfaStil}>
-        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
+      <div style={{ ...sayfaStil, position: 'relative' }}>
+        <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
+          style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
+        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginTop: 50, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
           Fiyat Teklifi
         </h1>
 
@@ -82,8 +84,11 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 3 — Fiyatlandırma */}
-      <div style={sayfaStil}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18, fontSize: 12, color: '#475569' }}>
+      <div style={{ ...sayfaStil, position: 'relative' }}>
+        <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
+          style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18, marginTop: 50, fontSize: 12, color: '#475569' }}>
           <span><strong>Tarih :</strong> {fmtTarih(teklif.tarih)}</span>
           <span><strong>Hazırlayan :</strong> {teklif.hazirlayan || '—'}</span>
         </div>
@@ -148,8 +153,10 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 4 — İş Ortaklarımız */}
-      <div style={sayfaStil}>
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginBottom: 36, letterSpacing: '-0.3px' }}>
+      <div style={{ ...sayfaStil, position: 'relative' }}>
+        <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
+          style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
+        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
           İş Ortaklarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -162,8 +169,10 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 5 — Referanslar */}
-      <div style={{ ...sayfaStil, pageBreakAfter: 'auto' }}>
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginBottom: 36, letterSpacing: '-0.3px' }}>
+      <div style={{ ...sayfaStil, position: 'relative', pageBreakAfter: 'auto' }}>
+        <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
+          style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
+        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
           Bazı Referanslarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
