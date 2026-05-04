@@ -9,6 +9,8 @@ import {
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
+import { supabase } from '../lib/supabase'
+import { arrayToCamel } from '../lib/mapper'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -50,6 +52,7 @@ const bosForm = {
   konu: '', manuelKonu: '', irtibatSekli: '',
   gorusen: '', takipNotu: '', durum: 'acik',
   tarih: new Date().toISOString().split('T')[0],
+  lokasyonId: '',
 }
 
 function aktNo(mevcut) { return `ACT-${String(mevcut.length + 1).padStart(4, '0')}` }
@@ -60,6 +63,7 @@ function Gorusmeler() {
   const { toast } = useToast()
   const [gorusmeler, setGorusmeler] = useState([])
   const [musteriler, setMusteriler] = useState([])
+  const [tumLokasyonlar, setTumLokasyonlar] = useState([]) // tüm lokasyonlar — list satırları + form dropdown'ı için
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
   const [secilenFirma, setSecilenFirma] = useState('')
@@ -77,8 +81,13 @@ function Gorusmeler() {
   const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
 
   useEffect(() => {
-    Promise.all([gorusmeleriGetir(), musterileriGetir()])
-      .then(([g, m]) => { setGorusmeler(g || []); setMusteriler(m || []) })
+    Promise.all([
+      gorusmeleriGetir(),
+      musterileriGetir(),
+      // Lokasyonları tek seferde çek — N+1 olmasın
+      supabase.from('musteri_lokasyonlari').select('*').then(({ data }) => arrayToCamel(data || [])),
+    ])
+      .then(([g, m, l]) => { setGorusmeler(g || []); setMusteriler(m || []); setTumLokasyonlar(l || []) })
       .catch(err => console.error('[Gorusmeler yükle]', err))
       .finally(() => setYukleniyor(false))
   }, [])
@@ -88,6 +97,19 @@ function Gorusmeler() {
   ).values()].sort((a, b) => (a.firma || '').localeCompare(b.firma || '', 'tr'))
 
   const firmaKisileri = secilenFirma ? musteriler.filter(m => m.firma === secilenFirma) : []
+
+  // Seçili firmanın lokasyonları — firma adıyla eşleşen tüm musteri kayıtlarının lokasyonları (deduped)
+  const firmaLokasyonlari = (() => {
+    if (!secilenFirma) return []
+    const firmaMusteriIdleri = new Set(firmaKisileri.map(m => m.id))
+    const benzersiz = new Map()
+    tumLokasyonlar.forEach(l => {
+      if (firmaMusteriIdleri.has(l.musteriId) && !benzersiz.has(l.id)) benzersiz.set(l.id, l)
+    })
+    return [...benzersiz.values()].sort((a, b) => (a.ad || '').localeCompare(b.ad || '', 'tr'))
+  })()
+
+  const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const formAc = () => {
     setForm({ ...bosForm, gorusen: kullanici.ad, tarih: new Date().toISOString().split('T')[0] })
@@ -110,6 +132,7 @@ function Gorusmeler() {
       takipNotu: g.takipNotu,
       durum: g.durum,
       tarih: g.tarih,
+      lokasyonId: g.lokasyonId || '',
     })
     setManuelKonuAc(manuelMi); setDuzenleId(g.id); setGoster(true)
     setYeniDosyalar([]); setMevcutDosyalar(g.dosyalar || [])
@@ -118,7 +141,8 @@ function Gorusmeler() {
 
   const handleFirmaSec = (firmaAdi) => {
     setSecilenFirma(firmaAdi)
-    setForm({ ...form, firmaAdi, musteriId: '', muhatapId: '', muhatapAd: '' })
+    // Firma değişince lokasyon da resetlensin (eski firmanın lokasyonu yeni firmaya yapışmasın)
+    setForm({ ...form, firmaAdi, musteriId: '', muhatapId: '', muhatapAd: '', lokasyonId: '' })
   }
 
   const handleKisiSec = (musteriId) => {
@@ -377,6 +401,17 @@ function Gorusmeler() {
                 ))}
               </CustomSelect>
             </div>
+            {firmaLokasyonlari.length > 0 && (
+              <div>
+                <Label>Lokasyon</Label>
+                <CustomSelect value={form.lokasyonId || ''} onChange={e => setForm({ ...form, lokasyonId: e.target.value })}>
+                  <option value="">— Belirtilmedi</option>
+                  {firmaLokasyonlari.map(l => (
+                    <option key={l.id} value={l.id}>{l.ad}</option>
+                  ))}
+                </CustomSelect>
+              </div>
+            )}
             <div>
               <Label required>Aktivite konusu</Label>
               <CustomSelect value={manuelKonuAc ? '__manuel__' : form.konu} onChange={e => handleKonuSec(e.target.value)}>
@@ -697,6 +732,22 @@ function Gorusmeler() {
                         }}>
                           <User size={11} strokeWidth={1.5} style={{ flexShrink: 0 }} />
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.muhatapAd}</span>
+                        </div>
+                      )}
+                      {g.lokasyonId && lokasyonMap.get(g.lokasyonId) && (
+                        <div style={{
+                          font: '400 12px/16px var(--font-sans)',
+                          color: 'var(--brand-primary)',
+                          marginTop: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          minWidth: 0,
+                        }}>
+                          <span style={{ flexShrink: 0 }}>📍</span>
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={lokasyonMap.get(g.lokasyonId).ad}>
+                            {lokasyonMap.get(g.lokasyonId).ad}
+                          </span>
                         </div>
                       )}
                     </td>

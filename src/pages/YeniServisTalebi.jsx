@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useServisTalebi, ANA_TURLER, ALT_KATEGORILER, ACILIYET_SEVIYELERI } from '../context/ServisTalebiContext'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
@@ -40,6 +41,7 @@ export default function YeniServisTalebi() {
 
   const [musteriler, setMusteriler] = useState([])
   const [seciliMusteri, setSeciliMusteri] = useState(null)
+  const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([])
   const [form, setForm] = useState(bos)
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
@@ -52,7 +54,7 @@ export default function YeniServisTalebi() {
   const altKategoriler = ALT_KATEGORILER[form.anaTur] || []
 
   const musteriSec = (musteriId) => {
-    if (!musteriId) { setSeciliMusteri(null); return }
+    if (!musteriId) { setSeciliMusteri(null); setMusteriLokasyonlari([]); return }
     const m = musteriler.find(x => x.id?.toString() === musteriId.toString())
     if (!m) return
     setSeciliMusteri(m)
@@ -62,6 +64,8 @@ export default function YeniServisTalebi() {
       ilgiliKisi: p.ilgiliKisi || `${m.ad} ${m.soyad}`,
       telefon: p.telefon || m.telefon || '',
     }))
+    // Müşterinin lokasyonlarını çek (varsa dropdown göstereceğiz)
+    musteriLokasyonlariniGetir(m.id).then(setMusteriLokasyonlari).catch(() => setMusteriLokasyonlari([]))
   }
 
   const kaydet = async () => {
@@ -250,10 +254,25 @@ export default function YeniServisTalebi() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
             <Label>Lokasyon</Label>
+            {musteriLokasyonlari.length > 0 && (
+              <CustomSelect
+                value={musteriLokasyonlari.find(l => l.ad === form.lokasyon)?.id?.toString() || ''}
+                onChange={e => {
+                  const sec = musteriLokasyonlari.find(l => l.id?.toString() === e.target.value)
+                  setForm(p => ({ ...p, lokasyon: sec?.ad || '' }))
+                }}
+                style={{ marginBottom: 6 }}
+              >
+                <option value="">— Müşteri lokasyonlarından seç…</option>
+                {musteriLokasyonlari.map(l => (
+                  <option key={l.id} value={l.id}>{l.ad}</option>
+                ))}
+              </CustomSelect>
+            )}
             <Input
               value={form.lokasyon}
               onChange={e => setForm(p => ({ ...p, lokasyon: e.target.value }))}
-              placeholder="Şube / kat / oda"
+              placeholder={musteriLokasyonlari.length > 0 ? 'veya manuel girin' : 'Şube / kat / oda'}
             />
           </div>
           <div>
