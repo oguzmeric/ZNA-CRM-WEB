@@ -196,11 +196,20 @@ export function AuthProvider({ children }) {
   }
 
   const cikisYap = async () => {
-    // Her çağrı best-effort; biri askıda kalırsa diğerlerini engellemesin
-    if (kullanici) {
-      try { await kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi') } catch (e) { console.warn('[cikisYap] durum güncellenemedi:', e) }
-    }
-    try { await cikisYapAuth() } catch (e) { console.warn('[cikisYap] signOut hata:', e) }
+    // Devam eden fetch'leri hemen iptal et — logout sonrası response'ların
+    // cache'e veya context state'lerine sızıp yeni kullanıcıya görünmesini önler.
+    abortAllInFlight('logout')
+
+    // Durum güncelleme + signOut paralel — sıralı await 2x8sn block edebilirdi.
+    // Her ikisi de best-effort; allSettled hata fırlatmaz.
+    const isler = []
+    if (kullanici) isler.push(kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi'))
+    isler.push(cikisYapAuth())
+    const sonuclar = await Promise.allSettled(isler)
+    sonuclar.forEach((s, i) => {
+      if (s.status === 'rejected') console.warn(`[cikisYap] iş ${i} hata:`, s.reason)
+    })
+
     // Diğer kullanıcılara stale data sızmasın
     cacheInvalidateAll()
     setKullanici(null)

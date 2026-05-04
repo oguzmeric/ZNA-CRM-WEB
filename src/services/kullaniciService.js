@@ -36,12 +36,19 @@ export const mevcutOturumKullanici = async () => {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return null
 
-  const { data: profil } = await supabase
+  const { data: profil, error } = await supabase
     .from('kullanicilar')
     .select('*')
     .eq('auth_id', session.user.id)
     .single()
 
+  if (error) {
+    // Auth session geçerli ama profil tablosundan satır okunamadı
+    // (RLS, network, eksik kayıt). Debug için logla — null döner, App
+    // login ekranına yönlendirir.
+    console.warn('[mevcutOturumKullanici] profil okuma hata:', error.message)
+    return null
+  }
   return profil ? toCamel(profil) : null
 }
 
