@@ -67,6 +67,12 @@ const hatirlatmaSecenekleri = [
   { gun: 30, label: '1 ay' },
 ]
 
+const teklifTipiSecenekleri = [
+  { value: 'standart', label: 'Standart' },
+  { value: 'trassir',  label: 'Trassir' },
+  { value: 'karel',    label: 'Karel' },
+]
+
 function TeklifDetay() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -147,6 +153,7 @@ function TeklifDetay() {
         genelIskonto: 0,
         musteriTalepId: onDoldurum?.musteriTalepId || null,
         musteriTalepNo: onDoldurum?.musteriTalepNo || '',
+        teklifTipi: 'standart',
       })
     } else if (mevcutTeklif) {
       setForm({
@@ -169,6 +176,7 @@ function TeklifDetay() {
         genelIskonto: mevcutTeklif.genelIskonto || 0,
         musteriTalepId: mevcutTeklif.musteriTalepId || null,
         musteriTalepNo: mevcutTeklif.musteriTalepNo || '',
+        teklifTipi: mevcutTeklif.teklifTipi || 'standart',
       })
     }
   }, [veriYuklendi, mevcutTeklif])
@@ -460,6 +468,18 @@ function TeklifDetay() {
         {/* Sol — Teklif Bilgileri */}
         <Card>
           <h2 className="t-h2" style={{ marginBottom: 16 }}>Teklif bilgileri</h2>
+
+          <div style={{ marginBottom: 16 }}>
+            <Label>Teklif şablonu</Label>
+            <SegmentedControl
+              options={teklifTipiSecenekleri}
+              value={form.teklifTipi || 'standart'}
+              onChange={(v) => setForm({ ...form, teklifTipi: v })}
+            />
+            <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 6 }}>
+              Yazdırma ve Excel çıktısı seçilen şablona göre üretilir.
+            </p>
+          </div>
 
           <div style={{ marginBottom: 16 }}>
             <Label>Onay durumu</Label>
