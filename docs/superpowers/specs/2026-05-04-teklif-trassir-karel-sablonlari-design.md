@@ -17,7 +17,7 @@ ALTER TABLE teklifler
   CHECK (teklif_tipi IN ('standart','trassir','karel'));
 ```
 
-- Migration: `supabase_migrations/010_teklif_tipi.sql`
+- Migration: `supabase_migrations/025_teklif_tipi.sql` (mevcut son migration 024)
 - Mevcut tüm satırlar `'standart'` ile dolar — geriye dönük uyumluluk korunur.
 - Schema cache reload `notify pgrst, 'reload schema'`.
 
