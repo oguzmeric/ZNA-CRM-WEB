@@ -102,7 +102,7 @@ export async function karelExcelOlustur(teklif) {
   // Kolon planı: B=Marka, C-D=Açıklama, E-F=Miktar, G-H=Birim, I-K=Birim Fiyat, L-N=Toplam Fiyat
   const headerRow = ws.addRow([])
   headerRow.height = 22
-  const setHeader = (cell, val, w) => {
+  const setHeader = (cell, val) => {
     headerRow.getCell(cell).value = val
     headerRow.getCell(cell).font = { bold: true, color: { argb: 'FFFFFFFF' } }
     headerRow.getCell(cell).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }
