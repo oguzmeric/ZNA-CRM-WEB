@@ -234,10 +234,18 @@ export default function ServisTalepDetay() {
               <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
                 {talep.aciklama}
               </p>
+            ) : bagliGorev?.aciklama && bagliGorev.aciklama.trim() ? (
+              <div>
+                <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {bagliGorev.aciklama}
+                </p>
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: 8 }}>
+                  Bu açıklama bağlı <button onClick={() => navigate(`/gorevler/${bagliGorev.id}`)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', textDecoration: 'underline', font: 'inherit' }}>görevden</button> alındı.
+                </p>
+              </div>
             ) : (
               <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
-                Açıklama girilmemiş. {talep.gorevId && 'Görevden oluşturulduğu için detay yok — '}
-                Üst sağdaki <strong>İncelemeye al</strong> butonuyla durum güncellenip ekstra bilgi notlara eklenebilir.
+                Açıklama girilmemiş.
               </p>
             )}
             {ekBilgiler.length > 0 && (
