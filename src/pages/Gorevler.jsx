@@ -18,6 +18,7 @@ import {
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
+import { useServisTalebi } from '../context/ServisTalebiContext'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Card, Input, Textarea, Label,
@@ -40,6 +41,7 @@ const bosForm = {
   baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '',
   musteriId: '', musteriAdi: '', firmaAdi: '',
   lokasyonId: '',
+  servisTalebiOlustur: false,
 }
 
 function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, overlay = false }) {
@@ -200,6 +202,7 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, onGorevCli
 }
 
 function Gorevler() {
+  const { talepOlusturGorevden } = useServisTalebi()
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
   const { bildirimEkle } = useBildirim()
@@ -291,13 +294,30 @@ function Gorevler() {
         bildirimEkle(form.atanan, 'Görev Güncellendi', `"${form.baslik}" görevi size yeniden atandı.`, 'bilgi', '/gorevler')
       }
     } else {
-      const yeniGorev = { ...form, durum: 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
+      const { servisTalebiOlustur, ...gorevAlanlari } = form
+      const yeniGorev = { ...gorevAlanlari, durum: 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
       const eklenen = await gorevEkle(yeniGorev)
       if (eklenen) {
         setGorevler(prev => [eklenen, ...prev])
         toast.success('Görev eklendi.')
         const oncelik = oncelikler.find(o => o.id === form.oncelik)
         bildirimEkle(form.atanan, 'Yeni Görev Atandı', `"${form.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}. Son tarih: ${form.sonTarih}`, 'bilgi', '/gorevler')
+
+        // Servis talebi de istendiyse oluştur ve oraya yönlendir
+        if (servisTalebiOlustur && form.musteriId) {
+          try {
+            const atananKisi = kullanicilar?.find(k => k.id?.toString() === form.atanan)
+            const servisTalebi = await talepOlusturGorevden(eklenen, kullanici, atananKisi)
+            if (servisTalebi) {
+              toast.success('Servis talebi de oluşturuldu.')
+              navigate(`/servis-talepleri/${servisTalebi.id}`)
+              return
+            }
+          } catch (err) {
+            console.error('[Servis talebi]', err)
+            toast.error('Servis talebi oluşturulamadı: ' + (err?.message || 'bilinmeyen'))
+          }
+        }
       } else { toast.error('Görev kaydedilemedi.'); return }
     }
     setForm(bosForm); setDuzenleId(null); setGoster(false)
@@ -519,8 +539,30 @@ function Gorevler() {
             <Label>Açıklama</Label>
             <Textarea value={form.aciklama} onChange={e => setForm({ ...form, aciklama: e.target.value })} rows={3} placeholder="Görev detayları…" />
           </div>
+
+          {/* Servis talebi toggle — sadece müşteri seçiliyse + yeni görev oluşturuyorsa */}
+          {!duzenleId && form.musteriId && (
+            <div style={{ marginBottom: 16, padding: '10px 12px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                <input
+                  type="checkbox"
+                  checked={form.servisTalebiOlustur || false}
+                  onChange={e => setForm({ ...form, servisTalebiOlustur: e.target.checked })}
+                />
+                Aynı anda servis talebi de oluştur
+              </label>
+              {form.servisTalebiOlustur && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 6, paddingLeft: 22 }}>
+                  Görev kaydedildikten sonra otomatik servis talebi oluşturulup detay sayfasına yönlendirileceksiniz.
+                </p>
+              )}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={kaydet}>{duzenleId ? 'Güncelle' : 'Kaydet'}</Button>
+            <Button variant="primary" onClick={kaydet}>
+              {duzenleId ? 'Güncelle' : (form.servisTalebiOlustur ? 'Görev + Servis talebi oluştur' : 'Kaydet')}
+            </Button>
             <Button variant="secondary" onClick={iptal}>İptal</Button>
           </div>
         </Card>

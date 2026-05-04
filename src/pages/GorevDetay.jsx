@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare,
+  ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare, FileText,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -209,6 +209,34 @@ function GorevDetay() {
               )}
               <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}>
                 Görüşmeye git <ArrowRight size={12} strokeWidth={1.5} />
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Bağlı servis talebi */}
+        {gorev.servisTalepId && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <div className="t-label" style={{ marginBottom: 8 }}>BAĞLI SERVİS TALEBİ</div>
+            <button
+              onClick={() => navigate(`/servis-talepleri/${gorev.servisTalepId}`)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', textAlign: 'left',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--brand-primary-soft)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer',
+                transition: 'border-color 120ms',
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand-primary)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            >
+              <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+              <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>Bağlı servis talebi</span>
+              <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}>
+                Servis talebine git <ArrowRight size={12} strokeWidth={1.5} />
               </span>
             </button>
           </div>

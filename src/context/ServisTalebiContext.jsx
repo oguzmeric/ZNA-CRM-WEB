@@ -7,6 +7,8 @@ import {
   servisTalepGetir,
 } from '../services/servisService'
 import { supabase } from '../lib/supabase'
+import { gorevGuncelle } from '../services/gorevService'
+import { toCamel } from '../lib/mapper'
 
 const ServisTalebiContext = createContext(null)
 
@@ -189,6 +191,58 @@ export function ServisTalebiProvider({ children }) {
     return kayitli
   }
 
+  // Görevden servis talebi oluştur — iki yönlü FK ile bağlar
+  // gorev: { id, baslik, aciklama, musteriId, firmaAdi, lokasyonId?, atananId?, gorusmeId?, bitisTarihi? }
+  const talepOlusturGorevden = async (gorev, kullanici, atananKullanici) => {
+    // Lokasyon adını çek (varsa)
+    let lokasyonMetni = ''
+    if (gorev.lokasyonId) {
+      const { data: lok } = await supabase
+        .from('musteri_lokasyonlari')
+        .select('ad')
+        .eq('id', gorev.lokasyonId)
+        .maybeSingle()
+      lokasyonMetni = lok?.ad || ''
+    }
+    // Müşteri kaydını çek (talepOlusturPersonel için)
+    let musteri = null
+    if (gorev.musteriId) {
+      const { data } = await supabase
+        .from('musteriler').select('*').eq('id', gorev.musteriId).maybeSingle()
+      musteri = data ? toCamel(data) : null
+    }
+
+    const formData = {
+      anaTur: 'ariza',
+      altKategori: '',
+      konu: gorev.baslik,
+      aciklama: gorev.aciklama || '',
+      aciliyet: 'normal',
+      lokasyon: lokasyonMetni,
+      cihazTuru: '',
+      ilgiliKisi: '',
+      telefon: '',
+      uygunZaman: '',
+      planliTarih: gorev.bitisTarihi || null,
+    }
+    const yeni = await talepOlusturPersonel(formData, kullanici, musteri, atananKullanici)
+    if (!yeni) return null
+
+    // İki yönlü FK kur
+    try {
+      await Promise.all([
+        servisTalepGuncelle(yeni.id, { gorevId: gorev.id, gorusmeId: gorev.gorusmeId || null }, kullanici.ad, 'Görevden bağlandı'),
+        gorevGuncelle(gorev.id, { servisTalepId: yeni.id }),
+      ])
+      // State güncellemesi (servis talebi tarafı)
+      setTalepler(prev => prev.map(t => t.id === yeni.id ? { ...t, gorevId: gorev.id, gorusmeId: gorev.gorusmeId || null } : t))
+      return { ...yeni, gorevId: gorev.id, gorusmeId: gorev.gorusmeId || null }
+    } catch (err) {
+      console.error('[talepOlusturGorevden] FK güncellemesi hata:', err)
+      return yeni
+    }
+  }
+
   const talepGuncelle = async (id, guncellenmis, kullaniciAd, aciklama = '') => {
     const mevcutTalep = talepler.find(t => t.id === id)
     if (!mevcutTalep) return
@@ -303,6 +357,7 @@ export function ServisTalebiProvider({ children }) {
         talepler,
         talepOlustur,
         talepOlusturPersonel,
+        talepOlusturGorevden,
         talepGuncelle,
         talepSil,
         notEkle,

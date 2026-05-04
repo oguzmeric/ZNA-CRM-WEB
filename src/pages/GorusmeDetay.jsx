@@ -12,6 +12,8 @@ import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
   Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal,
@@ -53,7 +55,7 @@ const gorevDurumTone = (d) => {
   return { tone: 'lead', isim: 'Bekliyor' }
 }
 
-const bosGorevForm = { baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '' }
+const bosGorevForm = { baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '', lokasyonId: '', servisTalebiOlustur: false }
 
 function GorusmeDetay() {
   const { id } = useParams()
@@ -73,6 +75,8 @@ function GorusmeDetay() {
   const [manuelKonuAc, setManuelKonuAc] = useState(false)
   const [gorevFormAcik, setGorevFormAcik] = useState(false)
   const [gorevForm, setGorevForm] = useState(bosGorevForm)
+  const [gorusmeLokasyonlari, setGorusmeLokasyonlari] = useState([])
+  const { talepOlusturGorevden } = useServisTalebi()
 
   useEffect(() => {
     (async () => {
@@ -81,6 +85,10 @@ function GorusmeDetay() {
         const [g, tum] = await Promise.all([gorusmeGetir(id), gorevleriGetir()])
         setGorusme(g)
         setGorevler(tum.filter(t => t.firmaAdi === g?.firmaAdi))
+        // Müşteri lokasyonlarını çek (varsa) — görev form'unda dropdown için
+        if (g?.musteriId) {
+          musteriLokasyonlariniGetir(g.musteriId).then(setGorusmeLokasyonlari).catch(() => setGorusmeLokasyonlari([]))
+        }
       } finally { setYukleniyor(false) }
     })()
   }, [id])
@@ -143,11 +151,32 @@ function GorusmeDetay() {
       atananId: gorevForm.atanan, atananAd: atananKisi?.ad || '',
       olusturanAd: kullanici.ad, bitisTarihi: gorevForm.sonTarih,
       firmaAdi: gorusme.firmaAdi,
+      musteriId: gorusme.musteriId || null,
+      lokasyonId: gorevForm.lokasyonId || null,
+      gorusmeId: gorusme.id,
     }
     const eklenen = await gorevEkle(yeniGorev)
     if (eklenen) setGorevler(prev => [...prev, eklenen])
     const oncelik = gorevOncelikleri.find(o => o.id === gorevForm.oncelik)
     bildirimEkle(gorevForm.atanan, 'Yeni Görev Atandı', `"${gorevForm.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}`, 'bilgi', '/gorevler')
+
+    // Servis talebi de istendiyse oluştur ve kullanıcıyı oraya yönlendir
+    if (gorevForm.servisTalebiOlustur && eklenen) {
+      try {
+        const servisTalebi = await talepOlusturGorevden(eklenen, kullanici, atananKisi)
+        if (servisTalebi) {
+          toast.success('Görev ve servis talebi oluşturuldu.')
+          navigate(`/servis-talepleri/${servisTalebi.id}`)
+          return
+        } else {
+          toast.warning('Görev kaydedildi ama servis talebi oluşturulamadı.')
+        }
+      } catch (err) {
+        console.error('[Servis talebi oluştur]', err)
+        toast.error('Servis talebi hatası: ' + (err?.message || 'bilinmeyen'))
+      }
+    }
+
     setGorevForm(bosGorevForm); setGorevFormAcik(false)
   }
 
@@ -405,13 +434,41 @@ function GorusmeDetay() {
                   })}
                 </div>
               </div>
+              {gorusmeLokasyonlari.length > 0 && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <Label>Lokasyon</Label>
+                  <CustomSelect value={gorevForm.lokasyonId || ''} onChange={e => setGorevForm({ ...gorevForm, lokasyonId: e.target.value })}>
+                    <option value="">— Belirtilmedi</option>
+                    {gorusmeLokasyonlari.map(l => (
+                      <option key={l.id} value={l.id}>{l.ad}</option>
+                    ))}
+                  </CustomSelect>
+                </div>
+              )}
               <div style={{ gridColumn: 'span 2' }}>
                 <Label>Açıklama</Label>
                 <Textarea value={gorevForm.aciklama} onChange={e => setGorevForm({ ...gorevForm, aciklama: e.target.value })} rows={3} placeholder="Görev detayları…" />
               </div>
+              <div style={{ gridColumn: 'span 2', padding: '10px 12px', background: 'var(--surface-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={gorevForm.servisTalebiOlustur || false}
+                    onChange={e => setGorevForm({ ...gorevForm, servisTalebiOlustur: e.target.checked })}
+                  />
+                  Aynı anda servis talebi de oluştur
+                </label>
+                {gorevForm.servisTalebiOlustur && (
+                  <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 6, paddingLeft: 22 }}>
+                    Görev kaydedildikten sonra otomatik servis talebi oluşturulacak ve detay sayfasına yönlendirileceksiniz.
+                  </p>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="primary" onClick={gorevKaydet}>Görevi kaydet</Button>
+              <Button variant="primary" onClick={gorevKaydet}>
+                {gorevForm.servisTalebiOlustur ? 'Görev + Servis talebi oluştur' : 'Görevi kaydet'}
+              </Button>
               <Button variant="secondary" onClick={() => setGorevFormAcik(false)}>İptal</Button>
             </div>
           </div>
