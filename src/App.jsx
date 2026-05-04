@@ -1,7 +1,8 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import KomutPaleti from './components/KomutPaleti'
 
 // Eager — kritik ilk-paint için (login + Dashboard)
 import Login from './pages/Login'
@@ -70,11 +71,25 @@ const SayfaYukleniyor = () => (
 function App() {
   const { kullanici, oturumYuklendi } = useAuth()
   const location = useLocation()
+  const [komutPaletiAcik, setKomutPaletiAcik] = useState(false)
 
   // Login sonrası tüm route chunk'larını arka planda indir.
   // İdle dönüşünde tıklamak için network'e gerek kalmasın → module cache'ten anlık açılsın.
   useEffect(() => {
     if (kullanici) tumChunklariOnyukle()
+  }, [kullanici])
+
+  // Global Ctrl+K / ⌘+K listener
+  useEffect(() => {
+    if (!kullanici) return
+    const handleKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setKomutPaletiAcik(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
   }, [kullanici])
 
   if (location.pathname === '/design-system') {
@@ -133,22 +148,26 @@ function App() {
 
   if (kullanici.tip === 'musteri') {
     return (
-      <MusteriLayout>
-        <Suspense fallback={<SayfaYukleniyor />}>
-          <Routes>
-            <Route path="/musteri-portal" element={<MusteriDashboard />} />
-            <Route path="/musteri-portal/yeni-talep" element={<YeniTalep />} />
-            <Route path="/musteri-portal/taleplerim" element={<Taleplerim />} />
-            <Route path="/musteri-portal/talep/:id" element={<MusteriTalepDetay />} />
-            <Route path="/musteri-portal/teklif-iste" element={<TeklifIste />} />
-            <Route path="*" element={<Navigate to="/musteri-portal" />} />
-          </Routes>
-        </Suspense>
-      </MusteriLayout>
+      <>
+        <MusteriLayout>
+          <Suspense fallback={<SayfaYukleniyor />}>
+            <Routes>
+              <Route path="/musteri-portal" element={<MusteriDashboard />} />
+              <Route path="/musteri-portal/yeni-talep" element={<YeniTalep />} />
+              <Route path="/musteri-portal/taleplerim" element={<Taleplerim />} />
+              <Route path="/musteri-portal/talep/:id" element={<MusteriTalepDetay />} />
+              <Route path="/musteri-portal/teklif-iste" element={<TeklifIste />} />
+              <Route path="*" element={<Navigate to="/musteri-portal" />} />
+            </Routes>
+          </Suspense>
+        </MusteriLayout>
+        <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
+      </>
     )
   }
 
   return (
+    <>
     <MainLayout>
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
@@ -193,6 +212,8 @@ function App() {
         </Routes>
       </Suspense>
     </MainLayout>
+    <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
+    </>
   )
 }
 
