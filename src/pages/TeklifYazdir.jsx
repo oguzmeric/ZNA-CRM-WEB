@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { teklifGetir } from '../services/teklifService'
 import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
@@ -19,6 +19,8 @@ const tipSecenekleri = [
 
 export default function TeklifYazdir() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const tipUrl = searchParams.get('tip') // form'dan kayıt yapılmadan iletilen tip
   const [teklif, setTeklif] = useState(null)
   const [seciliTip, setSeciliTip] = useState(null)
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
@@ -26,10 +28,10 @@ export default function TeklifYazdir() {
   useEffect(() => {
     teklifGetir(id).then((data) => {
       setTeklif(data)
-      // İlk açılışta kaydedilmiş tip varsayılan olur — kullanıcı buradan değiştirebilir
-      setSeciliTip(data?.teklifTipi || 'standart')
+      // Öncelik: URL ?tip= → kaydedilmiş teklifTipi → 'standart'
+      setSeciliTip(tipUrl || data?.teklifTipi || 'standart')
     })
-  }, [id])
+  }, [id, tipUrl])
 
   if (!teklif || !seciliTip) {
     return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Yükleniyor...</div>

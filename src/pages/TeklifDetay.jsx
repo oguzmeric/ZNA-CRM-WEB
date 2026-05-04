@@ -418,7 +418,11 @@ function TeklifDetay() {
             <Button
               variant="secondary"
               iconLeft={<Printer size={14} strokeWidth={1.5} />}
-              onClick={() => window.open(`/teklifler/${id}/yazdir`, '_blank')}
+              onClick={() => {
+                // Form'da seçili olan tipi URL'ye geçir — kaydet zorunlu olmasın
+                const tip = form.teklifTipi || 'standart'
+                window.open(`/teklifler/${id}/yazdir?tip=${tip}`, '_blank')
+              }}
             >
               PDF
             </Button>
