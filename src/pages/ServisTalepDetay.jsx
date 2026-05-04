@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
-  Paperclip, Upload, Download, Image as ImageIcon,
+  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -52,6 +52,9 @@ export default function ServisTalepDetay() {
 
   const talep = talepler.find(t => t.id === parseInt(id))
   const [bagliGorev, setBagliGorev] = useState(null)
+  const [aciklamaDuzenle, setAciklamaDuzenle] = useState(false)
+  const [aciklamaTaslak, setAciklamaTaslak] = useState('')
+  const [aciklamaKaydediliyor, setAciklamaKaydediliyor] = useState(false)
 
   // Bağlı görev varsa yorumlarını çek (read-only gösterim için)
   useEffect(() => {
@@ -226,11 +229,70 @@ export default function ServisTalepDetay() {
 
           {/* Açıklama */}
           <Card>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-              <CardTitle style={{ margin: 0 }}>Talep İçeriği</CardTitle>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <CardTitle style={{ margin: 0 }}>Talep İçeriği</CardTitle>
+              </div>
+              {!aciklamaDuzenle && (
+                <button
+                  onClick={() => { setAciklamaTaslak(talep.aciklama || ''); setAciklamaDuzenle(true) }}
+                  title="Açıklamayı düzenle"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    font: '500 12px/16px var(--font-sans)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Pencil size={12} strokeWidth={1.5} /> Düzenle
+                </button>
+              )}
             </div>
-            {talep.aciklama && talep.aciklama.trim() ? (
+
+            {aciklamaDuzenle ? (
+              <div>
+                <Textarea
+                  value={aciklamaTaslak}
+                  onChange={e => setAciklamaTaslak(e.target.value)}
+                  rows={4}
+                  placeholder="Talep detayını yazın…"
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    iconLeft={<Check size={12} strokeWidth={1.5} />}
+                    disabled={aciklamaKaydediliyor}
+                    onClick={async () => {
+                      setAciklamaKaydediliyor(true)
+                      try {
+                        await talepGuncelle(talep.id, { aciklama: aciklamaTaslak.trim() }, kullanici.ad, 'Açıklama güncellendi')
+                        setAciklamaDuzenle(false)
+                      } catch (err) {
+                        alert('Kaydedilemedi: ' + (err?.message || 'bilinmeyen'))
+                      } finally {
+                        setAciklamaKaydediliyor(false)
+                      }
+                    }}
+                  >
+                    {aciklamaKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    iconLeft={<X size={12} strokeWidth={1.5} />}
+                    onClick={() => setAciklamaDuzenle(false)}
+                  >
+                    İptal
+                  </Button>
+                </div>
+              </div>
+            ) : talep.aciklama && talep.aciklama.trim() ? (
               <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
                 {talep.aciklama}
               </p>
@@ -245,7 +307,7 @@ export default function ServisTalepDetay() {
               </div>
             ) : (
               <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
-                Açıklama girilmemiş.
+                Açıklama girilmemiş — sağ üstteki <strong>Düzenle</strong> butonuyla ekleyebilirsiniz.
               </p>
             )}
             {ekBilgiler.length > 0 && (
