@@ -28,10 +28,14 @@ export function AuthProvider({ children }) {
   const [oturumYuklendi, setOturumYuklendi] = useState(false)
 
   useEffect(() => {
-    mevcutOturumKullanici().then((k) => {
-      setKullanici(k)
-      setOturumYuklendi(true)
-    })
+    // ÖNEMLİ: .catch + .finally ile setOturumYuklendi(true) GARANTİ altında.
+    // Aksi halde ilk açılışta cold DNS/TLS sırasında supabase çağrısı 8sn
+    // timeout'la reject olursa, oturumYuklendi false kalır ve App.jsx
+    // sonsuza kadar "Yükleniyor…" gösterir → kullanıcı F5 yapmak zorunda.
+    mevcutOturumKullanici()
+      .then((k) => setKullanici(k))
+      .catch((e) => { console.warn('[auth] ilk oturum yükleme hata:', e); setKullanici(null) })
+      .finally(() => setOturumYuklendi(true))
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
