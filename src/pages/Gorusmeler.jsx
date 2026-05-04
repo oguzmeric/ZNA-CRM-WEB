@@ -5,12 +5,14 @@ import {
   Plus, Pencil, Trash2, User, Phone, MessageCircle, Mail, Handshake,
   Building2, Monitor, Link2, Video, Send, Lightbulb, X,
   Paperclip, Upload, FileText, Image as ImageIcon, Download,
+  MapPin, Settings,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import { supabase } from '../lib/supabase'
 import { arrayToCamel } from '../lib/mapper'
+import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -79,6 +81,7 @@ function Gorusmeler() {
   const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
   const [mevcutDosyalar, setMevcutDosyalar] = useState([]) // Sunucudaki dosyalar
   const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
+  const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -401,15 +404,45 @@ function Gorusmeler() {
                 ))}
               </CustomSelect>
             </div>
-            {firmaLokasyonlari.length > 0 && (
+            {secilenFirma && firmaKisileri.length > 0 && (
               <div>
-                <Label>Lokasyon</Label>
-                <CustomSelect value={form.lokasyonId || ''} onChange={e => setForm({ ...form, lokasyonId: e.target.value })}>
-                  <option value="">— Belirtilmedi</option>
-                  {firmaLokasyonlari.map(l => (
-                    <option key={l.id} value={l.id}>{l.ad}</option>
-                  ))}
-                </CustomSelect>
+                <Label>
+                  Lokasyon
+                  <button
+                    type="button"
+                    onClick={() => setLokasyonModalAcik(true)}
+                    title="Lokasyon ekle/sil"
+                    style={{
+                      background: 'none', border: 'none', padding: '0 0 0 6px',
+                      cursor: 'pointer', color: 'var(--brand-primary)',
+                      font: '500 11px/14px var(--font-sans)',
+                    }}
+                  >
+                    <Settings size={11} strokeWidth={1.5} style={{ verticalAlign: -1 }} /> yönet
+                  </button>
+                </Label>
+                {firmaLokasyonlari.length > 0 ? (
+                  <CustomSelect value={form.lokasyonId || ''} onChange={e => setForm({ ...form, lokasyonId: e.target.value })}>
+                    <option value="">— Belirtilmedi</option>
+                    {firmaLokasyonlari.map(l => (
+                      <option key={l.id} value={l.id}>{l.ad}</option>
+                    ))}
+                  </CustomSelect>
+                ) : (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                    background: 'var(--surface-sunken)',
+                    border: '1px dashed var(--border-default)',
+                    font: '400 12px/16px var(--font-sans)',
+                    color: 'var(--text-tertiary)',
+                  }}>
+                    Bu firma için lokasyon yok. <button
+                      type="button"
+                      onClick={() => setLokasyonModalAcik(true)}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)', textDecoration: 'underline' }}
+                    >+ Lokasyon ekle</button>
+                  </div>
+                )}
               </div>
             )}
             <div>
@@ -827,6 +860,25 @@ function Gorusmeler() {
           </div>
         )}
       </Card>
+
+      {/* Lokasyon yönetim modal'ı — firma seçili olduğunda formdan açılır */}
+      <LokasyonYonetModal
+        acik={lokasyonModalAcik}
+        musteriId={firmaKisileri[0]?.id || null}
+        musteriAdi={secilenFirma}
+        lokasyonlar={firmaLokasyonlari}
+        onLokasyonlarChange={(yeni) => {
+          // tumLokasyonlar'da firmaya ait olanları yeni listeyle replace et
+          const firmaIdleri = new Set(firmaKisileri.map(m => m.id))
+          const digerleri = tumLokasyonlar.filter(l => !firmaIdleri.has(l.musteriId))
+          setTumLokasyonlar([...digerleri, ...yeni])
+          // Eğer silinen lokasyon formda seçiliyse temizle
+          if (form.lokasyonId && !yeni.some(l => l.id?.toString() === form.lokasyonId.toString())) {
+            setForm(f => ({ ...f, lokasyonId: '' }))
+          }
+        }}
+        onClose={() => setLokasyonModalAcik(false)}
+      />
     </div>
   )
 }

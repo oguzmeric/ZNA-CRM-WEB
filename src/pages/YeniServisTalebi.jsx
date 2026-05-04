@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Building2, User, AlertTriangle, MapPin, Phone, Calendar, Wrench,
+  ArrowLeft, Plus, Building2, User, AlertTriangle, MapPin, Phone, Calendar, Wrench, Settings,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useServisTalebi, ANA_TURLER, ALT_KATEGORILER, ACILIYET_SEVIYELERI } from '../context/ServisTalebiContext'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
@@ -45,6 +46,7 @@ export default function YeniServisTalebi() {
   const [form, setForm] = useState(bos)
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
 
   useEffect(() => {
     musterileriGetir().then(d => setMusteriler(d || []))
@@ -253,7 +255,23 @@ export default function YeniServisTalebi() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
-            <Label>Lokasyon</Label>
+            <Label>
+              Lokasyon
+              {seciliMusteri && (
+                <button
+                  type="button"
+                  onClick={() => setLokasyonModalAcik(true)}
+                  title="Lokasyon ekle/sil"
+                  style={{
+                    background: 'none', border: 'none', padding: '0 0 0 6px',
+                    cursor: 'pointer', color: 'var(--brand-primary)',
+                    font: '500 11px/14px var(--font-sans)',
+                  }}
+                >
+                  <Settings size={11} strokeWidth={1.5} style={{ verticalAlign: -1 }} /> yönet
+                </button>
+              )}
+            </Label>
             {musteriLokasyonlari.length > 0 && (
               <CustomSelect
                 value={musteriLokasyonlari.find(l => l.ad === form.lokasyon)?.id?.toString() || ''}
@@ -348,6 +366,24 @@ export default function YeniServisTalebi() {
           {kaydediliyor ? 'Oluşturuluyor…' : 'Talep oluştur'}
         </Button>
       </div>
+
+      {/* Lokasyon yönetim modal'ı */}
+      <LokasyonYonetModal
+        acik={lokasyonModalAcik}
+        musteriId={seciliMusteri?.id || null}
+        musteriAdi={seciliMusteri ? `${seciliMusteri.ad} ${seciliMusteri.soyad}${seciliMusteri.firma ? ` (${seciliMusteri.firma})` : ''}` : ''}
+        lokasyonlar={musteriLokasyonlari}
+        onLokasyonlarChange={(yeni) => {
+          setMusteriLokasyonlari(yeni)
+          // Eğer silinen lokasyon formda yazılıysa, formdan da temizle
+          if (form.lokasyon && !yeni.some(l => l.ad === form.lokasyon)) {
+            // sadece dropdown'dan seçilmişse temizle, manuel girilmişse bırak
+            const onceMevcuttu = musteriLokasyonlari.some(l => l.ad === form.lokasyon)
+            if (onceMevcuttu) setForm(p => ({ ...p, lokasyon: '' }))
+          }
+        }}
+        onClose={() => setLokasyonModalAcik(false)}
+      />
     </div>
   )
 }
