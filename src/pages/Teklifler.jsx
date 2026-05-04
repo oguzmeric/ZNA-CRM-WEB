@@ -26,6 +26,12 @@ const onayTone = {
   vazgecildi: { tone: 'kayip',     isim: 'Reddedildi' },
 }
 
+// Şablon tipi badge — 'standart' için gürültü olmasın diye render edilmez
+const tipBadge = {
+  trassir: { tone: 'lead',  isim: 'Trassir' },
+  karel:   { tone: 'aktif', isim: 'Karel' },
+}
+
 const talepTone = {
   bekliyor:          { tone: 'beklemede', isim: 'Bekliyor',           C: Clock },
   inceleniyor:       { tone: 'lead',      isim: 'İnceleniyor',         C: SearchIc },
@@ -415,6 +421,9 @@ export default function Teklifler() {
                                 >
                                   {t.konu || t.teklifNo}
                                 </button>
+                                {tipBadge[t.teklifTipi] && (
+                                  <Badge tone={tipBadge[t.teklifTipi].tone}>{tipBadge[t.teklifTipi].isim}</Badge>
+                                )}
                                 {t.revizyon > 0 && (
                                   <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--warning)' }}>Rev.{t.revizyon}</span>
                                 )}
