@@ -2,7 +2,9 @@ import { Suspense, useEffect, useState } from 'react'
 import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
-import KomutPaleti from './components/KomutPaleti'
+
+// Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
+const KomutPaleti = lazy(() => import('./components/KomutPaleti'))
 
 // Eager — kritik ilk-paint için (login + Dashboard)
 import Login from './pages/Login'
@@ -161,7 +163,11 @@ function App() {
             </Routes>
           </Suspense>
         </MusteriLayout>
-        <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
+        {komutPaletiAcik && (
+          <Suspense fallback={null}>
+            <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
+          </Suspense>
+        )}
       </>
     )
   }
