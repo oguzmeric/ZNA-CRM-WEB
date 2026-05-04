@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
+import { gorevGetir } from '../services/gorevService'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
@@ -50,6 +51,16 @@ export default function ServisTalepDetay() {
   })
 
   const talep = talepler.find(t => t.id === parseInt(id))
+  const [bagliGorev, setBagliGorev] = useState(null)
+
+  // Bağlı görev varsa yorumlarını çek (read-only gösterim için)
+  useEffect(() => {
+    if (talep?.gorevId) {
+      gorevGetir(talep.gorevId).then(setBagliGorev).catch(() => setBagliGorev(null))
+    } else {
+      setBagliGorev(null)
+    }
+  }, [talep?.gorevId])
 
   if (!talep) {
     return (
@@ -318,6 +329,45 @@ export default function ServisTalepDetay() {
               ))}
             </div>
           </Card>
+
+          {/* Bağlı görev yorumları (read-only) — talep görevden oluşturulduysa */}
+          {bagliGorev && (bagliGorev.yorumlar || []).length > 0 && (
+            <Card padding={0}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <MessageSquare size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+                  <CardTitle style={{ margin: 0 }}>Bağlı görev yorumları</CardTitle>
+                  <Badge tone="lead">{(bagliGorev.yorumlar || []).length}</Badge>
+                </div>
+                <button
+                  onClick={() => navigate(`/gorevler/${bagliGorev.id}`)}
+                  style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', font: '500 12px/16px var(--font-sans)', color: 'var(--brand-primary)', cursor: 'pointer' }}
+                >
+                  Göreve git →
+                </button>
+              </div>
+              <div style={{ padding: '12px 20px' }}>
+                {(bagliGorev.yorumlar || []).map(y => (
+                  <div key={y.id} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-default)' }}>
+                    <Avatar name={y.yazar} size="sm" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{y.yazar}</span>
+                        <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>{y.tarih}</span>
+                        {y.duzenlendi && <span style={{ font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>(düzenlendi)</span>}
+                      </div>
+                      <div style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                        {y.icerik}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: 10 }}>
+                  Yorumlar görevde tutuluyor — yeni yorum eklemek için "Göreve git" linkini kullanın.
+                </p>
+              </div>
+            </Card>
+          )}
 
           {/* Yazışmalar */}
           <Card padding={0}>
