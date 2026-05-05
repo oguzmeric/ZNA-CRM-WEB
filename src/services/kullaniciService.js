@@ -31,25 +31,45 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
   return profil ? toCamel(profil) : null
 }
 
-// Oturum yenileme — sayfa yüklendiğinde çağır
+// Promise.race timeout helper — supabase çağrıları hanging kalırsa bypass
+const ileTimeout = (promise, ms, etiket) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${etiket} timeout (${ms}ms)`)), ms)),
+  ])
+}
+
+// Oturum yenileme — sayfa yüklendiğinde çağır.
+// KRİTİK: getSession() ve profil sorgusu timeout olmadan hang olabilir
+// (stale session, ölmüş HTTP/2 keep-alive, vb.). Timeout race ile bypass et,
+// hata olursa null dön → App login ekranına düşer, "Yükleniyor…" sonsuza
+// kadar takılmaz.
 export const mevcutOturumKullanici = async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return null
-
-  const { data: profil, error } = await supabase
-    .from('kullanicilar')
-    .select('*')
-    .eq('auth_id', session.user.id)
-    .single()
-
-  if (error) {
-    // Auth session geçerli ama profil tablosundan satır okunamadı
-    // (RLS, network, eksik kayıt). Debug için logla — null döner, App
-    // login ekranına yönlendirir.
-    console.warn('[mevcutOturumKullanici] profil okuma hata:', error.message)
+  let session
+  try {
+    const result = await ileTimeout(supabase.auth.getSession(), 6000, 'getSession')
+    session = result?.data?.session
+  } catch (e) {
+    console.warn('[mevcutOturumKullanici] getSession:', e.message)
     return null
   }
-  return profil ? toCamel(profil) : null
+  if (!session?.user) return null
+
+  try {
+    const { data: profil, error } = await ileTimeout(
+      supabase.from('kullanicilar').select('*').eq('auth_id', session.user.id).single(),
+      6000,
+      'profil',
+    )
+    if (error) {
+      console.warn('[mevcutOturumKullanici] profil okuma hata:', error.message)
+      return null
+    }
+    return profil ? toCamel(profil) : null
+  } catch (e) {
+    console.warn('[mevcutOturumKullanici] profil timeout:', e.message)
+    return null
+  }
 }
 
 export const cikisYapAuth = async () => {

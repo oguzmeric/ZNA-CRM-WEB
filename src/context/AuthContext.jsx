@@ -32,10 +32,28 @@ export function AuthProvider({ children }) {
     // Aksi halde ilk açılışta cold DNS/TLS sırasında supabase çağrısı 8sn
     // timeout'la reject olursa, oturumYuklendi false kalır ve App.jsx
     // sonsuza kadar "Yükleniyor…" gösterir → kullanıcı F5 yapmak zorunda.
+    //
+    // EK SAFETY NET: mevcutOturumKullanici içinde Promise.race timeout var
+    // ama o da fail-safe değil. 10sn'lik kesin guard — sabahları stale session
+    // ile sayfa yüklenmediği bug'ı kalıcı çözer (kullanıcı login ekranına
+    // düşer, refresh zorunlu kalmaz).
+    let cevapGeldi = false
+    const safetyTimer = setTimeout(() => {
+      if (!cevapGeldi) {
+        console.warn('[auth] safety net 10sn — zorla login ekranına düş')
+        setKullanici(null)
+        setOturumYuklendi(true)
+      }
+    }, 10_000)
+
     mevcutOturumKullanici()
       .then((k) => setKullanici(k))
       .catch((e) => { console.warn('[auth] ilk oturum yükleme hata:', e); setKullanici(null) })
-      .finally(() => setOturumYuklendi(true))
+      .finally(() => {
+        cevapGeldi = true
+        clearTimeout(safetyTimer)
+        setOturumYuklendi(true)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
