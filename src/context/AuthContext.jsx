@@ -83,31 +83,36 @@ export function AuthProvider({ children }) {
     })
 
     // === Tab idle'dan dönünce recovery ===
-    // Problem: tab 10-20 sn arka plana alındığında tarayıcı pending fetch'leri
-    // pause ediyor. Dönünce supabase client'ın pending Promise'leri askıda
-    // kalıyor → sayfa geçişleri "yüklenmiyor", refresh zorunlu oluyor.
-    //
-    // Çözüm (3 katman):
-    //  - Kısa gizlilik (>= 5 sn): cache.invalidateAll() → pending Map temizlenir,
-    //    sonraki fetch'ler taze başlar. Soft recovery, yeniden yükleme yok.
-    //  - Orta gizlilik (>= 2 dk): +  supabase.auth.refreshSession() zorla.
-    //  - Refresh fail: localStorage sb-* sil + sayfa reload (Ctrl+Shift+R otomatik).
-    // === Reload guard ===
-    // visibility (≥2dk), idle (≥3dk) ve focus (≥3dk) hepsi reload tetikleyebilir.
-    // Kullanıcı 4 dk gizli kalıp sonra tıklarsa hem visibilitychange hem
-    // aktiviteOlay çakışıp çift reload deneyebilir. Tek seferlik guard:
-    // 5sn cooldown — bu pencere içinde ikinci tetik yok sayılır.
-    const guvenliReload = (sebep) => {
+    // Strateji (Aralık 2025 revizyon):
+    //  1) Eşikleri yükselttik: kısa sekme geçişlerinde (<10dk) reload olmaz,
+    //     sayfa state korunur (form, scroll, modal).
+    //  2) Hard reload yerine SOFT RECOVERY: cache temizle + abort + auth refresh.
+    //     Sadece auth refresh fail olursa son çare reload.
+    //  3) Cooldown: aynı pencerede ikinci tetik yok sayılır.
+    const SOFT_COOLDOWN = 5_000
+    const lastSoftAt = { value: 0 }
+
+    const softRecovery = async (sebep) => {
+      const simdi = Date.now()
+      if (simdi - lastSoftAt.value < SOFT_COOLDOWN) {
+        console.info(`[${sebep}] soft recovery skip — cooldown`)
+        return
+      }
+      lastSoftAt.value = simdi
+      console.info(`[${sebep}] soft recovery — cache+abort+refresh`)
       try {
-        const son = Number(sessionStorage.getItem('auth_reload_at') || 0)
-        if (Date.now() - son < 5000) {
-          console.info(`[${sebep}] reload skip — cooldown aktif`)
-          return
+        abortAllInFlight('soft-recovery')
+        cacheInvalidateAll()
+        // Auth refresh — başarılıysa state korunur, başarısızsa reload
+        const { error } = await supabase.auth.refreshSession()
+        if (error) {
+          console.warn(`[${sebep}] auth refresh fail → reload`, error.message)
+          window.location.reload()
         }
-        sessionStorage.setItem('auth_reload_at', String(Date.now()))
-      } catch {}
-      console.info(`[${sebep}] sessiz reload`)
-      window.location.reload()
+      } catch (e) {
+        console.warn(`[${sebep}] recovery exception → reload`, e?.message)
+        window.location.reload()
+      }
     }
 
     let hiddenAt = null
@@ -122,34 +127,25 @@ export function AuthProvider({ children }) {
       // Çok kısa switch'lerde (< 5 sn) dokunma
       if (hiddenFor < 5_000) return
 
-      // 5sn-2dk: soft recovery — cache temizle, eski fetch'leri iptal et
+      // 5sn-10dk: soft recovery — cache temizle, eski fetch'leri iptal et
       abortAllInFlight('tab-idle-recovery')
       cacheInvalidateAll()
 
-      // 2+ dk gizliyse: HTTP/2 keep-alive ölmüş olabilir, sessiz reload
-      // (Vite preconnect + chunk preload sayesinde reload anlık)
-      if (hiddenFor >= 120_000) {
-        guvenliReload(`visibility ${Math.round(hiddenFor/1000)}sn`)
+      // 10+ dk gizliyse: HTTP/2 keep-alive ölmüş olabilir, soft recovery
+      // (auth refresh dene; fail olursa reload). Sayfa state korunmaya çalışır.
+      if (hiddenFor >= 600_000) {
+        softRecovery(`visibility ${Math.round(hiddenFor/1000)}sn`)
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
 
-    // === Aynı tab'da idle kalıp dönünce de recovery ===
-    // visibilitychange tab değişiminde fire eder. Ama kullanıcı tab'ı açık
-    // bırakıp 1-2 dk boşta kalırsa (tarayıcı throttle, websocket disconnect)
-    // bir sonraki tıklamada sayfa "donuk" geliyor — refresh zorunlu kalıyor.
-    // Çözüm: son aktivite zamanını takip et; idle süre belli eşiği geçtikten
-    // sonraki ilk aktivite olayında soft recovery uygula.
     // === Aynı tab'da idle detection ===
-    // Önemli: mousemove DİNLEMİYORUZ — kullanıcı başka uygulamada çalışırken
-    // cursor browser üstünde durunca sonAktivite gereksiz yere yenileniyor,
-    // bosluk asla eşiği geçmiyor ama altta HTTP/2 keep-alive ölüyordu.
     // Sadece anlamlı interaction'ları say: click, keydown, touchstart.
     // window.focus de eklendi — kullanıcı başka pencereden geri döndü mü
     // kesin sinyal verir.
     let sonAktivite = Date.now()
     const IDLE_ESIK_HAFIF = 60_000   // 1 dk: cache temizle + stale abort
-    const IDLE_ESIK_AGIR = 180_000   // 3 dk: sessiz reload (chunk preload anlık)
+    const IDLE_ESIK_AGIR = 900_000   // 15 dk: soft recovery (auth refresh)
 
     const aktiviteOlay = (e) => {
       const simdi = Date.now()
@@ -159,8 +155,8 @@ export function AuthProvider({ children }) {
       if (e?.type === 'focus') { sonAktivite = simdi; return }
 
       if (bosluk >= IDLE_ESIK_AGIR) {
-        // sayfa zaten gidiyor — sonAktivite atamasına gerek yok
-        guvenliReload(`idle ${Math.round(bosluk/1000)}sn`)
+        sonAktivite = simdi
+        softRecovery(`idle ${Math.round(bosluk/1000)}sn`)
         return
       }
       sonAktivite = simdi
@@ -175,7 +171,8 @@ export function AuthProvider({ children }) {
     const onFocus = () => {
       const bosluk = Date.now() - sonAktivite
       if (bosluk >= IDLE_ESIK_AGIR) {
-        guvenliReload(`focus ${Math.round(bosluk/1000)}sn`)
+        sonAktivite = Date.now()
+        softRecovery(`focus ${Math.round(bosluk/1000)}sn`)
         return
       }
       if (bosluk >= IDLE_ESIK_HAFIF) {
