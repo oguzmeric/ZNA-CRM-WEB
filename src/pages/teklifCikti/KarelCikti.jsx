@@ -117,7 +117,7 @@ export default function KarelCikti({ teklif }) {
           <span><strong>Hazırlayan :</strong> {teklif.hazirlayan || '—'}</span>
         </div>
 
-        <h2 style={{ fontSize: 22, color: '#0176D3', fontWeight: 400, marginBottom: 22, textAlign: 'center', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+        <h2 style={{ fontSize: 22, color: '#0176D3', fontWeight: 600, marginBottom: 22, textAlign: 'center', letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
           Fiyatlandırma
         </h2>
 
