@@ -313,7 +313,7 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <CurrencyBox code="USD" value={kurlar.USD ? `₺${kurlar.USD}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
-          <CurrencyBox code="EUR" value={kurlar.EUR ? `₺${kurlar.EUR}` : '—'} />
+          <CurrencyBox code="EUR" value={kurlar.EUR ? `₺${kurlar.EUR}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
         </div>
       </div>
 

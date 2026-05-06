@@ -1,16 +1,11 @@
-// Karel teklif çıktısı — A4 dikey, 5 sayfalık marka-yoğun sunum.
-// Trassir formatıyla aynı yapı + sayfa 1 kapağında "KAREL İŞ ORTAĞI" logosu eklendi.
-// Sayfa 1: kapak görseli + Karel İş Ortağı rozeti
-// Sayfa 2: karşılama + ZNA Hakkında + Hizmetlerimiz
-// Sayfa 3: fiyatlandırma tablosu
-// Sayfa 4: İş Ortaklarımız (logo grid'i)
-// Sayfa 5: Bazı Referanslarımız (logo grid'i)
+// Karel teklif çıktısı — A4 dikey, tek sayfa: sadece Fiyatlandırma.
+// (Eskiden 5 sayfaydı; istek üzerine yalnızca eski 3. sayfa korundu.)
 
-import { TRASSIR_KARSILAMA, ZNA_HAKKINDA, HIZMETLERIMIZ, ZNA_FIRMA } from '../../lib/teklifTemplates'
+import { ZNA_FIRMA } from '../../lib/teklifTemplates'
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
-// Antetli kağıt footer'ı — her içerik sayfasının altına gelir (kapak hariç)
+// Antetli kağıt footer'ı
 function SayfaFooter() {
   return (
     <div style={{
@@ -38,7 +33,7 @@ function SayfaFooter() {
   )
 }
 
-// Sayfa başlığı — sol üst ZNA logosu + sağ üst Karel rozeti (her içerik sayfasında)
+// Sayfa başlığı — sol üst ZNA logosu + sağ üst Karel İş Ortağı rozeti
 function SayfaBasligi() {
   return (
     <>
@@ -82,7 +77,7 @@ export default function KarelCikti({ teklif }) {
   const sayfaStil = {
     width: '210mm',
     minHeight: '297mm',
-    pageBreakAfter: 'always',
+    pageBreakAfter: 'auto',
     padding: '20mm 20mm 35mm 20mm',
     boxSizing: 'border-box',
     fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -113,56 +108,7 @@ export default function KarelCikti({ teklif }) {
         }
       `}</style>
 
-      {/* Sayfa 1 — Kapak (ZNA görseli + Karel İş Ortağı rozeti) */}
-      <div className="teklif-sayfa" style={{ ...sayfaStil, padding: 0, position: 'relative', overflow: 'hidden' }}>
-        <img
-          src="/teklif-assets/zna-cover.png"
-          alt="ZNA Teknoloji"
-          style={{ width: '100%', height: '297mm', objectFit: 'cover' }}
-        />
-        {/* Karel İş Ortağı logosu — sağ üst köşe, beyaz arkaplan */}
-        <div style={{
-          position: 'absolute',
-          top: '20mm',
-          right: '15mm',
-          background: '#fff',
-          padding: '12px 18px',
-          borderRadius: 8,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
-        }}>
-          <img src="/teklif-assets/karel-is-ortagi.png" alt="Karel İş Ortağı"
-            style={{ height: 70, objectFit: 'contain' }} />
-        </div>
-      </div>
-
-      {/* Sayfa 2 — Anlatı */}
-      <div className="teklif-sayfa" style={sayfaStil}>
-        <SayfaBasligi />
-
-        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginTop: 50, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
-          Fiyat Teklifi
-        </h1>
-
-        <div style={{ marginBottom: 28, fontSize: 12, lineHeight: 1.75 }}>
-          <p style={{ fontWeight: 700, marginBottom: 12 }}>Sayın {teklif.firmaAdi}</p>
-          <p style={{ textAlign: 'justify', whiteSpace: 'pre-line' }}>{TRASSIR_KARSILAMA}</p>
-        </div>
-
-        <h2 style={{ fontSize: 18, color: '#0176D3', fontWeight: 700, marginTop: 24, marginBottom: 10, paddingBottom: 4, borderBottom: '2px solid #0176D3' }}>
-          ZNA Hakkında
-        </h2>
-        <p style={{ fontSize: 12, lineHeight: 1.75, textAlign: 'justify', marginBottom: 24 }}>{ZNA_HAKKINDA}</p>
-
-        <h2 style={{ fontSize: 18, color: '#0176D3', fontWeight: 700, marginTop: 16, marginBottom: 10, paddingBottom: 4, borderBottom: '2px solid #0176D3' }}>
-          Hizmetlerimiz
-        </h2>
-        <ul style={{ fontSize: 12, lineHeight: 1.9, paddingLeft: 22 }}>
-          {HIZMETLERIMIZ.map(h => <li key={h}>{h}</li>)}
-        </ul>
-        <SayfaFooter />
-      </div>
-
-      {/* Sayfa 3 — Fiyatlandırma */}
+      {/* Tek sayfa — Fiyatlandırma */}
       <div className="teklif-sayfa" style={sayfaStil}>
         <SayfaBasligi />
 
@@ -230,40 +176,6 @@ export default function KarelCikti({ teklif }) {
         )}
         <SayfaFooter />
       </div>
-
-      {/* Sayfa 4 — İş Ortaklarımız */}
-      <div className="teklif-sayfa" style={sayfaStil}>
-        <SayfaBasligi />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
-          İş Ortaklarımız
-        </h2>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <img
-            src="/teklif-assets/is-ortaklari.png"
-            alt="İş ortakları"
-            style={{ maxWidth: '100%', maxHeight: '210mm', objectFit: 'contain' }}
-          />
-        </div>
-        <SayfaFooter />
-      </div>
-
-      {/* Sayfa 5 — Referanslar */}
-      <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakAfter: 'auto' }}>
-        <SayfaBasligi />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
-          Bazı Referanslarımız
-        </h2>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <img
-            src="/teklif-assets/referanslar.png"
-            alt="Referanslar"
-            style={{ maxWidth: '100%', maxHeight: '210mm', objectFit: 'contain' }}
-          />
-        </div>
-        <SayfaFooter />
-      </div>
-
-      {/* Sayfa 3'ün önündeki Açıklama bloğunun altına SayfaFooter */}
     </>
   )
 }

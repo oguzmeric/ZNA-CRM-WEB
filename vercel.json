@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/tcmb/:path*", "destination": "https://www.tcmb.gov.tr/kurlar/:path*" },
     { "source": "/api/doviz/:path*", "destination": "https://api.frankfurter.dev/v1/:path*" },
     { "source": "/((?!assets/|api/).*)", "destination": "/" }
   ],
