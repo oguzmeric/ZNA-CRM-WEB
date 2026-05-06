@@ -3,9 +3,15 @@
 -- =====================================================================
 -- Önce localStorage tabanlıydı, bu yüzden atayan dışındaki kişiler
 -- bildirimi göremiyordu. Şimdi DB tabanlı + Realtime ile anlık.
+--
+-- NOT: supabase_schema.sql'de eski (kullanılmamış) bir bildirimler
+-- tablosu mevcuttu (kullanici_id text şeması). Drop edip baştan yaratıyoruz —
+-- localStorage tabanlı olduğu için içinde anlamlı veri yoktu.
 -- =====================================================================
 
-create table if not exists bildirimler (
+drop table if exists bildirimler cascade;
+
+create table bildirimler (
   id bigserial primary key,
   alici_id bigint not null references kullanicilar(id) on delete cascade,
   gonderen_id bigint references kullanicilar(id) on delete set null,
