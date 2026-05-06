@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useBildirim } from '../context/BildirimContext'
@@ -222,7 +222,7 @@ function Gorevler() {
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
 
-  useEffect(() => {
+  const veriYukle = useCallback(({ ilkYukleme = false } = {}) => {
     Promise.all([
       gorevleriGetir(),
       musterileriGetir(),
@@ -233,12 +233,28 @@ function Gorevler() {
     ])
       .then(([g, m, l]) => {
         setGorevler(g || []); setMusteriler(m || [])
-        // snake → camel manuel (sadece 3 alan)
         setTumLokasyonlar((l || []).map(r => ({ id: r.id, ad: r.ad, musteriId: r.musteri_id })))
       })
       .catch(err => console.error('[Gorevler yükle]', err))
-      .finally(() => setYukleniyor(false))
+      .finally(() => { if (ilkYukleme) setYukleniyor(false) })
   }, [])
+
+  // İlk yükleme
+  useEffect(() => { veriYukle({ ilkYukleme: true }) }, [veriYukle])
+
+  // Sayfa odağa dönünce tazele — detayda görev "tamamlandı" olarak
+  // işaretlenip geri dönüldüğünde kanban senkron kalsın
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') veriYukle()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', veriYukle)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', veriYukle)
+    }
+  }, [veriYukle])
 
   const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
