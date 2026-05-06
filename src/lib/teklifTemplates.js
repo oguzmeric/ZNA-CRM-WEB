@@ -3,9 +3,13 @@
 // noktadan güncellenir; admin UI'sı yok (YAGNI).
 
 export const ZNA_FIRMA = {
-  unvan: 'ZNA TEKNOLOJİ BİLİŞİM HİZ. SAN. VE TİC. LTD. ŞTİ.',
-  adres: 'İ.O.S.B MAH. KERESTECİLER SAN. SİT. 3B BLOK KAT:3 D:3 BAŞAKŞEHİR/İSTANBUL',
+  unvan: 'ZNA TEKNOLOJİ BİLİŞİM HZM. SAN. VE TİC. LTD. ŞTİ.',
+  adres: 'İ.O.S.B Keresteciler San. Sit. 3B Blok Kat:3 D:3  Başakşehir/İSTANBUL',
+  vdNo: 'İkitelli V.D.NO: 9980827848',
   telFax: '0(212) 549 94 94 - (0212) 671 74 54',
+  tel: '(0212) 671 74 54 & (0212) 549 94 94',
+  email: 'info@znateknoloji.com',
+  web: 'www.znateknoloji.com',
 }
 
 export const TRASSIR_KARSILAMA = `Bu doküman, talep ettiğiniz hizmete ait proje detaylarını kapsamaktadır. Projenin kapsamı, hizmet detayı ve proje bedeli hakkında da bilgi içermektedir. Başarılı çalışmalarınıza fark katacak desteği sağlayacağımıza inanıyor ve sizlere hizmet etmekten mutluluk duyacağımızı paylaşmak istiyoruz. Her türlü soru, sorun ve talebiniz için bizim ile iletişime geçmenizi rica ederiz.`
