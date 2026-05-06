@@ -8,6 +8,9 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { gorevGetir, gorevGuncelle } from '../services/gorevService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
+import { useBildirim } from '../context/BildirimContext'
+import { parseMentions, segmentMetin } from '../lib/mention'
+import MentionTextarea from '../components/MentionTextarea'
 import {
   Button, Textarea, Card, CardTitle, Badge, Avatar, EmptyState, SegmentedControl,
 } from '../components/ui'
@@ -29,6 +32,7 @@ function GorevDetay() {
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
   const { talepOlusturGorevden } = useServisTalebi()
+  const { bildirimEkle } = useBildirim()
   const [servisOlusturuluyor, setServisOlusturuluyor] = useState(false)
   const { toast } = useToast()
   const { confirm } = useConfirm()
@@ -83,8 +87,23 @@ function GorevDetay() {
     const yeniYorumlar = [...(gorev.yorumlar || []), yorum]
     await gorevGuncelle(gorev.id, { yorumlar: yeniYorumlar })
     setGorev(prev => ({ ...prev, yorumlar: yeniYorumlar }))
+
+    // @mention bildirimleri — mention edilen herkese bildirim gider
+    // (kendine mention yapsa bile filtreleme: mention === yazar atlanır)
+    const mentionIdler = parseMentions(yeniYorum, kullanicilar)
+      .filter(mid => mid?.toString() !== kullanici.id?.toString())
+    for (const aliciId of mentionIdler) {
+      bildirimEkle(
+        aliciId,
+        `${kullanici.ad} sizi bir görevde etiketledi`,
+        `"${gorev.baslik}" görevinde sizi mention etti: ${yeniYorum.slice(0, 80)}${yeniYorum.length > 80 ? '…' : ''}`,
+        'mention',
+        `/gorevler/${gorev.id}`,
+      )
+    }
+
     setYeniYorum('')
-    toast.success('Yorum eklendi.')
+    toast.success(mentionIdler.length > 0 ? `Yorum eklendi · ${mentionIdler.length} kişi etiketlendi` : 'Yorum eklendi.')
   }
 
   const duzenlemeBaslat = (yorum) => { setDuzenleYorumId(yorum.id); setDuzenleIcerik(yorum.icerik) }
@@ -371,7 +390,21 @@ function GorevDetay() {
                   </div>
                 ) : (
                   <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {yorum.icerik}
+                    {segmentMetin(yorum.icerik, kullanicilar).map((seg, i) =>
+                      seg.tip === 'mention' ? (
+                        <span key={i} style={{
+                          color: 'var(--brand-primary)',
+                          fontWeight: 600,
+                          background: 'var(--brand-primary-soft)',
+                          padding: '0 4px',
+                          borderRadius: 3,
+                        }}>
+                          {seg.deger}
+                        </span>
+                      ) : (
+                        <span key={i}>{seg.deger}</span>
+                      )
+                    )}
                   </p>
                 )}
               </div>
@@ -380,11 +413,12 @@ function GorevDetay() {
         </div>
 
         <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-          <Textarea
+          <MentionTextarea
             value={yeniYorum}
-            onChange={e => setYeniYorum(e.target.value)}
+            onChange={setYeniYorum}
+            kullanicilar={kullanicilar || []}
             rows={3}
-            placeholder="Yorum yaz…"
+            placeholder="Yorum yaz… (kullanıcı etiketlemek için @ yazın)"
             style={{ marginBottom: 8 }}
           />
           <Button variant="primary" onClick={yorumEkle}>Yorum ekle</Button>

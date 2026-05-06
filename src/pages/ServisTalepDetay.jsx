@@ -7,7 +7,10 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
+import { useBildirim } from '../context/BildirimContext'
 import { gorevGetir } from '../services/gorevService'
+import { parseMentions } from '../lib/mention'
+import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
@@ -32,6 +35,7 @@ export default function ServisTalepDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
   const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { bildirimEkle } = useBildirim()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
@@ -123,6 +127,23 @@ export default function ServisTalepDetay() {
   const notGonder = () => {
     if (!yeniNot.trim()) return
     notEkle(talep.id, yeniNot.trim(), kullanici, notTip)
+
+    // @mention bildirimleri (sadece iç notlar için — müşteriye giden notlarda
+    // ekip içi etiketleme anlamsız)
+    if (notTip === 'ic') {
+      const mentionIdler = parseMentions(yeniNot, kullanicilar)
+        .filter(mid => mid?.toString() !== kullanici.id?.toString())
+      for (const aliciId of mentionIdler) {
+        bildirimEkle(
+          aliciId,
+          `${kullanici.ad} sizi bir servis talebinde etiketledi`,
+          `${talep.talepNo || ''} talebinde sizi mention etti: ${yeniNot.slice(0, 80)}${yeniNot.length > 80 ? '…' : ''}`,
+          'mention',
+          `/servis-talepleri/${talep.id}`,
+        )
+      }
+    }
+
     setYeniNot('')
   }
 
@@ -531,10 +552,11 @@ export default function ServisTalepDetay() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <Textarea
+                  <MentionTextarea
                     value={yeniNot}
-                    onChange={e => setYeniNot(e.target.value)}
-                    placeholder="Not ekle…"
+                    onChange={setYeniNot}
+                    kullanicilar={notTip === 'ic' ? (kullanicilar || []) : []}
+                    placeholder={notTip === 'ic' ? 'Not ekle… (etiketlemek için @)' : 'Not ekle…'}
                     rows={2}
                   />
                 </div>
