@@ -99,7 +99,7 @@ export default function TrassirCikti({ teklif }) {
       <div className="teklif-sayfa" style={sayfaStil}>
         <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
           style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
-        <h1 style={{ fontSize: 32, color: '#0176D3', fontWeight: 800, marginTop: 50, marginBottom: 28, textAlign: 'center', letterSpacing: '-0.5px' }}>
+        <h1 style={{ fontSize: 26, color: '#0176D3', fontWeight: 600, marginTop: 50, marginBottom: 28, textAlign: 'center', letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
           Fiyat Teklifi
         </h1>
 
@@ -132,7 +132,7 @@ export default function TrassirCikti({ teklif }) {
           <span><strong>Hazırlayan :</strong> {teklif.hazirlayan || '—'}</span>
         </div>
 
-        <h2 style={{ fontSize: 24, color: '#0176D3', fontWeight: 800, marginBottom: 20, textAlign: 'center', letterSpacing: '-0.3px' }}>
+        <h2 style={{ fontSize: 22, color: '#0176D3', fontWeight: 600, marginBottom: 22, textAlign: 'center', letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
           Fiyatlandırma
         </h2>
 
@@ -196,7 +196,7 @@ export default function TrassirCikti({ teklif }) {
       <div className="teklif-sayfa" style={sayfaStil}>
         <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
           style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
+        <h2 style={{ fontSize: 24, color: '#0176D3', fontWeight: 600, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
           İş Ortaklarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -213,7 +213,7 @@ export default function TrassirCikti({ teklif }) {
       <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakAfter: 'auto' }}>
         <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
           style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
-        <h2 style={{ fontSize: 28, color: '#0176D3', fontWeight: 800, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '-0.3px' }}>
+        <h2 style={{ fontSize: 24, color: '#0176D3', fontWeight: 600, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
           Bazı Referanslarımız
         </h2>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
