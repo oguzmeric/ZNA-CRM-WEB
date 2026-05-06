@@ -268,10 +268,10 @@ export default function Dashboard() {
 
   const hizliAksiyonlar = useMemo(() => {
     const a = []
-    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni teklif',   yol: '/teklifler',  primary: false })
-    if (kullanici?.moduller?.includes('gorusmeler')) a.push({ isim: 'Yeni görüşme',  yol: '/gorusmeler', primary: false })
-    if (kullanici?.moduller?.includes('gorevler'))   a.push({ isim: 'Yeni görev',    yol: '/gorevler',   primary: false })
-    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni müşteri',  yol: '/musteriler', primary: true })
+    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni teklif',   yol: '/teklifler' })
+    if (kullanici?.moduller?.includes('gorusmeler')) a.push({ isim: 'Yeni görüşme',  yol: '/gorusmeler' })
+    if (kullanici?.moduller?.includes('gorevler'))   a.push({ isim: 'Yeni görev',    yol: '/gorevler' })
+    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni müşteri',  yol: '/musteriler' })
     return a
   }, [kullanici])
 
@@ -350,8 +350,8 @@ export default function Dashboard() {
             {hizliAksiyonlar.map(a => (
               <Button
                 key={a.isim}
-                variant={a.primary ? 'primary' : 'secondary'}
-                iconLeft={a.primary ? <Plus size={14} strokeWidth={1.5} /> : null}
+                variant="secondary"
+                iconLeft={<Plus size={14} strokeWidth={1.5} />}
                 onClick={() => navigate(a.yol)}
               >
                 {a.isim}
