@@ -55,17 +55,28 @@ export function AuthProvider({ children }) {
         setOturumYuklendi(true)
       })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // KRİTİK: Sadece explicit SIGNED_OUT olayında logout yap.
+      // Aksi halde:
+      //   - Yazdir sayfası başka sekmede açıldığında supabase storage sync
+      //     fırlatabilir → her iki sekmedeki kullanıcı da çıkış yapar.
+      //   - Token refresh anlık başarısız olursa (network glitch) yine
+      //     gereksiz logout olur.
+      // SIGNED_OUT sadece kullanıcı explicit cikisYap çağırınca veya token
+      // tamamen geçersizse fırlar — gerçek logout sinyali.
+      if (event === 'SIGNED_OUT') {
         setKullanici(null)
         return
       }
-      // Token refresh sırasında network koparsa mevcutOturumKullanici throw eder.
-      // try/catch olmazsa unhandled rejection ve setKullanici hiç çağrılmaz →
-      // ekran stale state ile kalır. Hata durumunda mevcut kullaniciyi koru.
+      // Session yoksa ama event SIGNED_OUT değilse: mevcut kullaniciyi koru,
+      // bir sonraki API çağrısında refresh kendiliğinden olur ya da
+      // gerçekten geçersizse SIGNED_OUT gelir.
+      if (!session?.user) return
+
+      // SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED — kullanıcı bilgisini güncelle
       try {
         const k = await mevcutOturumKullanici()
-        setKullanici(k)
+        if (k) setKullanici(k)
       } catch (e) {
         console.warn('[auth] onAuthStateChange profil hata:', e)
       }
