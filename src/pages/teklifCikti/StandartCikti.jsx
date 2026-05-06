@@ -40,9 +40,16 @@ export default function StandartCikti({ teklif }) {
       <div className="page">
         {/* Başlık */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, paddingBottom: 20, borderBottom: '2px solid #0176D3' }}>
-          <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0176D3', letterSpacing: '-0.5px' }}>TEKLİF</h1>
-            <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>{teklif.teklifNo}{teklif.revizyon > 0 ? ` — Rev.${teklif.revizyon}` : ''}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <img
+              src="/teklif-assets/zna-logo.jpg"
+              alt="ZNA Teknoloji"
+              style={{ height: 56, objectFit: 'contain', flexShrink: 0 }}
+            />
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Teklif</p>
+              <p style={{ fontSize: 14, color: '#64748b', marginTop: 4, fontWeight: 600 }}>{teklif.teklifNo}{teklif.revizyon > 0 ? ` — Rev.${teklif.revizyon}` : ''}</p>
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{teklif.firmaAdi}</p>
