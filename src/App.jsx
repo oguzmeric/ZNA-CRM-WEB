@@ -60,6 +60,7 @@ const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
 const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const YeniZimmet = lazy(() => import('./pages/YeniZimmet'))
+const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 
 const SayfaYukleniyor = () => (
   <div style={{
@@ -210,6 +211,7 @@ function App() {
           <Route path="/demolar/yeni" element={<YeniDemoCihaz />} />
           <Route path="/demolar/:id" element={<DemoCihazDetay />} />
           <Route path="/demolar/:id/zimmet" element={<YeniZimmet />} />
+          <Route path="/demolar/:id/duzenle" element={<DuzenleDemoCihaz />} />
           <Route path="/servis-talepleri" element={<ServisTalepleri />} />
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />
           <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />

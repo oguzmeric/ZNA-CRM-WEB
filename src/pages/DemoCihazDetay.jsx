@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Boxes, ArrowDownToLine, Clock, Wrench, Trash2 } from 'lucide-react'
+import { ArrowLeft, Boxes, ArrowDownToLine, Clock, Wrench, Trash2, Pencil } from 'lucide-react'
 import { Button, Card, EmptyState, Badge, Table, THead, TBody, TR, TH, TD } from '../components/ui'
 import {
   demoCihazGetir, demoZimmetGecmisi, demoZimmetIadeAl, demoZimmetUzat,
@@ -102,6 +102,9 @@ export default function DemoCihazDetay() {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Button variant="secondary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={() => navigate(`/demolar/${id}/duzenle`)}>
+              Düzenle
+            </Button>
             {isAdmin && (
               <Button variant="secondary" iconLeft={<Wrench size={14} strokeWidth={1.5} />} onClick={bakimToggle}>
                 {cihaz.bakimda ? 'Bakımdan Çıkar' : 'Bakıma Al'}
