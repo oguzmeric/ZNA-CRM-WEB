@@ -64,10 +64,14 @@ export default function DemoCihazDetay() {
   }
 
   const sil = async () => {
-    if (gecmis.length > 0) { toast.error('Geçmişi olan cihaz silinemez.'); return }
-    if (!window.confirm('Bu cihaz havuzdan silinsin mi?')) return
+    if (aktif) { toast.error('Aktif zimmeti olan cihaz silinemez. Önce iade al.'); return }
+    const mesaj = gecmis.length > 0
+      ? `Bu cihaz silinince ${gecmis.length} zimmet geçmişi de kalıcı olarak silinecek. Devam edilsin mi?`
+      : 'Bu cihaz havuzdan kalıcı olarak silinsin mi?'
+    if (!window.confirm(mesaj)) return
     const ok = await demoCihazSil(cihaz.id)
     if (ok) { toast.success('Cihaz silindi.'); navigate('/demolar') }
+    else toast.error('Cihaz silinemedi.')
   }
 
   const aldiSayisi = gecmis.filter(z => z.musteriKarari === 'aldi').length
@@ -110,7 +114,7 @@ export default function DemoCihazDetay() {
                 {cihaz.bakimda ? 'Bakımdan Çıkar' : 'Bakıma Al'}
               </Button>
             )}
-            {isAdmin && gecmis.length === 0 && (
+            {isAdmin && (
               <Button variant="ghost" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={sil}>
                 Sil
               </Button>
