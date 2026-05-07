@@ -30,7 +30,7 @@ create table if not exists demo_zimmet_kayitlari (
   gercek_iade_tarihi              date,
   musteri_karari                  text check (musteri_karari in ('aldi','almadi','degerlendiriyor')),
   durum_notu                      text,
-  uyari_3gun_kala_gonderildi      boolean default false,
+  uyari3gun_kala_gonderildi       boolean default false,
   uyari_suresi_gecti_son_gonderim date,
   olusturma_tarih                 timestamptz default now()
 );
