@@ -139,10 +139,17 @@ export default function DemoCihazDetay() {
         </Card>
       ) : (
         !cihaz.bakimda && (
-          <Card style={{ marginTop: 16, textAlign: 'center', padding: 24 }}>
-            <p className="t-caption" style={{ marginBottom: 12 }}>Cihaz şu an depoda</p>
+          <Card style={{
+            marginTop: 16, textAlign: 'center', padding: 28,
+            borderLeft: '4px solid var(--success)',
+            background: 'var(--success-soft, rgba(34, 197, 94, 0.06))',
+          }}>
+            <h3 className="t-h3" style={{ marginBottom: 6 }}>📦 Cihaz Depoda</h3>
+            <p className="t-caption" style={{ marginBottom: 16 }}>
+              Bu cihazı bir müşteriye zimmetlemek için aşağıdaki butona tıkla.
+            </p>
             <Button variant="primary" onClick={() => navigate(`/demolar/${id}/zimmet`)}>
-              Yeni Zimmet Aç
+              Müşteriye Zimmet Aç →
             </Button>
           </Card>
         )

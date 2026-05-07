@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, ArrowRight } from 'lucide-react'
 import { Button, Card, Input, Textarea, Select, Label } from '../components/ui'
 import { demoCihazEkle } from '../services/demoService'
 import { useToast } from '../context/ToastContext'
@@ -25,8 +25,7 @@ export default function YeniDemoCihaz() {
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const setAlan = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
-  const kaydet = async (e) => {
-    e.preventDefault()
+  const kaydet = async (zimmeteGec = false) => {
     if (!form.ad.trim()) { toast.error('Cihaz adı gerekli.'); return }
     setKaydediliyor(true)
     const eklenen = await demoCihazEkle({
@@ -40,7 +39,11 @@ export default function YeniDemoCihaz() {
     setKaydediliyor(false)
     if (!eklenen) { toast.error('Cihaz eklenemedi.'); return }
     toast.success('Cihaz havuza eklendi.')
-    navigate(`/demolar/${eklenen.id}`)
+    if (zimmeteGec) {
+      navigate(`/demolar/${eklenen.id}/zimmet`)
+    } else {
+      navigate(`/demolar/${eklenen.id}`)
+    }
   }
 
   return (
@@ -50,8 +53,15 @@ export default function YeniDemoCihaz() {
       </Button>
       <h1 className="t-h1" style={{ marginTop: 12, marginBottom: 20 }}>Yeni Demo Cihazı</h1>
 
+      <Card style={{ marginBottom: 12, padding: 14, background: 'var(--info-soft, rgba(59,130,246,0.08))', borderLeft: '3px solid var(--info)' }}>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+          ℹ️ Cihaz havuza eklenir. Sonra <strong>"Kaydet ve Zimmet Aç"</strong> ile direkt müşteriye zimmetleyebilir
+          ya da sadece kaydedip ileride detay sayfasından zimmet açabilirsin.
+        </p>
+      </Card>
+
       <Card>
-        <form onSubmit={kaydet} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <form onSubmit={(e) => { e.preventDefault(); kaydet(false) }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <Label>Cihaz Adı *</Label>
             <Input value={form.ad} onChange={e => setAlan('ad', e.target.value)} placeholder="Örn: Trassir NVR-04" autoFocus />
@@ -82,11 +92,17 @@ export default function YeniDemoCihaz() {
             <Label>Notlar</Label>
             <Textarea value={form.notlar} onChange={e => setAlan('notlar', e.target.value)} rows={3} />
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Button type="submit" variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} disabled={kaydediliyor}>
-              {kaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <Button type="button" variant="primary"
+              iconRight={<ArrowRight size={14} strokeWidth={1.5} />}
+              onClick={() => kaydet(true)}
+              disabled={kaydediliyor}>
+              Kaydet ve Zimmet Aç
             </Button>
-            <Button type="button" variant="secondary" onClick={() => navigate('/demolar')} disabled={kaydediliyor}>
+            <Button type="submit" variant="secondary" iconLeft={<Save size={14} strokeWidth={1.5} />} disabled={kaydediliyor}>
+              {kaydediliyor ? 'Kaydediliyor…' : 'Sadece Kaydet'}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => navigate('/demolar')} disabled={kaydediliyor}>
               İptal
             </Button>
           </div>
