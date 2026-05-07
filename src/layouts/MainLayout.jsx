@@ -8,7 +8,7 @@ import {
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
-  Activity, Timer,
+  Activity, Timer, Boxes,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import { Avatar } from '../components/ui'
@@ -62,6 +62,7 @@ const menuItems = [
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null },
+  { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null },
   {
     id: 'raporlar',

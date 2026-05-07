@@ -56,6 +56,10 @@ const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
+const Demolar = lazy(() => import('./pages/Demolar'))
+const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
+const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
+const YeniZimmet = lazy(() => import('./pages/YeniZimmet'))
 
 const SayfaYukleniyor = () => (
   <div style={{
@@ -202,6 +206,10 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/profil" element={<Profil />} />
           <Route path="/firma-gecmisi/:firmaAdi" element={<FirmaGecmisi />} />
+          <Route path="/demolar" element={<Demolar />} />
+          <Route path="/demolar/yeni" element={<YeniDemoCihaz />} />
+          <Route path="/demolar/:id" element={<DemoCihazDetay />} />
+          <Route path="/demolar/:id/zimmet" element={<YeniZimmet />} />
           <Route path="/servis-talepleri" element={<ServisTalepleri />} />
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />
           <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import {
   Users, CheckSquare, Phone, KeyRound, FileText, TrendingUp, AlertTriangle,
-  Package, BarChart3, UserCog, Plus, ArrowRight, Clock, AlertCircle, Star,
+  Package, BarChart3, UserCog, Plus, ArrowRight, Clock, AlertCircle, Star, Boxes,
 } from 'lucide-react'
 import { satislariGetir } from '../services/satisService'
 import { musterileriGetir } from '../services/musteriService'
@@ -12,6 +12,8 @@ import { gorevleriGetir } from '../services/gorevService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { lisanslariGetir } from '../services/lisansService'
+import { gecikmisDemolar, yaklasanDemolar } from '../services/demoService'
+import { demoBildirimleriniKontrolEt } from '../lib/demoBildirim'
 import {
   Button, Card, CardTitle, CardSubtitle, KPICard,
   Badge, CriticalBadge, Alert,
@@ -29,6 +31,7 @@ const MODUL_ICONS = {
   lisanslar: KeyRound,
   raporlar: BarChart3,
   kullanici_yonetimi: UserCog,
+  demolar: Boxes,
 }
 const TUM_MODULLER = [
   { id: 'musteriler',         isim: 'Müşteriler',        aciklama: 'Müşteri ve lead takibi',      yol: '/musteriler' },
@@ -38,6 +41,7 @@ const TUM_MODULLER = [
   { id: 'lisanslar',          isim: 'Trassir Lisanslar', aciklama: 'Lisans takibi',               yol: '/trassir-lisanslar' },
   { id: 'raporlar',           isim: 'Raporlar',          aciklama: 'Performans grafikleri',       yol: '/raporlar' },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar',      aciklama: 'Kullanıcı ekle, düzenle',     yol: '/kullanici-yonetimi' },
+  { id: 'demolar',            isim: 'Demolar',           aciklama: 'Demo cihaz takibi',           yol: '/demolar' },
 ]
 
 function selamlama(ad) {
@@ -132,6 +136,8 @@ export default function Dashboard() {
   const [gorusmeler, setGorusmeler] = useState([])
   const [trassirLisanslar, setTrassirLisanslar] = useState([])
   const [teklifler, setTeklifler] = useState([])
+  const [demoGecikmis, setDemoGecikmis] = useState([])
+  const [demoYaklasan, setDemoYaklasan] = useState([])
   const [veriYukleniyor, setVeriYukleniyor] = useState(true)
 
   const veriYukle = useCallback(() => {
@@ -144,16 +150,25 @@ export default function Dashboard() {
       gorusmeleriGetir(),
       teklifleriGetir(),
       lisanslariGetir(),
-    ]).then(([satis, m, gv, gr, t, l]) => {
+      gecikmisDemolar(),
+      yaklasanDemolar(),
+    ]).then(([satis, m, gv, gr, t, l, dg, dy]) => {
       setGecikmisler((satis || []).filter(s => s.durum === 'gonderildi' && s.vadeTarihi && new Date(s.vadeTarihi) < bugun))
       setMusteriler(m || [])
       setGorevler(gv || [])
       setGorusmeler(gr || [])
       setTeklifler(t || [])
       setTrassirLisanslar(l || [])
+      setDemoGecikmis(dg || [])
+      setDemoYaklasan(dy || [])
       setVeriYukleniyor(false)
     }).catch((e) => { console.error('Dashboard veri yüklenemedi:', e); setVeriYukleniyor(false) })
   }, [])
+
+  // Demo bildirim kontrolü — oturum başına bir kez
+  useEffect(() => {
+    if (kullanici?.id) demoBildirimleriniKontrolEt(kullanici).catch(e => console.warn('[demo bildirim]', e?.message))
+  }, [kullanici?.id])
 
   // İlk yükleme
   useEffect(() => { veriYukle() }, [veriYukle])
@@ -339,6 +354,46 @@ export default function Dashboard() {
           style={{ marginBottom: 20 }}
         >
           Toplam {gecikmisler.reduce((s, g) => s + (g.toplam || 0), 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ tahsil edilmeyi bekliyor.
+        </Alert>
+      )}
+
+      {/* ── Demo cihaz uyarıları ── */}
+      {demoGecikmis.length > 0 && (
+        <Alert
+          variant="danger"
+          title={
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {demoGecikmis.length} demo cihaz gecikmiş
+              <CriticalBadge>Süresi geçti</CriticalBadge>
+            </div>
+          }
+          action={
+            <a href="/demolar?sekme=suresi_gecti"
+               onClick={e => { e.preventDefault(); navigate('/demolar?sekme=suresi_gecti') }}
+               style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Görüntüle <ArrowRight size={14} strokeWidth={1.5} />
+            </a>
+          }
+          style={{ marginBottom: 16 }}
+        >
+          Müşterilerden geri alınması gereken cihazlar var.
+        </Alert>
+      )}
+
+      {demoYaklasan.length > 0 && (
+        <Alert
+          variant="warning"
+          title={`${demoYaklasan.length} demo cihaz iade tarihi yaklaşıyor`}
+          action={
+            <a href="/demolar?sekme=musteride"
+               onClick={e => { e.preventDefault(); navigate('/demolar?sekme=musteride') }}
+               style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Görüntüle <ArrowRight size={14} strokeWidth={1.5} />
+            </a>
+          }
+          style={{ marginBottom: 16 }}
+        >
+          Önümüzdeki 3 gün içinde iade gelmeli.
         </Alert>
       )}
 
