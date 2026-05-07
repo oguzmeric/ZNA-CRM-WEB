@@ -58,14 +58,17 @@ export default function YeniZimmet() {
       cihazId: parseInt(id),
       musteriId: parseInt(musteriId),
       lokasyonId: lokasyonId ? parseInt(lokasyonId) : null,
-      verenKullaniciId: kullanici?.id || null,
+      verenKullaniciId: kullanici?.id ? String(kullanici.id) : null,
       verenKullaniciAd: kullanici?.ad || null,
       verisTarihi,
       beklenenIadeTarihi,
       durumNotu: notlar.trim() || null,
     })
     setKaydediliyor(false)
-    if (!sonuc) { toast.error('Zimmet açılamadı.'); return }
+    if (!sonuc || sonuc._hata) {
+      toast.error(`Zimmet açılamadı: ${sonuc?._hata || 'bilinmeyen hata'}`)
+      return
+    }
     toast.success('Zimmet açıldı.')
     navigate(`/demolar/${id}`)
   }

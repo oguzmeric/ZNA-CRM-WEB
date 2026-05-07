@@ -85,7 +85,10 @@ export const demoZimmetAc = async (payload) => {
     }))
     .select()
     .single()
-  if (error) { console.error('demoZimmetAc hata:', error.message); return null }
+  if (error) {
+    console.error('demoZimmetAc hata:', error)
+    return { _hata: error.message || 'bilinmeyen hata' }
+  }
   invalidate('demo:cihazlar:list', `demo:cihaz:${payload.cihazId}`)
   return toCamel(data)
 }
