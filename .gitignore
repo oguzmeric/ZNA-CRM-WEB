@@ -47,3 +47,6 @@ desktop.ini
 
 # Package-lock alternates (keep only one)
 # package-lock.json  # uncomment if using yarn/pnpm
+
+# Supabase CLI link cache
+supabase/.temp/
