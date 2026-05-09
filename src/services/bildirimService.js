@@ -110,10 +110,16 @@ export const bildirimSilDb = async (id) => {
 // Realtime — yeni bildirim geldiğinde callback tetikler
 // Kullanım: const sub = bildirimleriDinle(kullaniciId, (yeni) => { ... })
 //          sub.unsubscribe() (cleanup'ta)
+// NOT: Kanal adı her abonelik için unique olmalı, aksi halde Supabase aynı
+// kanalı reuse eder ve ikinci .on() "cannot add callbacks after subscribe()"
+// fırlatır (örn: aynı kullanıcı için 2 farklı bileşen abone olduğunda).
+let _kanalSayac = 0
 export const bildirimleriDinle = (kullaniciId, onYeniBildirim) => {
   if (!kullaniciId) return { unsubscribe: () => {} }
+  _kanalSayac += 1
+  const kanalAdi = `bildirimler:${kullaniciId}:${_kanalSayac}:${Date.now()}`
   const channel = supabase
-    .channel(`bildirimler:${kullaniciId}`)
+    .channel(kanalAdi)
     .on(
       'postgres_changes',
       {
