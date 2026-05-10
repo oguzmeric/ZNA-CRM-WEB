@@ -23,10 +23,10 @@ serve(async (req) => {
 
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE)
 
-    // Bildirimi al
+    // Bildirimi al — alici_id = bildirimi alacak kullanıcı
     const { data: bildirim, error: bErr } = await supa
       .from('bildirimler')
-      .select('id, kullanici_id, baslik, mesaj, tip')
+      .select('id, alici_id, baslik, mesaj, tip')
       .eq('id', bildirimId)
       .single()
 
@@ -41,7 +41,7 @@ serve(async (req) => {
     const { data: tokenler, error: tErr } = await supa
       .from('kullanici_push_tokenlari')
       .select('id, token')
-      .eq('kullanici_id', bildirim.kullanici_id)
+      .eq('kullanici_id', bildirim.alici_id)
 
     if (tErr) {
       return new Response(JSON.stringify({ ok: false, hata: 'Token sorgu: ' + tErr.message }), {
@@ -59,7 +59,7 @@ serve(async (req) => {
     const { count: okunmamis } = await supa
       .from('bildirimler')
       .select('id', { count: 'exact', head: true })
-      .eq('kullanici_id', bildirim.kullanici_id)
+      .eq('alici_id', bildirim.alici_id)
       .eq('okundu', false)
 
     // Expo Push API'ye batch
