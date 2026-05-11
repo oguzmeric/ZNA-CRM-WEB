@@ -16,6 +16,7 @@ import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import { stokUrunleriniGetir } from '../services/stokService'
+import HizliStokEkleModal from '../components/HizliStokEkleModal'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge,
@@ -208,7 +209,17 @@ function TeklifDetay() {
     })
   }
 
+  // Hızlı stok ekleme modal'ı state
+  const [hizliStokAcik, setHizliStokAcik] = useState(false)
+  const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
+
   const stokSec = (index, stokKodu) => {
+    // "+ Yeni Stok Ürünü..." seçildiyse modal aç, satıra dokunma
+    if (stokKodu === '__yeni__') {
+      setHizliStokSatirIndex(index)
+      setHizliStokAcik(true)
+      return
+    }
     const urun = stokUrunler.find((u) => u.stokKodu === stokKodu)
     const yeniSatirlar = [...form.satirlar]
     yeniSatirlar[index] = {
@@ -218,6 +229,23 @@ function TeklifDetay() {
       birim: urun?.birim || 'Adet',
     }
     setForm({ ...form, satirlar: yeniSatirlar })
+  }
+
+  // Yeni stok eklendiğinde: listeye ekle + ilgili satıra otomatik ata
+  const hizliStokEklendi = (yeni) => {
+    if (!yeni) return
+    setStokUrunler((prev) => [...prev, yeni])
+    if (hizliStokSatirIndex != null) {
+      const yeniSatirlar = [...form.satirlar]
+      yeniSatirlar[hizliStokSatirIndex] = {
+        ...yeniSatirlar[hizliStokSatirIndex],
+        stokKodu: yeni.stokKodu,
+        stokAdi: yeni.stokAdi,
+        birim: yeni.birim || 'Adet',
+      }
+      setForm({ ...form, satirlar: yeniSatirlar })
+    }
+    setHizliStokSatirIndex(null)
   }
 
   const satirGuncelle = (index, alan, deger) => {
@@ -811,6 +839,7 @@ function TeklifDetay() {
                         {stokUrunler.map((u) => (
                           <option key={u.id} value={u.stokKodu}>{u.stokKodu} — {u.stokAdi}</option>
                         ))}
+                        <option value="__yeni__">+ Yeni Stok Ürünü…</option>
                       </CustomSelect>
                     </TD>
                     <TD style={{ verticalAlign: 'top' }}>
@@ -1126,6 +1155,17 @@ function TeklifDetay() {
           )
         })()}
       </Modal>
+
+      {/* Hızlı stok ekleme — teklif satırında dropdown'dan "+ Yeni" seçilince */}
+      <HizliStokEkleModal
+        acik={hizliStokAcik}
+        mevcutKodlar={stokUrunler.map(u => u.stokKodu)}
+        onKapat={() => { setHizliStokAcik(false); setHizliStokSatirIndex(null) }}
+        onEklendi={(yeni) => {
+          hizliStokEklendi(yeni)
+          setHizliStokAcik(false)
+        }}
+      />
     </div>
   )
 }
