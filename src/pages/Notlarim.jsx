@@ -5,7 +5,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Plus, Trash2, StickyNote, Image as ImageIcon, X, Building2, Search,
+  Paperclip, FileText, File as FileIcon, Bell, Upload, Eye,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -14,6 +17,7 @@ import {
 import CustomSelect from '../components/CustomSelect'
 import {
   KATEGORILER, notlarimiGetir, notEkle, notGuncelle, notSil, cizimSignedUrl,
+  ekSignedUrl, ekYukleWeb, ekSil,
 } from '../services/notService'
 import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
@@ -28,7 +32,38 @@ function tarihFormat(iso) {
 }
 
 const BOS_FORM = {
-  baslik: '', icerik: '', kategori: 'diger', musteriId: '', cizimler: [],
+  baslik: '', icerik: '', kategori: 'diger', musteriId: '',
+  cizimler: [], ekler: [], hatirlatmaTarihi: '',
+}
+
+function ekIkon(ek) {
+  if (ek?.tip === 'foto') return <ImageIcon size={14} />
+  const mime = ek?.mimeType || ''
+  if (mime.startsWith('image/')) return <ImageIcon size={14} />
+  if (mime.includes('pdf')) return <FileText size={14} />
+  return <FileIcon size={14} />
+}
+
+function ekBoyutFormat(byte) {
+  if (!byte) return ''
+  if (byte < 1024) return `${byte} B`
+  if (byte < 1024 * 1024) return `${(byte / 1024).toFixed(0)} KB`
+  return `${(byte / 1024 / 1024).toFixed(1)} MB`
+}
+
+// datetime-local input için ISO ⇄ yyyy-mm-ddThh:mm dönüşüm
+function isoToLocal(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+function localToIso(local) {
+  if (!local) return ''
+  const d = new Date(local)
+  if (isNaN(d.getTime())) return ''
+  return d.toISOString()
 }
 
 function Notlarim() {
@@ -102,6 +137,8 @@ function Notlarim() {
       kategori: n.kategori || 'diger',
       musteriId: n.musteriId || '',
       cizimler: n.cizimler || [],
+      ekler: n.ekler || [],
+      hatirlatmaTarihi: n.hatirlatmaTarihi || '',
     })
     setDuzenleId(n.id)
     setModalAcik(true)
@@ -253,6 +290,9 @@ function Notlarim() {
           {filtrelenmis.map((n) => {
             const kategori = KATEGORILER.find((k) => k.id === n.kategori) || KATEGORILER[3]
             const cizimSayisi = Array.isArray(n.cizimler) ? n.cizimler.length : 0
+            const ekSayisi = Array.isArray(n.ekler) ? n.ekler.length : 0
+            const hatirlatma = n.hatirlatmaTarihi ? new Date(n.hatirlatmaTarihi) : null
+            const hatirlatmaGecmis = hatirlatma && hatirlatma.getTime() < Date.now()
             return (
               <div
                 key={n.id}
@@ -293,6 +333,20 @@ function Notlarim() {
                     {kategori.isim.toUpperCase()}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {hatirlatma && (
+                      <span title={hatirlatma.toLocaleString('tr-TR')} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        font: '500 10px/14px var(--font-sans)',
+                        color: hatirlatmaGecmis ? '#dc2626' : '#f59e0b',
+                      }}>
+                        <Bell size={10} />
+                      </span>
+                    )}
+                    {ekSayisi > 0 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                        <Paperclip size={10} /> {ekSayisi}
+                      </span>
+                    )}
                     {cizimSayisi > 0 && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                         <ImageIcon size={10} /> {cizimSayisi}
@@ -404,15 +458,73 @@ function Notlarim() {
           </div>
 
           <div>
-            <Label>İçerik</Label>
+            <Label>
+              İçerik
+              <span style={{ font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                Markdown desteği: **kalın**, *italik*, # Başlık, - liste
+              </span>
+            </Label>
             <Textarea
               value={form.icerik}
               onChange={(e) => setForm({ ...form, icerik: e.target.value })}
               rows={10}
-              placeholder="Notunu yaz…"
+              placeholder="Notunu yaz… Markdown destekli."
+              style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
             />
+            {/* Markdown önizleme */}
+            {form.icerik && (
+              <details style={{ marginTop: 6 }}>
+                <summary style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--brand-primary)', cursor: 'pointer' }}>
+                  <Eye size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> Önizle
+                </summary>
+                <div className="markdown-preview" style={{
+                  marginTop: 8,
+                  padding: 12,
+                  background: 'var(--surface-sunken)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-default)',
+                  font: '400 13px/20px var(--font-sans)',
+                  color: 'var(--text-primary)',
+                }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.icerik}</ReactMarkdown>
+                </div>
+              </details>
+            )}
           </div>
 
+          {/* Hatırlatma */}
+          <div>
+            <Label>
+              <Bell size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> Hatırlatıcı (opsiyonel)
+            </Label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Input
+                type="datetime-local"
+                value={isoToLocal(form.hatirlatmaTarihi)}
+                onChange={(e) => setForm({ ...form, hatirlatmaTarihi: localToIso(e.target.value) })}
+                style={{ flex: 1 }}
+              />
+              {form.hatirlatmaTarihi && (
+                <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, hatirlatmaTarihi: '' })}>
+                  Temizle
+                </Button>
+              )}
+            </div>
+            <p style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+              Mobil cihazda local bildirim olarak görüntülenir. Web'de görsel uyarı.
+            </p>
+          </div>
+
+          {/* Foto ve belge ekleri */}
+          <EklerBolumu
+            ekler={form.ekler}
+            kullaniciId={kullanici?.id}
+            notId={duzenleId}
+            onEkleEklendi={(yeniEk) => setForm((f) => ({ ...f, ekler: [...(f.ekler || []), yeniEk] }))}
+            onEkSilindi={(path) => setForm((f) => ({ ...f, ekler: (f.ekler || []).filter((e) => e.path !== path) }))}
+          />
+
+          {/* Mobile'dan eklenen çizimler */}
           {Array.isArray(form.cizimler) && form.cizimler.length > 0 && (
             <div>
               <Label>Çizimler ({form.cizimler.length})</Label>
@@ -476,6 +588,177 @@ function chipStyle(aktif, renk) {
     cursor: 'pointer',
     transition: 'all 120ms',
   }
+}
+
+// EklerBolumu — foto/belge yükleme + listeleme
+function EklerBolumu({ ekler = [], kullaniciId, notId, onEkleEklendi, onEkSilindi }) {
+  const [yukleniyor, setYukleniyor] = useState(false)
+  const [acikFotoUrl, setAcikFotoUrl] = useState(null)
+
+  const dosyaSec = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setYukleniyor(true)
+    try {
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) {
+          alert(`${file.name} 10MB'tan büyük, atlanıyor.`)
+          continue
+        }
+        const sonuc = await ekYukleWeb({ file, kullaniciId, notId })
+        if (sonuc) onEkleEklendi(sonuc)
+      }
+    } finally {
+      setYukleniyor(false)
+      e.target.value = ''  // input reset
+    }
+  }
+
+  const ekAc = async (ek) => {
+    const url = await ekSignedUrl(ek.path)
+    if (!url) return alert('Dosya açılamadı')
+    if (ek.tip === 'foto' || ek.mimeType?.startsWith('image/')) {
+      setAcikFotoUrl(url)
+    } else {
+      window.open(url, '_blank')
+    }
+  }
+
+  const ekKaldir = async (ek) => {
+    if (!window.confirm(`"${ek.ad}" silinsin mi?`)) return
+    await ekSil(ek.path)
+    onEkSilindi(ek.path)
+  }
+
+  return (
+    <div>
+      <Label>
+        <Paperclip size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> Ekler {ekler.length > 0 ? `(${ekler.length})` : ''}
+      </Label>
+
+      <label style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 14px',
+        background: 'var(--brand-primary-soft)',
+        color: 'var(--brand-primary)',
+        border: '1px dashed var(--brand-primary)',
+        borderRadius: 'var(--radius-sm)',
+        font: '500 12px/16px var(--font-sans)',
+        cursor: yukleniyor ? 'wait' : 'pointer',
+        opacity: yukleniyor ? 0.6 : 1,
+        marginBottom: 8,
+      }}>
+        <Upload size={14} />
+        {yukleniyor ? 'Yükleniyor…' : 'Foto / Belge Ekle'}
+        <input
+          type="file"
+          multiple
+          accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv"
+          onChange={dosyaSec}
+          disabled={yukleniyor}
+          style={{ display: 'none' }}
+        />
+      </label>
+
+      {ekler.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+          {ekler.map((ek, i) => (
+            <EkKart key={ek.path || i} ek={ek} onAc={() => ekAc(ek)} onSil={() => ekKaldir(ek)} />
+          ))}
+        </div>
+      )}
+
+      {acikFotoUrl && (
+        <div
+          onClick={() => setAcikFotoUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1200,
+            background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <button onClick={() => setAcikFotoUrl(null)} style={{
+            position: 'absolute', top: 16, right: 16,
+            width: 40, height: 40, borderRadius: 20, background: 'rgba(255,255,255,0.15)',
+            border: 'none', color: '#fff', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}><X size={20} /></button>
+          <img src={acikFotoUrl} alt="" style={{ maxWidth: '95%', maxHeight: '95%', objectFit: 'contain' }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EkKart({ ek, onAc, onSil }) {
+  const [fotoUrl, setFotoUrl] = useState(null)
+  const isFoto = ek?.tip === 'foto' || ek?.mimeType?.startsWith('image/')
+
+  useEffect(() => {
+    if (!isFoto) return
+    ekSignedUrl(ek.path).then(setFotoUrl)
+  }, [ek.path, isFoto])
+
+  return (
+    <div style={{
+      position: 'relative',
+      width: 140, padding: 10,
+      background: 'var(--surface-card)',
+      border: '1px solid var(--border-default)',
+      borderRadius: 'var(--radius-sm)',
+      cursor: 'pointer',
+    }}>
+      <div onClick={onAc} style={{ cursor: 'pointer' }}>
+        {isFoto ? (
+          <div style={{
+            width: '100%', height: 80,
+            background: '#fff',
+            border: '1px solid var(--border-default)',
+            borderRadius: 6,
+            overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 6,
+          }}>
+            {fotoUrl ? (
+              <img src={fotoUrl} alt={ek.ad} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <ImageIcon size={20} style={{ color: 'var(--text-tertiary)' }} />
+            )}
+          </div>
+        ) : (
+          <div style={{
+            width: '100%', height: 80,
+            background: 'var(--surface-sunken)',
+            borderRadius: 6,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 6,
+          }}>
+            {ekIkon(ek)}
+          </div>
+        )}
+        <div style={{
+          font: '500 11px/14px var(--font-sans)',
+          color: 'var(--text-primary)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{ek.ad}</div>
+        <div style={{ font: '400 10px/12px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+          {ekBoyutFormat(ek.boyut)}
+        </div>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onSil() }}
+        style={{
+          position: 'absolute', top: -6, right: -6,
+          width: 22, height: 22, borderRadius: 11,
+          background: '#ef4444', border: '2px solid var(--surface-base)',
+          color: '#fff', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <X size={12} />
+      </button>
+    </div>
+  )
 }
 
 function CizimThumbnail({ cizim, onClick }) {

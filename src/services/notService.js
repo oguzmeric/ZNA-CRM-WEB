@@ -49,6 +49,9 @@ export const notEkle = async (kullaniciId, payload) => {
       kategori: payload.kategori || 'diger',
       musteri_id: payload.musteriId || null,
       cizimler: payload.cizimler || [],
+      ekler: payload.ekler || [],
+      hatirlatma_tarihi: payload.hatirlatmaTarihi || null,
+      hatirlatildi: false,
     })
     .select()
     .single()
@@ -58,15 +61,19 @@ export const notEkle = async (kullaniciId, payload) => {
 }
 
 export const notGuncelle = async (id, payload, kullaniciId) => {
+  const guncelle = {
+    baslik: payload.baslik ?? null,
+    icerik: payload.icerik ?? null,
+    kategori: payload.kategori || 'diger',
+    musteri_id: payload.musteriId || null,
+    cizimler: payload.cizimler ?? [],
+    ekler: payload.ekler ?? [],
+    hatirlatma_tarihi: payload.hatirlatmaTarihi || null,
+  }
+  if (payload.hatirlatmaTarihi) guncelle.hatirlatildi = false
   const { data, error } = await supabase
     .from('notlarim')
-    .update({
-      baslik: payload.baslik ?? null,
-      icerik: payload.icerik ?? null,
-      kategori: payload.kategori || 'diger',
-      musteri_id: payload.musteriId || null,
-      cizimler: payload.cizimler ?? [],
-    })
+    .update(guncelle)
     .eq('id', id)
     .select()
     .single()
@@ -76,12 +83,18 @@ export const notGuncelle = async (id, payload, kullaniciId) => {
 }
 
 export const notSil = async (id, kullaniciId) => {
-  // Önce çizim dosyalarını storage'dan sil
+  // Önce çizim ve ek dosyalarını storage'dan sil
   const not = await notuGetir(id)
   if (Array.isArray(not?.cizimler)) {
     const paths = not.cizimler.map((c) => c.path).filter(Boolean)
     if (paths.length > 0) {
       await supabase.storage.from('not-cizimleri').remove(paths).catch(() => {})
+    }
+  }
+  if (Array.isArray(not?.ekler)) {
+    const paths = not.ekler.map((e) => e.path).filter(Boolean)
+    if (paths.length > 0) {
+      await supabase.storage.from('not-ekleri').remove(paths).catch(() => {})
     }
   }
   const { error } = await supabase.from('notlarim').delete().eq('id', id)
@@ -97,4 +110,65 @@ export const cizimSignedUrl = async (path) => {
     .createSignedUrl(path, 3600)
   if (error) return null
   return data.signedUrl
+}
+
+// Ek (foto/belge) için signed URL
+export const ekSignedUrl = async (path) => {
+  if (!path) return null
+  const { data, error } = await supabase.storage
+    .from('not-ekleri')
+    .createSignedUrl(path, 3600)
+  if (error) return null
+  return data.signedUrl
+}
+
+// Web'den ek yükle (File API)
+export const ekYukleWeb = async ({ file, kullaniciId, notId }) => {
+  if (!file) return null
+  try {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    const guvenliAd = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 60)
+    const path = `kullanici_${kullaniciId}/not_${notId ?? 'taslak'}/${ts}_${guvenliAd}`
+
+    const { error } = await supabase.storage
+      .from('not-ekleri')
+      .upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      })
+    if (error) {
+      console.warn('[ekYukleWeb]', error.message)
+      return null
+    }
+    return {
+      tip: file.type?.startsWith('image/') ? 'foto' : 'belge',
+      path,
+      ad: file.name,
+      boyut: file.size,
+      mimeType: file.type,
+      eklenmeTarih: new Date().toISOString(),
+    }
+  } catch (e) {
+    console.warn('[ekYukleWeb catch]', e?.message)
+    return null
+  }
+}
+
+export const ekSil = async (path) => {
+  if (!path) return
+  await supabase.storage.from('not-ekleri').remove([path]).catch(() => {})
+}
+
+// Sadece ekler array'i güncelle
+export const notEkleriGuncelle = async (id, ekler, kullaniciId) => {
+  if (!id) return null
+  const { data, error } = await supabase
+    .from('notlarim')
+    .update({ ekler: ekler ?? [] })
+    .eq('id', id)
+    .select('id, ekler')
+    .single()
+  if (error) { console.warn('notEkleriGuncelle', error.message); return null }
+  if (kullaniciId) invalidate(`notlarim:${kullaniciId}`)
+  return data
 }
