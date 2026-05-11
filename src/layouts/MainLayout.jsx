@@ -8,7 +8,7 @@ import {
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
-  Activity, Timer, Boxes,
+  Activity, Timer, Boxes, StickyNote,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import { Avatar } from '../components/ui'
@@ -28,6 +28,7 @@ const menuItems = [
   { id: 'gorevler', isim: 'Görevler', Icon: CheckSquare, yol: '/gorevler', modul: 'gorevler' },
   { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler' },
   { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null },
+  { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null },
   {
     id: 'stok',
     isim: 'Stok',

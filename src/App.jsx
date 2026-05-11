@@ -48,6 +48,7 @@ const KargoDetay = lazy(() => import('./pages/KargoDetay'))
 const Takvim = lazy(() => import('./pages/Takvim'))
 const TakvimBaglantilari = lazy(() => import('./pages/TakvimBaglantilari'))
 const OAuthGoogleCallback = lazy(() => import('./pages/OAuthGoogleCallback'))
+const Notlarim = lazy(() => import('./pages/Notlarim'))
 const MemnuniyetDegerlendirme = lazy(() => import('./pages/MemnuniyetDegerlendirme'))
 const MusteriDashboard = lazy(() => import('./pages/musteri/MusteriDashboard'))
 const YeniTalep = lazy(() => import('./pages/musteri/YeniTalep'))
@@ -224,6 +225,7 @@ function App() {
           <Route path="/takvim" element={<Takvim />} />
           <Route path="/ayarlar/takvim-baglantilari" element={<TakvimBaglantilari />} />
           <Route path="/oauth/google/callback" element={<OAuthGoogleCallback />} />
+          <Route path="/notlarim" element={<Notlarim />} />
           <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
           <Route path="/sla-ayarlari" element={<SlaAyarlari />} />
           <Route path="/performans" element={<Performans />} />
