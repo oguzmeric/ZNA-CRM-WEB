@@ -486,6 +486,29 @@ function TeklifDetay() {
               onClick={() => {
                 // Form'da seçili olan tipi URL'ye geçir — kaydet zorunlu olmasın
                 const tip = form.teklifTipi || 'standart'
+
+                // Kaydedilmemiş değişiklik var mı? Para birimi/firma/konu/satırlar
+                // değiştiyse PDF kaydedilmiş veriyi gösterir — kafa karıştırıcı.
+                const degistiAlanlar = []
+                if (mevcutTeklif) {
+                  if ((form.paraBirimi || 'TL') !== (mevcutTeklif.paraBirimi || 'TL')) degistiAlanlar.push('Para birimi')
+                  if ((form.firmaAdi || '') !== (mevcutTeklif.firmaAdi || '')) degistiAlanlar.push('Firma')
+                  if ((form.konu || '') !== (mevcutTeklif.konu || '')) degistiAlanlar.push('Konu')
+                  if (JSON.stringify(form.satirlar || []) !== JSON.stringify(mevcutTeklif.satirlar || [])) degistiAlanlar.push('Satırlar')
+                  if (Number(form.dovizKuru || 0) !== Number(mevcutTeklif.dovizKuru || 0)) degistiAlanlar.push('Döviz kuru')
+                  if (Number(form.genelIskonto || 0) !== Number(mevcutTeklif.genelIskonto || 0)) degistiAlanlar.push('Genel iskonto')
+                  if ((form.aciklama || '') !== (mevcutTeklif.aciklama || '')) degistiAlanlar.push('Açıklama')
+                }
+
+                if (degistiAlanlar.length > 0) {
+                  const onay = window.confirm(
+                    `Kaydedilmemiş değişiklikler var:\n\n• ${degistiAlanlar.join('\n• ')}\n\n` +
+                    `PDF kayıtlı veriyi gösterir, mevcut değişikliklerini göremezsin.\n\n` +
+                    `OK: Yine de PDF aç\nCancel: Önce Kaydet'e bas, sonra PDF aç`,
+                  )
+                  if (!onay) return
+                }
+
                 window.open(`/teklifler/${id}/yazdir?tip=${tip}`, '_blank')
               }}
             >
