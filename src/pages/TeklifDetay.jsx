@@ -98,6 +98,10 @@ function TeklifDetay() {
   const [veriYuklendi, setVeriYuklendi] = useState(false)
   const [hatirlatmaGun, setHatirlatmaGun] = useState(7)
   const [ilgiliFatura, setIlgiliFatura] = useState(null)
+  // Hızlı stok ekleme modal'ı state — early return'ün ÜSTÜNDE olmalı
+  // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
+  const [hizliStokAcik, setHizliStokAcik] = useState(false)
+  const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
 
   const onDoldurum = yeni
     ? (() => {
@@ -208,10 +212,6 @@ function TeklifDetay() {
       musteriYetkilisi: musteri ? `${musteri.ad} ${musteri.soyad}` : '',
     })
   }
-
-  // Hızlı stok ekleme modal'ı state
-  const [hizliStokAcik, setHizliStokAcik] = useState(false)
-  const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
 
   const stokSec = (index, stokKodu) => {
     // "+ Yeni Stok Ürünü..." seçildiyse modal aç, satıra dokunma
