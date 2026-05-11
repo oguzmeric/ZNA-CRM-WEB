@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase'
 import { cached, invalidate } from '../lib/cache'
 
 const GOOGLE_CLIENT_ID = '954751547968-e03blkl20k73bit261sljftr3nvflue4.apps.googleusercontent.com'
-const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly email profile'
+// calendar.events: read + write (etkinlik oluştur, davetli ekle, Meet linki üret)
+const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.events email profile'
 
 // Google OAuth başlangıç URL'i — kullanıcıyı buraya yönlendir
 export function googleOAuthBaslat(kullaniciId, mevcutOrigin) {
@@ -111,6 +112,20 @@ export async function tazelikSyncTetikle(kullaniciId, threshDk = 5) {
   } catch (e) {
     console.warn('[tazelikSyncTetikle]', e?.message)
   }
+}
+
+// CRM'den Google Calendar'a etkinlik oluştur (+ opsiyonel Google Meet linki)
+// baglantiId: hangi Google hesabına yazılacak (kullanici_takvim_baglantilari.id)
+// payload: { baslik, aciklama, lokasyon, baslangic (ISO), bitis (ISO), davetliler ([email,...]), meetOlustur (bool) }
+export async function etkinlikOlustur(baglantiId, payload) {
+  const { data, error } = await supabase.functions.invoke('google-takvim-etkinlik-olustur', {
+    body: { baglantiId, ...payload },
+  })
+  if (error) throw error
+  if (!data?.ok) throw new Error(data?.hata ?? 'Etkinlik oluşturulamadı')
+  // Cache invalidate — yeni etkinlik listede görünmeli
+  invalidate(`harici_etkinlikler`)
+  return data
 }
 
 // Bir kullanıcının harici etkinliklerini, belirli tarih aralığında çek

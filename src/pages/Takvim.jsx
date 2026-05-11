@@ -2,13 +2,16 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
-  MapPin, Users, Video, Clock, ExternalLink,
+  MapPin, Users, Video, Clock, ExternalLink, Plus, Copy, Check,
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { kargolariGetir } from '../services/kargoService'
-import { hariciEtkinlikleriGetir, tazelikSyncTetikle } from '../services/takvimBaglantiService'
+import {
+  hariciEtkinlikleriGetir, tazelikSyncTetikle,
+  takvimBaglantilariniGetir, etkinlikOlustur,
+} from '../services/takvimBaglantiService'
 import { useAuth } from '../context/AuthContext'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
 
@@ -90,6 +93,8 @@ export default function Takvim() {
   const [evs,        setEvs]        = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hariciDetay, setHariciDetay] = useState(null)  // tıklanan Gmail etkinliği
+  const [etkinlikModal, setEtkinlikModal] = useState(false)  // yeni etkinlik+Meet modal
+  const [baglantilar, setBaglantilar] = useState([])  // kullanıcının takvim bağlantıları
 
   // Etkinliğe tıklayınca: link varsa o sayfaya git, yoksa (harici) modal aç
   const etkinligeTikla = (ev) => {
@@ -119,6 +124,12 @@ export default function Takvim() {
     } finally {
       setYukleniyor(false)
     }
+  }, [kullanici?.id])
+
+  // Takvim bağlantılarını yükle (etkinlik+Meet butonu için gerekli)
+  useEffect(() => {
+    if (!kullanici?.id) return
+    takvimBaglantilariniGetir(kullanici.id).then(setBaglantilar).catch(() => {})
   }, [kullanici?.id])
 
   // İlk yükleme + sync tetik
@@ -223,6 +234,15 @@ export default function Takvim() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setEtkinlikModal(true)}
+            disabled={baglantilar.length === 0}
+            title={baglantilar.length === 0 ? 'Önce Google Calendar bağlantısı eklemelisin' : 'Yeni etkinlik + Google Meet linki oluştur'}
+          >
+            <Video size={14} style={{ marginRight: 6 }} /> Yeni Etkinlik + Meet
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => navigate('/ayarlar/takvim-baglantilari')}>
             <Mail size={14} style={{ marginRight: 6 }} /> Takvim Bağlantıları
           </Button>
@@ -626,6 +646,19 @@ export default function Takvim() {
       {hariciDetay && (
         <HariciEtkinlikDetay etkinlik={hariciDetay} onKapat={() => setHariciDetay(null)} />
       )}
+
+      {/* Yeni Etkinlik + Meet modal */}
+      {etkinlikModal && (
+        <YeniEtkinlikModal
+          baglantilar={baglantilar}
+          onKapat={() => setEtkinlikModal(false)}
+          onBasarili={() => {
+            setEtkinlikModal(false)
+            // 1 sn bekle (Google'a yazılma + DB sync), sonra etkinlikleri yeniden çek
+            setTimeout(() => tumEtkinlikleriYukle(), 1000)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -813,6 +846,436 @@ function HariciEtkinlikDetay({ etkinlik, onKapat }) {
           >
             Google Calendar'da aç <ExternalLink size={11} />
           </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Yeni Etkinlik + Meet modal ----
+// CRM içinden Google Calendar'a etkinlik gönder, otomatik Meet linki üret, davetlilere mail at.
+
+function YeniEtkinlikModal({ baglantilar, onKapat, onBasarili }) {
+  // Varsayılan: 15 dk sonra başla, 30 dk sürsün
+  const simdi = new Date()
+  const yuvarla = (d) => {
+    const r = new Date(d)
+    r.setSeconds(0, 0)
+    r.setMinutes(Math.ceil(r.getMinutes() / 15) * 15)
+    return r
+  }
+  const baslangicVar = yuvarla(new Date(simdi.getTime() + 15 * 60 * 1000))
+  const bitisVar = new Date(baslangicVar.getTime() + 30 * 60 * 1000)
+
+  const toLocalDateTime = (d) => {
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const aktifBaglantilar = baglantilar.filter((b) => b.aktif && b.saglayici === 'google')
+
+  const [baglantiId, setBaglantiId] = useState(aktifBaglantilar[0]?.id ?? null)
+  const [baslik, setBaslik] = useState('')
+  const [aciklama, setAciklama] = useState('')
+  const [lokasyon, setLokasyon] = useState('')
+  const [baslangic, setBaslangic] = useState(toLocalDateTime(baslangicVar))
+  const [bitis, setBitis] = useState(toLocalDateTime(bitisVar))
+  const [davetlilerStr, setDavetlilerStr] = useState('')  // virgül/satır ayrılmış mailler
+  const [meetOlustur, setMeetOlustur] = useState(true)
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [hata, setHata] = useState(null)
+  const [sonuc, setSonuc] = useState(null)
+  const [kopyalandi, setKopyalandi] = useState(false)
+
+  const kaydet = async () => {
+    setHata(null)
+    if (!baglantiId) { setHata('Bağlantı seç'); return }
+    if (!baslik.trim()) { setHata('Başlık zorunlu'); return }
+    if (!baslangic || !bitis) { setHata('Başlangıç ve bitiş zamanı zorunlu'); return }
+    if (new Date(bitis) <= new Date(baslangic)) { setHata('Bitiş, başlangıçtan sonra olmalı'); return }
+
+    // Davetli mail listesi: virgül veya satır ile ayrılmış, geçerli mailler
+    const davetliler = davetlilerStr
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.includes('@'))
+
+    setKaydediliyor(true)
+    try {
+      // datetime-local → ISO (yerel saatle, TZ Europe/Istanbul varsayılıyor)
+      const baslangicISO = new Date(baslangic).toISOString()
+      const bitisISO = new Date(bitis).toISOString()
+
+      const res = await etkinlikOlustur(baglantiId, {
+        baslik: baslik.trim(),
+        aciklama: aciklama.trim() || null,
+        lokasyon: lokasyon.trim() || null,
+        baslangic: baslangicISO,
+        bitis: bitisISO,
+        davetliler,
+        meetOlustur,
+        zamanDilimi: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul',
+      })
+
+      setSonuc(res)  // başarılı — Meet linki + HTML linki göster
+    } catch (e) {
+      setHata(e?.message ?? 'Etkinlik oluşturulamadı')
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
+  const linkKopyala = async (link) => {
+    try {
+      await navigator.clipboard.writeText(link)
+      setKopyalandi(true)
+      setTimeout(() => setKopyalandi(false), 2000)
+    } catch {
+      setHata('Kopyalama başarısız')
+    }
+  }
+
+  // Başarılıysa: linkleri göster
+  if (sonuc) {
+    return (
+      <div
+        onClick={onBasarili}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            maxWidth: 520, width: '100%',
+            background: 'var(--surface-card)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-default)',
+            padding: 24,
+            boxShadow: 'var(--shadow-lg)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'rgba(34, 197, 94, 0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Check size={18} color="var(--success)" />
+            </div>
+            <h3 style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+              Etkinlik oluşturuldu
+            </h3>
+          </div>
+          <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 16 }}>
+            Google Calendar'a yazıldı. Davetlilere e-posta gönderildi.
+          </p>
+
+          {sonuc.meetLinki && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                Google Meet linki
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: 10,
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+                <Video size={16} color="#1a73e8" />
+                <a
+                  href={sonuc.meetLinki}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ flex: 1, font: '500 13px/18px var(--font-mono, monospace)', color: 'var(--brand-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {sonuc.meetLinki}
+                </a>
+                <button
+                  onClick={() => linkKopyala(sonuc.meetLinki)}
+                  style={{
+                    padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-default)',
+                    background: kopyalandi ? 'var(--success-soft)' : 'var(--surface-card)',
+                    color: kopyalandi ? 'var(--success)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    font: '500 12px/16px var(--font-sans)',
+                  }}
+                >
+                  {kopyalandi ? <Check size={12} /> : <Copy size={12} />}
+                  {kopyalandi ? 'Kopyalandı' : 'Kopyala'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {sonuc.htmlLinki && (
+            <a
+              href={sonuc.htmlLinki}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                font: '500 12px/16px var(--font-sans)',
+                color: 'var(--text-tertiary)',
+                textDecoration: 'none',
+                marginTop: 4,
+              }}
+            >
+              Google Calendar'da aç <ExternalLink size={11} />
+            </a>
+          )}
+
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="primary" size="sm" onClick={onBasarili}>Tamam</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onClick={onKapat}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 560, width: '100%',
+          maxHeight: '90vh', overflowY: 'auto',
+          background: 'var(--surface-card)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-default)',
+          padding: 24,
+          boxShadow: 'var(--shadow-lg)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'rgba(26, 115, 232, 0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Video size={16} color="#1a73e8" />
+            </div>
+            <h3 style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+              Yeni Etkinlik + Google Meet
+            </h3>
+          </div>
+          <button
+            onClick={onKapat}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Bağlantı (birden fazla varsa) */}
+        {aktifBaglantilar.length > 1 && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+              GOOGLE HESABI
+            </label>
+            <select
+              value={baglantiId ?? ''}
+              onChange={(e) => setBaglantiId(Number(e.target.value))}
+              style={{
+                width: '100%', padding: 10,
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                font: '400 13px/18px var(--font-sans)',
+              }}
+            >
+              {aktifBaglantilar.map((b) => (
+                <option key={b.id} value={b.id}>{b.hesap_email}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Başlık */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            BAŞLIK *
+          </label>
+          <input
+            type="text"
+            value={baslik}
+            onChange={(e) => setBaslik(e.target.value)}
+            placeholder="Toplantı başlığı"
+            style={{
+              width: '100%', padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+              color: 'var(--text-primary)',
+              font: '400 13px/18px var(--font-sans)',
+            }}
+          />
+        </div>
+
+        {/* Tarih/saat */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          <div>
+            <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+              BAŞLANGIÇ *
+            </label>
+            <input
+              type="datetime-local"
+              value={baslangic}
+              onChange={(e) => setBaslangic(e.target.value)}
+              style={{
+                width: '100%', padding: 10,
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                font: '400 13px/18px var(--font-sans)',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+              BİTİŞ *
+            </label>
+            <input
+              type="datetime-local"
+              value={bitis}
+              onChange={(e) => setBitis(e.target.value)}
+              style={{
+                width: '100%', padding: 10,
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                font: '400 13px/18px var(--font-sans)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Davetliler */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            DAVETLİLER (virgül veya satır ile ayır)
+          </label>
+          <textarea
+            value={davetlilerStr}
+            onChange={(e) => setDavetlilerStr(e.target.value)}
+            placeholder="ornek@firma.com, ikinci@firma.com"
+            rows={2}
+            style={{
+              width: '100%', padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+              color: 'var(--text-primary)',
+              font: '400 13px/18px var(--font-sans)',
+              resize: 'vertical',
+            }}
+          />
+        </div>
+
+        {/* Lokasyon */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            LOKASYON (opsiyonel)
+          </label>
+          <input
+            type="text"
+            value={lokasyon}
+            onChange={(e) => setLokasyon(e.target.value)}
+            placeholder="Adres veya boş bırak"
+            style={{
+              width: '100%', padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+              color: 'var(--text-primary)',
+              font: '400 13px/18px var(--font-sans)',
+            }}
+          />
+        </div>
+
+        {/* Açıklama */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            AÇIKLAMA (opsiyonel)
+          </label>
+          <textarea
+            value={aciklama}
+            onChange={(e) => setAciklama(e.target.value)}
+            placeholder="Toplantı gündemi, notlar..."
+            rows={3}
+            style={{
+              width: '100%', padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+              color: 'var(--text-primary)',
+              font: '400 13px/18px var(--font-sans)',
+              resize: 'vertical',
+            }}
+          />
+        </div>
+
+        {/* Meet checkbox */}
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: 12, marginBottom: 12,
+          background: meetOlustur ? 'rgba(26, 115, 232, 0.08)' : 'var(--surface-sunken)',
+          border: `1px solid ${meetOlustur ? '#1a73e8' : 'var(--border-default)'}`,
+          borderRadius: 'var(--radius-sm)',
+          cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            checked={meetOlustur}
+            onChange={(e) => setMeetOlustur(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <Video size={16} color={meetOlustur ? '#1a73e8' : 'var(--text-tertiary)'} />
+          <span style={{ font: '500 13px/18px var(--font-sans)', color: meetOlustur ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+            Google Meet linki otomatik oluştur
+          </span>
+        </label>
+
+        {/* Hata */}
+        {hata && (
+          <div style={{
+            padding: 10, marginBottom: 12,
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
+            borderRadius: 'var(--radius-sm)',
+            font: '500 12px/16px var(--font-sans)',
+          }}>
+            {hata}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <Button variant="secondary" size="sm" onClick={onKapat} disabled={kaydediliyor}>
+            İptal
+          </Button>
+          <Button variant="primary" size="sm" onClick={kaydet} disabled={kaydediliyor}>
+            {kaydediliyor ? <><Loader2 size={14} style={{ marginRight: 6, animation: 'spin 1s linear infinite' }} /> Oluşturuluyor…</> : <>Oluştur</>}
+          </Button>
         </div>
       </div>
     </div>
