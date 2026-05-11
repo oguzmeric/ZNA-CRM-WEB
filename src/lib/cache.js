@@ -18,11 +18,20 @@ let epoch = 0
 /**
  * Cache'li fetch. Aynı anahtar için son ttl ms içinde yanıt varsa onu döndürür.
  * Paralel çağrılar aynı promise'i paylaşır (dedupe).
+ *
+ * NOT: Boş array sonuçları çok kısa TTL (3sn) ile cache edilir — race
+ * condition senaryosunda (auth henüz hazır değilken RLS 0 satır döner)
+ * 60 saniye boyunca "boş veri" zehirlenmesi olmasın.
  */
+const EMPTY_TTL = 3_000  // boş array dönüşleri için
+
 export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
   const now = Date.now()
   const hit = store.get(key)
-  if (hit && now - hit.at < ttl) return hit.value
+  if (hit) {
+    const effTtl = (Array.isArray(hit.value) && hit.value.length === 0) ? EMPTY_TTL : ttl
+    if (now - hit.at < effTtl) return hit.value
+  }
 
   // Aynı key için yürütülen fetch varsa ona bağlan
   if (pending.has(key)) return pending.get(key)

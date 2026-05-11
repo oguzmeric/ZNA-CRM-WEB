@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { invalidate } from '../lib/cache'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Plus, Pencil, Trash2, MapPin, Infinity as InfIcon, AlertTriangle } from 'lucide-react'
@@ -61,12 +62,34 @@ function TrassirLisanslar() {
   const [arama, setArama] = useState('')
   const [kodModu, setKodModu] = useState('otomatik')
 
-  useEffect(() => {
+  const veriYukle = useCallback(({ ilkYukleme = false } = {}) => {
+    if (ilkYukleme) setYukleniyor(true)
     Promise.all([lisanslariGetir(), musterileriGetir()])
-      .then(([l, m]) => { setLisanslar(l || []); setMusteriler(m || []) })
+      .then(([l, m]) => {
+        // Boş dönmüş + henüz hiç veri yoksa cache zehirlenmiş olabilir,
+        // sessizce bir kez daha dene (auth context oturduktan sonra)
+        if ((!l || l.length === 0) && ilkYukleme) {
+          invalidate('lisanslar:list')
+        }
+        setLisanslar(l || [])
+        setMusteriler(m || [])
+      })
       .catch(err => console.error('[TrassirLisanslar yükle]', err))
-      .finally(() => setYukleniyor(false))
+      .finally(() => { if (ilkYukleme) setYukleniyor(false) })
   }, [])
+
+  useEffect(() => { veriYukle({ ilkYukleme: true }) }, [veriYukle])
+
+  // Tab gizlenip tekrar görünür olunca + pencere focus alınca yenile
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === 'visible') veriYukle() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', veriYukle)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', veriYukle)
+    }
+  }, [veriYukle])
 
   const formAc = () => {
     setForm({ ...bosForm, lisansKodu: lisansKoduOlustur(lisanslar) })
