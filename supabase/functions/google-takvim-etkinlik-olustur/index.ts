@@ -155,7 +155,9 @@ serve(async (req) => {
     // 4. Google Calendar API'ye POST
     const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events')
     url.searchParams.set('conferenceDataVersion', '1')        // Meet için zorunlu
-    url.searchParams.set('sendUpdates', 'all')                // davetlilere mail at
+    url.searchParams.set('sendUpdates', 'all')                // davetlilere mail at (yeni param)
+    url.searchParams.set('sendNotifications', 'true')         // davetlilere mail at (eski param — bazi consumer hesaplar icin)
+    url.searchParams.set('supportsAttachments', 'true')
 
     const gRes = await fetch(url.toString(), {
       method: 'POST',
