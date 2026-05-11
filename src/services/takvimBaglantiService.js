@@ -76,6 +76,43 @@ export async function takvimSyncTetikle(baglantiId) {
   return data
 }
 
+// Kullanıcının aktif bağlantılarından SON_SYNC_ZAMANI eskiyse otomatik sync tetikle.
+// Takvim sayfası açıldığında çağrılır — kullanıcıya hızlı güncellik sağlar.
+// Throttle: her bağlantı son sync'ten 5 dk geçtiyse tetikler, daha taze ise atlar.
+//
+// Best-effort: hata olursa sessiz, UI etkilenmez.
+export async function tazelikSyncTetikle(kullaniciId, threshDk = 5) {
+  if (!kullaniciId) return
+  try {
+    const { data: baglantilar } = await supabase
+      .from('kullanici_takvim_baglantilari')
+      .select('id, son_sync_zamani')
+      .eq('kullanici_id', kullaniciId)
+      .eq('aktif', true)
+
+    const simdi = Date.now()
+    const esikMs = threshDk * 60 * 1000
+    const eskiOlanlar = (baglantilar ?? []).filter(b => {
+      if (!b.son_sync_zamani) return true  // hiç sync edilmediyse zaten lazım
+      return (simdi - new Date(b.son_sync_zamani).getTime()) > esikMs
+    })
+
+    // Paralel olarak hepsini tetikle (her biri ayrı edge function çağrısı)
+    await Promise.allSettled(
+      eskiOlanlar.map(b =>
+        supabase.functions.invoke('google-takvim-sync', { body: { baglantiId: b.id } })
+      )
+    )
+
+    if (eskiOlanlar.length > 0) {
+      invalidate(`harici_etkinlikler:${kullaniciId}`)
+    }
+    return { tetiklenenSayisi: eskiOlanlar.length }
+  } catch (e) {
+    console.warn('[tazelikSyncTetikle]', e?.message)
+  }
+}
+
 // Bir kullanıcının harici etkinliklerini, belirli tarih aralığında çek
 // (Takvim ekranı buradan beslenir)
 export async function hariciEtkinlikleriGetir(kullaniciId, baslangic, bitis) {

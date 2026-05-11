@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
@@ -8,7 +8,7 @@ import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { kargolariGetir } from '../services/kargoService'
-import { hariciEtkinlikleriGetir } from '../services/takvimBaglantiService'
+import { hariciEtkinlikleriGetir, tazelikSyncTetikle } from '../services/takvimBaglantiService'
 import { useAuth } from '../context/AuthContext'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
 
@@ -100,22 +100,57 @@ export default function Takvim() {
     }
   }
 
-  useEffect(() => {
+  // Tüm etkinlikleri (CRM + harici) yükle
+  const tumEtkinlikleriYukle = useCallback(async () => {
     setYukleniyor(true)
-    // Harici etkinlikler için ±90 günlük pencere
-    const baslangic = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString()
-    const bitis = new Date(Date.now() + 180 * 24 * 3600 * 1000).toISOString()
-    Promise.all([
-      gorusmeleriGetir(),
-      gorevleriGetir(),
-      servisTalepleriniGetir(),
-      kargolariGetir(),
-      kullanici?.id ? hariciEtkinlikleriGetir(kullanici.id, baslangic, bitis) : Promise.resolve([]),
-    ])
-      .then(([g, gr, s, k, h]) => setEvs(etkinlikleriDonustur(g, gr, s, k, h)))
-      .catch(() => {})
-      .finally(() => setYukleniyor(false))
+    try {
+      const baslangic = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString()
+      const bitis = new Date(Date.now() + 180 * 24 * 3600 * 1000).toISOString()
+      const [g, gr, s, k, h] = await Promise.all([
+        gorusmeleriGetir(),
+        gorevleriGetir(),
+        servisTalepleriniGetir(),
+        kargolariGetir(),
+        kullanici?.id ? hariciEtkinlikleriGetir(kullanici.id, baslangic, bitis) : Promise.resolve([]),
+      ])
+      setEvs(etkinlikleriDonustur(g, gr, s, k, h))
+    } catch (e) {
+      console.warn('[Takvim yükle]', e?.message)
+    } finally {
+      setYukleniyor(false)
+    }
   }, [kullanici?.id])
+
+  // İlk yükleme + sync tetik
+  useEffect(() => {
+    tumEtkinlikleriYukle()
+
+    // Arka planda otomatik sync — 5 dk'dan eski bağlantıları tazele
+    // Sync bitince bir kez daha yükle (yeni etkinlikleri al)
+    if (kullanici?.id) {
+      tazelikSyncTetikle(kullanici.id).then((sonuc) => {
+        if (sonuc?.tetiklenenSayisi > 0) {
+          // Sync edge function'ı async — biraz bekle, sonra yeniden çek
+          setTimeout(() => tumEtkinlikleriYukle(), 3000)
+        }
+      })
+    }
+  }, [kullanici?.id, tumEtkinlikleriYukle])
+
+  // Tab geri gelince + window focus'ta tekrar sync
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && kullanici?.id) {
+        tazelikSyncTetikle(kullanici.id).then((sonuc) => {
+          if (sonuc?.tetiklenenSayisi > 0) {
+            setTimeout(() => tumEtkinlikleriYukle(), 3000)
+          }
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [kullanici?.id, tumEtkinlikleriYukle])
 
   const filtreliEvs = useMemo(() => evs.filter(e => filtreler.includes(e.tip)), [evs, filtreler])
 
