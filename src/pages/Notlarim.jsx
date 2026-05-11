@@ -17,6 +17,7 @@ import {
 } from '../services/notService'
 import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
+import { invalidate } from '../lib/cache'
 
 function tarihFormat(iso) {
   if (!iso) return '—'
@@ -47,22 +48,38 @@ function Notlarim() {
 
   const [acikCizim, setAcikCizim] = useState(null)
 
-  const yukle = useCallback(async () => {
+  const yukle = useCallback(async ({ ilkYukleme = false } = {}) => {
     if (!kullanici?.id) { setYukleniyor(false); return }
-    setYukleniyor(true)
+    if (ilkYukleme) setYukleniyor(true)
     try {
       const [n, m] = await Promise.all([
         notlarimiGetir(kullanici.id),
         musterileriGetir(),
       ])
-      setNotlar(n)
+      // İlk yüklemede boş döndüyse (muhtemelen auth henüz hazır değildi),
+      // cache'i invalidate edip sessizce yeniden dene
+      if (ilkYukleme && (!n || n.length === 0)) {
+        invalidate(`notlarim:${kullanici.id}`)
+      }
+      setNotlar(n || [])
       setMusteriler(m || [])
     } finally {
-      setYukleniyor(false)
+      if (ilkYukleme) setYukleniyor(false)
     }
   }, [kullanici?.id])
 
-  useEffect(() => { yukle() }, [yukle])
+  useEffect(() => { yukle({ ilkYukleme: true }) }, [yukle])
+
+  // Tab gizlenip tekrar görünür olunca + pencere focus alınca yenile
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === 'visible') yukle() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', yukle)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', yukle)
+    }
+  }, [yukle])
 
   const filtrelenmis = useMemo(() => {
     return notlar.filter((n) => {
