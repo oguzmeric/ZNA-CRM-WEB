@@ -330,6 +330,18 @@ function TeklifDetay() {
       return
     }
 
+    // PARA BİRİMİ UYARISI: TL değilse onay sor — kullanıcı yanlışlıkla USD/EUR
+    // seçmiş olabilir, fatura/PDF buna göre üretilir, sonradan düzeltmek zor olabilir.
+    if (form.paraBirimi && form.paraBirimi !== 'TL') {
+      const sembol = paraBirimleri.find(p => p.id === form.paraBirimi)?.sembol || ''
+      const onay = window.confirm(
+        `Bu teklif "${sembol} ${form.paraBirimi}" para biriminde kaydedilecek.\n\n` +
+        `Toplam: ${sembol}${genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}\n\n` +
+        `Devam etmek istiyor musunuz?`,
+      )
+      if (!onay) return
+    }
+
     // BENZER TEKLİF UYARISI:
     // Aynı stok kodu + AYNI ADET başka bir firmaya daha önce teklif edildiyse uyar.
     // Sadece kod eşleşmesi yetersiz — aynı kameralar farklı projelerde tekrar
@@ -757,7 +769,21 @@ function TeklifDetay() {
           <h2 className="t-h2" style={{ marginBottom: 16 }}>Fiyat özeti</h2>
 
           <div style={{ marginBottom: 16 }}>
-            <Label>Para birimi</Label>
+            <Label>
+              Para birimi
+              {form.paraBirimi && form.paraBirimi !== 'TL' && (
+                <span style={{
+                  marginLeft: 8,
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--warning-soft)',
+                  color: 'var(--warning)',
+                  font: '700 11px/14px var(--font-sans)',
+                }}>
+                  ⚠️ {form.paraBirimi} seçili
+                </span>
+              )}
+            </Label>
             <SegmentedControl
               options={paraBirimleri.map(p => ({ value: p.id, label: `${p.sembol} ${p.id}` }))}
               value={form.paraBirimi}

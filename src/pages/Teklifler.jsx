@@ -40,6 +40,12 @@ const talepTone = {
 }
 
 const fmtTL = (n) => `₺${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+// Para birimini teklife göre formatla (TEK-0547 USD'ydi, listede ₺ gösterilince yanıltıcı)
+const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
+const fmtPara = (n, paraBirimi) => {
+  const sembol = PARA_SEMBOL[paraBirimi] || '₺'
+  return `${sembol}${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+}
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const goreceTarih = (t) => {
   if (!t) return '—'
@@ -464,7 +470,17 @@ export default function Teklifler() {
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                              {fmtTL(t.genelToplam)}
+                              {fmtPara(t.genelToplam, t.paraBirimi)}
+                              {t.paraBirimi && t.paraBirimi !== 'TL' && (
+                                <span style={{
+                                  marginLeft: 6,
+                                  padding: '1px 6px',
+                                  borderRadius: 8,
+                                  background: 'var(--warning-soft)',
+                                  color: 'var(--warning)',
+                                  font: '700 9px/13px var(--font-sans)',
+                                }}>{t.paraBirimi}</span>
+                              )}
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', gap: 4 }}>
@@ -541,12 +557,24 @@ export default function Teklifler() {
                   }}>
                     <span><span className="tabular-nums">{gorunenTeklifler.length}</span> Kayıt</span>
                     <div style={{ display: 'flex', gap: 24 }}>
-                      <span>Toplam: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                        {fmtTL(gorunenTeklifler.reduce((s, t) => s + (t.genelToplam || 0), 0))}
-                      </strong></span>
-                      <span>Kabul edilen: <strong style={{ color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                        {fmtTL(gorunenTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0))}
-                      </strong></span>
+                      <span title="Sadece TL teklifleri toplanır (farklı para birimleri toplanamaz)">
+                        TL Toplam: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtTL(
+                            gorunenTeklifler
+                              .filter(t => (t.paraBirimi || 'TL') === 'TL')
+                              .reduce((s, t) => s + (t.genelToplam || 0), 0)
+                          )}
+                        </strong>
+                      </span>
+                      <span title="Sadece TL kabul edilen teklifler toplanır">
+                        Kabul edilen: <strong style={{ color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtTL(
+                            gorunenTeklifler
+                              .filter(t => t.onayDurumu === 'kabul' && (t.paraBirimi || 'TL') === 'TL')
+                              .reduce((s, t) => s + (t.genelToplam || 0), 0)
+                          )}
+                        </strong>
+                      </span>
                     </div>
                   </div>
                 )}
