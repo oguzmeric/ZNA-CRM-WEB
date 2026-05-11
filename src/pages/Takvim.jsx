@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
+  MapPin, Users, Video, Clock, ExternalLink,
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
@@ -88,6 +89,16 @@ export default function Takvim() {
   const [filtreler,  setFiltreler]  = useState(['gorusme','gorev','servis','kargo','harici'])
   const [evs,        setEvs]        = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [hariciDetay, setHariciDetay] = useState(null)  // tıklanan Gmail etkinliği
+
+  // Etkinliğe tıklayınca: link varsa o sayfaya git, yoksa (harici) modal aç
+  const etkinligeTikla = (ev) => {
+    if (ev.link) {
+      navigate(ev.link)
+    } else if (ev.tip === 'harici' && ev.ham) {
+      setHariciDetay(ev.ham)
+    }
+  }
 
   useEffect(() => {
     setYukleniyor(true)
@@ -355,7 +366,7 @@ export default function Takvim() {
                             return (
                               <div
                                 key={ev.id}
-                                onClick={e => { e.stopPropagation(); navigate(ev.link) }}
+                                onClick={e => { e.stopPropagation(); etkinligeTikla(ev) }}
                                 title={ev.baslik}
                                 style={{
                                   font: '500 10px/16px var(--font-sans)',
@@ -435,7 +446,7 @@ export default function Takvim() {
                             return (
                               <div
                                 key={ev.id}
-                                onClick={e => { e.stopPropagation(); navigate(ev.link) }}
+                                onClick={e => { e.stopPropagation(); etkinligeTikla(ev) }}
                                 style={{
                                   background: t.softBg,
                                   borderLeft: `3px solid ${t.dot}`,
@@ -515,7 +526,7 @@ export default function Takvim() {
                     return (
                       <button
                         key={ev.id}
-                        onClick={() => navigate(ev.link)}
+                        onClick={() => etkinligeTikla(ev)}
                         style={{
                           textAlign: 'left',
                           background: t.softBg,
@@ -574,6 +585,200 @@ export default function Takvim() {
             {meta.label}
           </div>
         ))}
+      </div>
+
+      {/* Harici etkinlik detay modal */}
+      {hariciDetay && (
+        <HariciEtkinlikDetay etkinlik={hariciDetay} onKapat={() => setHariciDetay(null)} />
+      )}
+    </div>
+  )
+}
+
+function HariciEtkinlikDetay({ etkinlik, onKapat }) {
+  const h = etkinlik
+  const baslangicDate = h.baslangic ? new Date(h.baslangic) : null
+  const bitisDate = h.bitis ? new Date(h.bitis) : null
+
+  const tarihStr = baslangicDate?.toLocaleString('tr-TR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  })
+  const saatStr = h.tum_gun
+    ? 'Tüm gün'
+    : `${baslangicDate?.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}${bitisDate ? ` — ${bitisDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+
+  return (
+    <div
+      onClick={onKapat}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 520, width: '100%',
+          maxHeight: '80vh', overflowY: 'auto',
+          background: 'var(--surface-card)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-default)',
+          padding: 24,
+          boxShadow: 'var(--shadow-lg)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8,
+            background: 'rgba(168, 85, 247, 0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Mail size={16} color="#a855f7" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', margin: 0, marginBottom: 2 }}>
+              {h.baslik || '(başlıksız)'}
+            </h3>
+            <span style={{ font: '500 11px/14px var(--font-sans)', color: '#a855f7' }}>
+              Gmail Takvim
+            </span>
+          </div>
+          <button
+            onClick={onKapat}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-tertiary)', padding: 4,
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tarih + saat */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+          <Clock size={16} color="var(--text-tertiary)" style={{ marginTop: 2 }} />
+          <div>
+            <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+              {tarihStr}
+            </div>
+            <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+              {saatStr}
+            </div>
+          </div>
+        </div>
+
+        {/* Toplantı linki — varsa öne çıkar (Google Meet, vs.) */}
+        {h.toplanti_linki && (
+          <div style={{ marginBottom: 12 }}>
+            <a
+              href={h.toplanti_linki}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px',
+                background: '#1a73e8',
+                color: '#fff',
+                borderRadius: 'var(--radius-sm)',
+                textDecoration: 'none',
+                font: '600 13px/18px var(--font-sans)',
+              }}
+            >
+              <Video size={16} /> Toplantıya Katıl
+              <ExternalLink size={12} />
+            </a>
+          </div>
+        )}
+
+        {/* Lokasyon */}
+        {h.lokasyon && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+            <MapPin size={16} color="var(--text-tertiary)" style={{ marginTop: 2 }} />
+            <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+              {/* Lokasyon URL ise tıklanabilir yap */}
+              {/^https?:\/\//i.test(h.lokasyon) ? (
+                <a href={h.lokasyon} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-primary)' }}>
+                  {h.lokasyon}
+                </a>
+              ) : h.lokasyon}
+            </div>
+          </div>
+        )}
+
+        {/* Organizatör */}
+        {h.organizator_email && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Mail size={16} color="var(--text-tertiary)" />
+            <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--text-tertiary)' }}>Organizatör: </span>
+              {h.organizator_email}
+            </div>
+          </div>
+        )}
+
+        {/* Davetliler */}
+        {Array.isArray(h.davetliler) && h.davetliler.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+            <Users size={16} color="var(--text-tertiary)" style={{ marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                {h.davetliler.length} Davetli
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {h.davetliler.slice(0, 6).map((d, i) => (
+                  <div key={i} style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>
+                    {d.isim || d.email}
+                    {d.durum && <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {d.durum}</span>}
+                  </div>
+                ))}
+                {h.davetliler.length > 6 && (
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                    +{h.davetliler.length - 6} kişi daha
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Açıklama */}
+        {h.aciklama && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+              Açıklama
+            </div>
+            <div
+              style={{
+                font: '400 13px/20px var(--font-sans)',
+                color: 'var(--text-primary)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+              dangerouslySetInnerHTML={{ __html: h.aciklama }}
+            />
+          </div>
+        )}
+
+        {/* Footer: Google Calendar'da aç */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end' }}>
+          <a
+            href="https://calendar.google.com/calendar/u/0/r"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              font: '500 12px/16px var(--font-sans)',
+              color: 'var(--text-tertiary)',
+              textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            Google Calendar'da aç <ExternalLink size={11} />
+          </a>
+        </div>
       </div>
     </div>
   )
