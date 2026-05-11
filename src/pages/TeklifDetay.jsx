@@ -630,17 +630,36 @@ function TeklifDetay() {
               <CustomSelect
                 value={form.gorusmeId}
                 onChange={(e) => setForm({ ...form, gorusmeId: e.target.value })}
-                disabled={!form.firmaAdi}
+                disabled={!form.musteriId && !form.firmaAdi}
               >
                 <option value="">
-                  {form.firmaAdi ? 'Görüşme seç…' : 'Önce müşteri seçin'}
+                  {(form.musteriId || form.firmaAdi) ? 'Görüşme seç…' : 'Önce müşteri seçin'}
                 </option>
-                {gorusmeler
-                  .filter((g) => form.firmaAdi && (g.firmaAdi || '').trim().toLowerCase() === form.firmaAdi.trim().toLowerCase())
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>{g.aktNo} — {g.konu || '—'}</option>
-                  ))}
+                {(() => {
+                  // Önce musteriId ile filtrele (en güvenilir). Yoksa firmaAdi normalize edip karşılaştır.
+                  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+                  const hedefMusteriId = form.musteriId ? String(form.musteriId) : null
+                  const hedefFirma = normalize(form.firmaAdi)
+                  const filtre = gorusmeler.filter((g) => {
+                    if (hedefMusteriId && g.musteriId) {
+                      return String(g.musteriId) === hedefMusteriId
+                    }
+                    return hedefFirma && normalize(g.firmaAdi) === hedefFirma
+                  })
+                  // Yeniden eskiye sırala (görüşmeler en yeniden gelir zaten ama emin olalım)
+                  return filtre.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.aktNo || `G-${g.id}`} — {g.konu || g.amac || '—'}
+                      {g.tarih ? ` · ${g.tarih}` : ''}
+                    </option>
+                  ))
+                })()}
               </CustomSelect>
+              {form.musteriId && gorusmeler.filter(g => String(g.musteriId) === String(form.musteriId)).length === 0 && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  Bu müşteriye ait kayıtlı görüşme yok.
+                </p>
+              )}
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
