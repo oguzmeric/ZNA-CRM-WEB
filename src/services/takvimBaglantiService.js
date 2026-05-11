@@ -121,7 +121,35 @@ export async function etkinlikOlustur(baglantiId, payload) {
   const { data, error } = await supabase.functions.invoke('google-takvim-etkinlik-olustur', {
     body: { baglantiId, ...payload },
   })
-  if (error) throw error
+  // supabase-js non-2xx'te body'yi error.context'e koyar — biz gerçek hata mesajını çıkaralım
+  if (error) {
+    let mesaj = error.message ?? 'Etkinlik oluşturulamadı'
+    try {
+      const ctx = error.context
+      if (ctx?.body) {
+        // Edge function JSON döndü mü?
+        const body = typeof ctx.body === 'string' ? JSON.parse(ctx.body) : ctx.body
+        if (body?.hata) mesaj = body.hata
+        if (body?.scopeYok) {
+          mesaj += ' (Takvim Bağlantıları sayfasından bağlantıyı kaldırıp tekrar bağla.)'
+        }
+      } else if (typeof ctx?.text === 'function') {
+        const text = await ctx.text()
+        try {
+          const body = JSON.parse(text)
+          if (body?.hata) mesaj = body.hata
+          if (body?.scopeYok) {
+            mesaj += ' (Takvim Bağlantıları sayfasından bağlantıyı kaldırıp tekrar bağla.)'
+          }
+        } catch {
+          if (text) mesaj = text
+        }
+      }
+    } catch {
+      // sessiz — fallback mesajıyla devam et
+    }
+    throw new Error(mesaj)
+  }
   if (!data?.ok) throw new Error(data?.hata ?? 'Etkinlik oluşturulamadı')
   // Cache invalidate — yeni etkinlik listede görünmeli
   invalidate(`harici_etkinlikler`)
