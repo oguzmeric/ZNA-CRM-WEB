@@ -94,6 +94,7 @@ export default function Takvim() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hariciDetay, setHariciDetay] = useState(null)  // tıklanan Gmail etkinliği
   const [etkinlikModal, setEtkinlikModal] = useState(false)  // yeni etkinlik+Meet modal
+  const [etkinlikModalTarihi, setEtkinlikModalTarihi] = useState(null)  // modal hangi tarihle açılacak (YYYY-MM-DD)
   const [baglantilar, setBaglantilar] = useState([])  // kullanıcının takvim bağlantıları
 
   // Etkinliğe tıklayınca: link varsa o sayfaya git, yoksa (harici) modal aç
@@ -237,7 +238,10 @@ export default function Takvim() {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setEtkinlikModal(true)}
+            onClick={() => {
+              setEtkinlikModalTarihi(null)  // varsayılan: bugün + 15 dk
+              setEtkinlikModal(true)
+            }}
             disabled={baglantilar.length === 0}
             title={baglantilar.length === 0 ? 'Önce Google Calendar bağlantısı eklemelisin' : 'Yeni etkinlik + Google Meet linki oluştur'}
           >
@@ -553,6 +557,27 @@ export default function Takvim() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {secilenGun === todayStr && <Badge tone="brand">Bugün</Badge>}
+                {baglantilar.length > 0 && (
+                  <button
+                    title="Bu güne yeni etkinlik + Meet ekle"
+                    onClick={() => {
+                      setEtkinlikModalTarihi(secilenGun)
+                      setEtkinlikModal(true)
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '4px 10px',
+                      background: '#1a73e8',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      font: '600 11px/14px var(--font-sans)',
+                    }}
+                  >
+                    <Video size={11} /> + Etkinlik
+                  </button>
+                )}
                 <button
                   aria-label="Kapat"
                   onClick={() => setSecilenGun(null)}
@@ -651,6 +676,7 @@ export default function Takvim() {
       {etkinlikModal && (
         <YeniEtkinlikModal
           baglantilar={baglantilar}
+          varsayilanTarih={etkinlikModalTarihi}
           onKapat={() => setEtkinlikModal(false)}
           onBasarili={() => {
             setEtkinlikModal(false)
@@ -855,17 +881,26 @@ function HariciEtkinlikDetay({ etkinlik, onKapat }) {
 // ---- Yeni Etkinlik + Meet modal ----
 // CRM içinden Google Calendar'a etkinlik gönder, otomatik Meet linki üret, davetlilere mail at.
 
-function YeniEtkinlikModal({ baglantilar, onKapat, onBasarili }) {
-  // Varsayılan: 15 dk sonra başla, 30 dk sürsün
-  const simdi = new Date()
+function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }) {
+  // Varsayılan başlangıç/bitiş hesapla:
+  // - varsayilanTarih (YYYY-MM-DD) verilmişse o günü 09:00 - 10:00 olarak doldur
+  // - Yoksa şimdiden 15 dk sonra başlat, 30 dk sürsün
   const yuvarla = (d) => {
     const r = new Date(d)
     r.setSeconds(0, 0)
     r.setMinutes(Math.ceil(r.getMinutes() / 15) * 15)
     return r
   }
-  const baslangicVar = yuvarla(new Date(simdi.getTime() + 15 * 60 * 1000))
-  const bitisVar = new Date(baslangicVar.getTime() + 30 * 60 * 1000)
+  let baslangicVar, bitisVar
+  if (varsayilanTarih && /^\d{4}-\d{2}-\d{2}$/.test(varsayilanTarih)) {
+    const [y, m, d] = varsayilanTarih.split('-').map(Number)
+    baslangicVar = new Date(y, m - 1, d, 9, 0, 0, 0)
+    bitisVar = new Date(y, m - 1, d, 10, 0, 0, 0)
+  } else {
+    const simdi = new Date()
+    baslangicVar = yuvarla(new Date(simdi.getTime() + 15 * 60 * 1000))
+    bitisVar = new Date(baslangicVar.getTime() + 30 * 60 * 1000)
+  }
 
   const toLocalDateTime = (d) => {
     const pad = (n) => String(n).padStart(2, '0')
