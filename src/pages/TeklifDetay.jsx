@@ -15,6 +15,7 @@ import {
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
 import CustomSelect from '../components/CustomSelect'
@@ -102,6 +103,8 @@ function TeklifDetay() {
   // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
   const [hizliStokAcik, setHizliStokAcik] = useState(false)
   const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
+  // Seçili müşterinin yetkili kişileri (kayıtlıysa dropdown'a düşer)
+  const [musteriKisileri, setMusteriKisileri] = useState([])
 
   const onDoldurum = yeni
     ? (() => {
@@ -186,6 +189,19 @@ function TeklifDetay() {
     }
   }, [veriYuklendi, mevcutTeklif])
 
+  // form.musteriId değiştiğinde o müşterinin kayıtlı kişilerini yükle
+  useEffect(() => {
+    if (!form?.musteriId) {
+      setMusteriKisileri([])
+      return
+    }
+    let iptal = false
+    musteriKisileriniGetir(form.musteriId)
+      .then(d => { if (!iptal) setMusteriKisileri(d || []) })
+      .catch(() => { if (!iptal) setMusteriKisileri([]) })
+    return () => { iptal = true }
+  }, [form?.musteriId])
+
   useEffect(() => {
     if (!form) return
     if (form.paraBirimi === 'USD' && kurlar.USD && !form.dovizKuru) {
@@ -209,8 +225,17 @@ function TeklifDetay() {
       ...form,
       musteriId,
       firmaAdi: musteri ? musteri.firma : '',
+      // Yetkiliyi default doldur — sonra dropdown'dan değiştirilebilir
       musteriYetkilisi: musteri ? `${musteri.ad} ${musteri.soyad}` : '',
     })
+    // Müşterinin kayıtlı kişilerini çek (varsa dropdown'a düşecek)
+    if (musteriId) {
+      musteriKisileriniGetir(musteriId)
+        .then(d => setMusteriKisileri(d || []))
+        .catch(() => setMusteriKisileri([]))
+    } else {
+      setMusteriKisileri([])
+    }
   }
 
   const stokSec = (index, stokKodu) => {
@@ -598,11 +623,64 @@ function TeklifDetay() {
 
             <div>
               <Label>Müşteri yetkilisi</Label>
-              <Input
-                value={form.musteriYetkilisi}
-                onChange={(e) => setForm({ ...form, musteriYetkilisi: e.target.value })}
-                placeholder="Yetkili adı"
-              />
+              {musteriKisileri.length > 0 ? (
+                <>
+                  <CustomSelect
+                    value={
+                      musteriKisileri.some(k => {
+                        const ad = `${k.ad ?? ''} ${k.soyad ?? ''}`.trim()
+                        return ad === form.musteriYetkilisi
+                      })
+                        ? form.musteriYetkilisi
+                        : (form.musteriYetkilisi ? '__manuel__' : '')
+                    }
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '__manuel__') {
+                        setForm({ ...form, musteriYetkilisi: '' })
+                      } else {
+                        setForm({ ...form, musteriYetkilisi: v })
+                      }
+                    }}
+                  >
+                    <option value="">Yetkili seç…</option>
+                    {musteriKisileri.map(k => {
+                      const ad = `${k.ad ?? ''} ${k.soyad ?? ''}`.trim()
+                      const ek = [k.unvan, k.telefon].filter(Boolean).join(' · ')
+                      return (
+                        <option key={k.id} value={ad}>
+                          {ad}{ek ? ` — ${ek}` : ''}
+                          {k.anaKisi ? ' ⭐' : ''}
+                        </option>
+                      )
+                    })}
+                    <option value="__manuel__">+ Manuel yaz…</option>
+                  </CustomSelect>
+                  {/* Dropdown'da seçili olmayan veya manuel modunda input görünür */}
+                  {(!form.musteriYetkilisi || !musteriKisileri.some(k => {
+                    const ad = `${k.ad ?? ''} ${k.soyad ?? ''}`.trim()
+                    return ad === form.musteriYetkilisi
+                  })) && (
+                    <Input
+                      value={form.musteriYetkilisi}
+                      onChange={(e) => setForm({ ...form, musteriYetkilisi: e.target.value })}
+                      placeholder="Yetkili adı"
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                </>
+              ) : (
+                <Input
+                  value={form.musteriYetkilisi}
+                  onChange={(e) => setForm({ ...form, musteriYetkilisi: e.target.value })}
+                  placeholder="Yetkili adı"
+                />
+              )}
+              {form.musteriId && musteriKisileri.length === 0 && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  Bu müşterinin kayıtlı ilgili kişisi yok — manuel yaz
+                </p>
+              )}
             </div>
 
             <div>
