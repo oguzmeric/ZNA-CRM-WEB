@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext'
 import { Plus, Pencil, Trash2, MapPin, Infinity as InfIcon, AlertTriangle } from 'lucide-react'
 import { lisanslariGetir, lisansEkle, lisansGuncelle, lisansSil as dbLisansSil } from '../services/lisansService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -51,6 +52,7 @@ function TrassirLisanslar() {
   const { toast } = useToast()
   const [lisanslar, setLisanslar] = useState([])
   const [musteriler, setMusteriler] = useState([])
+  const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
   const [goster, setGoster] = useState(false)
@@ -81,13 +83,29 @@ function TrassirLisanslar() {
       baslangicTarih: l.baslangicTarih || '', bitisTarih: l.bitisTarih || '',
       durum: l.durum, notlar: l.notlar || '',
     })
+    // Düzenleme açılırken o müşterinin lokasyonlarını da yükle (dropdown'da seçili gelsin)
+    if (l.musteriId) {
+      musteriLokasyonlariniGetir(l.musteriId)
+        .then(d => setMusteriLokasyonlari(d || []))
+        .catch(() => setMusteriLokasyonlari([]))
+    } else {
+      setMusteriLokasyonlari([])
+    }
     setKodModu('manuel'); setDuzenleId(l.id); setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleMusteriSec = (musteriId) => {
     const m = musteriler.find(x => x.id?.toString() === musteriId)
-    setForm({ ...form, musteriId, firmaAdi: m ? m.firma : '' })
+    // Lokasyonu sıfırla (müşteri değişince eski lokasyon anlamsız)
+    setForm({ ...form, musteriId, firmaAdi: m ? m.firma : '', lokasyon: '' })
+    if (musteriId) {
+      musteriLokasyonlariniGetir(musteriId)
+        .then(d => setMusteriLokasyonlari(d || []))
+        .catch(() => setMusteriLokasyonlari([]))
+    } else {
+      setMusteriLokasyonlari([])
+    }
   }
 
   const handleTipiDegis = (tipi) => {
@@ -119,10 +137,10 @@ function TrassirLisanslar() {
       if (y) setLisanslar(prev => [y, ...prev])
       toast.success('Lisans kaydedildi.')
     }
-    setForm(bosForm); setDuzenleId(null); setGoster(false)
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([])
   }
 
-  const iptal = () => { setForm(bosForm); setDuzenleId(null); setGoster(false) }
+  const iptal = () => { setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([]) }
 
   const lisansSil = async (id) => {
     await dbLisansSil(id)
@@ -323,8 +341,50 @@ function TrassirLisanslar() {
 
             <div style={{ gridColumn: 'span 2' }}>
               <Label>Lokasyon / şube</Label>
-              <Input value={form.lokasyon} onChange={e => setForm({ ...form, lokasyon: e.target.value })} placeholder="Örn: Hayvan Hastanesi, Merkez Bina, 2. Şube…" />
-              <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>Lisansın atandığı şube veya lokasyonu belirtin</p>
+              {musteriLokasyonlari.length > 0 ? (
+                <>
+                  <CustomSelect
+                    value={
+                      musteriLokasyonlari.some(l => l.ad === form.lokasyon)
+                        ? form.lokasyon
+                        : (form.lokasyon ? '__manuel__' : '')
+                    }
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '__manuel__') {
+                        // "Elden yaz" seçeneği — input'u boşalt
+                        setForm({ ...form, lokasyon: '' })
+                      } else {
+                        setForm({ ...form, lokasyon: v })
+                      }
+                    }}
+                  >
+                    <option value="">Lokasyon seç…</option>
+                    {musteriLokasyonlari.map(l => (
+                      <option key={l.id} value={l.ad}>{l.ad}{l.adres ? ` — ${l.adres}` : ''}</option>
+                    ))}
+                    <option value="__manuel__">+ Manuel yaz…</option>
+                  </CustomSelect>
+                  {/* Dropdown'da seçili olmayan ya da manuel modunda input görünür */}
+                  {(!form.lokasyon || !musteriLokasyonlari.some(l => l.ad === form.lokasyon)) && (
+                    <Input
+                      value={form.lokasyon}
+                      onChange={e => setForm({ ...form, lokasyon: e.target.value })}
+                      placeholder="Örn: Merkez Bina, 2. Şube…"
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                </>
+              ) : (
+                <Input value={form.lokasyon} onChange={e => setForm({ ...form, lokasyon: e.target.value })} placeholder="Örn: Hayvan Hastanesi, Merkez Bina, 2. Şube…" />
+              )}
+              <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                {form.musteriId
+                  ? (musteriLokasyonlari.length > 0
+                      ? 'Müşterinin kayıtlı lokasyonlarından seç veya manuel yaz'
+                      : 'Bu müşterinin kayıtlı lokasyonu yok — manuel yaz')
+                  : 'Önce müşteri seç (otomatik lokasyon listesi gelir)'}
+              </p>
             </div>
 
             <div>
