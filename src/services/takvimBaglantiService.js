@@ -1,0 +1,93 @@
+// Harici takvim bağlantıları (Google Calendar — Outlook ileride) ve etkinlikler.
+
+import { supabase } from '../lib/supabase'
+import { cached, invalidate } from '../lib/cache'
+
+const GOOGLE_CLIENT_ID = '954751547968-e03blkl20k73bit261sljftr3nvflue4.apps.googleusercontent.com'
+const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly email profile'
+
+// Google OAuth başlangıç URL'i — kullanıcıyı buraya yönlendir
+export function googleOAuthBaslat(kullaniciId, mevcutOrigin) {
+  const redirectUri = `${mevcutOrigin}/oauth/google/callback`
+  // state: kullanıcı id'sini callback'e taşımak için (CSRF koruması da burada)
+  const state = btoa(JSON.stringify({
+    kullaniciId,
+    nonce: Math.random().toString(36).slice(2),
+    t: Date.now(),
+  }))
+
+  // Bir sonraki callback adımı için ne için bağlanıldığını localStorage'a yaz
+  sessionStorage.setItem('takvim_oauth_state', state)
+  sessionStorage.setItem('takvim_oauth_redirect_uri', redirectUri)
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: GOOGLE_SCOPE,
+    access_type: 'offline',        // refresh_token al
+    prompt: 'consent',              // her bağlantıda izin sor (refresh_token gelmesi için)
+    state,
+  })
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+}
+
+// Callback page'de code → token exchange (edge function çağrısı)
+export async function googleOAuthTamamla({ code, kullaniciId, redirectUri }) {
+  const { data, error } = await supabase.functions.invoke('google-takvim-baglan', {
+    body: { code, kullaniciId, redirectUri },
+  })
+  if (error) throw error
+  if (!data?.ok) throw new Error(data?.hata ?? 'OAuth tamamlanamadı')
+  invalidate('takvim_baglantilari', `harici_etkinlikler:${kullaniciId}`)
+  return data
+}
+
+// Bir kullanıcının takvim bağlantılarını listele
+export async function takvimBaglantilariniGetir(kullaniciId) {
+  if (!kullaniciId) return []
+  const { data, error } = await supabase
+    .from('kullanici_takvim_baglantilari')
+    .select('id, saglayici, hesap_email, aktif, son_sync_zamani, son_sync_hatasi, olusturma_tarih')
+    .eq('kullanici_id', kullaniciId)
+    .order('olusturma_tarih', { ascending: false })
+  if (error) { console.warn('takvimBaglantilariniGetir', error.message); return [] }
+  return data ?? []
+}
+
+// Bağlantıyı sil (token'lar dahil her şey)
+export async function takvimBaglantisiKaldir(baglantiId) {
+  const { error } = await supabase
+    .from('kullanici_takvim_baglantilari')
+    .delete()
+    .eq('id', baglantiId)
+  if (error) throw error
+  invalidate('takvim_baglantilari')
+}
+
+// Manuel sync tetikle
+export async function takvimSyncTetikle(baglantiId) {
+  const { data, error } = await supabase.functions.invoke('google-takvim-sync', {
+    body: { baglantiId },
+  })
+  if (error) throw error
+  if (!data?.ok) throw new Error(data?.hata ?? 'Senkronizasyon başarısız')
+  return data
+}
+
+// Bir kullanıcının harici etkinliklerini, belirli tarih aralığında çek
+// (Takvim ekranı buradan beslenir)
+export async function hariciEtkinlikleriGetir(kullaniciId, baslangic, bitis) {
+  if (!kullaniciId) return []
+  const { data, error } = await supabase
+    .from('harici_etkinlikler')
+    .select('id, baglanti_id, saglayici, baslik, aciklama, lokasyon, baslangic, bitis, tum_gun, durum, davetliler, organizator_email, toplanti_linki')
+    .eq('kullanici_id', kullaniciId)
+    .eq('silindi', false)
+    .gte('baslangic', baslangic)
+    .lte('baslangic', bitis)
+    .order('baslangic', { ascending: true })
+  if (error) { console.warn('hariciEtkinlikleriGetir', error.message); return [] }
+  return data ?? []
+}

@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2,
+  ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { kargolariGetir } from '../services/kargoService'
+import { hariciEtkinlikleriGetir } from '../services/takvimBaglantiService'
+import { useAuth } from '../context/AuthContext'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
 
 const TIP = {
@@ -14,6 +16,7 @@ const TIP = {
   gorev:   { label: 'Görev',   C: CheckSquare, softBg: 'var(--success-soft)', fg: 'var(--success)', dot: 'var(--success)' },
   servis:  { label: 'Servis',  C: Wrench,      softBg: 'var(--warning-soft)', fg: 'var(--warning)', dot: 'var(--warning)' },
   kargo:   { label: 'Kargo',   C: Truck,       softBg: 'var(--brand-primary-soft)', fg: 'var(--brand-primary)', dot: 'var(--brand-primary)' },
+  harici:  { label: 'Gmail',   C: Mail,        softBg: 'rgba(168, 85, 247, 0.12)', fg: '#a855f7', dot: '#a855f7' },
 }
 
 const AYLAR  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
@@ -29,7 +32,7 @@ const haftaBasi = (d) => {
   return c
 }
 
-function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar) {
+function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, hariciEvs) {
   const evs = []
   ;(gorusmeler || []).forEach(g => {
     if (!g.tarih) return
@@ -48,11 +51,32 @@ function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar) {
     if (!k.tahminiTeslim) return
     evs.push({ id: `k${k.id}`, tip: 'kargo', baslik: k.kargoNo || 'Kargo', alt: k.alici?.ad || '', tarih: k.tahminiTeslim.slice(0,10), link: `/kargolar/${k.id}` })
   })
+  ;(hariciEvs || []).forEach(h => {
+    if (!h.baslangic) return
+    const tarihStr = h.baslangic.slice(0, 10)
+    // Saat varsa baslık'a ekle ("14:30 Toplantı")
+    let baslik = h.baslik || '(başlıksız)'
+    if (!h.tum_gun && h.baslangic.includes('T')) {
+      const saat = h.baslangic.slice(11, 16)
+      baslik = `${saat} · ${baslik}`
+    }
+    evs.push({
+      id: `h${h.id}`,
+      tip: 'harici',
+      baslik,
+      alt: h.lokasyon || h.organizator_email || '',
+      tarih: tarihStr,
+      // Harici etkinliklere link yok — popup'ta detay göstereceğiz
+      link: null,
+      ham: h,  // popover için
+    })
+  })
   return evs
 }
 
 export default function Takvim() {
   const navigate = useNavigate()
+  const { kullanici } = useAuth()
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const todayStr = dtStr(today)
 
@@ -61,17 +85,26 @@ export default function Takvim() {
   const [ay,         setAy]         = useState(today.getMonth())
   const [haftaIlk,   setHaftaIlk]   = useState(() => haftaBasi(today))
   const [secilenGun, setSecilenGun] = useState(null)
-  const [filtreler,  setFiltreler]  = useState(['gorusme','gorev','servis','kargo'])
+  const [filtreler,  setFiltreler]  = useState(['gorusme','gorev','servis','kargo','harici'])
   const [evs,        setEvs]        = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
 
   useEffect(() => {
     setYukleniyor(true)
-    Promise.all([gorusmeleriGetir(), gorevleriGetir(), servisTalepleriniGetir(), kargolariGetir()])
-      .then(([g, gr, s, k]) => setEvs(etkinlikleriDonustur(g, gr, s, k)))
+    // Harici etkinlikler için ±90 günlük pencere
+    const baslangic = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString()
+    const bitis = new Date(Date.now() + 180 * 24 * 3600 * 1000).toISOString()
+    Promise.all([
+      gorusmeleriGetir(),
+      gorevleriGetir(),
+      servisTalepleriniGetir(),
+      kargolariGetir(),
+      kullanici?.id ? hariciEtkinlikleriGetir(kullanici.id, baslangic, bitis) : Promise.resolve([]),
+    ])
+      .then(([g, gr, s, k, h]) => setEvs(etkinlikleriDonustur(g, gr, s, k, h)))
       .catch(() => {})
       .finally(() => setYukleniyor(false))
-  }, [])
+  }, [kullanici?.id])
 
   const filtreliEvs = useMemo(() => evs.filter(e => filtreler.includes(e.tip)), [evs, filtreler])
 
@@ -143,24 +176,29 @@ export default function Takvim() {
           </p>
         </div>
 
-        <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
-          {[{ id: 'ay', l: 'Aylık' }, { id: 'hafta', l: 'Haftalık' }].map(m => (
-            <button
-              key={m.id}
-              onClick={() => setMod(m.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 'calc(var(--radius-sm) - 2px)',
-                background: mod === m.id ? 'var(--surface-card)' : 'transparent',
-                boxShadow: mod === m.id ? 'var(--shadow-sm)' : 'none',
-                color: mod === m.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                border: 'none', cursor: 'pointer',
-                font: '500 13px/18px var(--font-sans)',
-              }}
-            >
-              {m.l}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/ayarlar/takvim-baglantilari')}>
+            <Mail size={14} style={{ marginRight: 6 }} /> Takvim Bağlantıları
+          </Button>
+          <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+            {[{ id: 'ay', l: 'Aylık' }, { id: 'hafta', l: 'Haftalık' }].map(m => (
+              <button
+                key={m.id}
+                onClick={() => setMod(m.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'calc(var(--radius-sm) - 2px)',
+                  background: mod === m.id ? 'var(--surface-card)' : 'transparent',
+                  boxShadow: mod === m.id ? 'var(--shadow-sm)' : 'none',
+                  color: mod === m.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  border: 'none', cursor: 'pointer',
+                  font: '500 13px/18px var(--font-sans)',
+                }}
+              >
+                {m.l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
