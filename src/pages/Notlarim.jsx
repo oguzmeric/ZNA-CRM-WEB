@@ -5,10 +5,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Plus, Trash2, StickyNote, Image as ImageIcon, X, Building2, Search,
-  Paperclip, FileText, File as FileIcon, Bell, Upload, Eye,
+  Paperclip, FileText, File as FileIcon, Bell, Upload,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -389,7 +389,8 @@ function Notlarim() {
                     overflow: 'hidden',
                     whiteSpace: 'pre-wrap',
                   }}>
-                    {n.icerik}
+                    {/* HTML'i strip ederek plain text önizle */}
+                    {n.icerik.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}
                   </p>
                 )}
 
@@ -458,38 +459,54 @@ function Notlarim() {
           </div>
 
           <div>
-            <Label>
-              İçerik
-              <span style={{ font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                Markdown desteği: **kalın**, *italik*, # Başlık, - liste
-              </span>
-            </Label>
-            <Textarea
-              value={form.icerik}
-              onChange={(e) => setForm({ ...form, icerik: e.target.value })}
-              rows={10}
-              placeholder="Notunu yaz… Markdown destekli."
-              style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
-            />
-            {/* Markdown önizleme */}
-            {form.icerik && (
-              <details style={{ marginTop: 6 }}>
-                <summary style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--brand-primary)', cursor: 'pointer' }}>
-                  <Eye size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> Önizle
-                </summary>
-                <div className="markdown-preview" style={{
-                  marginTop: 8,
-                  padding: 12,
-                  background: 'var(--surface-sunken)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-default)',
-                  font: '400 13px/20px var(--font-sans)',
-                  color: 'var(--text-primary)',
-                }}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.icerik}</ReactMarkdown>
-                </div>
-              </details>
-            )}
+            <Label>İçerik</Label>
+            <div className="not-quill-wrap">
+              <ReactQuill
+                theme="snow"
+                value={form.icerik}
+                onChange={(html) => setForm({ ...form, icerik: html })}
+                placeholder="Notunu yaz…"
+                modules={{
+                  toolbar: [
+                    [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ color: [] }, { background: [] }],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    [{ indent: '-1' }, { indent: '+1' }],
+                    ['link', 'blockquote', 'code-block'],
+                    ['clean'],
+                  ],
+                }}
+                formats={[
+                  'font', 'size',
+                  'bold', 'italic', 'underline', 'strike',
+                  'color', 'background',
+                  'list', 'bullet', 'indent',
+                  'align',
+                  'link', 'blockquote', 'code-block',
+                ]}
+                style={{ background: 'var(--surface-card)' }}
+              />
+            </div>
+            <style>{`
+              .not-quill-wrap .ql-toolbar {
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                background: var(--surface-sunken);
+                border-color: var(--border-default);
+              }
+              .not-quill-wrap .ql-container {
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
+                min-height: 220px;
+                font: 400 14px/22px var(--font-sans);
+                border-color: var(--border-default);
+              }
+              .not-quill-wrap .ql-editor {
+                min-height: 220px;
+              }
+            `}</style>
           </div>
 
           {/* Hatırlatma */}
