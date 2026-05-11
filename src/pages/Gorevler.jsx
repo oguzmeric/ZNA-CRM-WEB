@@ -343,9 +343,14 @@ function Gorevler() {
 
   const gorevSil = async (id, e) => {
     e.stopPropagation()
-    await dbGorevSil(id)
-    setGorevler(prev => prev.filter(g => g.id !== id))
-    toast.success('Görev silindi.')
+    if (!window.confirm('Bu görevi silmek istediğine emin misin? Geri alınamaz.')) return
+    try {
+      await dbGorevSil(id)
+      setGorevler(prev => prev.filter(g => g.id !== id))
+      toast.success('Görev silindi.')
+    } catch (err) {
+      toast.error('Görev silinemedi: ' + (err?.message ?? 'bilinmeyen hata'))
+    }
   }
 
   const duzenleAc = (g, e) => {
