@@ -18,6 +18,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
+import HizliMusteriEkleModal from '../components/HizliMusteriEkleModal'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge,
@@ -103,6 +104,8 @@ function TeklifDetay() {
   // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
   const [hizliStokAcik, setHizliStokAcik] = useState(false)
   const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
+  // Hızlı müşteri ekleme modal'ı
+  const [hizliMusteriAcik, setHizliMusteriAcik] = useState(false)
   // Seçili müşterinin yetkili kişileri (kayıtlıysa dropdown'a düşer)
   const [musteriKisileri, setMusteriKisileri] = useState([])
 
@@ -220,6 +223,11 @@ function TeklifDetay() {
   }
 
   const handleMusteriSec = (musteriId) => {
+    // "+ Yeni Müşteri..." seçildiyse modal aç, seçimi değiştirme
+    if (musteriId === '__yeni__') {
+      setHizliMusteriAcik(true)
+      return
+    }
     const musteri = musteriler.find((m) => m.id?.toString() === musteriId)
     setForm({
       ...form,
@@ -641,6 +649,9 @@ function TeklifDetay() {
               <Label>Müşteri seç</Label>
               <CustomSelect value={form.musteriId} onChange={(e) => handleMusteriSec(e.target.value)}>
                 <option value="">Müşteri seç…</option>
+                <option value="__yeni__" style={{ fontWeight: 700, color: 'var(--brand-primary)' }}>
+                  + Yeni Müşteri Ekle…
+                </option>
                 {musteriler.map((m) => (
                   <option key={m.id} value={m.id}>{m.ad} {m.soyad} — {m.firma}</option>
                 ))}
@@ -1310,6 +1321,25 @@ function TeklifDetay() {
         onEklendi={(yeni) => {
           hizliStokEklendi(yeni)
           setHizliStokAcik(false)
+        }}
+      />
+
+      {/* Hızlı müşteri ekleme — müşteri dropdown'dan "+ Yeni" seçilince */}
+      <HizliMusteriEkleModal
+        acik={hizliMusteriAcik}
+        onKapat={() => setHizliMusteriAcik(false)}
+        onEklendi={(yeni) => {
+          // Listeye ekle, formu o müşteriye bağla, kişi listesini tazele
+          setMusteriler(prev => [yeni, ...prev])
+          setForm(f => ({
+            ...f,
+            musteriId: String(yeni.id),
+            firmaAdi: yeni.firma || '',
+            musteriYetkilisi: `${yeni.ad ?? ''} ${yeni.soyad ?? ''}`.trim(),
+          }))
+          // Yeni müşterinin henüz kayıtlı kişisi yok — picker sıfırla
+          setMusteriKisileri([])
+          setHizliMusteriAcik(false)
         }}
       />
     </div>
