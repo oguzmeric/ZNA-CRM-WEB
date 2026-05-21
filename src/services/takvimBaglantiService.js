@@ -160,6 +160,33 @@ export async function etkinlikOlustur(baglantiId, payload) {
   return data
 }
 
+// Etkinliği Google Calendar'dan ve DB'den sil (soft-delete + Google'a iptal bildirimi)
+export async function etkinlikSil(etkinlikId) {
+  const { data, error } = await supabase.functions.invoke('google-takvim-etkinlik-sil', {
+    body: { etkinlikId },
+  })
+  if (error) {
+    let mesaj = error.message ?? 'Etkinlik silinemedi'
+    try {
+      const ctx = error.context
+      if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text()
+        if (text) {
+          try {
+            const body = JSON.parse(text)
+            if (body?.hata) mesaj = body.hata
+            if (body?.scopeYok) mesaj += ' (Bağlantıyı yenileyin.)'
+          } catch { mesaj = text.slice(0, 300) }
+        }
+      }
+    } catch {}
+    throw new Error(mesaj)
+  }
+  if (!data?.ok) throw new Error(data?.hata ?? 'Etkinlik silinemedi')
+  invalidate(`harici_etkinlikler`)
+  return data
+}
+
 // Bir kullanıcının harici etkinliklerini, belirli tarih aralığında çek
 // (Takvim ekranı buradan beslenir)
 export async function hariciEtkinlikleriGetir(kullaniciId, baslangic, bitis) {

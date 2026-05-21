@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
-  MapPin, Users, Video, Clock, ExternalLink, Plus, Copy, Check,
+  MapPin, Users, Video, Clock, ExternalLink, Plus, Copy, Check, Trash2,
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
@@ -10,7 +10,7 @@ import { servisTalepleriniGetir } from '../services/servisService'
 import { kargolariGetir } from '../services/kargoService'
 import {
   hariciEtkinlikleriGetir, tazelikSyncTetikle,
-  takvimBaglantilariniGetir, etkinlikOlustur,
+  takvimBaglantilariniGetir, etkinlikOlustur, etkinlikSil,
 } from '../services/takvimBaglantiService'
 import { useAuth } from '../context/AuthContext'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
@@ -684,7 +684,15 @@ export default function Takvim() {
 
       {/* Harici etkinlik detay modal */}
       {hariciDetay && (
-        <HariciEtkinlikDetay etkinlik={hariciDetay} onKapat={() => setHariciDetay(null)} />
+        <HariciEtkinlikDetay
+          etkinlik={hariciDetay}
+          onKapat={() => setHariciDetay(null)}
+          onSilindi={() => {
+            setHariciDetay(null)
+            // 500 ms bekle (DB güncellensin), sonra listeyi yenile
+            setTimeout(() => tumEtkinlikleriYukle(), 500)
+          }}
+        />
       )}
 
       {/* Yeni Etkinlik + Meet modal */}
@@ -704,10 +712,28 @@ export default function Takvim() {
   )
 }
 
-function HariciEtkinlikDetay({ etkinlik, onKapat }) {
+function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
   const h = etkinlik
   const baslangicDate = h.baslangic ? new Date(h.baslangic) : null
   const bitisDate = h.bitis ? new Date(h.bitis) : null
+  const [siliniyor, setSiliniyor] = useState(false)
+
+  const silTikla = async () => {
+    const onay = window.confirm(
+      `"${h.baslik || '(başlıksız)'}" etkinliğini silmek istediğine emin misin?\n\n` +
+      `Bu işlem Google Calendar'dan da kaldıracak ve davetlilere iptal bildirimi gönderecek. ` +
+      `Geri alınamaz.`,
+    )
+    if (!onay) return
+    setSiliniyor(true)
+    try {
+      await etkinlikSil(h.id)
+      onSilindi?.()
+    } catch (e) {
+      alert('Silinemedi: ' + (e?.message ?? 'bilinmeyen hata'))
+      setSiliniyor(false)
+    }
+  }
 
   const tarihStr = baslangicDate?.toLocaleString('tr-TR', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
@@ -872,8 +898,26 @@ function HariciEtkinlikDetay({ etkinlik, onKapat }) {
           </div>
         )}
 
-        {/* Footer: Google Calendar'da aç */}
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end' }}>
+        {/* Footer: Sil + Google Calendar'da aç */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={silTikla}
+            disabled={siliniyor}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              background: siliniyor ? 'transparent' : 'var(--danger-soft)',
+              color: 'var(--danger)',
+              border: '1px solid var(--danger)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: siliniyor ? 'wait' : 'pointer',
+              font: '600 12px/16px var(--font-sans)',
+              opacity: siliniyor ? 0.6 : 1,
+            }}
+          >
+            <Trash2 size={14} />
+            {siliniyor ? 'Siliniyor…' : 'Etkinliği Sil'}
+          </button>
           <a
             href="https://calendar.google.com/calendar/u/0/r"
             target="_blank"
