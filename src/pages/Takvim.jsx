@@ -89,7 +89,22 @@ export default function Takvim() {
   const [ay,         setAy]         = useState(today.getMonth())
   const [haftaIlk,   setHaftaIlk]   = useState(() => haftaBasi(today))
   const [secilenGun, setSecilenGun] = useState(null)
-  const [filtreler,  setFiltreler]  = useState(['gorusme','gorev','servis','kargo','harici'])
+  // Filtre seçimini localStorage'a kaydet — sayfalar arası dönüşte korunsun
+  const [filtreler,  setFiltreler]  = useState(() => {
+    try {
+      const kayitli = localStorage.getItem('takvim_filtreler')
+      if (kayitli) {
+        const p = JSON.parse(kayitli)
+        if (Array.isArray(p)) return p
+      }
+    } catch {}
+    return ['gorusme','gorev','servis','kargo','harici']
+  })
+
+  // Her değişiklikte localStorage'a yaz
+  useEffect(() => {
+    try { localStorage.setItem('takvim_filtreler', JSON.stringify(filtreler)) } catch {}
+  }, [filtreler])
   const [evs,        setEvs]        = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hariciDetay, setHariciDetay] = useState(null)  // tıklanan Gmail etkinliği
