@@ -13,6 +13,7 @@ import {
   takvimBaglantilariniGetir, etkinlikOlustur, etkinlikSil,
 } from '../services/takvimBaglantiService'
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
 
 const TIP = {
@@ -717,13 +718,16 @@ function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
   const baslangicDate = h.baslangic ? new Date(h.baslangic) : null
   const bitisDate = h.bitis ? new Date(h.bitis) : null
   const [siliniyor, setSiliniyor] = useState(false)
+  const { confirm } = useConfirm()
 
   const silTikla = async () => {
-    const onay = window.confirm(
-      `"${h.baslik || '(başlıksız)'}" etkinliğini silmek istediğine emin misin?\n\n` +
-      `Bu işlem Google Calendar'dan da kaldıracak ve davetlilere iptal bildirimi gönderecek. ` +
-      `Geri alınamaz.`,
-    )
+    const onay = await confirm({
+      baslik: 'Etkinliği Sil',
+      mesaj: `"${h.baslik || '(başlıksız)'}" etkinliği silinecek.\n\nBu işlem Google Calendar'dan da kaldıracak ve davetlilere iptal bildirimi gönderecek. Geri alınamaz.`,
+      onayMetin: 'Evet, sil',
+      iptalMetin: 'Vazgeç',
+      tip: 'tehlikeli',
+    })
     if (!onay) return
     setSiliniyor(true)
     try {
