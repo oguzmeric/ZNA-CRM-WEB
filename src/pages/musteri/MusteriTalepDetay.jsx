@@ -573,23 +573,24 @@ export default function MusteriTalepDetay() {
                       Evet, çözüldü
                     </button>
 
-                    {/* Hayır butonu — solid kırmızı, eşit görsel ağırlık */}
+                    {/* Hayır butonu — solid kırmızı (Evet ile %100 eş görsel ağırlık) */}
                     <button
                       type="button"
                       onClick={sorunDevamEdiyor}
                       style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         padding: '11px 14px',
-                        background: '#fff',
-                        color: 'var(--danger)',
+                        background: 'var(--danger)',
+                        color: '#fff',
                         border: '1.5px solid var(--danger)',
                         borderRadius: 'var(--radius-sm)',
                         font: '700 13.5px/18px var(--font-sans)',
                         cursor: 'pointer',
-                        transition: 'background 180ms, transform 180ms',
+                        boxShadow: '0 4px 10px -4px var(--danger)',
+                        transition: 'transform 180ms, box-shadow 180ms',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(0)' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 18px -8px var(--danger)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px -4px var(--danger)' }}
                     >
                       <ThumbsDown size={15} strokeWidth={2} />
                       Sorun devam ediyor
