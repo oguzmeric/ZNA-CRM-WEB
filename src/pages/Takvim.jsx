@@ -146,7 +146,9 @@ export default function Takvim() {
   // Takvim bağlantılarını yükle (etkinlik+Meet butonu için gerekli)
   useEffect(() => {
     if (!kullanici?.id) return
-    takvimBaglantilariniGetir(kullanici.id).then(setBaglantilar).catch(() => {})
+    takvimBaglantilariniGetir(kullanici.id)
+      .then(setBaglantilar)
+      .catch(e => console.warn('[takvim baglantilari]', e?.message))
   }, [kullanici?.id])
 
   // İlk yükleme + sync tetik

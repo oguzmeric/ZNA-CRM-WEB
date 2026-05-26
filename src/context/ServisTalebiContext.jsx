@@ -183,7 +183,9 @@ export function ServisTalebiProvider({ children }) {
     if (kayitli) {
       setTalepler(prev => [kayitli, ...prev])
       // Bildirim gönder — admin + ilgili personele (best-effort, talep oluşumu garanti)
-      servisTalebiBildirimGonder(kayitli, kullanici?.id).catch(() => {})
+      servisTalebiBildirimGonder(kayitli, kullanici?.id)
+        .then(r => { if (r?.hata) console.warn('[servis-talep bildirim]', r.hata) })
+        .catch(e => console.warn('[servis-talep bildirim] beklenmedik:', e?.message))
     }
     return kayitli
   }
@@ -239,7 +241,9 @@ export function ServisTalebiProvider({ children }) {
     const kayitli = await servisTalepEkle(yeniTalep)
     if (kayitli) {
       setTalepler(prev => [kayitli, ...prev])
-      servisTalebiBildirimGonder(kayitli, kullanici?.id).catch(() => {})
+      servisTalebiBildirimGonder(kayitli, kullanici?.id)
+        .then(r => { if (r?.hata) console.warn('[servis-talep bildirim]', r.hata) })
+        .catch(e => console.warn('[servis-talep bildirim] beklenmedik:', e?.message))
     }
     return kayitli
   }

@@ -5,6 +5,8 @@ import {
   kargoGuncelle as kargoGuncelleDB,
   kargoSil as kargoSilDB,
 } from '../services/kargoService'
+import { supabase } from '../lib/supabase'
+import { toCamel } from '../lib/mapper'
 
 const KargoContext = createContext(null)
 
@@ -44,8 +46,41 @@ function kargoNoUret(kargolar) {
 export function KargoProvider({ children }) {
   const [kargolar, setKargolar] = useState([])
 
+  // Senkron — başka kullanıcı kargo oluşturup/güncellerse anında yansısın.
+  // Tek-mount fetch + realtime INSERT/UPDATE + sekme focus dönüşünde refetch.
   useEffect(() => {
-    kargolariGetir().then(setKargolar)
+    let iptal = false
+    const ilkYukle = () => kargolariGetir()
+      .then(d => { if (!iptal) setKargolar(d) })
+      .catch(e => console.warn('[kargolar]', e?.message))
+    ilkYukle()
+
+    const channel = supabase
+      .channel(`kargolar_${Date.now()}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'kargolar' },
+        (payload) => {
+          const yeni = toCamel(payload.new)
+          setKargolar(prev => prev.some(k => k.id === yeni.id) ? prev : [yeni, ...prev])
+        },
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'kargolar' },
+        (payload) => {
+          const guncel = toCamel(payload.new)
+          setKargolar(prev => prev.map(k => k.id === guncel.id ? { ...k, ...guncel } : k))
+        },
+      )
+      .subscribe()
+
+    const onVisibility = () => { if (document.visibilityState === 'visible') ilkYukle() }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      iptal = true
+      try { supabase.removeChannel(channel) } catch {}
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   const kargoOlustur = async (formData, kullanici) => {
