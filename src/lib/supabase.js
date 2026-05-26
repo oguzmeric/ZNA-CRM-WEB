@@ -76,43 +76,6 @@ const fetchWithTimeout = (input, init = {}) => {
   })
 }
 
-// =====================================================================
-// Çoklu hesap modu — geliştirici/test için sekme bazlı izole session.
-//
-// Normalde Supabase tüm sekmeler için aynı localStorage'i paylaşır:
-// bir sekmede login → diğer sekmeler de aynı kullanıcıya geçer.
-//
-// URL'de ?multi=1 varsa veya localStorage'da 'crm_multi_mode'=true
-// flag'i ayarlıysa, her sekme kendi sessionStorage tabId'sini kullanarak
-// localStorage'da kendine özel bir anahtarda session saklar. Böylece 3
-// sekmede 3 farklı kullanıcıyla giriş yapılabilir.
-//
-// Production normal kullanıcı üzerinde etki: SIFIR (flag yoksa eski yol).
-// =====================================================================
-function multiHesapAnahtariUret() {
-  if (typeof window === 'undefined') return null
-  const url = new URL(window.location.href)
-  const urlFlag = url.searchParams.get('multi') === '1'
-  let kalici = false
-  try { kalici = window.localStorage.getItem('crm_multi_mode') === 'true' } catch {}
-  // URL'de geldiyse kalıcılaştır — bir kez ?multi=1 ile aç, sonraki sekmeler de izole olsun
-  if (urlFlag && !kalici) {
-    try { window.localStorage.setItem('crm_multi_mode', 'true') } catch {}
-    kalici = true
-  }
-  if (!kalici) return null
-  // Sekme bazlı tabId — sessionStorage sekmeyle aynı yaşar, reload'da kalır
-  let tabId = null
-  try { tabId = window.sessionStorage.getItem('crm_tab_id') } catch {}
-  if (!tabId) {
-    tabId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-    try { window.sessionStorage.setItem('crm_tab_id', tabId) } catch {}
-  }
-  return `sb-crm-${tabId}-auth`
-}
-
-const multiStorageKey = multiHesapAnahtariUret()
-
 // lock: false → Web Locks API devre dışı
 // Aksi halde başka tab/oturum kilidi bırakmadıysa auth çağrıları askıda kalabiliyor.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -121,25 +84,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     lock: async (_name, _acquireTimeout, fn) => fn(),
-    ...(multiStorageKey ? { storageKey: multiStorageKey } : {}),
   },
   global: {
     fetch: fetchWithTimeout,
   },
 })
-
-// Geliştirici aracı: console'dan multi modu kapatmak için
-if (typeof window !== 'undefined') {
-  window.__crmMultiKapat = () => {
-    try {
-      window.localStorage.removeItem('crm_multi_mode')
-      window.sessionStorage.removeItem('crm_tab_id')
-      // İzole storage anahtarını da temizle
-      const tabKey = multiStorageKey
-      if (tabKey) {
-        try { window.localStorage.removeItem(tabKey) } catch {}
-      }
-      console.info('[crm] Çoklu hesap modu kapatıldı. Sayfayı yenileyin.')
-    } catch (e) { console.warn(e) }
-  }
-}
