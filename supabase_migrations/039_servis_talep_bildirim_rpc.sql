@@ -8,11 +8,13 @@
 --  - Oguz Meric (id=2) sadece Trassir keyword'lu taleplerde
 --  - Olusturan kendi bildirimini almaz
 
-create or replace function public.servis_talebi_bildirim_olustur(
+drop function if exists public.servis_talebi_bildirim_olustur(bigint, bigint);
+
+create function public.servis_talebi_bildirim_olustur(
   p_talep_id bigint,
   p_olusturan_id bigint default null
 )
-returns table (bildirim_id bigint, alici_id bigint)
+returns table (out_bildirim_id bigint, out_alici_id bigint)
 language plpgsql
 security definer
 set search_path = public
@@ -71,7 +73,7 @@ begin
     select id, p_olusturan_id, v_baslik, v_mesaj, 'servis_talebi', v_link,
            jsonb_build_object('talepId', v_talep.id, 'talepNo', v_talep.talep_no, 'trassir', v_trassir)
       from filtreli
-    returning id as bildirim_id, alici_id
+    returning bildirimler.id as bildirim_id, bildirimler.alici_id as alici_id
   )
   select bildirim_id, alici_id from insert_edilen;
 end;

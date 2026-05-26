@@ -59,7 +59,7 @@ export const servisTalebiBildirimGonder = async (talep, olusturanId = null) => {
       p_olusturan_id: olusturanId ?? null,
     })
     if (error) throw error
-    return { gonderildi: (data || []).length, aliciIdler: (data || []).map(r => r.alici_id) }
+    return { gonderildi: (data || []).length, aliciIdler: (data || []).map(r => r.out_alici_id) }
   } catch (e) {
     console.warn('[servisTalebiBildirimGonder]', e?.message)
     return { gonderildi: 0, hata: e?.message }

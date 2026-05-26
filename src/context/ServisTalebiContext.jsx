@@ -103,8 +103,46 @@ function talepNoUret(talepler) {
 export function ServisTalebiProvider({ children }) {
   const [talepler, setTalepler] = useState([])
 
+  // Senkron sorunu — sadece mount'ta yüklüyordu, başka kullanıcı talep oluşturunca
+  // listede görünmüyordu. Realtime INSERT subscription + sekme focus dönüşünde refetch.
   useEffect(() => {
-    servisTalepleriniGetir().then(setTalepler)
+    let iptal = false
+    const ilkYukle = () => servisTalepleriniGetir().then(d => { if (!iptal) setTalepler(d) })
+    ilkYukle()
+
+    // Realtime — başka istemci yeni talep eklediğinde anında listemize ekle
+    const channel = supabase
+      .channel(`servis_talepleri_${Date.now()}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'servis_talepleri' },
+        (payload) => {
+          const yeni = toCamel(payload.new)
+          setTalepler(prev => {
+            if (prev.some(t => t.id === yeni.id)) return prev
+            return [yeni, ...prev]
+          })
+        },
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'servis_talepleri' },
+        (payload) => {
+          const guncel = toCamel(payload.new)
+          setTalepler(prev => prev.map(t => t.id === guncel.id ? { ...t, ...guncel } : t))
+        },
+      )
+      .subscribe()
+
+    // Sekme tekrar görünür olunca tazelet (realtime atlanmışsa yedek)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') ilkYukle()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      iptal = true
+      try { supabase.removeChannel(channel) } catch {}
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   const talepOlustur = async (formData, kullanici) => {
