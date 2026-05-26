@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Check, ChevronRight, CheckCircle2, ClipboardList,
@@ -37,6 +37,27 @@ export default function YeniTalep() {
   const [gonderildi, setGonderildi] = useState(false)
   const [hata, setHata] = useState({})
   const [adim, setAdim] = useState(1)
+  // Auto-scroll için ref'ler — müşteri tür seçince devamına bakmadan bırakmasın
+  const altKategoriRef = useRef(null)
+  const devamButonRef = useRef(null)
+
+  // Tür değişince alt kategori bölümüne yumuşakça kaydır
+  useEffect(() => {
+    if (adim !== 1 || !form.anaTur) return
+    const t = setTimeout(() => {
+      altKategoriRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 200)
+    return () => clearTimeout(t)
+  }, [form.anaTur, adim])
+
+  // Alt kategori seçilince devam butonuna kaydır
+  useEffect(() => {
+    if (adim !== 1 || !form.altKategori) return
+    const t = setTimeout(() => {
+      devamButonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 200)
+    return () => clearTimeout(t)
+  }, [form.altKategori, adim])
   const [yeniDosyalar, setYeniDosyalar] = useState([])
   const [gonderiliyor, setGonderiliyor] = useState(false)
 
@@ -321,7 +342,7 @@ export default function YeniTalep() {
               {hata.anaTur && <p style={{ color: 'var(--danger)', font: '500 12px/16px var(--font-sans)', marginBottom: 12 }}>{hata.anaTur}</p>}
 
               {form.anaTur && (
-                <div>
+                <div ref={altKategoriRef} style={{ scrollMarginTop: 80 }}>
                   <h3 className="t-h2" style={{ marginBottom: 12 }}>Alt Kategori Seçin</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 12 }}>
                     {altKategoriler.map(kat => {
@@ -358,21 +379,96 @@ export default function YeniTalep() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                <Button
-                  variant="primary"
-                  iconRight={<ChevronRight size={14} strokeWidth={1.5} />}
-                  onClick={() => {
-                    const e = {}
-                    if (!form.anaTur) e.anaTur = 'Talep türü seçiniz'
-                    if (!form.altKategori) e.altKategori = 'Alt kategori seçiniz'
-                    if (Object.keys(e).length > 0) { setHata(e); return }
-                    setAdim(2)
+              {/* Hazır mı banner — alt kategori seçilince çıkar, müşteriyi devamına yönlendirir */}
+              {form.anaTur && form.altKategori && (
+                <div
+                  ref={devamButonRef}
+                  style={{
+                    scrollMarginTop: 80,
+                    marginTop: 24,
+                    padding: '18px 20px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, var(--brand-primary-soft), var(--surface-card))',
+                    border: '1.5px solid var(--brand-primary)',
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    flexWrap: 'wrap',
+                    boxShadow: '0 12px 30px -20px var(--brand-primary)',
+                    animation: 'talepDevamSlideIn 350ms cubic-bezier(.2,.7,.3,1)',
                   }}
                 >
-                  Devam
-                </Button>
-              </div>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: 'var(--brand-primary)', color: '#fff',
+                    display: 'grid', placeItems: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 4px 12px var(--brand-primary)',
+                  }}>
+                    <Check size={18} strokeWidth={3} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ font: '700 14px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                      Harika, seçimlerin hazır!
+                    </div>
+                    <div style={{ font: '400 12.5px/17px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                      Sonraki adımda talebinizin detaylarını gireceksiniz.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const e = {}
+                      if (!form.anaTur) e.anaTur = 'Talep türü seçiniz'
+                      if (!form.altKategori) e.altKategori = 'Alt kategori seçiniz'
+                      if (Object.keys(e).length > 0) { setHata(e); return }
+                      setAdim(2)
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '12px 22px',
+                      borderRadius: 10,
+                      background: 'var(--brand-primary)',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      font: '700 14.5px/18px var(--font-sans)',
+                      boxShadow: '0 10px 22px -10px var(--brand-primary)',
+                      transition: 'transform 250ms, box-shadow 250ms',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 16px 30px -12px var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 22px -10px var(--brand-primary)' }}
+                  >
+                    Sonraki Adım
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
+
+              {/* Eğer henüz seçim yoksa veya sadece tür seçildiyse — eski Devam butonu sade */}
+              {(!form.anaTur || !form.altKategori) && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                  <Button
+                    variant="primary"
+                    iconRight={<ChevronRight size={14} strokeWidth={1.5} />}
+                    disabled={!form.anaTur || !form.altKategori}
+                    onClick={() => {
+                      const e = {}
+                      if (!form.anaTur) e.anaTur = 'Talep türü seçiniz'
+                      if (!form.altKategori) e.altKategori = 'Alt kategori seçiniz'
+                      if (Object.keys(e).length > 0) { setHata(e); return }
+                      setAdim(2)
+                    }}
+                  >
+                    Devam
+                  </Button>
+                </div>
+              )}
+
+              {/* Animasyon keyframe */}
+              <style>{`
+                @keyframes talepDevamSlideIn {
+                  from { opacity: 0; transform: translateY(12px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
             </div>
           )}
 
