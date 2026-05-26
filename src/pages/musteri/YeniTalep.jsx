@@ -6,14 +6,14 @@ import {
   AlertTriangle, MessageSquare, Search, Wrench, Briefcase, GraduationCap,
 } from 'lucide-react'
 
-// Talep türü için lucide icon mapping
-const TUR_IKON = {
-  ariza:  AlertTriangle,
-  talep:  MessageSquare,
-  kesif:  Search,
-  bakim:  Wrench,
-  teklif: Briefcase,
-  egitim: GraduationCap,
+// Talep türü için lucide icon + kısa açıklama (müşterinin doğru türü seçmesi için)
+const TUR_META = {
+  ariza:  { Ikon: AlertTriangle,  aciklama: 'Mevcut bir sorun ya da kesinti bildirimi' },
+  talep:  { Ikon: MessageSquare,  aciklama: 'Yeni bir hizmet veya iş isteği' },
+  kesif:  { Ikon: Search,         aciklama: 'Yerinde inceleme ve durum tespiti' },
+  bakim:  { Ikon: Wrench,         aciklama: 'Periyodik veya planlı bakım hizmeti' },
+  teklif: { Ikon: Briefcase,      aciklama: 'Fiyat veya hizmet teklifi talebi' },
+  egitim: { Ikon: GraduationCap,  aciklama: 'Kullanım veya bilgilendirme eğitimi' },
 }
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
@@ -198,13 +198,14 @@ export default function YeniTalep() {
           {adim === 1 && (
             <div>
               <h2 className="t-h2" style={{ marginBottom: 4 }}>Talep Türünü Seçin</h2>
-              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
-                Talebinizi en uygun kategoriden başlatın.
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 22px' }}>
+                Oluşturmak istediğiniz talebin türünü belirleyin.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
                 {filtreliTurler.map(tur => {
                   const secili = form.anaTur === tur.id
-                  const Ikon = TUR_IKON[tur.id] || ClipboardList
+                  const meta = TUR_META[tur.id] || { Ikon: ClipboardList, aciklama: '' }
+                  const Ikon = meta.Ikon
                   return (
                     <button
                       key={tur.id}
@@ -212,66 +213,111 @@ export default function YeniTalep() {
                       onMouseEnter={(e) => {
                         if (secili) return
                         e.currentTarget.style.borderColor = tur.renk
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = `0 6px 14px -8px ${tur.renk}66`
+                        e.currentTarget.style.transform = 'translateY(-4px)'
+                        e.currentTarget.style.boxShadow = `0 14px 30px -18px ${tur.renk}b3`
+                        e.currentTarget.querySelector('[data-icon-wrap]').style.background = tur.renk
+                        e.currentTarget.querySelector('[data-icon-wrap]').style.color = '#fff'
                       }}
                       onMouseLeave={(e) => {
                         if (secili) return
                         e.currentTarget.style.borderColor = 'var(--border-default)'
                         e.currentTarget.style.transform = 'translateY(0)'
                         e.currentTarget.style.boxShadow = 'none'
+                        e.currentTarget.querySelector('[data-icon-wrap]').style.background = tur.bg
+                        e.currentTarget.querySelector('[data-icon-wrap]').style.color = tur.renk
                       }}
                       style={{
                         position: 'relative',
-                        padding: '20px 16px 18px',
-                        borderRadius: 'var(--radius-md)',
-                        background: secili ? tur.bg : 'var(--surface-card)',
+                        padding: '22px 18px 20px',
+                        borderRadius: 14,
+                        background: secili ? `color-mix(in srgb, ${tur.renk} 5%, var(--surface-card))` : 'var(--surface-card)',
                         border: `1.5px solid ${secili ? tur.renk : 'var(--border-default)'}`,
                         cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 160ms cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: secili ? `0 4px 12px -6px ${tur.renk}80` : 'none',
+                        textAlign: 'left',
+                        transition: 'transform 280ms cubic-bezier(.2,.7,.3,1), box-shadow 280ms, border-color 250ms, background 250ms',
+                        boxShadow: secili ? `0 16px 34px -20px ${tur.renk}d9` : 'none',
                         outline: 'none',
+                        fontFamily: 'inherit',
                       }}
                     >
-                      {/* Selected check rozet */}
-                      {secili && (
-                        <div style={{
+                      {/* Selected check badge — sağ üst */}
+                      <span
+                        style={{
                           position: 'absolute',
-                          top: 8, right: 8,
-                          width: 18, height: 18,
-                          borderRadius: '50%',
-                          background: tur.renk,
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          boxShadow: `0 2px 6px ${tur.renk}99`,
-                        }}>
-                          <Check size={11} color="#fff" strokeWidth={3} />
-                        </div>
-                      )}
+                          top: 13, right: 13,
+                          width: 23, height: 23, borderRadius: '50%',
+                          background: tur.renk, color: '#fff',
+                          display: 'grid', placeItems: 'center',
+                          transform: secili ? 'scale(1)' : 'scale(0)',
+                          transition: 'transform 300ms cubic-bezier(.34,1.56,.64,1)',
+                        }}
+                      >
+                        <Check size={13} strokeWidth={3.2} />
+                      </span>
 
-                      {/* Icon container — yumuşak gradient */}
-                      <div style={{
-                        width: 48, height: 48,
-                        margin: '0 auto 10px',
-                        borderRadius: 12,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        background: tur.bg,
-                        color: tur.renk,
-                        border: `1px solid ${secili ? tur.renk : 'transparent'}`,
-                      }}>
-                        <Ikon size={22} strokeWidth={2} />
+                      {/* Icon container */}
+                      <div
+                        data-icon-wrap
+                        style={{
+                          width: 50, height: 50,
+                          borderRadius: 13,
+                          display: 'grid', placeItems: 'center',
+                          background: secili ? tur.renk : tur.bg,
+                          color: secili ? '#fff' : tur.renk,
+                          marginBottom: 16,
+                          transform: secili ? 'scale(1.04)' : 'scale(1)',
+                          transition: 'all 300ms cubic-bezier(.2,.7,.3,1)',
+                        }}
+                      >
+                        <Ikon size={25} strokeWidth={1.7} />
                       </div>
 
+                      {/* İsim */}
                       <div style={{
-                        font: '600 13.5px/18px var(--font-sans)',
-                        color: secili ? tur.renk : 'var(--text-primary)',
+                        font: '700 16px/20px var(--font-sans)',
+                        letterSpacing: '-0.01em',
+                        color: 'var(--text-primary)',
+                        marginBottom: 3,
                       }}>
                         {tur.isim}
+                      </div>
+
+                      {/* Açıklama */}
+                      <div style={{
+                        font: '400 12.5px/17px var(--font-sans)',
+                        color: 'var(--text-tertiary)',
+                      }}>
+                        {meta.aciklama}
                       </div>
                     </button>
                   )
                 })}
               </div>
+
+              {/* Footer indicator — "Seçilen tür: X" */}
+              {form.anaTur && (() => {
+                const seciliTur = filtreliTurler.find(t => t.id === form.anaTur)
+                if (!seciliTur) return null
+                return (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px',
+                    marginBottom: 16,
+                    borderRadius: 999,
+                    background: `color-mix(in srgb, ${seciliTur.renk} 12%, transparent)`,
+                    border: `1px solid color-mix(in srgb, ${seciliTur.renk} 28%, transparent)`,
+                    color: seciliTur.renk,
+                    font: '600 13px/16px var(--font-sans)',
+                    width: 'fit-content',
+                  }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: seciliTur.renk,
+                    }} />
+                    Seçilen tür: <b style={{ fontWeight: 700 }}>{seciliTur.isim}</b>
+                  </div>
+                )
+              })()}
               {hata.anaTur && <p style={{ color: 'var(--danger)', font: '500 12px/16px var(--font-sans)', marginBottom: 12 }}>{hata.anaTur}</p>}
 
               {form.anaTur && (
