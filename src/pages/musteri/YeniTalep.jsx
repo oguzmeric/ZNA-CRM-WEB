@@ -3,7 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Check, ChevronRight, CheckCircle2, ClipboardList,
   Paperclip, Upload, FileText, Image as ImageIcon, X,
+  AlertTriangle, MessageSquare, Search, Wrench, Briefcase, GraduationCap,
 } from 'lucide-react'
+
+// Talep türü için lucide icon mapping
+const TUR_IKON = {
+  ariza:  AlertTriangle,
+  talep:  MessageSquare,
+  kesif:  Search,
+  bakim:  Wrench,
+  teklif: Briefcase,
+  egitim: GraduationCap,
+}
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import {
@@ -186,38 +197,74 @@ export default function YeniTalep() {
           {/* ADIM 1 */}
           {adim === 1 && (
             <div>
-              <h2 className="t-h2" style={{ marginBottom: 16 }}>Talep Türünü Seçin</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 16 }}>
+              <h2 className="t-h2" style={{ marginBottom: 4 }}>Talep Türünü Seçin</h2>
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
+                Talebinizi en uygun kategoriden başlatın.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {filtreliTurler.map(tur => {
                   const secili = form.anaTur === tur.id
+                  const Ikon = TUR_IKON[tur.id] || ClipboardList
                   return (
                     <button
                       key={tur.id}
                       onClick={() => guncelle('anaTur', tur.id)}
+                      onMouseEnter={(e) => {
+                        if (secili) return
+                        e.currentTarget.style.borderColor = tur.renk
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = `0 6px 14px -8px ${tur.renk}66`
+                      }}
+                      onMouseLeave={(e) => {
+                        if (secili) return
+                        e.currentTarget.style.borderColor = 'var(--border-default)'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
                       style={{
-                        padding: 16,
+                        position: 'relative',
+                        padding: '20px 16px 18px',
                         borderRadius: 'var(--radius-md)',
-                        background: secili ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
-                        border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                        background: secili ? tur.bg : 'var(--surface-card)',
+                        border: `1.5px solid ${secili ? tur.renk : 'var(--border-default)'}`,
                         cursor: 'pointer',
                         textAlign: 'center',
-                        transition: 'all 120ms',
+                        transition: 'all 160ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: secili ? `0 4px 12px -6px ${tur.renk}80` : 'none',
+                        outline: 'none',
                       }}
                     >
+                      {/* Selected check rozet */}
+                      {secili && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 8, right: 8,
+                          width: 18, height: 18,
+                          borderRadius: '50%',
+                          background: tur.renk,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: `0 2px 6px ${tur.renk}99`,
+                        }}>
+                          <Check size={11} color="#fff" strokeWidth={3} />
+                        </div>
+                      )}
+
+                      {/* Icon container — yumuşak gradient */}
                       <div style={{
-                        width: 40, height: 40,
-                        margin: '0 auto 8px',
-                        borderRadius: 'var(--radius-sm)',
+                        width: 48, height: 48,
+                        margin: '0 auto 10px',
+                        borderRadius: 12,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        background: secili ? 'var(--brand-primary)' : 'var(--surface-sunken)',
-                        color: secili ? '#fff' : 'var(--text-secondary)',
-                        font: '600 16px/1 var(--font-sans)',
+                        background: tur.bg,
+                        color: tur.renk,
+                        border: `1px solid ${secili ? tur.renk : 'transparent'}`,
                       }}>
-                        {tur.isim.charAt(0)}
+                        <Ikon size={22} strokeWidth={2} />
                       </div>
+
                       <div style={{
-                        font: secili ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
-                        color: secili ? 'var(--brand-primary)' : 'var(--text-primary)',
+                        font: '600 13.5px/18px var(--font-sans)',
+                        color: secili ? tur.renk : 'var(--text-primary)',
                       }}>
                         {tur.isim}
                       </div>
