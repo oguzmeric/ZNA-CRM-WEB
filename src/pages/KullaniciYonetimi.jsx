@@ -1,4 +1,4 @@
-import { useState, useMemo, useTransition, useEffect } from 'react'
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import {
   Plus, Pencil, Trash2, Shield, User, Check, AlertTriangle, Settings,
   LogIn, LogOut, FileText, Clock, CheckCircle2,
@@ -54,6 +54,8 @@ export default function KullaniciYonetimi() {
   const [yeniSifre, setYeniSifre] = useState('')
   const [sifreKaydediliyor, setSifreKaydediliyor] = useState(false)
   const [goster, setGoster] = useState(false)
+  // Düzenle/Yeni Ekle açıldığında formun göründüğüne emin olmak için
+  const formCardRef = useRef(null)
   const [aktifSekme, setAktifSekme] = useState('kullanicilar')
   const [seciliKullaniciId, setSeciliKullaniciId] = useState('hepsi')
   const [seciliGun, setSeciliGun] = useState('hepsi')
@@ -224,6 +226,11 @@ export default function KullaniciYonetimi() {
       musteriId: k.musteriId ?? null,
     })
     setDuzenle(k.id); setGoster(true)
+    // Form yukarıda açılıyor — kullanıcı listede aşağıdaysa görmesin diye
+    // formun ortasına yumuşakça kaydır
+    setTimeout(() => {
+      formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }
 
   const iptal = () => {
@@ -262,7 +269,10 @@ export default function KullaniciYonetimi() {
           </p>
         </div>
         {aktifSekme === 'kullanicilar' && !goster && (
-          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setGoster(true)}>
+          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => {
+            setGoster(true)
+            setTimeout(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+          }}>
             Yeni kullanıcı
           </Button>
         )}
@@ -299,7 +309,7 @@ export default function KullaniciYonetimi() {
       {aktifSekme === 'kullanicilar' && (
         <>
           {goster && (
-            <Card style={{ marginBottom: 16 }}>
+            <Card ref={formCardRef} style={{ marginBottom: 16, scrollMarginTop: 16 }}>
               <h2 className="t-h2" style={{ marginBottom: 16 }}>{duzenle ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı Ekle'}</h2>
 
               <div style={{ marginBottom: 16 }}>
