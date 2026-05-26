@@ -5,6 +5,7 @@ import {
   servisTalepGuncelle,
   servisTalepSil,
   servisTalepGetir,
+  servisTalebiBildirimGonder,
 } from '../services/servisService'
 import { supabase } from '../lib/supabase'
 import { gorevGuncelle } from '../services/gorevService'
@@ -141,7 +142,11 @@ export function ServisTalebiProvider({ children }) {
       musteriOnay: null,
     }
     const kayitli = await servisTalepEkle(yeniTalep)
-    if (kayitli) setTalepler(prev => [kayitli, ...prev])
+    if (kayitli) {
+      setTalepler(prev => [kayitli, ...prev])
+      // Bildirim gönder — admin + ilgili personele (best-effort, talep oluşumu garanti)
+      servisTalebiBildirimGonder(kayitli, kullanici?.id).catch(() => {})
+    }
     return kayitli
   }
 
@@ -194,7 +199,10 @@ export function ServisTalebiProvider({ children }) {
       musteriOnay: null,
     }
     const kayitli = await servisTalepEkle(yeniTalep)
-    if (kayitli) setTalepler(prev => [kayitli, ...prev])
+    if (kayitli) {
+      setTalepler(prev => [kayitli, ...prev])
+      servisTalebiBildirimGonder(kayitli, kullanici?.id).catch(() => {})
+    }
     return kayitli
   }
 

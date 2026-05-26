@@ -129,7 +129,9 @@ const sayfaIsimleri = {
 function MainLayout({ children }) {
   const { kullanici, cikisYap, durumGuncelle } = useAuth()
   const { okunmamis } = useChat()
-  const { benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil } = useBildirim()
+  const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil } = useBildirim()
+  // Servis talebi rozetinde gösterilecek sayı — okunmamış servis_talebi bildirimleri
+  const servisTalebiOkunmamis = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi').length
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -422,6 +424,15 @@ function MainLayout({ children }) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                       <item.Icon size={16} strokeWidth={1.5} />
                       {item.isim}
+                      {/* Parent kapalıyken bile farkına vatsın diye 'Servis' başlığında kırmızı nokta */}
+                      {item.id === 'servis' && servisTalebiOkunmamis > 0 && !acik && (
+                        <span style={{
+                          display: 'inline-block',
+                          width: 7, height: 7, borderRadius: '50%',
+                          background: '#dc2626',
+                          boxShadow: '0 0 0 2px var(--surface-sidebar, transparent)',
+                        }} title={`${servisTalebiOkunmamis} yeni servis talebi`} />
+                      )}
                     </span>
                     {acik ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}
                   </button>
@@ -429,12 +440,17 @@ function MainLayout({ children }) {
                     <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, marginBottom: 4 }}>
                       {item.altMenu.map(alt => {
                         const aktif = location.pathname === alt.yol || location.pathname.startsWith(alt.yol + '/')
+                        // Servis Talepleri'ne yeni talep rozeti
+                        const rozet = alt.id === 'servis_talepleri' && servisTalebiOkunmamis > 0
+                          ? (servisTalebiOkunmamis > 99 ? '99+' : String(servisTalebiOkunmamis))
+                          : null
                         return (
                           <button
                             key={alt.id}
                             onClick={() => navigate(alt.yol)}
                             style={{
                               width: '100%', textAlign: 'left',
+                              display: 'flex', alignItems: 'center', gap: 8,
                               padding: '6px 12px',
                               borderRadius: 'var(--radius-sm)',
                               background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
@@ -446,7 +462,21 @@ function MainLayout({ children }) {
                             onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
                             onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
                           >
-                            {alt.isim}
+                            <span style={{ flex: 1 }}>{alt.isim}</span>
+                            {rozet && (
+                              <span style={{
+                                minWidth: 20, height: 18,
+                                padding: '0 6px',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                borderRadius: 9,
+                                background: '#dc2626',
+                                color: '#fff',
+                                font: '700 10px/1 var(--font-sans)',
+                                letterSpacing: '.02em',
+                              }}>
+                                {rozet}
+                              </span>
+                            )}
                           </button>
                         )
                       })}

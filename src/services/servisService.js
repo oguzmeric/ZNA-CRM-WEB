@@ -1,5 +1,81 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { cokluBildirimEkle } from './bildirimService'
+
+// İlgili personel ID'leri — koda gömülü (zamanla DB tablosuna taşınabilir)
+const FERDI_ID = 16    // Teknik Müdür — her servis talebinde haberdar olmalı
+const OGUZ_ID  = 2     // Sadece Trassir ile ilgili taleplerde
+
+// Trassir keyword'i yakala (case-insensitive, talebin konusunda/açıklamasında/kategorisinde)
+const trassirIcerirMi = (talep) => {
+  const metin = [
+    talep?.konu, talep?.aciklama, talep?.altKategori, talep?.alt_kategori,
+    talep?.cihazTuru, talep?.cihaz_turu, talep?.anaTur, talep?.ana_tur,
+  ].filter(Boolean).join(' ').toLowerCase()
+  return /trassir/i.test(metin)
+}
+
+// Yeni servis talebi için bildirim alıcı ID listesi.
+// Kural:
+//  - Tüm aktif ZNA personeli (admin sayılır)
+//  - Ferdi Kalkan her zaman
+//  - Oğuz Meriç sadece Trassir keyword'lü taleplerde
+// Talebi oluşturan kişi listede ise çıkarılır (kendi bildirimini almasın).
+export const servisTalebiBildirimAlicilari = async (talep, olusturanId = null) => {
+  const aliciSet = new Set()
+
+  // 1. Tüm ZNA personeli (pasif olmayanlar)
+  const { data: znaPersonel } = await supabase
+    .from('kullanicilar')
+    .select('id, durum')
+    .eq('tip', 'zna')
+    .neq('durum', 'pasif')
+  for (const k of (znaPersonel || [])) aliciSet.add(k.id)
+
+  // 2. Ferdi'yi her durumda ekle (varsa)
+  aliciSet.add(FERDI_ID)
+
+  // 3. Oğuz'u sadece Trassir ile ilgili taleplerde tut
+  if (!trassirIcerirMi(talep)) {
+    aliciSet.delete(OGUZ_ID)
+  }
+
+  // 4. Kendi oluşturduğun talebin bildirimini sen alma
+  if (olusturanId) aliciSet.delete(Number(olusturanId))
+
+  return Array.from(aliciSet)
+}
+
+// Yeni servis talebi → ilgili kişilere bildirim gönder.
+// Best-effort: başarısız olursa talep yine de oluşturulmuş kalır, sadece log düşer.
+export const servisTalebiBildirimGonder = async (talep, olusturanId = null) => {
+  try {
+    const aliciIdler = await servisTalebiBildirimAlicilari(talep, olusturanId)
+    if (aliciIdler.length === 0) return { gonderildi: 0 }
+
+    const baslik = '🛠️ Yeni Servis Talebi'
+    const mesajParcalari = [
+      talep?.talepNo,
+      talep?.firmaAd || talep?.musteriAdi,
+      talep?.konu,
+    ].filter(Boolean)
+    const mesaj = mesajParcalari.join(' · ')
+    const link = talep?.id ? `/servis-talepleri/${talep.id}` : '/servis-talepleri'
+
+    const eklenen = await cokluBildirimEkle(aliciIdler, {
+      gonderenId: olusturanId,
+      baslik,
+      mesaj,
+      tip: 'servis_talebi',
+      link,
+      meta: { talepId: talep?.id, talepNo: talep?.talepNo, trassir: trassirIcerirMi(talep) },
+    })
+    return { gonderildi: eklenen?.length ?? 0, aliciIdler }
+  } catch (e) {
+    console.warn('[servisTalebiBildirimGonder]', e?.message)
+    return { gonderildi: 0, hata: e?.message }
+  }
+}
 
 export const servisTalepleriniGetir = async () => {
   const hepsi = []

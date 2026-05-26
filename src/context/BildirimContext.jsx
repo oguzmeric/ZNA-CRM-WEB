@@ -9,6 +9,8 @@
 
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
+import { useNavigate } from 'react-router-dom'
 import {
   bildirimleriGetir,
   bildirimEkleDb,
@@ -22,8 +24,12 @@ const BildirimContext = createContext(null)
 
 export function BildirimProvider({ children }) {
   const { kullanici } = useAuth()
+  const toastCtx = useToast()
+  const navigate = useNavigate()
   const [bildirimler, setBildirimler] = useState([])
   const subRef = useRef(null)
+  // İlk yükleme bittikten sonra mı? — eski bildirimler için toast atmamak için
+  const hazirRef = useRef(false)
 
   // Kullanıcı değişince bildirimleri çek + realtime subscribe
   useEffect(() => {
@@ -32,15 +38,40 @@ export function BildirimProvider({ children }) {
       return
     }
     let iptal = false
+    hazirRef.current = false
     bildirimleriGetir(kullanici.id, 50).then(data => {
-      if (!iptal) setBildirimler(data)
+      if (!iptal) {
+        setBildirimler(data)
+        // İlk yükleme bitti — sonraki realtime event'ler "yeni" sayılır
+        hazirRef.current = true
+      }
     })
-    // Realtime — yeni bildirim gelince listeye ekle
+    // Realtime — yeni bildirim gelince listeye ekle + sağ üstte toast göster
     subRef.current = bildirimleriDinle(kullanici.id, (yeni) => {
       setBildirimler(prev => {
         if (prev.some(b => b.id === yeni.id)) return prev
         return [yeni, ...prev].slice(0, 50)
       })
+      // Sayfa ilk açılışındaki backlog'u toast yapma — sadece gerçek "yeni" olanı
+      if (!hazirRef.current) return
+
+      const baslik = yeni.baslik || 'Yeni bildirim'
+      const mesaj  = (yeni.mesaj || '').slice(0, 160)
+      const sure = 8000
+
+      // Tip'e göre toast varyantı seç
+      const tip = yeni.tip || 'bilgi'
+      const toast = toastCtx?.toast
+      if (!toast) return
+      if (tip === 'servis_talebi') {
+        toast.info(mesaj, { baslik, sure })
+      } else if (tip === 'hata' || tip === 'kritik') {
+        toast.error(mesaj, { baslik, sure })
+      } else if (tip === 'basari') {
+        toast.success(mesaj, { baslik, sure })
+      } else {
+        toast.info(mesaj, { baslik, sure })
+      }
     })
     return () => {
       iptal = true
