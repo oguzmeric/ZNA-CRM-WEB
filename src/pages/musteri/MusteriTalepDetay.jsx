@@ -535,31 +535,65 @@ export default function MusteriTalepDetay() {
             <>
               {/* 1. Onay sorusu */}
               {(talep.musteriOnay === null || talep.musteriOnay === undefined) && !onayAsamasi && (
-                <Card style={{ background: 'var(--success-soft)', borderColor: 'var(--success-border)' }}>
+                <Card style={{
+                  background: 'var(--success-soft)',
+                  borderColor: 'var(--success)',
+                  borderWidth: 1.5,
+                }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--success)' }} />
-                    <p style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--success)', margin: 0 }}>Talep Tamamlandı</p>
+                    <CheckCircle2 size={18} strokeWidth={2} style={{ color: 'var(--success)' }} />
+                    <p style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--success)', margin: 0 }}>
+                      Talep Tamamlandı
+                    </p>
                   </div>
-                  <p style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 14 }}>
+                  <p style={{ font: '400 13px/19px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 14 }}>
                     Teknik ekibimiz talebinizi çözdüğünü bildirdi. Sorununuz çözüldü mü?
                   </p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Button
-                      variant="primary"
-                      iconLeft={<ThumbsUp size={14} strokeWidth={1.5} />}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {/* Evet butonu — solid yeşil (Button component'i bypass et, direkt button) */}
+                    <button
+                      type="button"
                       onClick={musteriOnayladi}
-                      style={{ flex: 1, justifyContent: 'center', background: 'var(--success)', border: '1px solid var(--success)' }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '11px 14px',
+                        background: 'var(--success)',
+                        color: '#fff',
+                        border: '1.5px solid var(--success)',
+                        borderRadius: 'var(--radius-sm)',
+                        font: '700 13.5px/18px var(--font-sans)',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 10px -4px var(--success)',
+                        transition: 'transform 180ms, box-shadow 180ms',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 18px -8px var(--success)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px -4px var(--success)' }}
                     >
+                      <ThumbsUp size={15} strokeWidth={2} />
                       Evet, çözüldü
-                    </Button>
-                    <Button
-                      variant="tertiary"
-                      iconLeft={<ThumbsDown size={14} strokeWidth={1.5} />}
+                    </button>
+
+                    {/* Hayır butonu — solid kırmızı, eşit görsel ağırlık */}
+                    <button
+                      type="button"
                       onClick={sorunDevamEdiyor}
-                      style={{ flex: 1, justifyContent: 'center', color: 'var(--danger)', background: 'var(--danger-soft)', border: '1px solid var(--danger-border)' }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '11px 14px',
+                        background: '#fff',
+                        color: 'var(--danger)',
+                        border: '1.5px solid var(--danger)',
+                        borderRadius: 'var(--radius-sm)',
+                        font: '700 13.5px/18px var(--font-sans)',
+                        cursor: 'pointer',
+                        transition: 'background 180ms, transform 180ms',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(0)' }}
                     >
+                      <ThumbsDown size={15} strokeWidth={2} />
                       Sorun devam ediyor
-                    </Button>
+                    </button>
                   </div>
                 </Card>
               )}
