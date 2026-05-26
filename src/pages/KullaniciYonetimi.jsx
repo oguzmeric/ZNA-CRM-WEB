@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
 import { musterileriGetir } from '../services/musteriService'
+import { kullaniciSifreSifirla } from '../services/kullaniciService'
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -48,6 +49,10 @@ export default function KullaniciYonetimi() {
   const { confirm } = useConfirm()
   const [form, setForm] = useState(bos)
   const [duzenle, setDuzenle] = useState(null)
+  // Şifre sıfırlama state — sadece edit modunda kullanılır
+  const [sifreSifirlaAcik, setSifreSifirlaAcik] = useState(false)
+  const [yeniSifre, setYeniSifre] = useState('')
+  const [sifreKaydediliyor, setSifreKaydediliyor] = useState(false)
   const [goster, setGoster] = useState(false)
   const [aktifSekme, setAktifSekme] = useState('kullanicilar')
   const [seciliKullaniciId, setSeciliKullaniciId] = useState('hepsi')
@@ -221,7 +226,10 @@ export default function KullaniciYonetimi() {
     setDuzenle(k.id); setGoster(true)
   }
 
-  const iptal = () => { setForm(bos); setDuzenle(null); setGoster(false) }
+  const iptal = () => {
+    setForm(bos); setDuzenle(null); setGoster(false)
+    setSifreSifirlaAcik(false); setYeniSifre('')
+  }
 
   const logTemizle = async () => {
     const onay = await confirm({
@@ -349,16 +357,128 @@ export default function KullaniciYonetimi() {
                 <div>
                   <Label required={!duzenle}>Şifre</Label>
                   {duzenle ? (
-                    <div style={{
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'var(--surface-sunken)',
-                      border: '1px solid var(--border-default)',
-                      font: '400 13px/20px var(--font-sans)',
-                      color: 'var(--text-tertiary)',
-                    }}>
-                      Kullanıcı kendi profilinden değiştirir
-                    </div>
+                    !sifreSifirlaAcik ? (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface-sunken)',
+                        border: '1px solid var(--border-default)',
+                      }}>
+                        <span style={{ flex: 1, font: '400 13px/20px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                          Kullanıcı kendi profilinden değiştirir
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Otomatik 12 karakter güvenli random şifre
+                            const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+                            let s = ''
+                            for (let i = 0; i < 12; i++) s += ch[Math.floor(Math.random() * ch.length)]
+                            setYeniSifre(s)
+                            setSifreSifirlaAcik(true)
+                          }}
+                          style={{
+                            font: '600 11px/14px var(--font-sans)',
+                            color: 'var(--brand-primary)',
+                            background: 'transparent',
+                            border: '1px solid var(--brand-primary)',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          🔑 Şifre Sıfırla
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Input
+                            type="text"
+                            value={yeniSifre}
+                            onChange={e => setYeniSifre(e.target.value)}
+                            placeholder="En az 8 karakter"
+                            autoComplete="off"
+                            name="yeni_sifre_admin"
+                            style={{ flex: 1, fontFamily: 'var(--font-mono, monospace)' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard?.writeText(yeniSifre)}
+                            title="Kopyala"
+                            style={{
+                              padding: '0 10px',
+                              border: '1px solid var(--border-default)',
+                              background: 'var(--surface-card)',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              font: '600 12px/16px var(--font-sans)',
+                              color: 'var(--text-secondary)',
+                            }}
+                          >
+                            📋
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            disabled={sifreKaydediliyor || yeniSifre.length < 8}
+                            onClick={async () => {
+                              if (yeniSifre.length < 8) {
+                                toast.warning('Şifre en az 8 karakter olmalı.')
+                                return
+                              }
+                              setSifreKaydediliyor(true)
+                              try {
+                                const sonuc = await kullaniciSifreSifirla(duzenle, yeniSifre)
+                                toast.success(`${sonuc?.hedefAd ?? 'Kullanıcı'} için şifre güncellendi.`)
+                                // Şifreyi clipboard'a kopyala (admin'e kolaylık)
+                                try { await navigator.clipboard?.writeText(yeniSifre) } catch {}
+                                setSifreSifirlaAcik(false)
+                                setYeniSifre('')
+                              } catch (e) {
+                                toast.error('Sıfırlanamadı: ' + (e?.message ?? 'bilinmeyen hata'))
+                              } finally {
+                                setSifreKaydediliyor(false)
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '8px 12px',
+                              background: 'var(--brand-primary)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: sifreKaydediliyor ? 'wait' : 'pointer',
+                              font: '600 12px/16px var(--font-sans)',
+                              opacity: (sifreKaydediliyor || yeniSifre.length < 8) ? 0.5 : 1,
+                            }}
+                          >
+                            {sifreKaydediliyor ? 'Kaydediliyor…' : '✓ Bu Şifreyi Ata'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSifreSifirlaAcik(false); setYeniSifre('') }}
+                            disabled={sifreKaydediliyor}
+                            style={{
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              color: 'var(--text-secondary)',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              font: '500 12px/16px var(--font-sans)',
+                            }}
+                          >
+                            Vazgeç
+                          </button>
+                        </div>
+                        <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                          Şifre kaydedildikten sonra otomatik panoya kopyalanır. Kullanıcıya iletmeyi unutmayın.
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <Input
                       type="password"

@@ -120,6 +120,32 @@ export const kullaniciGuncelle = async (id, guncellenmis) => {
   return toCamel(data)
 }
 
+// Admin: bir kullanicinin sifresini sifirla — edge function uzerinden
+// (frontend auth.admin.updateUserById cagiramaz). yeniSifre min 8 karakter olmali.
+export const kullaniciSifreSifirla = async (hedefKullaniciId, yeniSifre) => {
+  const { data, error } = await supabase.functions.invoke('kullanici-sifre-sifirla', {
+    body: { hedefKullaniciId, yeniSifre },
+  })
+  if (error) {
+    let mesaj = error.message ?? 'Sifre sifirlanamadi'
+    try {
+      const ctx = error.context
+      if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text()
+        if (text) {
+          try {
+            const body = JSON.parse(text)
+            if (body?.hata) mesaj = body.hata
+          } catch { mesaj = text.slice(0, 300) }
+        }
+      }
+    } catch {}
+    throw new Error(mesaj)
+  }
+  if (!data?.ok) throw new Error(data?.hata ?? 'Sifre sifirlanamadi')
+  return data
+}
+
 export const kullaniciSil = async (id) => {
   const { error } = await supabase
     .from('kullanicilar')
