@@ -47,30 +47,19 @@ export const servisTalebiBildirimAlicilari = async (talep, olusturanId = null) =
 }
 
 // Yeni servis talebi → ilgili kişilere bildirim gönder.
-// Best-effort: başarısız olursa talep yine de oluşturulmuş kalır, sadece log düşer.
+// RPC fonksiyonu (servis_talebi_bildirim_olustur, SECURITY DEFINER) kullanır —
+// RLS bypass eder, müşteri portal kullanıcısı da kendi haricindeki personele
+// bildirim oluşturabilir.
+// Best-effort: hata olursa talep yine de geçerli, sadece log düşer.
 export const servisTalebiBildirimGonder = async (talep, olusturanId = null) => {
+  if (!talep?.id) return { gonderildi: 0 }
   try {
-    const aliciIdler = await servisTalebiBildirimAlicilari(talep, olusturanId)
-    if (aliciIdler.length === 0) return { gonderildi: 0 }
-
-    const baslik = '🛠️ Yeni Servis Talebi'
-    const mesajParcalari = [
-      talep?.talepNo,
-      talep?.firmaAd || talep?.musteriAdi,
-      talep?.konu,
-    ].filter(Boolean)
-    const mesaj = mesajParcalari.join(' · ')
-    const link = talep?.id ? `/servis-talepleri/${talep.id}` : '/servis-talepleri'
-
-    const eklenen = await cokluBildirimEkle(aliciIdler, {
-      gonderenId: olusturanId,
-      baslik,
-      mesaj,
-      tip: 'servis_talebi',
-      link,
-      meta: { talepId: talep?.id, talepNo: talep?.talepNo, trassir: trassirIcerirMi(talep) },
+    const { data, error } = await supabase.rpc('servis_talebi_bildirim_olustur', {
+      p_talep_id: talep.id,
+      p_olusturan_id: olusturanId ?? null,
     })
-    return { gonderildi: eklenen?.length ?? 0, aliciIdler }
+    if (error) throw error
+    return { gonderildi: (data || []).length, aliciIdler: (data || []).map(r => r.alici_id) }
   } catch (e) {
     console.warn('[servisTalebiBildirimGonder]', e?.message)
     return { gonderildi: 0, hata: e?.message }
