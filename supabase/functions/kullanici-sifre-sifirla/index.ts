@@ -64,9 +64,11 @@ serve(async (req) => {
       )
     }
 
-    if (callerProfil.tip !== 'zna' || callerProfil.durum !== 'aktif') {
+    // 'durum' field'i 'cevrimici'/'cevrimdisi' (online/offline) tutuyor — 'aktif' degil.
+    // Erisim engeli icin sadece 'pasif' kontrolu (varsa). Diger her ZNA personeli admin sayilir.
+    if (callerProfil.tip !== 'zna' || callerProfil.durum === 'pasif') {
       return new Response(
-        JSON.stringify({ ok: false, hata: 'Bu islem icin admin yetkisi gerekli' }),
+        JSON.stringify({ ok: false, hata: 'Bu islem icin admin (ZNA personeli) yetkisi gerekli' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
