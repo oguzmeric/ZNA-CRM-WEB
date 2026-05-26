@@ -194,26 +194,9 @@ export default function ServisTalepDetay() {
             </div>
           </div>
 
-          {/* Hızlı aksiyonlar */}
+          {/* Sağ üst aksiyonlar — durum geçişleri sağdaki DURUM panelinden yapılır,
+              burada sadece "Sil" gibi nadir/yıkıcı aksiyonlar kalır */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-            {talep.durum !== 'tamamlandi' && talep.durum !== 'iptal' && (
-              <>
-                {talep.durum === 'bekliyor' && (
-                  <Button variant="secondary" iconLeft={<Search size={14} strokeWidth={1.5} />} onClick={() => durumGuncelle('inceleniyor', 'İncelemeye alındı')}>
-                    İncelemeye al
-                  </Button>
-                )}
-                {talep.durum === 'devam_ediyor' && (
-                  <Button
-                    style={{ background: 'var(--success)', color: '#fff', border: '1px solid var(--success)' }}
-                    iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
-                    onClick={() => durumGuncelle('tamamlandi', 'Talep tamamlandı')}
-                  >
-                    Tamamlandı
-                  </Button>
-                )}
-              </>
-            )}
             <Button variant="tertiary" size="md" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={() => setSilOnayGoster(true)}>
               Sil
             </Button>
