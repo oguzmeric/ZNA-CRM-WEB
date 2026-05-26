@@ -109,6 +109,26 @@ export function BildirimProvider({ children }) {
     await tumBildirimleriOkuDb(kullanici.id)
   }, [kullanici?.id])
 
+  // Belirli bir servis talebine ait okunmamış bildirimleri okundu yap.
+  // Kullanım: ServisTalepDetay açıldığında veya durum güncellendiğinde çağrılır,
+  // sidebar rozetinin azalmasını sağlar.
+  const talepBildirimleriniOku = useCallback(async (talepId) => {
+    if (!talepId) return
+    const tid = Number(talepId)
+    const eslesenler = bildirimler.filter(b =>
+      !b.okundu &&
+      b.tip === 'servis_talebi' &&
+      (b.meta?.talepId === tid || b.link === `/servis-talepleri/${tid}`)
+    )
+    if (eslesenler.length === 0) return
+    // Optimistic — UI'de hemen düş
+    setBildirimler(prev => prev.map(b =>
+      eslesenler.some(e => e.id === b.id) ? { ...b, okundu: true } : b
+    ))
+    // DB'de paralel mark
+    await Promise.all(eslesenler.map(b => bildirimOkuDb(b.id).catch(e => console.warn('[talepBildirimleriniOku]', e?.message))))
+  }, [bildirimler])
+
   const bildirimSil = useCallback(async (id) => {
     setBildirimler(prev => prev.filter(b => b.id !== id))
     await bildirimSilDb(id)
@@ -123,6 +143,7 @@ export function BildirimProvider({ children }) {
       bildirimOku,
       tumunuOku,
       bildirimSil,
+      talepBildirimleriniOku,
     }}>
       {children}
     </BildirimContext.Provider>

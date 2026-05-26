@@ -35,7 +35,7 @@ export default function ServisTalepDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
   const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
-  const { bildirimEkle } = useBildirim()
+  const { bildirimEkle, talepBildirimleriniOku } = useBildirim()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
@@ -59,6 +59,12 @@ export default function ServisTalepDetay() {
   const [aciklamaDuzenle, setAciklamaDuzenle] = useState(false)
   const [aciklamaTaslak, setAciklamaTaslak] = useState('')
   const [aciklamaKaydediliyor, setAciklamaKaydediliyor] = useState(false)
+
+  // Talep detay açıldığında ilgili okunmamış bildirimleri otomatik okundu yap
+  // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
+  useEffect(() => {
+    if (id) talepBildirimleriniOku(id).catch(e => console.warn('[talep bildirim oku]', e?.message))
+  }, [id, talepBildirimleriniOku])
 
   // Bağlı görev varsa yorumlarını çek (read-only gösterim için)
   useEffect(() => {
