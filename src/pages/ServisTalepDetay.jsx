@@ -44,15 +44,8 @@ export default function ServisTalepDetay() {
   const [secilenAtanan, setSecilenAtanan] = useState('')
   const [atamaKaydediliyor, setAtamaKaydediliyor] = useState(false)
 
-  const [degPuan, setDegPuan] = useState(0)
-  const [degHover, setDegHover] = useState(0)
-  const [degYorum, setDegYorum] = useState('')
-  const [mevcutDeg, setMevcutDeg] = useState(() => {
-    try {
-      const puanlar = JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
-      return puanlar.find(p => p.servisTalepId === parseInt(id)) || null
-    } catch { return null }
-  })
+  // Müşteri değerlendirmesi — artık müşteri portal'inden geliyor, personel sadece görür.
+  // talep objesinden DB kolonlarını oku.
 
   const talep = talepler.find(t => t.id === parseInt(id))
   const [bagliGorev, setBagliGorev] = useState(null)
@@ -115,20 +108,14 @@ export default function ServisTalepDetay() {
       tarih ? `Planlı tarih: ${new Date(tarih).toLocaleDateString('tr-TR')}` : 'Planlı tarih kaldırıldı')
   }
 
-  const degerlendirmeKaydet = () => {
-    if (!degPuan) return
-    const puanlar = JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
-    const yeni = {
-      id: crypto.randomUUID(),
-      servisTalepId: talep.id, talepNo: talep.talepNo,
-      musteriAd: talep.musteriAd, firmaAdi: talep.firmaAdi || '',
-      konu: talep.konu, puan: degPuan, yorum: degYorum.trim(),
-      tarih: new Date().toISOString(), kaydeden: kullanici.ad,
-    }
-    puanlar.push(yeni)
-    localStorage.setItem('memnuniyet_puanlari', JSON.stringify(puanlar))
-    setMevcutDeg(yeni)
-  }
+  // Müşteri değerlendirmesi — DB'den oku (talep objesindeki kolonlar).
+  // Personel artık YAZAMAZ, sadece görüntüler.
+  const mevcutDeg = talep.degerlendirmePuan ? {
+    puan: talep.degerlendirmePuan,
+    yorum: talep.degerlendirmeYorum || '',
+    tarih: talep.degerlendirmeTarihi || null,
+    kaydeden: talep.musteriAd || 'Müşteri',
+  } : null
 
   const notGonder = () => {
     if (!yeniNot.trim()) return
@@ -750,60 +737,19 @@ export default function ServisTalepDetay() {
                   </p>
                 </div>
               ) : (
-                <div>
-                  <p className="t-caption" style={{ marginBottom: 10 }}>Müşterinin hizmet memnuniyetini kaydedin.</p>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-                    {[1,2,3,4,5].map(i => {
-                      const filled = i <= (degHover || degPuan)
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setDegPuan(i)}
-                          onMouseEnter={() => setDegHover(i)}
-                          onMouseLeave={() => setDegHover(0)}
-                          aria-label={`${i} yıldız`}
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            padding: 2,
-                            transform: filled ? 'scale(1.1)' : 'scale(1)',
-                            transition: 'transform 120ms',
-                          }}
-                        >
-                          <Star
-                            size={28}
-                            strokeWidth={1.5}
-                            fill={filled ? 'var(--warning)' : 'transparent'}
-                            style={{ color: filled ? 'var(--warning)' : 'var(--border-default)' }}
-                          />
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {degPuan > 0 && (
-                    <p style={{
-                      font: '500 13px/18px var(--font-sans)',
-                      color: degPuan >= 4 ? 'var(--success)' : degPuan === 3 ? 'var(--warning)' : 'var(--danger)',
-                      marginBottom: 10,
-                    }}>
-                      {['', 'Çok Kötü', 'Kötü', 'Orta', 'İyi', 'Mükemmel'][degPuan]}
-                    </p>
-                  )}
-                  <Textarea
-                    value={degYorum}
-                    onChange={e => setDegYorum(e.target.value)}
-                    placeholder="Yorum (isteğe bağlı)…"
-                    rows={2}
-                    style={{ marginBottom: 10 }}
-                  />
-                  <Button
-                    variant="primary"
-                    disabled={!degPuan}
-                    iconLeft={<Star size={14} strokeWidth={1.5} fill={degPuan ? '#fff' : 'none'} />}
-                    onClick={degerlendirmeKaydet}
-                    style={{ width: '100%', justifyContent: 'center' }}
-                  >
-                    Değerlendirmeyi kaydet
-                  </Button>
+                <div style={{
+                  padding: 14,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-sunken)',
+                  border: '1px dashed var(--border-default)',
+                  textAlign: 'center',
+                }}>
+                  <p className="t-caption" style={{ marginBottom: 4 }}>
+                    🕒 Müşteri henüz değerlendirme yapmadı
+                  </p>
+                  <p style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0 }}>
+                    Müşteri kendi portalından yıldız puanı verir; burada otomatik görünür.
+                  </p>
                 </div>
               )}
             </Card>

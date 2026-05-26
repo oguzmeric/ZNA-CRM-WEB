@@ -55,13 +55,19 @@ export default function MusteriTalepDetay() {
   const [degPuan, setDegPuan] = useState(0)
   const [degHover, setDegHover] = useState(0)
   const [degYorum, setDegYorum] = useState('')
+  const [degKaydediliyor, setDegKaydediliyor] = useState(false)
   const [sorunAciklama, setSorunAciklama] = useState('')
-  const [mevcutDeg, setMevcutDeg] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
-        .find(p => p.servisTalepId === parseInt(id)) || null
-    } catch { return null }
-  })
+  // Mevcut değerlendirme — talep objesi içindeki DB kolonlarından
+  const mevcutDeg = (() => {
+    const t = talepler.find(t => t.id === parseInt(id))
+    if (!t?.degerlendirmePuan) return null
+    return {
+      puan: t.degerlendirmePuan,
+      yorum: t.degerlendirmeYorum || '',
+      tarih: t.degerlendirmeTarihi || new Date().toISOString(),
+      kaydeden: t.musteriAd,
+    }
+  })()
 
   const talep = talepler.find(t => t.id === parseInt(id))
 
@@ -126,20 +132,24 @@ export default function MusteriTalepDetay() {
     setOnayAsamasi('bitti')
   }
 
-  const degerlendirmeKaydet = () => {
+  const degerlendirmeKaydet = async () => {
     if (!degPuan) return
-    const puanlar = JSON.parse(localStorage.getItem('memnuniyet_puanlari') || '[]')
-    const yeni = {
-      id: crypto.randomUUID(),
-      servisTalepId: talep.id, talepNo: talep.talepNo,
-      musteriAd: talep.musteriAd, firmaAdi: talep.firmaAdi || '',
-      konu: talep.konu, puan: degPuan, yorum: degYorum.trim(),
-      tarih: new Date().toISOString(), kaydeden: kullanici.ad,
+    if (degKaydediliyor) return
+    setDegKaydediliyor(true)
+    try {
+      await talepGuncelle(talep.id, {
+        degerlendirmePuan: degPuan,
+        degerlendirmeYorum: degYorum.trim() || null,
+        degerlendirmeTarihi: new Date().toISOString(),
+        degerlendirmeKullaniciId: kullanici?.id || null,
+      }, kullanici.ad, `Müşteri ${degPuan}/5 yıldız değerlendirdi`)
+      setOnayAsamasi('bitti')
+    } catch (e) {
+      console.error('[degerlendirmeKaydet]', e?.message)
+      alert('Değerlendirme kaydedilemedi: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setDegKaydediliyor(false)
     }
-    puanlar.push(yeni)
-    localStorage.setItem('memnuniyet_puanlari', JSON.stringify(puanlar))
-    setMevcutDeg(yeni)
-    setOnayAsamasi('bitti')
   }
 
   const talepBilgileri = [
@@ -618,10 +628,10 @@ export default function MusteriTalepDetay() {
                     variant="primary"
                     iconLeft={<Star size={14} strokeWidth={1.5} fill={degPuan ? '#fff' : 'none'} />}
                     onClick={degerlendirmeKaydet}
-                    disabled={!degPuan}
+                    disabled={!degPuan || degKaydediliyor}
                     style={{ width: '100%', justifyContent: 'center' }}
                   >
-                    Değerlendirmeyi gönder
+                    {degKaydediliyor ? 'Kaydediliyor…' : 'Değerlendirmeyi gönder'}
                   </Button>
                 </Card>
               )}
