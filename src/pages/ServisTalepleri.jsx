@@ -46,9 +46,13 @@ export default function ServisTalepleri() {
     if (aciliyetFiltre !== 'tumu' && t.aciliyet !== aciliyetFiltre) return false
     return true
   }).sort((a, b) => {
-    const acilSira = { acil: 0, yuksek: 1, normal: 2, dusuk: 3 }
-    if (acilSira[a.aciliyet] !== acilSira[b.aciliyet]) return acilSira[a.aciliyet] - acilSira[b.aciliyet]
-    return new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi)
+    // En yeni en üstte. Aciliyet kolonda zaten renkli badge olarak görünüyor +
+    // filtre var → sıralama saf kronolojik kalsın.
+    // Tarih null'sa id ile tiebreak (id artan numara, en büyük = en yeni).
+    const at = a.olusturmaTarihi ? new Date(a.olusturmaTarihi).getTime() : 0
+    const bt = b.olusturmaTarihi ? new Date(b.olusturmaTarihi).getTime() : 0
+    if (at !== bt) return bt - at
+    return (b.id || 0) - (a.id || 0)
   })
 
   const ist = {
