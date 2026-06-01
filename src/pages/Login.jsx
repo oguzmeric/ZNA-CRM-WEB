@@ -318,65 +318,68 @@ const loginStyles = `
   width: 520px; height: 520px;
   z-index: 1;
   pointer-events: none;
+  opacity: 0.55;  /* genel soluklaştırma */
 }
 .zna-login .ring {
   position: absolute; inset: 0;
-  border: 1.5px solid rgba(30,90,168,0.15);
+  border: 1px solid rgba(30,90,168,0.08);
   border-radius: 50%;
 }
-.zna-login .ring-1 { animation: zna-spin 50s linear infinite; }
-.zna-login .ring-2 { inset: 60px; animation: zna-spin 35s linear infinite reverse; border-color: rgba(74,130,200,0.18); }
-.zna-login .ring-3 { inset: 130px; animation: zna-spin 25s linear infinite; border-color: rgba(30,90,168,0.10); }
+.zna-login .ring-1 { animation: zna-spin 60s linear infinite; }
+.zna-login .ring-2 { inset: 60px; animation: zna-spin 42s linear infinite reverse; border-color: rgba(74,130,200,0.10); }
+.zna-login .ring-3 { inset: 130px; animation: zna-spin 30s linear infinite; border-color: rgba(30,90,168,0.06); }
 @keyframes zna-spin { to { transform: rotate(360deg); } }
 
 .zna-login .orbit-node {
   position: absolute;
-  width: 14px; height: 14px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--brand-primary), var(--zna-brand-light));
-  box-shadow: 0 0 0 4px rgba(30,90,168,0.10), 0 0 16px rgba(30,90,168,0.4);
+  opacity: 0.6;
+  box-shadow: 0 0 0 3px rgba(30,90,168,0.05), 0 0 10px rgba(30,90,168,0.18);
 }
-.zna-login .n1 { top: -7px; left: 50%; transform: translateX(-50%); }
-.zna-login .n2 { top: 50%; right: -7px; transform: translateY(-50%); }
-.zna-login .n3 { bottom: -7px; left: 30%; }
-.zna-login .n4 { top: 20%; left: -7px; }
+.zna-login .n1 { top: -5px; left: 50%; transform: translateX(-50%); }
+.zna-login .n2 { top: 50%; right: -5px; transform: translateY(-50%); }
+.zna-login .n3 { bottom: -5px; left: 30%; }
+.zna-login .n4 { top: 20%; left: -5px; }
 
 .zna-login .orbit-center {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 110px; height: 110px;
+  width: 100px; height: 100px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(30,90,168,0.25) 0%, transparent 70%);
-  animation: zna-pulseGlow 3.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(30,90,168,0.12) 0%, transparent 70%);
+  animation: zna-pulseGlow 4.5s ease-in-out infinite;
 }
 @keyframes zna-pulseGlow {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-  50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.75; }
 }
 .zna-login .orbit-logo-wrap {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 92px; height: 92px;
-  border-radius: 22px;
+  width: 86px; height: 86px;
+  border-radius: 20px;
   background: var(--surface-card);
   display: grid; place-items: center;
   box-shadow:
-    0 16px 40px -10px rgba(30,90,168,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.8),
+    0 12px 28px -10px rgba(30,90,168,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.6),
     0 0 0 1px var(--border-default);
   z-index: 5;
+  opacity: 0.92;
 }
-.zna-login .orbit-logo { width: 70%; height: 70%; object-fit: contain; }
+.zna-login .orbit-logo { width: 70%; height: 70%; object-fit: contain; opacity: 0.9; }
 
 .zna-login .dot {
   position: absolute;
-  width: 5px; height: 5px; border-radius: 50%;
+  width: 4px; height: 4px; border-radius: 50%;
   background: var(--zna-brand-light);
-  box-shadow: 0 0 8px var(--zna-brand-light);
-  opacity: 0.55;
-  animation: zna-twinkle 3s ease-in-out infinite;
+  box-shadow: 0 0 6px var(--zna-brand-light);
+  opacity: 0.3;
+  animation: zna-twinkle 4s ease-in-out infinite;
 }
 .zna-login .d1 { top: 18%; left: 35%; animation-delay: 0.2s; }
 .zna-login .d2 { top: 70%; left: 22%; animation-delay: 0.8s; }
@@ -384,8 +387,8 @@ const loginStyles = `
 .zna-login .d4 { top: 25%; right: 15%; animation-delay: 0.4s; }
 .zna-login .d5 { bottom: 25%; right: 32%; animation-delay: 1.0s; }
 @keyframes zna-twinkle {
-  0%, 100% { opacity: 0.25; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.4); }
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
 }
 
 .zna-login .footer-row {
