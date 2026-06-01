@@ -115,7 +115,7 @@ function Login() {
         {/* SAĞ — Login form */}
         <div className="right">
           <div className="login-card">
-            <h1 className="login-title">Tekrar hoş geldiniz</h1>
+            <h1 className="login-title">Hoş geldiniz</h1>
             <p className="login-sub">ZNA CRM hesabınıza güvenli giriş yapın.</p>
 
             <form onSubmit={handleGiris}>
