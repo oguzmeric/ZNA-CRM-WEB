@@ -318,7 +318,13 @@ const loginStyles = `
   width: 520px; height: 520px;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.55;  /* genel soluklaştırma */
+  /* container şeffaf — alt elemanlara tek tek opacity uyguluyoruz,
+     böylece merkez logo net kalır */
+}
+.zna-login .ring,
+.zna-login .orbit-node,
+.zna-login .orbit-center {
+  opacity: 0.55;
 }
 .zna-login .ring {
   position: absolute; inset: 0;
@@ -360,18 +366,18 @@ const loginStyles = `
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 86px; height: 86px;
-  border-radius: 20px;
+  width: 92px; height: 92px;
+  border-radius: 22px;
   background: var(--surface-card);
   display: grid; place-items: center;
   box-shadow:
-    0 12px 28px -10px rgba(30,90,168,0.20),
-    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 16px 36px -10px rgba(30,90,168,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.8),
     0 0 0 1px var(--border-default);
   z-index: 5;
-  opacity: 0.92;
+  /* logo tam net — opacity yok */
 }
-.zna-login .orbit-logo { width: 70%; height: 70%; object-fit: contain; opacity: 0.9; }
+.zna-login .orbit-logo { width: 72%; height: 72%; object-fit: contain; }
 
 .zna-login .dot {
   position: absolute;
