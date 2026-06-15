@@ -150,7 +150,9 @@ export function ServisTalebiProvider({ children }) {
       throw new Error('Müşteri kaydı bulunamadı. Lütfen admin ile iletişime geçin.')
     }
     const yeniTalep = {
-      talepNo: talepNoUret(talepler),
+      // talep_no DB tarafindaki trigger 'tr_servis_talep_no_uret' tarafindan
+      // otomatik atanir (migration 046). Client race condition'a sebep oluyordu.
+      talepNo: null,
       musteriId: kullanici.musteriId,
       musteriAd: kullanici.ad,
       firmaAdi: kullanici.firmaAdi || '',
@@ -196,7 +198,9 @@ export function ServisTalebiProvider({ children }) {
   const talepOlusturPersonel = async (formData, kullanici, musteri, atanan) => {
     const baslangicDurum = atanan ? 'atandi' : 'bekliyor'
     const yeniTalep = {
-      talepNo: talepNoUret(talepler),
+      // talep_no DB tarafindaki trigger 'tr_servis_talep_no_uret' tarafindan
+      // otomatik atanir (migration 046). Client race condition'a sebep oluyordu.
+      talepNo: null,
       musteriId: musteri?.id || null,
       musteriAd: musteri ? `${musteri.ad || ''} ${musteri.soyad || ''}`.trim() : (formData.musteriAd || ''),
       firmaAdi: musteri?.firma || formData.firmaAdi || '',
