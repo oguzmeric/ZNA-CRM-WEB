@@ -81,7 +81,8 @@ export default function PaylasimBelge() {
     const meta = document.querySelector('meta[name="viewport"]')
     if (!meta) return
     const eski = meta.getAttribute('content')
-    meta.setAttribute('content', 'width=820, initial-scale=0.45, user-scalable=yes')
+    // width=720 + initial-scale=0.55 → telefonda icerik %20 daha buyuk, baslik+tablo rahat okunur
+    meta.setAttribute('content', 'width=720, initial-scale=0.55, user-scalable=yes')
     return () => { if (eski != null) meta.setAttribute('content', eski) }
   }, [])
 
@@ -170,17 +171,18 @@ export default function PaylasimBelge() {
     const Cikti = ciktiMap[tip] || StandartCikti
     return (
       <>
-        {/* Yazdir butonu — baskida gizlenir */}
+        {/* Yazdir butonu — sag-alt floating, icerige binmez. Baskida gizlenir */}
         <div className="no-print" style={{
-          position: 'fixed', top: 16, right: 16, zIndex: 999,
+          position: 'fixed', bottom: 24, right: 24, zIndex: 999,
         }}>
           <button
             onClick={() => window.print()}
             style={{
               background: '#1E5AA8', color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px 20px', fontSize: 13,
+              borderRadius: 999, padding: '14px 24px', fontSize: 15,
               fontWeight: 700, cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(30,90,168,0.25)',
+              boxShadow: '0 6px 20px rgba(30,90,168,0.35)',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
             }}
           >
             🖨 Yazdır / PDF
