@@ -13,6 +13,7 @@ import { parseMentions } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
+import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
 } from '../components/ui'
@@ -823,6 +824,14 @@ export default function ServisTalepDetay() {
           </Card>
         </div>
       </div>
+
+      {/* Form Bilgileri — servis raporu icin gerekli ek alanlar (checkbox'lar, sistem, yedek parcalar) */}
+      <ServisFormBilgileriCard
+        talep={talep}
+        onKaydet={async (yeniler) => {
+          await talepGuncelle(talep.id, yeniler, kullanici?.ad)
+        }}
+      />
 
       {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
       <BelgePaylasModal
