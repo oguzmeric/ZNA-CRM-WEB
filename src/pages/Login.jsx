@@ -176,7 +176,7 @@ function Login() {
             </form>
 
             <p className="small-print">
-              Hesabınız yoksa <strong>yöneticinizden</strong> davet edilmenizi isteyin.
+              Hesabınız yok mu? <a href="/signup" className="link">Hesap oluştur</a>
             </p>
           </div>
         </div>

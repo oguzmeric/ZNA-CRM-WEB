@@ -8,6 +8,7 @@ const KomutPaleti = lazy(() => import('./components/KomutPaleti'))
 
 // Eager — kritik ilk-paint için (login + Dashboard)
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import MainLayout from './layouts/MainLayout'
 import MusteriLayout from './layouts/MusteriLayout'
@@ -136,6 +137,7 @@ function App() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route
           path="*"
           element={<Navigate to="/login" replace state={{ from: location }} />}
