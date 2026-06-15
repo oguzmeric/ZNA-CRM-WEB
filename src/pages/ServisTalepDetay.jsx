@@ -201,15 +201,17 @@ export default function ServisTalepDetay() {
           {/* Sağ üst aksiyonlar — durum geçişleri sağdaki DURUM panelinden yapılır,
               burada sadece "Sil" gibi nadir/yıkıcı aksiyonlar kalır */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, position: 'relative' }}>
-            <Button
-              variant="secondary"
-              size="md"
-              iconLeft={<Printer size={14} strokeWidth={1.5} />}
-              onClick={() => setSirketSecimAcik(v => !v)}
-            >
-              Form Çıktısı
-            </Button>
-            {sirketSecimAcik && (
+            {talep.durum === 'tamamlandi' && (
+              <Button
+                variant="secondary"
+                size="md"
+                iconLeft={<Printer size={14} strokeWidth={1.5} />}
+                onClick={() => setSirketSecimAcik(v => !v)}
+              >
+                Form Çıktısı
+              </Button>
+            )}
+            {sirketSecimAcik && talep.durum === 'tamamlandi' && (
               <div style={{
                 position: 'absolute', top: '100%', right: 0, marginTop: 6,
                 background: '#fff', border: '1px solid var(--border-default)',
@@ -825,13 +827,15 @@ export default function ServisTalepDetay() {
         </div>
       </div>
 
-      {/* Form Bilgileri — servis raporu icin gerekli ek alanlar (checkbox'lar, sistem, yedek parcalar) */}
-      <ServisFormBilgileriCard
-        talep={talep}
-        onKaydet={async (yeniler) => {
-          await talepGuncelle(talep.id, yeniler, kullanici?.ad)
-        }}
-      />
+      {/* Form Bilgileri — sadece tamamlanmis talepler icin (rapor cikarmadan once doldurulur) */}
+      {talep.durum === 'tamamlandi' && (
+        <ServisFormBilgileriCard
+          talep={talep}
+          onKaydet={async (yeniler) => {
+            await talepGuncelle(talep.id, yeniler, kullanici?.ad)
+          }}
+        />
+      )}
 
       {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
       <BelgePaylasModal
