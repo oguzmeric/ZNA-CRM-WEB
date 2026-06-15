@@ -71,6 +71,18 @@ export default function PaylasimBelge() {
   const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
   const [belge, setBelge] = useState(null)
 
+  // Cikti komponentleri A4 (~794px) genisliginde tasarlandi.
+  // Telefonda viewport 'width=device-width' ise tablo kolonlari sikisip
+  // her harf alta iniyor. Public belge gosterimi suresince viewport'u A4
+  // genisligine sabitleyip telefonun otomatik fit-to-width yapmasini sagliyoruz.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (!meta) return
+    const eski = meta.getAttribute('content')
+    meta.setAttribute('content', 'width=820, initial-scale=0.45, user-scalable=yes')
+    return () => { if (eski != null) meta.setAttribute('content', eski) }
+  }, [])
+
   useEffect(() => {
     if (!token || token.length < 8) {
       setDurum('gecersiz')
