@@ -12,7 +12,7 @@
 //   - DB hatasi -> "Belge yuklenemedi, daha sonra tekrar deneyin"
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
 import StandartCikti from './teklifCikti/StandartCikti'
@@ -68,6 +68,8 @@ function HataKarti({ baslik, mesaj }) {
 
 export default function PaylasimBelge() {
   const { token } = useParams()
+  const [searchParams] = useSearchParams()
+  const sablonOverride = searchParams.get('t')   // ornek: 'karel' — link icinde gelir
   const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
   const [belge, setBelge] = useState(null)
 
@@ -162,7 +164,9 @@ export default function PaylasimBelge() {
   }
 
   if (durum === 'teklif') {
-    const tip = belge?.teklifTipi || 'standart'
+    // Oncelik: URL'deki ?t= (gonderim aninda secilen sablon) > teklifin kayitli sablonu
+    const tip = (sablonOverride && ciktiMap[sablonOverride]) ? sablonOverride
+              : (belge?.teklifTipi || 'standart')
     const Cikti = ciktiMap[tip] || StandartCikti
     return (
       <>

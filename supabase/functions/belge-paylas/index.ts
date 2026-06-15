@@ -229,6 +229,9 @@ serve(async (req) => {
     const gsm: string       = (body?.gsm ?? '').toString().trim()
     const sureGun: number   = Math.min(Math.max(Number(body?.sure_gun ?? 30), 1), 365)
     const ozelMesaj: string = (body?.ozel_mesaj ?? '').toString().slice(0, 500)
+    const sablonRaw: string = (body?.sablon ?? '').toString().toLowerCase()
+    const sablon: string | null =
+      ['standart', 'trassir', 'karel'].includes(sablonRaw) ? sablonRaw : null
 
     if (!['teklif', 'servis_raporu'].includes(belgeTipi)) return err(400, 'Gecersiz belge tipi.')
     if (!belgeId || belgeId < 1) return err(400, 'Gecersiz belge id.')
@@ -273,7 +276,8 @@ serve(async (req) => {
       return err(500, 'Paylasim kaydedilemedi.')
     }
 
-    const link = `${PUBLIC_BASE_URL}/p/${token}`
+    // Teklif icin sablon query param'i ekle (?t=karel gibi)
+    const link = `${PUBLIC_BASE_URL}/p/${token}` + (sablon ? `?t=${sablon}` : '')
 
     // Mail ve/veya SMS gonder, durumlari topla
     let mailDurum: string | null = null

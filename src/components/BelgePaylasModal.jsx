@@ -29,6 +29,12 @@ const SURE_SECENEKLERI = [
   { gun: 365, label: '1 yıl' },
 ]
 
+const SABLON_SECENEKLERI = [
+  { id: 'standart', label: 'Standart' },
+  { id: 'trassir',  label: 'Trassir' },
+  { id: 'karel',    label: 'Karel' },
+]
+
 export default function BelgePaylasModal({
   acik,
   onKapat,
@@ -36,12 +42,14 @@ export default function BelgePaylasModal({
   belgeId,
   baslangicEmail = '',
   baslangicGsm   = '',
+  baslangicSablon = 'standart',   // teklifin kayitli sablonu — default secim
   belgeBaslik    = '',
 }) {
   const [kanal, setKanal] = useState('mail')
   const [email, setEmail] = useState('')
   const [gsm, setGsm] = useState('')
   const [sureGun, setSureGun] = useState(30)
+  const [sablon, setSablon] = useState('standart')
   const [ozelMesaj, setOzelMesaj] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [hata, setHata] = useState(null)
@@ -53,12 +61,13 @@ export default function BelgePaylasModal({
       setEmail(baslangicEmail || '')
       setGsm(baslangicGsm || '')
       setSureGun(30)
+      setSablon(baslangicSablon || 'standart')
       setOzelMesaj('')
       setHata(null)
       setSonuc(null)
       setGonderiliyor(false)
     }
-  }, [acik, baslangicEmail, baslangicGsm])
+  }, [acik, baslangicEmail, baslangicGsm, baslangicSablon])
 
   if (!acik) return null
 
@@ -84,6 +93,7 @@ export default function BelgePaylasModal({
         email: mailGerekli ? email.trim() : undefined,
         gsm: smsGerekli ? gsm.trim() : undefined,
         sure_gun: sureGun,
+        sablon: belgeTipi === 'teklif' ? sablon : undefined,
         ozel_mesaj: ozelMesaj.trim() || undefined,
       })
       setSonuc(res)
@@ -159,6 +169,37 @@ export default function BelgePaylasModal({
             borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--text-secondary)',
           }}>
             <strong style={{ color: 'var(--text-primary)' }}>Belge:</strong> {belgeBaslik}
+          </div>
+        )}
+
+        {/* Sablon secimi — sadece teklif icin */}
+        {belgeTipi === 'teklif' && (
+          <div>
+            <Label>Teklif Şablonu</Label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {SABLON_SECENEKLERI.map(({ id, label }) => {
+                const aktif = sablon === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSablon(id)}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 8,
+                      border: aktif ? '1.5px solid var(--accent, #1E5AA8)' : '1px solid var(--border-subtle)',
+                      background: aktif ? 'rgba(30,90,168,0.06)' : 'var(--surface-bg)',
+                      color: aktif ? 'var(--accent, #1E5AA8)' : 'var(--text-secondary)',
+                      cursor: 'pointer', fontSize: 13, fontWeight: aktif ? 600 : 500,
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+              Müşteri linke tıkladığında seçtiğiniz şablonla görür.
+            </div>
           </div>
         )}
 

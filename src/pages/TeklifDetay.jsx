@@ -1365,6 +1365,7 @@ function TeklifDetay() {
             belgeId={Number(id)}
             baslangicEmail={seciliMusteri?.email || ''}
             baslangicGsm={seciliMusteri?.telefon || ''}
+            baslangicSablon={form.teklifTipi || 'standart'}
             belgeBaslik={`${form.teklifNo || '#' + id} — ${form.firmaAdi || ''}`}
           />
         )
