@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
-  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X,
+  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -43,6 +43,7 @@ export default function ServisTalepDetay() {
   const [notTip, setNotTip] = useState('ic')
   const [silOnayGoster, setSilOnayGoster] = useState(false)
   const [paylasimModalAcik, setPaylasimModalAcik] = useState(false)
+  const [sirketSecimAcik, setSirketSecimAcik] = useState(false)
   const [secilenAtanan, setSecilenAtanan] = useState('')
   const [atamaKaydediliyor, setAtamaKaydediliyor] = useState(false)
 
@@ -198,7 +199,54 @@ export default function ServisTalepDetay() {
 
           {/* Sağ üst aksiyonlar — durum geçişleri sağdaki DURUM panelinden yapılır,
               burada sadece "Sil" gibi nadir/yıkıcı aksiyonlar kalır */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, position: 'relative' }}>
+            <Button
+              variant="secondary"
+              size="md"
+              iconLeft={<Printer size={14} strokeWidth={1.5} />}
+              onClick={() => setSirketSecimAcik(v => !v)}
+            >
+              Form Çıktısı
+            </Button>
+            {sirketSecimAcik && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                background: '#fff', border: '1px solid var(--border-default)',
+                borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                minWidth: 200, zIndex: 50, overflow: 'hidden',
+              }}>
+                <div style={{
+                  padding: '8px 12px', fontSize: 11, fontWeight: 700,
+                  color: 'var(--text-tertiary)', textTransform: 'uppercase',
+                  letterSpacing: 0.4, background: 'var(--surface-subtle)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}>
+                  Hangi şirket adına?
+                </div>
+                {[
+                  { id: 'zna', label: 'ZNA Teknoloji' },
+                  { id: 'anadolunet', label: 'Anadolunet' },
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSirketSecimAcik(false)
+                      window.open(`/servis-talepleri/${talep.id}/yazdir?sirket=${s.id}`, '_blank')
+                    }}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '10px 14px', background: 'transparent',
+                      border: 'none', cursor: 'pointer', fontSize: 13,
+                      color: 'var(--text-primary)',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-subtle)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {talep.durum === 'tamamlandi' && (
               <Button
                 variant="primary"
