@@ -12,6 +12,7 @@ import { gorevGetir } from '../services/gorevService'
 import { parseMentions } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
+import BelgePaylasModal from '../components/BelgePaylasModal'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
 } from '../components/ui'
@@ -41,6 +42,7 @@ export default function ServisTalepDetay() {
   const [yeniNot, setYeniNot] = useState('')
   const [notTip, setNotTip] = useState('ic')
   const [silOnayGoster, setSilOnayGoster] = useState(false)
+  const [paylasimModalAcik, setPaylasimModalAcik] = useState(false)
   const [secilenAtanan, setSecilenAtanan] = useState('')
   const [atamaKaydediliyor, setAtamaKaydediliyor] = useState(false)
 
@@ -197,6 +199,16 @@ export default function ServisTalepDetay() {
           {/* Sağ üst aksiyonlar — durum geçişleri sağdaki DURUM panelinden yapılır,
               burada sadece "Sil" gibi nadir/yıkıcı aksiyonlar kalır */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
+            {talep.durum === 'tamamlandi' && (
+              <Button
+                variant="primary"
+                size="md"
+                iconLeft={<Send size={14} strokeWidth={1.5} />}
+                onClick={() => setPaylasimModalAcik(true)}
+              >
+                Müşteriye Gönder
+              </Button>
+            )}
             <Button variant="tertiary" size="md" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={() => setSilOnayGoster(true)}>
               Sil
             </Button>
@@ -763,6 +775,17 @@ export default function ServisTalepDetay() {
           </Card>
         </div>
       </div>
+
+      {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
+      <BelgePaylasModal
+        acik={paylasimModalAcik}
+        onKapat={() => setPaylasimModalAcik(false)}
+        belgeTipi="servis_raporu"
+        belgeId={Number(talep.id)}
+        baslangicEmail={talep.email || ''}
+        baslangicGsm={talep.telefon || ''}
+        belgeBaslik={`${talep.talepNo || '#' + talep.id} — ${talep.konu || ''}`}
+      />
     </div>
   )
 }

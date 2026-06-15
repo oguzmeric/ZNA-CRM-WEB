@@ -10,6 +10,7 @@ const KomutPaleti = lazy(() => import('./components/KomutPaleti'))
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
+import PaylasimBelge from './pages/PaylasimBelge'
 import MainLayout from './layouts/MainLayout'
 import MusteriLayout from './layouts/MusteriLayout'
 
@@ -110,6 +111,16 @@ function App() {
           <Route path="/design-system" element={<DesignSystemPage />} />
         </Routes>
       </Suspense>
+    )
+  }
+
+  // Public tokenli paylasim linki — auth gate'in ONUNDE, herkese acik.
+  // Musteri SMS/mail'den gelen link uzerinden teklif veya servis raporunu goruntuler.
+  if (location.pathname.startsWith('/p/')) {
+    return (
+      <Routes>
+        <Route path="/p/:token" element={<PaylasimBelge />} />
+      </Routes>
     )
   }
 

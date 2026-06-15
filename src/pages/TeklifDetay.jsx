@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
-  CheckCircle2, Receipt, Inbox,
+  CheckCircle2, Receipt, Inbox, Send,
 } from 'lucide-react'
+import BelgePaylasModal from '../components/BelgePaylasModal'
 import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -103,6 +104,7 @@ function TeklifDetay() {
   // Hızlı stok ekleme modal'ı state — early return'ün ÜSTÜNDE olmalı
   // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
   const [hizliStokAcik, setHizliStokAcik] = useState(false)
+  const [paylasimModalAcik, setPaylasimModalAcik] = useState(false)
   const [hizliStokSatirIndex, setHizliStokSatirIndex] = useState(null)
   // Hızlı müşteri ekleme modal'ı
   const [hizliMusteriAcik, setHizliMusteriAcik] = useState(false)
@@ -521,6 +523,15 @@ function TeklifDetay() {
               }}
             >
               PDF
+            </Button>
+          )}
+          {!yeni && (
+            <Button
+              variant="primary"
+              iconLeft={<Send size={14} strokeWidth={1.5} />}
+              onClick={() => setPaylasimModalAcik(true)}
+            >
+              Müşteriye Gönder
             </Button>
           )}
           {!yeni && ilgiliFatura && (
@@ -1342,6 +1353,22 @@ function TeklifDetay() {
           setHizliMusteriAcik(false)
         }}
       />
+
+      {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
+      {!yeni && (() => {
+        const seciliMusteri = musteriler.find(m => String(m.id) === String(form.musteriId))
+        return (
+          <BelgePaylasModal
+            acik={paylasimModalAcik}
+            onKapat={() => setPaylasimModalAcik(false)}
+            belgeTipi="teklif"
+            belgeId={Number(id)}
+            baslangicEmail={seciliMusteri?.email || ''}
+            baslangicGsm={seciliMusteri?.telefon || ''}
+            belgeBaslik={`${form.teklifNo || '#' + id} — ${form.firmaAdi || ''}`}
+          />
+        )
+      })()}
     </div>
   )
 }

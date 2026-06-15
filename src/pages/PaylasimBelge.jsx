@@ -1,0 +1,237 @@
+// Tokenli paylasim linki ile musterinin (anon) goruntuledigi belge sayfasi.
+// Route: /p/:token  (App.jsx'te authentication gate'inin ONUNDE)
+//
+// Akis:
+//   1. URL'den token'i al
+//   2. paylasim_link_dogrula RPC -> token gecerli mi? (acilma sayisini da artirir)
+//   3. belge_tipi'ne gore paylasim_teklif_oku veya paylasim_servis_oku
+//   4. Verileri uygun cikti komponenti ile render
+//
+// Hata durumlari:
+//   - Gecersiz/expired token -> "Bu link gecersiz veya suresi dolmus" sayfasi
+//   - DB hatasi -> "Belge yuklenemedi, daha sonra tekrar deneyin"
+
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { toCamel } from '../lib/mapper'
+import StandartCikti from './teklifCikti/StandartCikti'
+import TrassirCikti  from './teklifCikti/TrassirCikti'
+import KarelCikti    from './teklifCikti/KarelCikti'
+
+const ciktiMap = {
+  standart: StandartCikti,
+  trassir:  TrassirCikti,
+  karel:    KarelCikti,
+}
+
+const ekranMerkez = {
+  minHeight: '100vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#F4F6F8',
+  fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,sans-serif',
+  color: '#3B4960',
+  padding: 20,
+}
+
+const kart = {
+  maxWidth: 480,
+  width: '100%',
+  background: '#fff',
+  borderRadius: 16,
+  padding: '40px 32px',
+  boxShadow: '0 4px 14px rgba(15,27,46,0.08)',
+  textAlign: 'center',
+}
+
+function HataKarti({ baslik, mesaj }) {
+  return (
+    <div style={ekranMerkez}>
+      <div style={kart}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: '#FEE2E2', color: '#DC2626',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 28, fontWeight: 700, marginBottom: 16,
+        }}>!</div>
+        <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#0F1B2E' }}>{baslik}</h1>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>{mesaj}</p>
+        <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+          © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function PaylasimBelge() {
+  const { token } = useParams()
+  const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
+  const [belge, setBelge] = useState(null)
+
+  useEffect(() => {
+    if (!token || token.length < 8) {
+      setDurum('gecersiz')
+      return
+    }
+    let iptal = false
+    ;(async () => {
+      try {
+        // 1. Token dogrula + acilma istatistigi guncelle
+        const { data: dogrulama, error: dogrulamaErr } = await supabase
+          .rpc('paylasim_link_dogrula', { in_token: token })
+
+        if (dogrulamaErr) {
+          console.error('[PaylasimBelge] dogrulama:', dogrulamaErr)
+          if (!iptal) setDurum('hata')
+          return
+        }
+
+        // RPC returns table — empty array means invalid token
+        const link = Array.isArray(dogrulama) ? dogrulama[0] : dogrulama
+        if (!link || !link.belge_tipi) {
+          if (!iptal) setDurum('gecersiz')
+          return
+        }
+
+        // 2. Belge verisini cek
+        const rpcAdi = link.belge_tipi === 'teklif' ? 'paylasim_teklif_oku' : 'paylasim_servis_oku'
+        const { data: belgeData, error: belgeErr } = await supabase
+          .rpc(rpcAdi, { in_token: token })
+
+        if (belgeErr || !belgeData) {
+          console.error('[PaylasimBelge] belge:', belgeErr)
+          if (!iptal) setDurum('hata')
+          return
+        }
+
+        if (!iptal) {
+          setBelge(toCamel(belgeData))
+          setDurum(link.belge_tipi)
+        }
+      } catch (e) {
+        console.error('[PaylasimBelge] beklenmedik:', e)
+        if (!iptal) setDurum('hata')
+      }
+    })()
+    return () => { iptal = true }
+  }, [token])
+
+  if (durum === 'yukleniyor') {
+    return (
+      <div style={ekranMerkez}>
+        <div style={kart}>
+          <div style={{
+            width: 40, height: 40, margin: '0 auto 16px',
+            border: '3px solid #DEE3EC', borderTopColor: '#1E5AA8',
+            borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{ fontSize: 14, color: '#6B7A93' }}>Belge yükleniyor…</div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    )
+  }
+
+  if (durum === 'gecersiz') {
+    return <HataKarti
+      baslik="Link Geçersiz veya Süresi Dolmuş"
+      mesaj="Bu paylaşım linki artık geçerli değil. Lütfen ZNA Teknoloji ile iletişime geçin."
+    />
+  }
+
+  if (durum === 'hata') {
+    return <HataKarti
+      baslik="Belge Yüklenemedi"
+      mesaj="Geçici bir teknik sorun oluştu. Lütfen birkaç dakika sonra tekrar deneyin."
+    />
+  }
+
+  if (durum === 'teklif') {
+    const tip = belge?.teklifTipi || 'standart'
+    const Cikti = ciktiMap[tip] || StandartCikti
+    return (
+      <>
+        {/* Yazdir butonu — baskida gizlenir */}
+        <div className="no-print" style={{
+          position: 'fixed', top: 16, right: 16, zIndex: 999,
+        }}>
+          <button
+            onClick={() => window.print()}
+            style={{
+              background: '#1E5AA8', color: '#fff', border: 'none',
+              borderRadius: 10, padding: '10px 20px', fontSize: 13,
+              fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(30,90,168,0.25)',
+            }}
+          >
+            🖨 Yazdır / PDF
+          </button>
+        </div>
+        <Cikti teklif={belge} />
+      </>
+    )
+  }
+
+  if (durum === 'servis_raporu') {
+    return (
+      <div style={ekranMerkez}>
+        <div style={{ ...kart, maxWidth: 560 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14,
+            background: 'linear-gradient(135deg,#1E5AA8,#4A82C8)',
+            color: '#fff', display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, fontWeight: 800, marginBottom: 16,
+          }}>Z</div>
+          <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
+            Servis Raporunuz
+          </h1>
+          <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>
+            Talep #{belge.id} — {belge.tarih ? new Date(belge.tarih).toLocaleDateString('tr-TR') : ''}
+          </p>
+
+          <div style={{
+            textAlign: 'left', background: '#F4F6F8',
+            border: '1px solid #DEE3EC', borderRadius: 12, padding: 16,
+            marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: '#3B4960',
+          }}>
+            <div><strong>Firma:</strong> {belge.firma || '—'}</div>
+            <div><strong>Konu:</strong> {belge.baslik || '—'}</div>
+            {belge.aciklama && <div style={{ marginTop: 8 }}><strong>Açıklama:</strong> {belge.aciklama}</div>}
+            {belge.cozumAciklamasi && <div style={{ marginTop: 8 }}><strong>Çözüm:</strong> {belge.cozumAciklamasi}</div>}
+          </div>
+
+          {belge.servisFormuUrl ? (
+            <a
+              href={belge.servisFormuUrl}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'inline-block', background: '#1E5AA8', color: '#fff',
+                padding: '12px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                textDecoration: 'none', marginBottom: 8,
+              }}
+            >
+              📄 Servis Formunu Aç
+            </a>
+          ) : (
+            <div style={{
+              padding: 12, background: '#FFF7E6', border: '1px solid #F59E0B',
+              borderRadius: 8, fontSize: 13, color: '#92400E',
+            }}>
+              Henüz yüklenmiş bir servis formu yok. Lütfen ZNA Teknoloji ile iletişime geçin.
+            </div>
+          )}
+
+          <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+            © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
