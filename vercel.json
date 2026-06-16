@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/dosya/:path*", "destination": "https://hcrbwxeuscfibgmchdtt.supabase.co/storage/v1/object/public/servis-formlari/:path*" },
     { "source": "/api/tcmb/:path*", "destination": "https://www.tcmb.gov.tr/kurlar/:path*" },
     { "source": "/api/doviz/:path*", "destination": "https://api.frankfurter.dev/v1/:path*" },
     { "source": "/((?!assets/|api/).*)", "destination": "/" }
