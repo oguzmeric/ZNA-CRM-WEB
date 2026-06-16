@@ -76,7 +76,7 @@ const menuItems = [
       { id: 'rapor-merkezi',  isim: 'Rapor Merkezi', yol: '/rapor-merkezi' },
     ],
   },
-  { id: 'chat', isim: 'Sohbet', Icon: MessageSquare, yol: '/chat', modul: null },
+  // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi' },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi' },
