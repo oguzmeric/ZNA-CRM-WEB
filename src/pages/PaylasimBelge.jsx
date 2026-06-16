@@ -223,17 +223,30 @@ export default function PaylasimBelge() {
           </div>
 
           {belge.servisFormuUrl ? (
-            <a
-              href={belge.servisFormuUrl}
-              target="_blank" rel="noopener noreferrer"
-              style={{
-                display: 'inline-block', background: '#1E5AA8', color: '#fff',
-                padding: '12px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                textDecoration: 'none', marginBottom: 8,
-              }}
-            >
-              📄 Servis Formunu Aç
-            </a>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+              <a
+                href={belge.servisFormuUrl}
+                target="_blank" rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block', background: '#1E5AA8', color: '#fff',
+                  padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                📄 Aç
+              </a>
+              <a
+                href={`${belge.servisFormuUrl}${belge.servisFormuUrl.includes('?') ? '&' : '?'}download=Servis-Raporu-${belge.id}.pdf`}
+                style={{
+                  display: 'inline-block', background: '#fff', color: '#1E5AA8',
+                  border: '1.5px solid #1E5AA8',
+                  padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                ⬇ İndir / Kaydet
+              </a>
+            </div>
           ) : (
             <div style={{
               padding: 12, background: '#FFF7E6', border: '1px solid #F59E0B',
