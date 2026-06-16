@@ -134,6 +134,29 @@ export default function PaylasimBelge() {
     return () => { iptal = true }
   }, [token])
 
+  // PDF'i blob olarak cekip indirmeyi zorla (same-origin /dosya proxy sayesinde
+  // calisir). iOS Safari direkt linki onizler; blob + a.download indirmeyi tetikler.
+  const indirPdf = async (e) => {
+    e?.preventDefault?.()
+    const ad = `Servis-Raporu-${belge?.id ?? ''}.pdf`
+    try {
+      const res = await fetch(belge.servisFormuUrl)
+      if (!res.ok) throw new Error('fetch')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = ad
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+    } catch {
+      // Fallback: attachment header'li URL'e git
+      window.location.href = `${belge.servisFormuUrl}${belge.servisFormuUrl.includes('?') ? '&' : '?'}download=${encodeURIComponent(ad)}`
+    }
+  }
+
   if (durum === 'yukleniyor') {
     return (
       <div style={ekranMerkez}>
@@ -238,6 +261,7 @@ export default function PaylasimBelge() {
               <a
                 href={`${belge.servisFormuUrl}${belge.servisFormuUrl.includes('?') ? '&' : '?'}download=Servis-Raporu-${belge.id}.pdf`}
                 download={`Servis-Raporu-${belge.id}.pdf`}
+                onClick={indirPdf}
                 style={{
                   display: 'inline-block', background: '#fff', color: '#1E5AA8',
                   border: '1.5px solid #1E5AA8',
