@@ -54,8 +54,13 @@ export default function TrassirCikti({ teklif }) {
 
   const sayfaStil = {
     width: '210mm',
-    minHeight: '297mm',
+    // height: '297mm' (sabit) — minHeight degildi: content cikinca div buyuyor,
+    // pageBreakAfter:always her uzayan sayfaya ekstra fiziksel sayfa ekliyordu
+    // (5 mantiksal sayfa -> 10 fiziksel sayfa bug'i).
+    height: '297mm',
+    overflow: 'hidden',
     pageBreakAfter: 'always',
+    breakAfter: 'page', // modern CSS karsiligi (Firefox/Safari)
     padding: '20mm 20mm 35mm 20mm', // bottom 35mm = footer için yer
     boxSizing: 'border-box',
     fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -210,7 +215,7 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 5 — Referanslar */}
-      <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakAfter: 'auto' }}>
+      <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakAfter: 'auto', breakAfter: 'auto' }}>
         <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
           style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
         <h2 style={{ fontSize: 24, color: '#0176D3', fontWeight: 600, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
