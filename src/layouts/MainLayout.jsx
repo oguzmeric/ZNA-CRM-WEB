@@ -11,6 +11,7 @@ import {
   Activity, Timer, Boxes, StickyNote,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
+import FloatingSohbetButton from '../components/FloatingSohbetButton'
 import { Avatar } from '../components/ui'
 
 const menuItems = [
@@ -75,7 +76,7 @@ const menuItems = [
       { id: 'rapor-merkezi',  isim: 'Rapor Merkezi', yol: '/rapor-merkezi' },
     ],
   },
-  { id: 'chat', isim: 'Mesajlar', Icon: MessageSquare, yol: '/chat', modul: null },
+  { id: 'chat', isim: 'Sohbet', Icon: MessageSquare, yol: '/chat', modul: null },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi' },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi' },
@@ -119,7 +120,7 @@ const sayfaIsimleri = {
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
   '/raporlar': 'Raporlar',
-  '/chat': 'Mesajlar',
+  '/chat': 'Sohbet',
   '/kullanici-yonetimi': 'Kullanıcı Yönetimi',
   '/sla-ayarlari': 'SLA Ayarları',
   '/performans': 'Personel Performansı',
@@ -235,7 +236,7 @@ function MainLayout({ children }) {
     if (location.pathname.startsWith('/satislar/')) return 'Fatura Detayı'
     if (location.pathname === '/servis-talepleri') return 'Servis Talepleri'
     if (location.pathname.startsWith('/servis-talepleri/')) return 'Servis Talep Detayı'
-    if (location.pathname === '/chat') return 'Mesajlar'
+    if (location.pathname === '/chat') return 'Sohbet'
     if (location.pathname === '/profil') return 'Profilim'
     if (location.pathname.startsWith('/firma-gecmisi/')) return 'Firma Geçmişi'
     const bulunan = gorunenMenu.find(
@@ -752,6 +753,7 @@ function MainLayout({ children }) {
       </div>
 
       <ThemePaneli acik={temaPaneliAcik} kapat={() => setTemaPaneliAcik(false)} />
+      <FloatingSohbetButton />
     </div>
   )
 }
