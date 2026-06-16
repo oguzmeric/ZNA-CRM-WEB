@@ -237,6 +237,7 @@ export default function PaylasimBelge() {
               </a>
               <a
                 href={`${belge.servisFormuUrl}${belge.servisFormuUrl.includes('?') ? '&' : '?'}download=Servis-Raporu-${belge.id}.pdf`}
+                download={`Servis-Raporu-${belge.id}.pdf`}
                 style={{
                   display: 'inline-block', background: '#fff', color: '#1E5AA8',
                   border: '1.5px solid #1E5AA8',
