@@ -18,7 +18,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
-const FROM = 'ZNA Destek <onboarding@resend.dev>'   // domain dogrulamasi sonrasi noreply@znateknoloji.com olacak
+const FROM = 'ZNA Destek <noreply@znateknoloji.com.tr>'   // znateknoloji.com.tr Resend dogrulamasi tamamlandi
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

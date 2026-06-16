@@ -30,7 +30,7 @@ const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY') ?? ''
 const PUBLIC_BASE_URL = Deno.env.get('PUBLIC_BASE_URL') ?? 'https://talep.znateknoloji.com'
-const FROM            = 'ZNA Destek <onboarding@resend.dev>'  // domain dogrulamasi sonrasi noreply@znateknoloji.com
+const FROM            = 'ZNA Destek <noreply@znateknoloji.com.tr>'  // znateknoloji.com.tr Resend dogrulamasi tamamlandi
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
