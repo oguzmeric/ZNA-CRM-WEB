@@ -50,3 +50,4 @@ desktop.ini
 
 # Supabase CLI link cache
 supabase/.temp/
+.vercel
