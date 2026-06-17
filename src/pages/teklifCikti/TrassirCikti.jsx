@@ -57,7 +57,9 @@ export default function TrassirCikti({ teklif }) {
     // height: 296mm (297mm degil): yazicinin basilabilir alani alt-piksel
     // yuvarlama ile 297mm'den birazcik kucuk; tam 297mm her sayfayi 2. fiziksel
     // sayfaya tasiriyordu (5 -> 10 sayfa bug'i). 1mm pay ile taşma biter.
-    height: '296mm',
+    // 285mm: iOS basilabilir alani 296mm'yi ~1mm asiyordu (her sayfa tasip bos
+    // sayfa birakiyordu). Belirgin pay ile artik tasma yok, tam 5 sayfa.
+    height: '285mm',
     overflow: 'hidden',
     // page-break-AFTER, bir sayfa-dolusu ogeden sonra iOS'ta ekstra bos sayfa
     // ekliyordu. page-break-BEFORE ile her yeni sayfa kendi onunde kiriliyor;
@@ -99,7 +101,7 @@ export default function TrassirCikti({ teklif }) {
         <img
           src="/teklif-assets/zna-cover.png"
           alt="ZNA Teknoloji"
-          style={{ width: '100%', height: '296mm', objectFit: 'cover' }}
+          style={{ width: '100%', height: '285mm', objectFit: 'cover' }}
         />
       </div>
 
