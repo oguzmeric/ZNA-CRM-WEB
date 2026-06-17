@@ -163,12 +163,13 @@ export const kullaniciSifreSifirla = async (hedefKullaniciId, yeniSifre) => {
 }
 
 export const kullaniciSil = async (id) => {
-  const { error } = await supabase
-    .from('kullanicilar')
-    .delete()
-    .eq('id', id)
-    .eq('silinebilir', true)
-  if (error) console.error('kullaniciSil hata:', error.message)
+  // Hem kullanicilar satirini hem auth.users kaydini siler (RPC) →
+  // ayni e-posta ile tekrar kayit olunabilir, cakisma olmaz.
+  const { error } = await supabase.rpc('kullanici_tam_sil', { p_id: id })
+  if (error) {
+    console.error('kullaniciSil hata:', error.message)
+    throw new Error(error.message)
+  }
 }
 
 export const kullaniciDurumGuncelle = async (id, durum) => {
