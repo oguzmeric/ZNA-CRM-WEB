@@ -133,6 +133,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
   const yedekParcalar = Array.isArray(talep.yedekParcalar) ? talep.yedekParcalar : []
   const genelToplam = yedekParcalar.reduce((s, p) => s + Number(p.tutar || 0), 0)
 
+  const fotolar = (Array.isArray(talep.dosyalar) ? talep.dosyalar : [])
+    .filter((d) => d?.tip === 'image' || /\.(jpe?g|png|webp)(\?|$)/i.test(d?.url || ''))
+
   // Print-only stiller
   const printCss = `
     @media print {
@@ -313,7 +316,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
               <tr key={i}>
                 <td style={{ ...cellStyle, textAlign: 'center' }}>{i + 1}</td>
                 <td style={cellStyle}>{p.aciklama || ''}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{Number(p.birimFiyat || 0).toFixed(2)} ₺</td>
+                <td style={{ ...cellStyle, textAlign: 'right' }}>{Number(p.birim_fiyat ?? p.birimFiyat ?? 0).toFixed(2)} ₺</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{p.miktar || 0}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{Number(p.tutar || 0).toFixed(2)} ₺</td>
               </tr>
@@ -395,6 +398,23 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
           <div>{cfg.adres}</div>
           <div>{cfg.iletisim}</div>
         </div>
+
+        {/* ─── SERVİS FOTOĞRAFLARI (varsa, ayrı sayfa) ─── */}
+        {fotolar.length > 0 && (
+          <div style={{ pageBreakBefore: 'always', paddingTop: '4mm' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: ACCENT, marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${ACCENT}` }}>
+              📷 SERVİS FOTOĞRAFLARI
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {fotolar.map((f, i) => (
+                <div key={i} style={{ border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden', pageBreakInside: 'avoid' }}>
+                  <img src={f.url} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: '#f1f5f9' }} />
+                  {f.ad && <div style={{ fontSize: 8, color: '#64748b', padding: '3px 6px', borderTop: '1px solid #e2e8f0' }}>{f.ad}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )
