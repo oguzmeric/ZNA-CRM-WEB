@@ -81,10 +81,14 @@ export default function PaylasimBelge() {
     const meta = document.querySelector('meta[name="viewport"]')
     if (!meta) return
     const eski = meta.getAttribute('content')
-    // width=720 + initial-scale=0.55 → telefonda icerik %20 daha buyuk, baslik+tablo rahat okunur
-    meta.setAttribute('content', 'width=720, initial-scale=0.55, user-scalable=yes')
+    // Teklif A4 ciktisi telefonda fit-to-width olsun diye kuculuyor; servis
+    // raporu / yukleniyor / hata sayfalari normal mobil genisliginde gosterilir.
+    const content = durum === 'teklif'
+      ? 'width=720, initial-scale=0.55, user-scalable=yes'
+      : 'width=device-width, initial-scale=1, user-scalable=yes'
+    meta.setAttribute('content', content)
     return () => { if (eski != null) meta.setAttribute('content', eski) }
-  }, [])
+  }, [durum])
 
   useEffect(() => {
     if (!token || token.length < 8) {
@@ -220,13 +224,11 @@ export default function PaylasimBelge() {
     return (
       <div style={ekranMerkez}>
         <div style={{ ...kart, maxWidth: 560 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 14,
-            background: 'linear-gradient(135deg,#1E5AA8,#4A82C8)',
-            color: '#fff', display: 'inline-flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 800, marginBottom: 16,
-          }}>Z</div>
+          <img
+            src="/logo.jpeg"
+            alt="ZNA Teknoloji"
+            style={{ height: 64, objectFit: 'contain', marginBottom: 16 }}
+          />
           <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
             Servis Raporunuz
           </h1>
@@ -272,7 +274,15 @@ export default function PaylasimBelge() {
                 ⬇ İndir / Kaydet
               </a>
             </div>
-          ) : (
+          ) : null}
+
+          {belge.servisFormuUrl && /iP(hone|od|ad)/.test(navigator.userAgent) && (
+            <div style={{ fontSize: 12, color: '#6B7A93', marginTop: 4, lineHeight: 1.5 }}>
+              iPhone'da önizleme açılırsa: <strong>Paylaş</strong> → <strong>Dosyalara Kaydet</strong>
+            </div>
+          )}
+
+          {!belge.servisFormuUrl && (
             <div style={{
               padding: 12, background: '#FFF7E6', border: '1px solid #F59E0B',
               borderRadius: 8, fontSize: 13, color: '#92400E',
