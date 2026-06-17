@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
 import { musterileriGetir } from '../services/musteriService'
-import { kullaniciSifreSifirla } from '../services/kullaniciService'
+import { kullaniciSifreSifirla, onayBekleyenleriGetir, kullaniciOnayla, kullaniciReddet } from '../services/kullaniciService'
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -69,6 +69,30 @@ export default function KullaniciYonetimi() {
   useEffect(() => {
     musterileriGetir().then(setMusteriler)
   }, [])
+
+  // Onay bekleyen self-kayıtlar
+  const [bekleyenler, setBekleyenler] = useState([])
+  const bekleyenleriYukle = async () => {
+    try { setBekleyenler(await onayBekleyenleriGetir()) }
+    catch (e) { console.warn('[onay] yükleme:', e.message) }
+  }
+  useEffect(() => { bekleyenleriYukle() }, [])
+
+  const onayla = async (id, erisim, ek) => {
+    try {
+      await kullaniciOnayla(id, erisim, ek)
+      toast.success('Kullanıcı onaylandı.')
+      await bekleyenleriYukle()
+    } catch (e) { toast.error('Onaylanamadı: ' + e.message) }
+  }
+  const reddet = async (id) => {
+    const neden = window.prompt('Reddetme nedeni (opsiyonel):') ?? null
+    try {
+      await kullaniciReddet(id, neden)
+      toast.success('Başvuru reddedildi.')
+      await bekleyenleriYukle()
+    } catch (e) { toast.error('Reddedilemedi: ' + e.message) }
+  }
 
   const ayarGuncelle = (alan, deger) => setAyarlar(p => ({ ...p, [alan]: deger }))
 
@@ -308,6 +332,27 @@ export default function KullaniciYonetimi() {
       {/* KULLANICILAR */}
       {aktifSekme === 'kullanicilar' && (
         <>
+          {bekleyenler.length > 0 && (
+            <Card style={{ marginBottom: 16, borderColor: 'var(--brand-primary)' }}>
+              <h2 className="t-h2" style={{ marginBottom: 4 }}>
+                Onay Bekleyenler <span className="tabular-nums" style={{ color: 'var(--brand-primary)' }}>({bekleyenler.length})</span>
+              </h2>
+              <p className="t-caption" style={{ marginBottom: 14 }}>
+                Self-kayıt olan kullanıcılar. Erişim seviyesi seçip onaylayın veya reddedin.
+              </p>
+              {bekleyenler.map(k => (
+                <OnaySatiri
+                  key={k.id}
+                  kullanici={k}
+                  musteriler={musteriler}
+                  moduller={tumModuller}
+                  turler={ANA_TURLER}
+                  onOnayla={onayla}
+                  onReddet={reddet}
+                />
+              ))}
+            </Card>
+          )}
           {goster && (
             <Card ref={formCardRef} style={{ marginBottom: 16, scrollMarginTop: 16 }}>
               <h2 className="t-h2" style={{ marginBottom: 16 }}>{duzenle ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı Ekle'}</h2>
@@ -889,6 +934,91 @@ export default function KullaniciYonetimi() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Onay bekleyen tek satır — erişim seviyesi + ek alan seçimi, onayla/reddet
+function OnaySatiri({ kullanici, musteriler, moduller, turler, onOnayla, onReddet }) {
+  const [erisim, setErisim] = useState('musteri')
+  const [musteriId, setMusteriId] = useState('')
+  const [seciliModuller, setSeciliModuller] = useState([])
+  const [seciliTurler, setSeciliTurler] = useState([])
+  const [isleniyor, setIsleniyor] = useState(false)
+
+  const chip = (aktif) => ({
+    padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+    border: `1px solid ${aktif ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+    background: aktif ? 'var(--brand-primary)' : 'transparent',
+    color: aktif ? '#fff' : 'var(--text-secondary)',
+  })
+
+  const togGenel = (arr, set, id) =>
+    set(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id])
+
+  const onayDisabled = isleniyor || (erisim === 'musteri' && !musteriId)
+
+  const tikla = async () => {
+    setIsleniyor(true)
+    await onOnayla(kullanici.id, erisim, {
+      musteriId: erisim === 'musteri' ? (musteriId || null) : null,
+      moduller: erisim === 'personel' ? seciliModuller : [],
+      izinliTurler: erisim === 'personel' ? seciliTurler : [],
+    })
+    setIsleniyor(false)
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border-default)', borderRadius: 10, padding: 14, marginBottom: 10 }}>
+      <div style={{ fontWeight: 700 }}>{kullanici.email}</div>
+      <div className="t-caption" style={{ marginBottom: 10 }}>{kullanici.ad}</div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        {[['musteri', 'Müşteri'], ['personel', 'Personel'], ['yonetici', 'Yönetici']].map(([id, label]) => (
+          <button key={id} type="button" style={chip(erisim === id)} onClick={() => setErisim(id)}>{label}</button>
+        ))}
+      </div>
+
+      {erisim === 'musteri' && (
+        <div style={{ marginBottom: 10 }}>
+          <Label>Bağlı firma</Label>
+          <CustomSelect
+            value={musteriId ? String(musteriId) : ''}
+            onChange={(e) => setMusteriId(e.target.value ? Number(e.target.value) : '')}
+          >
+            <option value="">Firma seçin…</option>
+            {musteriler.map(m => (
+              <option key={m.id} value={String(m.id)}>{m.firma}</option>
+            ))}
+          </CustomSelect>
+        </div>
+      )}
+
+      {erisim === 'personel' && (
+        <div style={{ marginBottom: 10 }}>
+          <Label>Modüller</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {moduller.map(mod => (
+              <button key={mod.id} type="button" style={chip(seciliModuller.includes(mod.id))}
+                onClick={() => togGenel(seciliModuller, setSeciliModuller, mod.id)}>{mod.isim}</button>
+            ))}
+          </div>
+          <Label>İzinli servis türleri</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {turler.map(t => (
+              <button key={t.id} type="button" style={chip(seciliTurler.includes(t.id))}
+                onClick={() => togGenel(seciliTurler, setSeciliTurler, t.id)}>{t.isim}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+        <Button variant="primary" disabled={onayDisabled} onClick={tikla}>
+          {isleniyor ? 'İşleniyor…' : 'Onayla'}
+        </Button>
+        <Button variant="danger" disabled={isleniyor} onClick={() => onReddet(kullanici.id)}>Reddet</Button>
+      </div>
     </div>
   )
 }
