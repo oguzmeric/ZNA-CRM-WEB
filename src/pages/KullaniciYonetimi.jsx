@@ -83,6 +83,9 @@ export default function KullaniciYonetimi() {
       await kullaniciOnayla(id, erisim, ek)
       toast.success('Kullanıcı onaylandı.')
       await bekleyenleriYukle()
+      // Ana kullanıcı listesi AuthContext'ten geliyor; onaylanan kullanıcının
+      // güncel tip/rol'ü görünsün diye sayfayı tazele.
+      setTimeout(() => window.location.reload(), 700)
     } catch (e) { toast.error('Onaylanamadı: ' + e.message) }
   }
   const reddet = async (id) => {
