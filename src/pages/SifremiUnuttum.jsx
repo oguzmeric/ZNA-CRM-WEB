@@ -181,10 +181,10 @@ const styles = `
   box-shadow: 0 24px 50px -20px rgba(30,90,168,0.18), 0 8px 20px -8px rgba(15,27,46,0.06); }
 .zna-sifre .brand { display: flex; justify-content: center; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--border-default); }
 .zna-sifre .brand-logo { height: 52px; width: auto; object-fit: contain; display: block; }
-.zna-sifre .ikon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 14px;
+.zna-sifre .ikon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; margin: 0 auto 14px;
   color: var(--brand-primary); background: var(--brand-primary-soft); }
-.zna-sifre .title { font-family: 'Bricolage Grotesque', var(--font-sans); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
-.zna-sifre .sub { color: var(--text-tertiary); font-size: 13.5px; margin: 0 0 20px; line-height: 1.5; }
+.zna-sifre .title { font-family: 'Bricolage Grotesque', var(--font-sans); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; text-align: center; }
+.zna-sifre .sub { color: var(--text-tertiary); font-size: 13.5px; margin: 0 0 20px; line-height: 1.5; text-align: center; }
 .zna-sifre .group { margin-bottom: 14px; }
 .zna-sifre .label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 7px; letter-spacing: 0.06em; text-transform: uppercase; }
 .zna-sifre .input { width: 100%; padding: 12px 14px; background: var(--surface-sunken); border: 1.5px solid var(--border-default); border-radius: 10px; color: var(--text-primary); font: 500 14px/20px var(--font-sans); outline: none; transition: border-color 180ms, box-shadow 180ms; }
