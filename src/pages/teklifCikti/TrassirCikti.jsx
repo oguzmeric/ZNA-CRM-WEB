@@ -54,10 +54,10 @@ export default function TrassirCikti({ teklif }) {
 
   const sayfaStil = {
     width: '210mm',
-    // height: '297mm' (sabit) — minHeight degildi: content cikinca div buyuyor,
-    // pageBreakAfter:always her uzayan sayfaya ekstra fiziksel sayfa ekliyordu
-    // (5 mantiksal sayfa -> 10 fiziksel sayfa bug'i).
-    height: '297mm',
+    // height: 296mm (297mm degil): yazicinin basilabilir alani alt-piksel
+    // yuvarlama ile 297mm'den birazcik kucuk; tam 297mm her sayfayi 2. fiziksel
+    // sayfaya tasiriyordu (5 -> 10 sayfa bug'i). 1mm pay ile taşma biter.
+    height: '296mm',
     overflow: 'hidden',
     pageBreakAfter: 'always',
     breakAfter: 'page', // modern CSS karsiligi (Firefox/Safari)

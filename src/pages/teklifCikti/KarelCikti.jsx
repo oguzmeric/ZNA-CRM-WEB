@@ -76,7 +76,7 @@ export default function KarelCikti({ teklif }) {
 
   const sayfaStil = {
     width: '210mm',
-    minHeight: '297mm',
+    minHeight: '296mm',
     pageBreakAfter: 'auto',
     padding: '20mm 20mm 35mm 20mm',
     boxSizing: 'border-box',
