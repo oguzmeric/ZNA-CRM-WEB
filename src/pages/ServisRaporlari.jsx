@@ -143,7 +143,7 @@ export default function ServisRaporlari() {
     if (tarihBaslangic && tarihBitis) filtreOzet.push(`Tarih: ${formatTarih(tarihBaslangic)} – ${formatTarih(tarihBitis)}`)
     else if (tarihBaslangic) filtreOzet.push(`Tarih: ${formatTarih(tarihBaslangic)}'dan itibaren`)
     else if (tarihBitis) filtreOzet.push(`Tarih: ${formatTarih(tarihBitis)}'a kadar`)
-    if (firmaFiltre) filtreOzet.push(`Firma: ${firmaFiltre}`)
+    if (firmaFiltre) filtreOzet.push(`Müşteri Adı: ${firmaFiltre}`)
     if (teknisyenFiltre) filtreOzet.push(`Teknisyen: ${teknisyenFiltre}`)
     if (arizaFiltre) filtreOzet.push(`Arıza: ${arizaFiltre}`)
     if (takipFiltre) filtreOzet.push(`Takip: ${takipFiltre}`)
@@ -209,7 +209,7 @@ export default function ServisRaporlari() {
         <th>Fiş No</th>
         <th>Tarih</th>
         <th>Takip</th>
-        <th>Firma</th>
+        <th>Müşteri Adı</th>
         <th>Lokasyon</th>
         <th>Sistem</th>
         <th>Teknisyen</th>
@@ -287,7 +287,7 @@ export default function ServisRaporlari() {
   </div>
 
   <table>
-    ${satir('Firma', r.firma)}
+    ${satir('Müşteri Adı', r.firma)}
     ${r.lokasyon ? satir('Lokasyon', r.lokasyon) : ''}
     ${satir('Teknisyen', r.teknisyen)}
     ${satir('Bildirim Tarihi', formatTarih(r.bilTarih))}
@@ -373,7 +373,7 @@ export default function ServisRaporlari() {
             />
           </div>
           <div>
-            <Label>Firma</Label>
+            <Label>Müşteri Adı</Label>
             <Select value={firmaFiltre} onChange={e => setFirmaFiltre(e.target.value)}>
               <option value="">Tümü</option>
               {firmalar.map(f => <option key={f} value={f}>{f}</option>)}
@@ -502,7 +502,7 @@ export default function ServisRaporlari() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <thead>
                 <tr>
-                  {['Fiş No', 'Takip', 'Firma', 'Lokasyon', 'Arıza', 'Sis.No', 'Teknisyen', 'Gid. Tarih', 'Sonuç'].map((h, i) => (
+                  {['Fiş No', 'Takip', 'Müşteri Adı', 'Lokasyon', 'Arıza', 'Sis.No', 'Teknisyen', 'Gid. Tarih', 'Sonuç'].map((h, i) => (
                     <th key={i} style={{
                       background: 'var(--surface-sunken)',
                       padding: '10px 12px',
@@ -651,7 +651,7 @@ export default function ServisRaporlari() {
             {/* Firma + lokasyon */}
             <DetayAlan
               icon={<Building2 size={14} strokeWidth={1.5} />}
-              baslik="Firma"
+              baslik="Müşteri Adı"
               icerik={seciliRapor.firma}
             />
             {seciliRapor.lokasyon && (
