@@ -12,6 +12,7 @@ function Login() {
   const [sifre, setSifre] = useState('')
   const [sifreGoster, setSifreGoster] = useState(false)
   const [hata, setHata] = useState('')
+  const [onayMesaji, setOnayMesaji] = useState('') // onay bekliyor / reddedildi — ayrı görünüm
   const [yukleniyor, setYukleniyor] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -24,6 +25,7 @@ function Login() {
   const handleGiris = async (e) => {
     e?.preventDefault?.()
     setHata('')
+    setOnayMesaji('')
     if (yukleniyor) return
     setYukleniyor(true)
     try {
@@ -35,9 +37,9 @@ function Login() {
       }
     } catch (err) {
       console.error('[Login] girisYap hata:', err)
-      // Onay/red mesajları doğrudan gösterilir; diğer hatalara önek eklenir
+      // Onay bekliyor / reddedildi → kırmızı "hata" değil, ayrı bilgi görünümü
       if (err?.kod === 'ONAY_BEKLIYOR' || err?.kod === 'REDDEDILDI') {
-        setHata(err.message)
+        setOnayMesaji(err.message)
       } else {
         setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
       }
@@ -167,6 +169,16 @@ function Login() {
                 <div className="error-box" role="alert">
                   <AlertTriangle size={15} strokeWidth={1.8} />
                   <span>{hata}</span>
+                </div>
+              )}
+
+              {onayMesaji && (
+                <div className="pending-box" role="status">
+                  <Clock size={16} strokeWidth={2} />
+                  <div>
+                    <strong>Hesabınız onay sürecinde</strong>
+                    <span>{onayMesaji}</span>
+                  </div>
                 </div>
               )}
 
@@ -503,6 +515,19 @@ const loginStyles = `
   margin-bottom: 14px;
 }
 .zna-login .error-box svg { flex-shrink: 0; margin-top: 1px; }
+
+.zna-login .pending-box {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  background: rgba(245,158,11,0.10);
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 10px;
+  color: #92600a;
+  margin-bottom: 14px;
+}
+.zna-login .pending-box svg { flex-shrink: 0; margin-top: 1px; color: #d97706; }
+.zna-login .pending-box strong { display: block; font: 700 13.5px/18px var(--font-sans); margin-bottom: 2px; }
+.zna-login .pending-box span { font: 500 12.5px/17px var(--font-sans); color: #7c5208; }
 
 .zna-login .submit-btn {
   width: 100%; padding: 14px;
