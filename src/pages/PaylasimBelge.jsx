@@ -72,6 +72,8 @@ export default function PaylasimBelge() {
   const sablonOverride = searchParams.get('t')   // ornek: 'karel' — link icinde gelir
   const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
   const [belge, setBelge] = useState(null)
+  const [teklifGoster, setTeklifGoster] = useState(false) // teklif: once kart, sonra cikti
+  const [teklifYazdir, setTeklifYazdir] = useState(false) // cikti acilinca otomatik yazdir
 
   // Cikti komponentleri A4 (~794px) genisliginde tasarlandi.
   // Telefonda viewport 'width=device-width' ise tablo kolonlari sikisip
@@ -83,12 +85,13 @@ export default function PaylasimBelge() {
     const eski = meta.getAttribute('content')
     // Teklif A4 ciktisi telefonda fit-to-width olsun diye kuculuyor; servis
     // raporu / yukleniyor / hata sayfalari normal mobil genisliginde gosterilir.
-    const content = durum === 'teklif'
+    // A4 fit-to-width yalnizca teklif CIKTISI gosterilirken; kart/diger sayfalar normal
+    const content = (durum === 'teklif' && teklifGoster)
       ? 'width=720, initial-scale=0.55, user-scalable=yes'
       : 'width=device-width, initial-scale=1, user-scalable=yes'
     meta.setAttribute('content', content)
     return () => { if (eski != null) meta.setAttribute('content', eski) }
-  }, [durum])
+  }, [durum, teklifGoster])
 
   useEffect(() => {
     if (!token || token.length < 8) {
@@ -161,6 +164,15 @@ export default function PaylasimBelge() {
     }
   }
 
+  // Teklif "Indir / Kaydet": cikti acilinca gorseller yuklensin diye bekleyip yazdir
+  useEffect(() => {
+    if (durum === 'teklif' && teklifGoster && teklifYazdir) {
+      setTeklifYazdir(false)
+      const t = setTimeout(() => window.print(), 700)
+      return () => clearTimeout(t)
+    }
+  }, [durum, teklifGoster, teklifYazdir])
+
   if (durum === 'yukleniyor') {
     return (
       <div style={ekranMerkez}>
@@ -196,6 +208,54 @@ export default function PaylasimBelge() {
     const tip = (sablonOverride && ciktiMap[sablonOverride]) ? sablonOverride
               : (belge?.teklifTipi || 'standart')
     const Cikti = ciktiMap[tip] || StandartCikti
+
+    // Once markali kart (servis raporu ile tutarli); "Ac" cikti'yi gosterir
+    if (!teklifGoster) {
+      const linkBtn = {
+        cursor: 'pointer', padding: '12px 24px', borderRadius: 10,
+        fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+      }
+      return (
+        <div style={ekranMerkez}>
+          <div style={{ ...kart, maxWidth: 560 }}>
+            <img src="/logo.jpeg" alt="ZNA Teknoloji"
+              style={{ height: 64, objectFit: 'contain', display: 'block', margin: '0 auto 16px' }} />
+            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
+              Teklifiniz
+            </h1>
+            <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>
+              {belge.teklifNo ? `${belge.teklifNo} — ` : ''}{belge.tarih ? new Date(belge.tarih).toLocaleDateString('tr-TR') : ''}
+            </p>
+            <div style={{
+              textAlign: 'left', background: '#F4F6F8', border: '1px solid #DEE3EC',
+              borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: '#3B4960',
+            }}>
+              <div><strong>Firma:</strong> {belge.firmaAdi || '—'}</div>
+              {belge.konu && <div style={{ marginTop: 4 }}><strong>Konu:</strong> {belge.konu}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+              <button onClick={() => setTeklifGoster(true)}
+                style={{ ...linkBtn, background: '#1E5AA8', color: '#fff', border: 'none' }}>
+                📄 Aç
+              </button>
+              <button onClick={() => { setTeklifGoster(true); setTeklifYazdir(true) }}
+                style={{ ...linkBtn, background: '#fff', color: '#1E5AA8', border: '1.5px solid #1E5AA8' }}>
+                ⬇ İndir / Kaydet
+              </button>
+            </div>
+            {/iP(hone|od|ad)/.test(navigator.userAgent) && (
+              <div style={{ fontSize: 12, color: '#6B7A93', marginTop: 4, lineHeight: 1.5 }}>
+                iPhone'da kaydetmek için yazdırma ekranında: <strong>PDF olarak kaydet</strong>
+              </div>
+            )}
+            <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+              © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <>
         {/* Yazdir butonu — sag-alt floating, icerige binmez. Baskida gizlenir */}
