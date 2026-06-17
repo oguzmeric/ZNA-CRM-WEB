@@ -59,8 +59,11 @@ export default function TrassirCikti({ teklif }) {
     // sayfaya tasiriyordu (5 -> 10 sayfa bug'i). 1mm pay ile taşma biter.
     height: '296mm',
     overflow: 'hidden',
-    pageBreakAfter: 'always',
-    breakAfter: 'page', // modern CSS karsiligi (Firefox/Safari)
+    // page-break-AFTER, bir sayfa-dolusu ogeden sonra iOS'ta ekstra bos sayfa
+    // ekliyordu. page-break-BEFORE ile her yeni sayfa kendi onunde kiriliyor;
+    // kapak (ilk sayfa) asagida bunu 'auto' ile devre disi birakir.
+    pageBreakBefore: 'always',
+    breakBefore: 'page',
     padding: '20mm 20mm 35mm 20mm', // bottom 35mm = footer için yer
     boxSizing: 'border-box',
     fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -91,12 +94,12 @@ export default function TrassirCikti({ teklif }) {
         }
       `}</style>
 
-      {/* Sayfa 1 — Kapak */}
-      <div className="teklif-sayfa" style={{ ...sayfaStil, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      {/* Sayfa 1 — Kapak (ilk sayfa: oncesinde kirma yok) */}
+      <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakBefore: 'auto', breakBefore: 'auto', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <img
           src="/teklif-assets/zna-cover.png"
           alt="ZNA Teknoloji"
-          style={{ width: '100%', height: '297mm', objectFit: 'cover' }}
+          style={{ width: '100%', height: '296mm', objectFit: 'cover' }}
         />
       </div>
 
@@ -215,7 +218,7 @@ export default function TrassirCikti({ teklif }) {
       </div>
 
       {/* Sayfa 5 — Referanslar */}
-      <div className="teklif-sayfa" style={{ ...sayfaStil, pageBreakAfter: 'auto', breakAfter: 'auto' }}>
+      <div className="teklif-sayfa" style={sayfaStil}>
         <img src="/teklif-assets/zna-logo.jpg" alt="ZNA Teknoloji"
           style={{ position: 'absolute', top: '12mm', left: '14mm', height: 56, objectFit: 'contain', zIndex: 5 }} />
         <h2 style={{ fontSize: 24, color: '#0176D3', fontWeight: 600, textAlign: 'center', marginTop: 30, marginBottom: 36, letterSpacing: '0', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
