@@ -163,6 +163,11 @@ function Login() {
                     {sifreGoster ? 'Gizle' : 'Göster'}
                   </button>
                 </div>
+                <div style={{ textAlign: 'right', marginTop: 6 }}>
+                  <a href="/sifremi-unuttum" style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary)', textDecoration: 'none' }}>
+                    Şifremi unuttum?
+                  </a>
+                </div>
               </div>
 
               {hata && (
