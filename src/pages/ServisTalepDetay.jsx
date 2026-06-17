@@ -292,7 +292,7 @@ export default function ServisTalepDetay() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-                <CardTitle style={{ margin: 0 }}>Talep İçeriği</CardTitle>
+                <CardTitle style={{ margin: 0 }}>Arıza Açıklaması</CardTitle>
               </div>
               {!aciklamaDuzenle && (
                 <button
