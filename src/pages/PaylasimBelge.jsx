@@ -227,7 +227,7 @@ export default function PaylasimBelge() {
           <img
             src="/logo.jpeg"
             alt="ZNA Teknoloji"
-            style={{ height: 64, objectFit: 'contain', marginBottom: 16 }}
+            style={{ height: 64, objectFit: 'contain', display: 'block', margin: '0 auto 16px' }}
           />
           <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
             Servis Raporunuz
