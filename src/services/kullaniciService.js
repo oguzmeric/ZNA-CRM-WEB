@@ -14,7 +14,9 @@ export const kullanicilariGetir = async () => {
 // 1. auth.signInWithPassword(email, password)
 // 2. Başarılı ise kullanicilar tablosundan profili çek (auth_id ile)
 export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
-  const email = kullaniciAdiToEmail(kullaniciAdi)
+  // '@' içeriyorsa gerçek e-posta (self-kayıt kullanıcısı); yoksa kullanıcı adı → sentetik e-posta
+  const girdi = (kullaniciAdi ?? '').trim()
+  const email = girdi.includes('@') ? girdi.toLowerCase() : kullaniciAdiToEmail(girdi)
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password: sifre,

@@ -125,14 +125,14 @@ function Login() {
 
             <form onSubmit={handleGiris}>
               <div className="form-group">
-                <label className="form-label" htmlFor="username">Kullanıcı adı</label>
+                <label className="form-label" htmlFor="username">Kullanıcı adı veya e-posta</label>
                 <input
                   className="form-input"
                   type="text"
                   id="username"
                   value={kullaniciAdi}
                   onChange={(e) => setKullaniciAdi(e.target.value)}
-                  placeholder="ornek.kullanici"
+                  placeholder="ornek.kullanici / ad@firma.com"
                   autoComplete="username"
                   autoFocus
                   disabled={yukleniyor}
