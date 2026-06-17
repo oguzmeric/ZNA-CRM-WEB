@@ -11,12 +11,10 @@ import {
   AlertTriangle, ArrowRight, ArrowLeft, Mail, Lock, CheckCircle2,
   Shield, Clock, Zap,
 } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 import { kayitKodGonder, kayitKodDogrula } from '../services/emailAuthService'
 
 function Signup() {
   const navigate = useNavigate()
-  const { girisYap } = useAuth()
 
   const [adim, setAdim] = useState(1)
   const [email, setEmail] = useState('')
@@ -80,15 +78,9 @@ function Signup() {
     setYukleniyor(true)
     try {
       await kayitKodDogrula({ email, kod, yeniSifre: sifre, amac: 'kayit' })
-      // Otomatik giris
-      const basarili = await girisYap(email, sifre)
-      if (basarili) {
-        navigate('/dashboard', { replace: true })
-      } else {
-        // Kayit basarili ama otomatik giris yapilamadi — login'e yonlendir
-        setBilgi('Kayıt tamamlandı! Lütfen giriş yapın.')
-        setTimeout(() => navigate('/login', { replace: true }), 1500)
-      }
+      // Hesap onay bekliyor — otomatik giriş denenmez (giriş onaya kadar engelli)
+      setBilgi('Kayıt alındı! Hesabınız yönetici onayından sonra aktif olacak. Onaylanınca giriş yapabilirsiniz.')
+      setTimeout(() => navigate('/login', { replace: true }), 2500)
     } catch (err) {
       setHata(err?.message || 'Kayıt tamamlanamadı.')
     } finally {

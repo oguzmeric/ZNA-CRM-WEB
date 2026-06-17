@@ -35,7 +35,12 @@ function Login() {
       }
     } catch (err) {
       console.error('[Login] girisYap hata:', err)
-      setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
+      // Onay/red mesajları doğrudan gösterilir; diğer hatalara önek eklenir
+      if (err?.kod === 'ONAY_BEKLIYOR' || err?.kod === 'REDDEDILDI') {
+        setHata(err.message)
+      } else {
+        setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
+      }
     } finally {
       setYukleniyor(false)
     }
