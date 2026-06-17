@@ -364,8 +364,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
                 <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
                 <div style={{ fontSize: 8, color: '#666' }}>{talep.teslimAlanAd || talep.ilgiliKisi || 'Kurum/Kuruluş Yetkilisi'}</div>
                 {talep.musteriImza
-                  ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 48, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
-                  : <div style={{ height: 50 }} />}
+                  ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 90, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
+                  : <div style={{ height: 64 }} />}
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
                   ONAY / İMZA
                 </div>
