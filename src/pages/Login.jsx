@@ -198,7 +198,10 @@ function Login() {
             </form>
 
             <p className="small-print">
-              Hesabınız yok mu? <a href="/signup" className="link">Hesap oluştur</a>
+              Hesabınız yok mu?{' '}
+              <a href="/signup" className="link" style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--brand-primary)' }}>
+                Hesap oluştur
+              </a>
             </p>
           </div>
         </div>
