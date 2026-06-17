@@ -102,13 +102,26 @@ serve(async (req) => {
     // Kullaniciyi bul (varsa)
     const { data: mevcut } = await supa
       .from('kullanicilar')
-      .select('id, ad, email, auth_id, email_dogrulandi, tip')
+      .select('id, ad, email, auth_id, email_dogrulandi, tip, onay_durum')
       .eq('email', email)
       .maybeSingle()
 
     let authUserId: string | null = mevcut?.auth_id ?? null
 
     if (amac === 'kayit') {
+      // Zaten kayıtlı ve onay bekliyorsa: tekrar kayıt açma, bilgilendir
+      if (mevcut && mevcut.onay_durum === 'beklemede') {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            kullaniciId: mevcut.id,
+            authId: authUserId,
+            mesaj: 'Başvurunuz alınmış ve onay bekliyor. Yönetici onayından sonra giriş yapabilirsiniz.',
+            onayBekliyor: true,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
       // Auth kaydi yoksa olustur
       if (!authUserId) {
         const { data: authData, error: authErr } = await supa.auth.admin.createUser({
@@ -132,6 +145,7 @@ serve(async (req) => {
 
       // kullanicilar tablosunda kayit yoksa olustur, varsa email_dogrulandi=true
       let kullaniciId = mevcut?.id
+      const yeniKayit = !mevcut
       if (!mevcut) {
         // Yeni kullanici — varsayilan: musteri portal
         // (Personel davet sistemiyle ayri eklenir, bu akis musteri self-signup)
@@ -146,6 +160,7 @@ serve(async (req) => {
             auth_id: authUserId,
             tip: 'musteri',
             durum: 'cevrimdisi',
+            onay_durum: 'beklemede',
           })
           .select('id')
           .single()
@@ -165,7 +180,10 @@ serve(async (req) => {
           ok: true,
           kullaniciId,
           authId: authUserId,
-          mesaj: 'Kayıt tamamlandı. Şimdi giriş yapabilirsiniz.',
+          mesaj: yeniKayit
+            ? 'Kayıt tamamlandı. Hesabınız yönetici onayından sonra aktif olacak.'
+            : 'Kayıt tamamlandı. Şimdi giriş yapabilirsiniz.',
+          onayBekliyor: yeniKayit,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
