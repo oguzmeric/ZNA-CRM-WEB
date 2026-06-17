@@ -344,7 +344,7 @@ export default function PaylasimBelge() {
             🖨 Yazdır / PDF
           </button>
         </div>
-        <ServisFormu talep={belge} sirket="zna" />
+        <ServisFormu talep={belge} sirket={searchParams.get('s') === 'anadolunet' ? 'anadolunet' : 'zna'} />
       </>
     )
   }

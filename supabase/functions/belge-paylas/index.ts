@@ -232,6 +232,9 @@ serve(async (req) => {
     const sablonRaw: string = (body?.sablon ?? '').toString().toLowerCase()
     const sablon: string | null =
       ['standart', 'trassir', 'karel'].includes(sablonRaw) ? sablonRaw : null
+    // Servis raporu icin sirket/format (zna varsayilan -> param eklenmez)
+    const sirketRaw: string = (body?.sirket ?? '').toString().toLowerCase()
+    const sirket: string | null = sirketRaw === 'anadolunet' ? 'anadolunet' : null
 
     if (!['teklif', 'servis_raporu'].includes(belgeTipi)) return err(400, 'Gecersiz belge tipi.')
     if (!belgeId || belgeId < 1) return err(400, 'Gecersiz belge id.')
@@ -276,8 +279,11 @@ serve(async (req) => {
       return err(500, 'Paylasim kaydedilemedi.')
     }
 
-    // Teklif icin sablon query param'i ekle (?t=karel gibi)
-    const link = `${PUBLIC_BASE_URL}/p/${token}` + (sablon ? `?t=${sablon}` : '')
+    // Query param'lar: teklif sablonu (?t=karel) ve/veya servis sirketi (?s=anadolunet)
+    const qp: string[] = []
+    if (sablon) qp.push(`t=${sablon}`)
+    if (sirket) qp.push(`s=${sirket}`)
+    const link = `${PUBLIC_BASE_URL}/p/${token}` + (qp.length ? `?${qp.join('&')}` : '')
     // Mail'den gelen kullanici zaten "Belgeyi Goruntule"ye bastigi icin karti
     // atlayip belgeyi DIREKT acsin (?ac=1). SMS'te kart kalir (ciplak link).
     const mailLink = link + (link.includes('?') ? '&' : '?') + 'ac=1'

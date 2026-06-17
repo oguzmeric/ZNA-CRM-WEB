@@ -50,6 +50,7 @@ export default function BelgePaylasModal({
   const [gsm, setGsm] = useState('')
   const [sureGun, setSureGun] = useState(30)
   const [sablon, setSablon] = useState('standart')
+  const [sirket, setSirket] = useState('zna') // servis raporu: ZNA / Anadolunet
   const [ozelMesaj, setOzelMesaj] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [hata, setHata] = useState(null)
@@ -62,6 +63,7 @@ export default function BelgePaylasModal({
       setGsm(baslangicGsm || '')
       setSureGun(30)
       setSablon(baslangicSablon || 'standart')
+      setSirket('zna')
       setOzelMesaj('')
       setHata(null)
       setSonuc(null)
@@ -94,6 +96,7 @@ export default function BelgePaylasModal({
         gsm: smsGerekli ? gsm.trim() : undefined,
         sure_gun: sureGun,
         sablon: belgeTipi === 'teklif' ? sablon : undefined,
+        sirket: belgeTipi === 'servis_raporu' ? sirket : undefined,
         ozel_mesaj: ozelMesaj.trim() || undefined,
       })
       setSonuc(res)
@@ -199,6 +202,36 @@ export default function BelgePaylasModal({
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
               Müşteri linke tıkladığında seçtiğiniz şablonla görür.
+            </div>
+          </div>
+        )}
+
+        {belgeTipi === 'servis_raporu' && (
+          <div>
+            <Label>Form Şirketi</Label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {[{ id: 'zna', label: 'ZNA Teknoloji' }, { id: 'anadolunet', label: 'Anadolunet' }].map(({ id, label }) => {
+                const aktif = sirket === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSirket(id)}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 8,
+                      border: aktif ? '1.5px solid var(--accent, #1E5AA8)' : '1px solid var(--border-subtle)',
+                      background: aktif ? 'rgba(30,90,168,0.06)' : 'var(--surface-bg)',
+                      color: aktif ? 'var(--accent, #1E5AA8)' : 'var(--text-secondary)',
+                      cursor: 'pointer', fontSize: 13, fontWeight: aktif ? 600 : 500,
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+              Müşteri formu seçtiğiniz şirket başlığıyla görür.
             </div>
           </div>
         )}
