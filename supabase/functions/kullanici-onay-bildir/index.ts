@@ -59,6 +59,9 @@ function onayMaili(ad: string): { subject: string; html: string; text: string } 
     `İyi çalışmalar,\nZNA Teknoloji`
   const html =
     `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2937">` +
+    `<div style="text-align:center;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid #e5e7eb">` +
+    `<img src="https://talep.znateknoloji.com/logo.jpeg" alt="ZNA Teknoloji" width="150" style="display:inline-block;height:auto;border:0;outline:none;text-decoration:none"/>` +
+    `</div>` +
     `<h2 style="color:#0f1b2e;margin:0 0 12px">Hesabınız onaylandı ✅</h2>` +
     `<p>Merhaba <strong>${isim}</strong>,</p>` +
     `<p>ZNA CRM hesabınız yönetici tarafından <strong>onaylandı</strong>. Artık e-posta adresiniz ve şifrenizle giriş yapabilirsiniz.</p>` +

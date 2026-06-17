@@ -84,8 +84,7 @@ function SifremiUnuttum() {
       <div className="mesh" />
       <div className="card">
         <div className="brand">
-          <img src="/logo.jpeg" alt="ZNA" className="brand-logo" />
-          <span>ZNA Teknoloji</span>
+          <img src="/logo.jpeg" alt="ZNA Teknoloji" className="brand-logo" />
         </div>
 
         {adim === 1 && (
@@ -97,7 +96,7 @@ function SifremiUnuttum() {
               <div className="group">
                 <label className="label" htmlFor="su-email">E-posta adresi</label>
                 <input className="input" type="email" id="su-email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} placeholder="adsoyad@firma.com"
+                  onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com"
                   autoComplete="email" autoFocus disabled={yukleniyor} />
               </div>
               {hata && <ErrorBox mesaj={hata} />}
@@ -180,9 +179,8 @@ const styles = `
 .zna-sifre .card { position: relative; z-index: 1; width: 100%; max-width: 420px;
   background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 16px; padding: 32px;
   box-shadow: 0 24px 50px -20px rgba(30,90,168,0.18), 0 8px 20px -8px rgba(15,27,46,0.06); }
-.zna-sifre .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.zna-sifre .brand-logo { height: 32px; width: auto; object-fit: contain; }
-.zna-sifre .brand span { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.zna-sifre .brand { display: flex; justify-content: center; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--border-default); }
+.zna-sifre .brand-logo { height: 52px; width: auto; object-fit: contain; display: block; }
 .zna-sifre .ikon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 14px;
   color: var(--brand-primary); background: var(--brand-primary-soft); }
 .zna-sifre .title { font-family: 'Bricolage Grotesque', var(--font-sans); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }

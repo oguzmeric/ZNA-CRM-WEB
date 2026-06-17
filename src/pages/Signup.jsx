@@ -175,7 +175,7 @@ function Signup() {
                       id="signup-email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      placeholder="adsoyad@firma.com"
+                      placeholder="ornek@eposta.com"
                       autoComplete="email"
                       autoFocus
                       disabled={yukleniyor}

@@ -62,18 +62,8 @@ znateknoloji.com`
     <tr><td align="center">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(15,27,46,0.08);overflow:hidden;">
         <!-- Header -->
-        <tr><td style="padding:32px 32px 24px;border-bottom:1px solid #DEE3EC;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-            <tr>
-              <td valign="middle" style="padding-right:12px;">
-                <div style="width:44px;height:44px;background:linear-gradient(135deg,#1E5AA8,#4A82C8);border-radius:11px;display:inline-block;text-align:center;line-height:44px;color:#fff;font-weight:800;font-size:18px;">Z</div>
-              </td>
-              <td valign="middle">
-                <div style="font-size:18px;font-weight:700;color:#0F1B2E;letter-spacing:-0.01em;">ZNA Teknoloji</div>
-                <div style="font-size:11px;color:#6B7A93;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-top:2px;">Servis &amp; Saha Yönetim Platformu</div>
-              </td>
-            </tr>
-          </table>
+        <tr><td align="center" style="padding:28px 32px 22px;border-bottom:1px solid #DEE3EC;">
+          <img src="https://talep.znateknoloji.com/logo.jpeg" alt="ZNA Teknoloji" width="150" style="display:block;height:auto;border:0;outline:none;text-decoration:none;" />
         </td></tr>
 
         <!-- Body -->
