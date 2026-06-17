@@ -7,8 +7,30 @@ import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
 } from '../components/ui'
 import { servisRaporlariSayfa, servisRaporFiltreSecenekleri } from '../services/servisRaporService'
+import ServisFormu from './servisCikti/ServisFormu'
 
 const SAYFA_BOYUTU = 50
+
+// servis_raporlari kaydını ServisFormu'nun beklediği `talep` şekline çevirir.
+// Sadece raporda var olan alanlar dolar; yedek parça / imza / foto / checkbox'lar
+// bu kaynakta olmadığı için formda boş kalır.
+function raporToTalep(r) {
+  if (!r) return {}
+  const bildiren = (r.bildiren && r.bildiren.trim() && r.bildiren !== '.') ? r.bildiren : ''
+  return {
+    talepNo: r.fisNo,
+    firmaAdi: r.firma,
+    lokasyon: r.lokasyon,
+    ilgiliKisi: bildiren,
+    konu: r.arizaKodu || '',
+    olusturmaTarihi: r.bilTarih,
+    tarih: r.gidTarih || r.bilTarih,
+    kunyeNumarasi: r.sisNo || '',
+    servisNo: r.fisNo,
+    aciklama: r.bildirilen || '',        // Arıza Açıklaması
+    cozumAciklamasi: r.sonuc || '',       // Yapılan İşlemler
+  }
+}
 
 const trNormalize = (str = '') =>
   String(str).toLowerCase()
@@ -47,6 +69,8 @@ export default function ServisRaporlari() {
   const [tarihBitis, setTarihBitis] = useState('')
   const [sayfa, setSayfa] = useState(1)
   const [seciliRapor, setSeciliRapor] = useState(null)
+  const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
+  const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
 
   // Filtre dropdown'ları için unique listeler — bir kez çekilir (sayfa yaşamı boyunca)
   const [firmalar, setFirmalar] = useState([])
@@ -590,6 +614,13 @@ export default function ServisRaporlari() {
           <>
             <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
             <Button
+              variant="secondary"
+              iconLeft={<FileText size={14} strokeWidth={1.5} />}
+              onClick={() => { setFormRapor(seciliRapor); setSeciliRapor(null) }}
+            >
+              Servis Formu
+            </Button>
+            <Button
               variant="primary"
               iconLeft={<Printer size={14} strokeWidth={1.5} />}
               onClick={() => raporPdfYazdir(seciliRapor)}
@@ -703,6 +734,60 @@ export default function ServisRaporlari() {
           </div>
         )}
       </Modal>
+
+      {/* Servis formu görünümü — raporu Servis Talepleri'ndeki formla aynı şablonda gösterir */}
+      {formRapor && (
+        <div
+          className="rapor-form-overlay"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: '#e9eef5', display: 'flex', flexDirection: 'column',
+          }}
+        >
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              .rapor-form-print, .rapor-form-print * { visibility: visible !important; }
+              .rapor-form-print { position: absolute; left: 0; top: 0; width: 100%; }
+              .rapor-form-toolbar { display: none !important; }
+            }
+          `}</style>
+
+          {/* Araç çubuğu */}
+          <div
+            className="rapor-form-toolbar"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 16px', background: 'var(--surface-card)',
+              borderBottom: '1px solid var(--border-default)', flexShrink: 0,
+            }}
+          >
+            <span className="t-label" style={{ marginRight: 4 }}>{formRapor.fisNo}</span>
+            {[
+              { id: 'zna', label: 'ZNA Teknoloji' },
+              { id: 'anadolunet', label: 'Anadolunet' },
+            ].map(s => (
+              <Button
+                key={s.id}
+                variant={formSirket === s.id ? 'primary' : 'secondary'}
+                onClick={() => setFormSirket(s.id)}
+              >
+                {s.label}
+              </Button>
+            ))}
+            <div style={{ flex: 1 }} />
+            <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={() => window.print()}>
+              Yazdır
+            </Button>
+            <Button variant="secondary" onClick={() => setFormRapor(null)}>Kapat</Button>
+          </div>
+
+          {/* Form */}
+          <div className="rapor-form-print" style={{ flex: 1, overflow: 'auto', padding: '16px 0' }}>
+            <ServisFormu talep={raporToTalep(formRapor)} sirket={formSirket} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
