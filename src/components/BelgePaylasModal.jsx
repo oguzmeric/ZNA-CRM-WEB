@@ -86,15 +86,6 @@ export default function BelgePaylasModal({
     }
     setGonderiliyor(true)
     try {
-      // Servis raporu: gonderim oncesi guncel formu sunucuda PDF'e basip arsivle
-      // (public link bu arsivi okur; yoksa "form yok" cikardi).
-      if (belgeTipi === 'servis_raporu') {
-        const pdfRes = await fetch(`/api/servis-formu-pdf?id=${belgeId}`)
-        const pdfData = await pdfRes.json().catch(() => ({}))
-        if (!pdfRes.ok || !pdfData?.ok) {
-          throw new Error(pdfData?.hata || 'Servis formu hazırlanamadı.')
-        }
-      }
       const res = await belgePaylas({
         belge_tipi: belgeTipi,
         belge_id: belgeId,
