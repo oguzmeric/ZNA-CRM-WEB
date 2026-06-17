@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, Save } from 'lucide-react'
-import { Card, CardTitle, Button, Input, Label } from './ui'
+import { Card, CardTitle, Button, Input, Label, Textarea } from './ui'
 
 const SERVIS_TIPI = [
   { id: 'ariza',    label: 'Arıza Tespiti' },
@@ -80,6 +80,7 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
   const [marka, setMarka]              = useState(talep?.marka || '')
   const [model, setModel]              = useState(talep?.model || '')
   const [kunye, setKunye]              = useState(talep?.kunyeNumarasi || '')
+  const [cozumAciklamasi, setCozumAciklamasi] = useState(talep?.cozumAciklamasi || '')
   const [yedekParcalar, setYedekParcalar] = useState(() =>
     Array.isArray(talep?.yedekParcalar) ? talep.yedekParcalar : [],
   )
@@ -96,10 +97,11 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
     setMarka(talep?.marka || '')
     setModel(talep?.model || '')
     setKunye(talep?.kunyeNumarasi || '')
+    setCozumAciklamasi(talep?.cozumAciklamasi || '')
     setYedekParcalar(Array.isArray(talep?.yedekParcalar) ? talep.yedekParcalar : [])
   }, [talep?.id, talep?.servisTipi, talep?.yukumluluk, talep?.servisYeri,
       talep?.seriNumarasi, talep?.marka, talep?.model, talep?.kunyeNumarasi,
-      talep?.yedekParcalar])
+      talep?.cozumAciklamasi, talep?.yedekParcalar])
 
   // Yedek parcalar otomatik tutar hesabi
   const parcaGuncelle = (idx, alan, deger) => {
@@ -129,6 +131,7 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
         marka: marka.trim() || null,
         model: model.trim() || null,
         kunyeNumarasi: kunye.trim() || null,
+        cozumAciklamasi: cozumAciklamasi.trim() || null,
         yedekParcalar: yedekParcalar.filter(p => (p.aciklama || '').trim() || Number(p.birim_fiyat) > 0),
       })
       setBasariMsg('Form bilgileri kaydedildi.')
@@ -189,6 +192,21 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
           <div>
             <Label htmlFor="sf-model">Model</Label>
             <Input id="sf-model" value={model} onChange={e => setModel(e.target.value)} placeholder="—" />
+          </div>
+        </div>
+
+        {/* Yapilan Islemler (cozum aciklamasi) */}
+        <div>
+          <Label htmlFor="sf-cozum">Yapılan İşlemler (Çözüm Açıklaması)</Label>
+          <Textarea
+            id="sf-cozum"
+            value={cozumAciklamasi}
+            onChange={(e) => setCozumAciklamasi(e.target.value)}
+            placeholder="Sahada/Atölyede yapılan işlemleri, takılan parçaları, test sonuçlarını yazın."
+            rows={5}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+            Bu metin servis raporunda "YAPILAN İŞLEMLER" bölümünde basılır.
           </div>
         </div>
 
