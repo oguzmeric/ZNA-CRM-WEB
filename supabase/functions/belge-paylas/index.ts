@@ -278,6 +278,9 @@ serve(async (req) => {
 
     // Teklif icin sablon query param'i ekle (?t=karel gibi)
     const link = `${PUBLIC_BASE_URL}/p/${token}` + (sablon ? `?t=${sablon}` : '')
+    // Mail'den gelen kullanici zaten "Belgeyi Goruntule"ye bastigi icin karti
+    // atlayip belgeyi DIREKT acsin (?ac=1). SMS'te kart kalir (ciplak link).
+    const mailLink = link + (link.includes('?') ? '&' : '?') + 'ac=1'
 
     // Mail ve/veya SMS gonder, durumlari topla
     let mailDurum: string | null = null
@@ -285,7 +288,7 @@ serve(async (req) => {
 
     if (mailGonderilecek) {
       try {
-        const { html, text, subject } = mailGovdesi(belgeTipi as any, link, ozelMesaj, sureGun)
+        const { html, text, subject } = mailGovdesi(belgeTipi as any, mailLink, ozelMesaj, sureGun)
         await resendGonder(email, subject, html, text)
         mailDurum = 'gonderildi'
       } catch (e) {

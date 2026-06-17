@@ -71,11 +71,12 @@ export default function PaylasimBelge() {
   const { token } = useParams()
   const [searchParams] = useSearchParams()
   const sablonOverride = searchParams.get('t')   // ornek: 'karel' — link icinde gelir
+  const acHemen = searchParams.get('ac') === '1' // mail linki: karti atla, belgeyi direkt ac
   const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
   const [belge, setBelge] = useState(null)
-  const [teklifGoster, setTeklifGoster] = useState(false) // teklif: once kart, sonra cikti
+  const [teklifGoster, setTeklifGoster] = useState(acHemen) // teklif: once kart, sonra cikti
   const [teklifYazdir, setTeklifYazdir] = useState(false) // cikti acilinca otomatik yazdir
-  const [servisGoster, setServisGoster] = useState(false) // servis raporu: once kart, sonra form
+  const [servisGoster, setServisGoster] = useState(acHemen) // servis raporu: once kart, sonra form
   const [servisYazdir, setServisYazdir] = useState(false)
 
   // Cikti komponentleri A4 (~794px) genisliginde tasarlandi.
