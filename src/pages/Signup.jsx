@@ -78,9 +78,9 @@ function Signup() {
     setYukleniyor(true)
     try {
       await kayitKodDogrula({ email, kod, yeniSifre: sifre, amac: 'kayit' })
-      // Hesap onay bekliyor — otomatik giriş denenmez (giriş onaya kadar engelli)
-      setBilgi('Kayıt alındı! Hesabınız yönetici onayından sonra aktif olacak. Onaylanınca giriş yapabilirsiniz.')
-      setTimeout(() => navigate('/login', { replace: true }), 2500)
+      // Hesap onay bekliyor — otomatik giriş/yönlendirme YOK.
+      // Kalıcı onay ekranına geç (kullanıcı butonla giriş ekranına döner).
+      setAdim(3)
     } catch (err) {
       setHata(err?.message || 'Kayıt tamamlanamadı.')
     } finally {
@@ -147,6 +147,7 @@ function Signup() {
           <div className="login-card">
 
             {/* Stepper */}
+            {adim !== 3 && (
             <div className="stepper">
               <div className={`step ${adim >= 1 ? 'active' : ''} ${adim > 1 ? 'done' : ''}`}>
                 <div className="step-dot">{adim > 1 ? <CheckCircle2 size={14} strokeWidth={2.5} /> : '1'}</div>
@@ -158,6 +159,7 @@ function Signup() {
                 <span>Doğrulama</span>
               </div>
             </div>
+            )}
 
             {adim === 1 && (
               <>
@@ -268,9 +270,26 @@ function Signup() {
               </>
             )}
 
-            <p className="small-print">
-              Zaten hesabınız var mı? <a href="/login" className="link">Giriş yapın</a>
-            </p>
+            {adim === 3 && (
+              <div className="kayit-basari">
+                <div className="basari-ikon"><CheckCircle2 size={34} strokeWidth={2} /></div>
+                <h1 className="login-title" style={{ textAlign: 'center' }}>Kaydınız alındı</h1>
+                <p className="login-sub" style={{ textAlign: 'center' }}>
+                  <strong style={{ color: 'var(--text-secondary)' }}>{email}</strong> ile başvurunuz oluşturuldu.
+                  Hesabınız <strong>yönetici onayından</strong> sonra aktifleşecek. Onaylandığında bu e-posta ve
+                  şifrenizle giriş yapabilirsiniz.
+                </p>
+                <button type="button" className="submit-btn" onClick={() => navigate('/login', { replace: true })}>
+                  Giriş ekranına git <ArrowRight size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+            )}
+
+            {adim !== 3 && (
+              <p className="small-print">
+                Zaten hesabınız var mı? <a href="/login" className="link">Giriş yapın</a>
+              </p>
+            )}
           </div>
         </div>
 
@@ -412,6 +431,8 @@ const styles = `
 .zna-login .submit-btn:disabled { opacity: 0.6; cursor: wait; }
 
 .zna-login .small-print { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border-default); text-align: center; color: var(--text-tertiary); font-size: 12px; }
+.zna-login .kayit-basari { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 0 4px; }
+.zna-login .basari-ikon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px; color: var(--zna-success); background: rgba(47,125,79,0.10); border: 1px solid rgba(47,125,79,0.28); }
 .zna-login .link { color: var(--brand-primary); text-decoration: none; font-weight: 600; transition: color 150ms; }
 .zna-login .link:hover { color: var(--brand-primary-hover); text-decoration: underline; }
 
