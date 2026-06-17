@@ -3,6 +3,9 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/servis-formu-pdf.js": { "memory": 1024, "maxDuration": 60 }
+  },
   "rewrites": [
     { "source": "/dosya/:path*", "destination": "https://hcrbwxeuscfibgmchdtt.supabase.co/storage/v1/object/public/servis-formlari/:path*" },
     { "source": "/api/tcmb/:path*", "destination": "https://www.tcmb.gov.tr/kurlar/:path*" },
