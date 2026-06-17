@@ -287,6 +287,16 @@ export default function ServisTalepDetay() {
         {/* Sol — Ana içerik */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+          {/* Form Bilgileri — tamamlanmış taleplerde EN ÜSTTE (en önemli iş yapma alanı) */}
+          {talep.durum === 'tamamlandi' && (
+            <ServisFormBilgileriCard
+              talep={talep}
+              onKaydet={async (yeniler) => {
+                await talepGuncelle(talep.id, yeniler, kullanici?.ad)
+              }}
+            />
+          )}
+
           {/* Açıklama */}
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -826,16 +836,6 @@ export default function ServisTalepDetay() {
           </Card>
         </div>
       </div>
-
-      {/* Form Bilgileri — sadece tamamlanmis talepler icin (rapor cikarmadan once doldurulur) */}
-      {talep.durum === 'tamamlandi' && (
-        <ServisFormBilgileriCard
-          talep={talep}
-          onKaydet={async (yeniler) => {
-            await talepGuncelle(talep.id, yeniler, kullanici?.ad)
-          }}
-        />
-      )}
 
       {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
       <BelgePaylasModal
