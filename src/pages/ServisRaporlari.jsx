@@ -19,7 +19,7 @@ function raporToTalep(r) {
   const bildiren = (r.bildiren && r.bildiren.trim() && r.bildiren !== '.') ? r.bildiren : ''
   return {
     talepNo: r.fisNo,
-    firmaAdi: r.firma,
+    firmaAdi: r.firmaAdi,
     lokasyon: r.lokasyon,
     ilgiliKisi: bildiren,
     konu: r.arizaKodu || '',
@@ -154,7 +154,7 @@ export default function ServisRaporlari() {
         <td class="mono">${esc(r.fisNo)}</td>
         <td>${esc(formatTarih(r.gidTarih))}</td>
         <td><span class="badge ${takipTone(r.takipKodu)}">${esc(r.takipKodu || '—')}</span></td>
-        <td>${esc(r.firma)}</td>
+        <td>${esc(r.firmaAdi)}</td>
         <td>${esc(r.lokasyon)}</td>
         <td>${esc(r.sisNo)}</td>
         <td>${esc(r.teknisyen)}</td>
@@ -287,7 +287,7 @@ export default function ServisRaporlari() {
   </div>
 
   <table>
-    ${satir('Müşteri Adı', r.firma)}
+    ${satir('Müşteri Adı', r.firmaAdi)}
     ${r.lokasyon ? satir('Lokasyon', r.lokasyon) : ''}
     ${satir('Teknisyen', r.teknisyen)}
     ${satir('Bildirim Tarihi', formatTarih(r.bilTarih))}
@@ -536,7 +536,7 @@ export default function ServisRaporlari() {
                       {r.takipKodu && <Badge tone={takipTone(r.takipKodu)}>{r.takipKodu}</Badge>}
                     </td>
                     <td style={{ padding: '10px 12px', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-default)' }}>
-                      {r.firma}
+                      {r.firmaAdi}
                     </td>
                     <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)' }}>
                       {r.lokasyon || '—'}
@@ -652,7 +652,7 @@ export default function ServisRaporlari() {
             <DetayAlan
               icon={<Building2 size={14} strokeWidth={1.5} />}
               baslik="Müşteri Adı"
-              icerik={seciliRapor.firma}
+              icerik={seciliRapor.firmaAdi}
             />
             {seciliRapor.lokasyon && (
               <DetayAlan
