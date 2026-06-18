@@ -13,6 +13,7 @@ import CustomSelect from '../components/CustomSelect'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import { musterileriGetir } from '../services/musteriService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
@@ -76,15 +77,17 @@ function GorusmeDetay() {
   const [gorevFormAcik, setGorevFormAcik] = useState(false)
   const [gorevForm, setGorevForm] = useState(bosGorevForm)
   const [gorusmeLokasyonlari, setGorusmeLokasyonlari] = useState([])
+  const [firmaKisileri, setFirmaKisileri] = useState([]) // bu firmaya bağlı kişiler (görüşülen kişi seçimi)
   const { talepOlusturGorevden } = useServisTalebi()
 
   useEffect(() => {
     (async () => {
       setYukleniyor(true)
       try {
-        const [g, tum] = await Promise.all([gorusmeGetir(id), gorevleriGetir()])
+        const [g, tum, mus] = await Promise.all([gorusmeGetir(id), gorevleriGetir(), musterileriGetir()])
         setGorusme(g)
         setGorevler(tum.filter(t => t.firmaAdi === g?.firmaAdi))
+        setFirmaKisileri((mus || []).filter(m => m.firma === g?.firmaAdi))
         // Müşteri lokasyonlarını çek (varsa) — görev form'unda dropdown için
         if (g?.musteriId) {
           musteriLokasyonlariniGetir(g.musteriId).then(setGorusmeLokasyonlari).catch(() => setGorusmeLokasyonlari([]))
@@ -123,14 +126,27 @@ function GorusmeDetay() {
       konu: manuelMi ? '' : gorusme.konu,
       manuelKonu: manuelMi ? gorusme.konu : '',
       durum: gorusme.durum,
+      // Görüşülen kişi eski kayıtlarda musteri_id'de tutuluyor → ona geri düş
+      muhatapId: gorusme.muhatapId || gorusme.musteriId || '',
     })
     setManuelKonuAc(manuelMi); setDuzenleAcik(true)
   }
 
+  const kisiAd = (m) =>
+    [m?.ad, m?.soyad].filter(Boolean).join(' ').trim() || m?.unvan || m?.firma || ''
+
   const duzenleKaydet = () => {
     const sonKonu = manuelKonuAc ? duzenleForm.manuelKonu : duzenleForm.konu
     if (!sonKonu) return
-    gorusmeGuncelle({ notlar: duzenleForm.takipNotu, konu: sonKonu, durum: duzenleForm.durum })
+    const kisi = firmaKisileri.find(m => m.id?.toString() === (duzenleForm.muhatapId || '').toString())
+    gorusmeGuncelle({
+      notlar: duzenleForm.takipNotu,
+      konu: sonKonu,
+      durum: duzenleForm.durum,
+      muhatapId: duzenleForm.muhatapId || '',
+      musteriId: duzenleForm.muhatapId || '',
+      muhatapAd: kisi ? kisiAd(kisi) : (gorusme.muhatapAd || ''),
+    })
     setDuzenleAcik(false)
   }
 
@@ -343,6 +359,20 @@ function GorusmeDetay() {
                 <Label>Durum</Label>
                 <CustomSelect value={duzenleForm.durum} onChange={e => setDuzenleForm({ ...duzenleForm, durum: e.target.value })}>
                   {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
+                </CustomSelect>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Görüşülen kişi</Label>
+                <CustomSelect
+                  value={duzenleForm.muhatapId || ''}
+                  onChange={e => setDuzenleForm({ ...duzenleForm, muhatapId: e.target.value })}
+                >
+                  <option value="">Kişi seç…</option>
+                  {firmaKisileri.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {kisiAd(m)}{(m.unvan && (m.ad || m.soyad)) ? ` — ${m.unvan}` : ''}
+                    </option>
+                  ))}
                 </CustomSelect>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
