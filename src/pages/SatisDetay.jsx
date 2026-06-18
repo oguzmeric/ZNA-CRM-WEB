@@ -138,6 +138,8 @@ function SatisDetay() {
   const [yukleniyor, setYukleniyor] = useState(!yeniMod)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [musteriler, setMusteriler] = useState([])
+  const [musteriArama, setMusteriArama] = useState('')
+  const [musteriListAcik, setMusteriListAcik] = useState(false)
   const [stoklar, setStoklar] = useState([])
   const [stokArama, setStokArama] = useState({})
   const [stokOneri, setStokOneri] = useState({})
@@ -371,23 +373,26 @@ function SatisDetay() {
     return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
   }
 
-  const musteriAramaHandler = (e) => {
-    const q = e.target.value.toLowerCase()
-    if (!q) return
-    const bulunan = musteriler.find(
-      (m) => `${m.ad} ${m.soyad} ${m.firma}`.toLowerCase().includes(q)
-    )
-    if (bulunan) {
-      setForm((p) => ({
-        ...p,
-        firmaAdi: bulunan.firma || '',
-        musteriYetkili: `${bulunan.ad} ${bulunan.soyad}`,
-        musteriEmail: bulunan.email || '',
-        musteriTelefon: bulunan.telefon || '',
-      }))
-      e.target.value = ''
-    }
+  // Aranabilir müşteri açılır listesi
+  const musteriSec = (m) => {
+    setForm((p) => ({
+      ...p,
+      firmaAdi: m.firma || '',
+      musteriYetkili: [m.ad, m.soyad].filter(Boolean).join(' '),
+      musteriEmail: m.email || '',
+      musteriTelefon: m.telefon || '',
+    }))
+    setMusteriArama('')
+    setMusteriListAcik(false)
   }
+
+  const filtreliMusteriler = (() => {
+    const q = musteriArama.trim().toLowerCase()
+    const list = q
+      ? musteriler.filter((m) => `${m.ad || ''} ${m.soyad || ''} ${m.firma || ''}`.toLowerCase().includes(q))
+      : musteriler
+    return list.slice(0, 50)
+  })()
 
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
@@ -501,10 +506,47 @@ function SatisDetay() {
                 }}
               />
               <Input
+                value={musteriArama}
                 placeholder="Müşteri adı veya firma ara…"
-                onChange={musteriAramaHandler}
+                onChange={(e) => { setMusteriArama(e.target.value); setMusteriListAcik(true) }}
+                onFocus={() => setMusteriListAcik(true)}
+                onBlur={() => setTimeout(() => setMusteriListAcik(false), 150)}
                 style={{ paddingLeft: 32 }}
               />
+              {musteriListAcik && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 4,
+                  maxHeight: 280, overflowY: 'auto',
+                  background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)', boxShadow: '0 8px 24px rgba(15,27,46,0.12)',
+                }}>
+                  {filtreliMusteriler.length === 0 ? (
+                    <div style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                      {musteriArama.trim() ? 'Eşleşen müşteri yok' : 'Kayıtlı müşteri yok'}
+                    </div>
+                  ) : filtreliMusteriler.map((m) => {
+                    const kisi = [m.ad, m.soyad].filter(Boolean).join(' ')
+                    return (
+                      <div
+                        key={m.id}
+                        onMouseDown={() => musteriSec(m)}
+                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border-default)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-sunken)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                          {m.firma || kisi || '—'}
+                        </div>
+                        {kisi && m.firma && (
+                          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                            {kisi}{m.unvan ? ` · ${m.unvan}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
