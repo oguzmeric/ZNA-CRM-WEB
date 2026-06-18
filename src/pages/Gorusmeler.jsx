@@ -125,9 +125,11 @@ function Gorusmeler() {
     setSecilenFirma(g.firmaAdi || '')
     setForm({
       firmaAdi: g.firmaAdi,
-      musteriId: g.musteriId || '',
-      muhatapId: g.muhatapId || '',
-      muhatapAd: g.muhatapAd || '',
+      musteriId: g.musteriId || g.muhatapId || '',
+      // Eski kayıtlarda görüşülen kişi muhatap_id yerine musteri_id'de tutuluyor;
+      // düzenlemede kişi seçili gelsin diye musteri_id'ye geri düş.
+      muhatapId: g.muhatapId || g.musteriId || '',
+      muhatapAd: g.muhatapAd || g.musteriAdi || '',
       konu: manuelMi ? '' : g.konu,
       manuelKonu: manuelMi ? g.konu : '',
       irtibatSekli: g.irtibatSekli || '',
