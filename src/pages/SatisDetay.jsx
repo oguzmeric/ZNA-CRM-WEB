@@ -18,6 +18,13 @@ import {
   EmptyState, Modal, Table, THead, TBody, TR, TH, TD,
 } from '../components/ui'
 
+// Türkçe-duyarlı arama normalizasyonu (İ/ı/ş/ğ/ü/ö/ç → ascii; toLowerCase'in
+// İ'yi birleşik noktalı karaktere çevirme sorununu da çözer)
+const trNormalize = (str = '') =>
+  String(str).toLowerCase()
+    .replace(/i̇/g, 'i').replace(/İ/g, 'i').replace(/ı/g, 'i').replace(/ı/g, 'i')
+    .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+
 const bosForm = {
   faturaNo: '',
   firmaAdi: '',
@@ -387,9 +394,9 @@ function SatisDetay() {
   }
 
   const filtreliMusteriler = (() => {
-    const q = musteriArama.trim().toLowerCase()
+    const q = trNormalize(musteriArama.trim())
     const list = q
-      ? musteriler.filter((m) => `${m.ad || ''} ${m.soyad || ''} ${m.firma || ''}`.toLowerCase().includes(q))
+      ? musteriler.filter((m) => trNormalize(`${m.ad || ''} ${m.soyad || ''} ${m.firma || ''}`).includes(q))
       : musteriler
     return list.slice(0, 50)
   })()
