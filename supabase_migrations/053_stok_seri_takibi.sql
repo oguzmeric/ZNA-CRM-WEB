@@ -9,8 +9,7 @@ alter table stok_urunler add column if not exists beklenen_adet integer;
 create unique index if not exists stok_kalemleri_seri_no_uq
   on stok_kalemleri (seri_no) where seri_no is not null and seri_no <> '';
 
-drop policy if exists stok_kalemleri_insert on stok_kalemleri;
-create policy stok_kalemleri_insert on stok_kalemleri
-  for insert to authenticated with check (is_staff());
+-- Not: stok_kalemleri'nde zaten "stok_kalemleri_staff_all" (FOR ALL, is_staff())
+-- politikası var; INSERT bununla kapsanıyor. Ayrı insert politikası gerekmez.
 
 notify pgrst, 'reload schema';
