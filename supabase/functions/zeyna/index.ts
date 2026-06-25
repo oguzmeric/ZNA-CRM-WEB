@@ -49,10 +49,22 @@ KİŞİLİK:
 
 YAPABILECEKLERIN:
 - Genel sohbet, yazım yardımı, brainstorm, kontrol listesi
-- CRM sorgularını TOOL'larla yap: müşteri ara, talep listele, teklif ara, açık işlerini gör
-- Tool'ları gerçekten çağır — kullanıcı "Talay'ın açık talepleri" derse musteri_ara('Talay') sonra musteri_talepleri(id, durum='acik') yap
-- Sonuçları Türkçe özetle, **tabloya gerek yoksa liste** olarak ver
+- CRM sorgularını TOOL'larla yap — şu kategorilerde:
+  * Müşteri & Personel arama (musteri_ara, kullanici_ara)
+  * Talepler (musteri_talepleri, bekleyen_servislerim)
+  * Teklifler (teklifler_ara)
+  * Görüşmeler & Ziyaretler (gorusme_ara)
+  * Müşteri 360 derece özet (musteri_360 — talep+teklif+görüşme+satış sayıları + son aktiviteler)
+  * Görevler (gorev_ara, bekleyen_gorevlerim)
+  * Satış & Faturalar (satislar_ara)
+  * Kargolar (kargo_ara)
+  * Trassir Lisanslar (trassir_lisans_ara — yaklasan_gun parametresi yenileme yaklaşanlar için)
+  * İstatistikler (istatistik tool, tip parametresi: en_cok_ziyaret_edilen_musteri, en_cok_talep_olan_musteri, en_aktif_personel, bu_ay_satis_toplami, acik_talep_durumu, yaklasan_lisanslar)
+- Sıralı, isimle, ID gerektiren sorularda önce arama yap (musteri_ara/kullanici_ara), sonra ana sorguyu
+- Kullanıcı bir müşteri hakkında özet isterse: önce musteri_ara, sonra musteri_360
+- Sonuçları Türkçe **liste** olarak özetle (gerek yoksa tablo kurma)
 - Para birimi varsa "₺ 25.000,00" formatı kullan
+- Tarih formatı: 25/06/2026
 
 KURALLAR:
 - Müşterinin telefonu/maili gibi PII'yi gereksiz yere açıkça yazma
@@ -126,6 +138,130 @@ const TOOLS = [
       properties: {
         limit: { type: 'number', description: 'Maks sonuç (varsayılan 20)' },
       },
+    },
+  },
+  {
+    name: 'gorusme_ara',
+    description:
+      'Müşteri görüşmelerini/ziyaretlerini ara. "Talay\'ı kim son ziyaret etmiş", "Bu hafta Ferdi kimleri ziyaret etmiş", "Bu ayki online görüşmeler" gibi sorular için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        musteri_id: { type: 'number', description: 'Belirli müşteri için (musteri_ara\'dan)' },
+        firma: { type: 'string', description: 'Firma adı (kısmi eşleşme)' },
+        olusturan_id: { type: 'number', description: 'Görüşmeyi yapan personel ID (kullanici_ara\'dan)' },
+        tip: { type: 'string', description: 'Görüşme tipi — ziyaret, telefon, online, vs.' },
+        irtibat_sekli: { type: 'string', description: 'İrtibat şekli filtresi' },
+        tarih_baslangic: { type: 'string', description: 'YYYY-MM-DD' },
+        tarih_bitis: { type: 'string', description: 'YYYY-MM-DD' },
+        limit: { type: 'number', description: 'Varsayılan 10' },
+      },
+    },
+  },
+  {
+    name: 'musteri_360',
+    description:
+      'Bir müşterinin 360 derece özeti — toplam talep/teklif/görüşme/satış sayıları, son aktivite tarihi, açık talepler. "Talay Lojistik hakkında özet ver" gibi sorular için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        musteri_id: { type: 'number', description: 'musteri_ara\'dan gelen ID' },
+      },
+      required: ['musteri_id'],
+    },
+  },
+  {
+    name: 'gorev_ara',
+    description:
+      'Görevleri ara — kim, durum, tarih filtresiyle. "Ferdi\'nin açık görevleri", "Bu hafta tamamlanan görevler" gibi sorular için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        atanan_id: { type: 'number', description: 'Atanmış personel ID (kullanici_ara\'dan)' },
+        durum: { type: 'string', description: 'beklemede / devam_ediyor / tamamlandi / iptal' },
+        musteri_id: { type: 'number', description: 'İlgili müşteri ID' },
+        oncelik: { type: 'string', description: 'dusuk / orta / yuksek / acil' },
+        tarih_baslangic: { type: 'string', description: 'YYYY-MM-DD' },
+        tarih_bitis: { type: 'string', description: 'YYYY-MM-DD' },
+        limit: { type: 'number', description: 'Varsayılan 15' },
+      },
+    },
+  },
+  {
+    name: 'bekleyen_gorevlerim',
+    description: 'Çağıran personele atanmış açık görevler. "Yapmam gereken görevler" gibi sorularda kullan.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Varsayılan 20' },
+      },
+    },
+  },
+  {
+    name: 'satislar_ara',
+    description:
+      'Satış faturalarını ara. "Talay\'a kesilen son fatura", "Bu ayki toplam satış", "Bekleyen tahsilatlar" gibi sorular için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        firma: { type: 'string', description: 'Firma adı kısmi eşleşme' },
+        durum: { type: 'string', description: 'odendi / bekliyor / kismi / iptal' },
+        tarih_baslangic: { type: 'string', description: 'YYYY-MM-DD (fatura_tarihi)' },
+        tarih_bitis: { type: 'string', description: 'YYYY-MM-DD' },
+        limit: { type: 'number', description: 'Varsayılan 15' },
+      },
+    },
+  },
+  {
+    name: 'kargo_ara',
+    description:
+      'Kargo gönderilerini ara. "Bekleyen kargolar", "Talay\'a giden kargolar", takip no ile sorgu için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        takip_no: { type: 'string', description: 'Kargo takip numarası' },
+        firma: { type: 'string', description: 'Firma adı kısmi eşleşme' },
+        durum: { type: 'string', description: 'hazirlandi / yolda / teslim_edildi / iade' },
+        tip: { type: 'string', description: 'Kargo tipi' },
+        limit: { type: 'number', description: 'Varsayılan 15' },
+      },
+    },
+  },
+  {
+    name: 'trassir_lisans_ara',
+    description:
+      'Trassir lisanslarını ara. "Yaklaşan lisans yenilemeleri", "Talay\'ın Trassir lisansları", "Süresi geçmiş lisanslar" gibi sorular için.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        musteri_id: { type: 'number', description: 'Müşteri ID' },
+        firma: { type: 'string', description: 'Firma adı kısmi eşleşme' },
+        yaklasan_gun: {
+          type: 'number',
+          description: 'Bitiş tarihi şu kadar gün içindeyse listele (örn 30 = önümüzdeki 30 gün)',
+        },
+        durum: { type: 'string', description: 'aktif / pasif / iptal' },
+        limit: { type: 'number', description: 'Varsayılan 20' },
+      },
+    },
+  },
+  {
+    name: 'istatistik',
+    description:
+      'Toplulaştırılmış sorular için — "en çok ziyaret edilen 5 müşteri", "bu ay en çok talep oluşan firma", "en aktif teknisyen" gibi sıralamalar. "tip" parametresi ile farklı sıralamalar yapılır.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tip: {
+          type: 'string',
+          description:
+            'Hangi istatistik — "en_cok_ziyaret_edilen_musteri" | "en_cok_talep_olan_musteri" | "en_aktif_personel" | "bu_ay_satis_toplami" | "acik_talep_durumu" | "yaklasan_lisanslar"',
+        },
+        tarih_baslangic: { type: 'string', description: 'YYYY-MM-DD opsiyonel' },
+        tarih_bitis: { type: 'string', description: 'YYYY-MM-DD opsiyonel' },
+        limit: { type: 'number', description: 'En üstte N kayıt (varsayılan 5)' },
+      },
+      required: ['tip'],
     },
   },
 ]
@@ -219,6 +355,241 @@ async function toolCalistir(
         .limit(limit)
       if (error) return { hata: error.message }
       return { sonuc_sayisi: data?.length ?? 0, talepler: data ?? [] }
+    }
+
+    case 'gorusme_ara': {
+      const limit = Number(girdi.limit ?? 10)
+      let q = supa
+        .from('gorusmeler')
+        .select('id, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, gorusen, olusturan_id, irtibat_sekli')
+        .order('tarih', { ascending: false })
+        .limit(limit)
+      if (girdi.musteri_id) q = q.eq('musteri_id', Number(girdi.musteri_id))
+      if (girdi.firma) q = q.ilike('firma_adi', `%${girdi.firma}%`)
+      if (girdi.olusturan_id) q = q.eq('olusturan_id', Number(girdi.olusturan_id))
+      if (girdi.tip) q = q.ilike('tip', `%${girdi.tip}%`)
+      if (girdi.irtibat_sekli) q = q.ilike('irtibat_sekli', `%${girdi.irtibat_sekli}%`)
+      if (girdi.tarih_baslangic) q = q.gte('tarih', String(girdi.tarih_baslangic))
+      if (girdi.tarih_bitis) q = q.lte('tarih', String(girdi.tarih_bitis))
+      const { data, error } = await q
+      if (error) return { hata: error.message }
+      return { sonuc_sayisi: data?.length ?? 0, gorusmeler: data ?? [] }
+    }
+
+    case 'musteri_360': {
+      const mid = Number(girdi.musteri_id)
+      if (!mid) return { hata: 'musteri_id gerekli' }
+      const [mst, tlp, tkf, grs, sts, trs] = await Promise.all([
+        supa.from('musteriler').select('id, firma, ad, soyad, sehir, telefon, email, sektor').eq('id', mid).maybeSingle(),
+        supa.from('servis_talepleri').select('id, talep_no, konu, durum, olusturma_tarihi', { count: 'exact' }).eq('musteri_id', mid).order('olusturma_tarihi', { ascending: false }).limit(5),
+        supa.from('teklifler').select('id, teklif_no, konu, durum, genel_toplam, para_birimi, tarih', { count: 'exact' }).eq('musteri_id', mid).order('tarih', { ascending: false }).limit(5),
+        supa.from('gorusmeler').select('id, akt_no, tarih, konu, tip, gorusen', { count: 'exact' }).eq('musteri_id', mid).order('tarih', { ascending: false }).limit(5),
+        supa.from('satislar').select('id, fatura_no, fatura_tarihi, genel_toplam, durum, para_birimi', { count: 'exact' }).ilike('firma_adi', '%').order('fatura_tarihi', { ascending: false }).limit(5),
+        supa.from('trassir_lisanslar').select('id, lisans_no, lisans_turu, bitis_tarihi, durum, kamera_sayisi').eq('musteri_id', mid),
+      ])
+      if (mst.error || !mst.data) return { hata: 'Müşteri bulunamadı' }
+      return {
+        musteri: mst.data,
+        ozet: {
+          toplam_talep:    tlp.count ?? 0,
+          toplam_teklif:   tkf.count ?? 0,
+          toplam_gorusme:  grs.count ?? 0,
+          toplam_satis:    sts.count ?? 0,
+          trassir_lisans:  trs.data?.length ?? 0,
+        },
+        son_talepler:   tlp.data ?? [],
+        son_teklifler:  tkf.data ?? [],
+        son_gorusmeler: grs.data ?? [],
+        son_satislar:   sts.data ?? [],
+        trassir_lisanslari: trs.data ?? [],
+      }
+    }
+
+    case 'gorev_ara': {
+      const limit = Number(girdi.limit ?? 15)
+      let q = supa
+        .from('gorevler')
+        .select('id, baslik, durum, oncelik, atanan_id, atanan_ad, firma_adi, musteri_id, bitis_tarihi, tamamlanma_tarihi, olusturma_tarih')
+        .order('olusturma_tarih', { ascending: false })
+        .limit(limit)
+      if (girdi.atanan_id) q = q.eq('atanan_id', Number(girdi.atanan_id))
+      if (girdi.durum) q = q.eq('durum', String(girdi.durum))
+      if (girdi.musteri_id) q = q.eq('musteri_id', Number(girdi.musteri_id))
+      if (girdi.oncelik) q = q.eq('oncelik', String(girdi.oncelik))
+      if (girdi.tarih_baslangic) q = q.gte('olusturma_tarih', String(girdi.tarih_baslangic))
+      if (girdi.tarih_bitis) q = q.lte('olusturma_tarih', String(girdi.tarih_bitis))
+      const { data, error } = await q
+      if (error) return { hata: error.message }
+      return { sonuc_sayisi: data?.length ?? 0, gorevler: data ?? [] }
+    }
+
+    case 'bekleyen_gorevlerim': {
+      const limit = Number(girdi.limit ?? 20)
+      const { data, error } = await supa
+        .from('gorevler')
+        .select('id, baslik, durum, oncelik, firma_adi, bitis_tarihi, olusturma_tarih')
+        .eq('atanan_id', ctx.kullaniciId)
+        .not('durum', 'in', '("tamamlandi","iptal")')
+        .order('bitis_tarihi', { ascending: true, nullsFirst: false })
+        .limit(limit)
+      if (error) return { hata: error.message }
+      return { sonuc_sayisi: data?.length ?? 0, gorevler: data ?? [] }
+    }
+
+    case 'satislar_ara': {
+      const limit = Number(girdi.limit ?? 15)
+      let q = supa
+        .from('satislar')
+        .select('id, fatura_no, firma_adi, fatura_tarihi, vade_tarihi, durum, para_birimi, genel_toplam, odenen_toplam')
+        .order('fatura_tarihi', { ascending: false })
+        .limit(limit)
+      if (girdi.firma) q = q.ilike('firma_adi', `%${girdi.firma}%`)
+      if (girdi.durum) q = q.eq('durum', String(girdi.durum))
+      if (girdi.tarih_baslangic) q = q.gte('fatura_tarihi', String(girdi.tarih_baslangic))
+      if (girdi.tarih_bitis) q = q.lte('fatura_tarihi', String(girdi.tarih_bitis))
+      const { data, error } = await q
+      if (error) return { hata: error.message }
+      const toplam = (data ?? []).reduce((s, x) => s + Number(x.genel_toplam ?? 0), 0)
+      return { sonuc_sayisi: data?.length ?? 0, toplam_tutar: toplam, satislar: data ?? [] }
+    }
+
+    case 'kargo_ara': {
+      const limit = Number(girdi.limit ?? 15)
+      let q = supa
+        .from('kargolar')
+        .select('id, takip_no, firma_adi, alici_ad, kargo_firmasi, durum, tip, tahmini_teslim, teslim_tarihi, olusturma_tarihi')
+        .order('olusturma_tarihi', { ascending: false })
+        .limit(limit)
+      if (girdi.takip_no) q = q.ilike('takip_no', `%${girdi.takip_no}%`)
+      if (girdi.firma) q = q.ilike('firma_adi', `%${girdi.firma}%`)
+      if (girdi.durum) q = q.eq('durum', String(girdi.durum))
+      if (girdi.tip) q = q.eq('tip', String(girdi.tip))
+      const { data, error } = await q
+      if (error) return { hata: error.message }
+      return { sonuc_sayisi: data?.length ?? 0, kargolar: data ?? [] }
+    }
+
+    case 'trassir_lisans_ara': {
+      const limit = Number(girdi.limit ?? 20)
+      let q = supa
+        .from('trassir_lisanslar')
+        .select('id, firma_adi, musteri_id, lisans_no, lisans_turu, lisans_tipi, baslangic_tarihi, bitis_tarihi, durum, kamera_sayisi, sunucu_adi, lokasyon')
+        .order('bitis_tarihi', { ascending: true, nullsFirst: false })
+        .limit(limit)
+      if (girdi.musteri_id) q = q.eq('musteri_id', Number(girdi.musteri_id))
+      if (girdi.firma) q = q.ilike('firma_adi', `%${girdi.firma}%`)
+      if (girdi.durum) q = q.eq('durum', String(girdi.durum))
+      if (girdi.yaklasan_gun) {
+        const bugun = new Date().toISOString().slice(0, 10)
+        const ileri = new Date(Date.now() + Number(girdi.yaklasan_gun) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        q = q.gte('bitis_tarihi', bugun).lte('bitis_tarihi', ileri)
+      }
+      const { data, error } = await q
+      if (error) return { hata: error.message }
+      return { sonuc_sayisi: data?.length ?? 0, lisanslar: data ?? [] }
+    }
+
+    case 'istatistik': {
+      const tip = String(girdi.tip ?? '')
+      const limit = Number(girdi.limit ?? 5)
+      const baslangic = girdi.tarih_baslangic
+      const bitis = girdi.tarih_bitis
+
+      switch (tip) {
+        case 'en_cok_ziyaret_edilen_musteri': {
+          let q = supa.from('gorusmeler').select('musteri_id, firma_adi')
+          if (baslangic) q = q.gte('tarih', String(baslangic))
+          if (bitis) q = q.lte('tarih', String(bitis))
+          const { data, error } = await q.limit(10000)
+          if (error) return { hata: error.message }
+          const sayim: Record<string, { firma: string; adet: number; musteri_id: number | null }> = {}
+          for (const r of (data ?? [])) {
+            const k = String(r.musteri_id ?? r.firma_adi ?? '?')
+            if (!sayim[k]) sayim[k] = { firma: r.firma_adi ?? '?', musteri_id: r.musteri_id, adet: 0 }
+            sayim[k].adet++
+          }
+          const siralanmis = Object.values(sayim).sort((a, b) => b.adet - a.adet).slice(0, limit)
+          return { tip, siralama: siralanmis, toplam_kayit: data?.length ?? 0 }
+        }
+        case 'en_cok_talep_olan_musteri': {
+          let q = supa.from('servis_talepleri').select('musteri_id, firma_adi')
+          if (baslangic) q = q.gte('olusturma_tarihi', String(baslangic))
+          if (bitis) q = q.lte('olusturma_tarihi', String(bitis))
+          const { data, error } = await q.limit(10000)
+          if (error) return { hata: error.message }
+          const sayim: Record<string, { firma: string; adet: number; musteri_id: number | null }> = {}
+          for (const r of (data ?? [])) {
+            const k = String(r.musteri_id ?? r.firma_adi ?? '?')
+            if (!sayim[k]) sayim[k] = { firma: r.firma_adi ?? '?', musteri_id: r.musteri_id, adet: 0 }
+            sayim[k].adet++
+          }
+          return { tip, siralama: Object.values(sayim).sort((a, b) => b.adet - a.adet).slice(0, limit) }
+        }
+        case 'en_aktif_personel': {
+          let q = supa.from('gorusmeler').select('olusturan_id, gorusen')
+          if (baslangic) q = q.gte('tarih', String(baslangic))
+          if (bitis) q = q.lte('tarih', String(bitis))
+          const { data, error } = await q.limit(10000)
+          if (error) return { hata: error.message }
+          const sayim: Record<string, { ad: string; adet: number; id: number | null }> = {}
+          for (const r of (data ?? [])) {
+            const k = String(r.olusturan_id ?? r.gorusen ?? '?')
+            if (!sayim[k]) sayim[k] = { ad: r.gorusen ?? '?', id: r.olusturan_id, adet: 0 }
+            sayim[k].adet++
+          }
+          return { tip, siralama: Object.values(sayim).sort((a, b) => b.adet - a.adet).slice(0, limit) }
+        }
+        case 'bu_ay_satis_toplami': {
+          const ay_baslangic = baslangic ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
+          const ay_bitis = bitis ?? new Date().toISOString().slice(0, 10)
+          const { data, error } = await supa
+            .from('satislar')
+            .select('genel_toplam, odenen_toplam, durum, para_birimi')
+            .gte('fatura_tarihi', ay_baslangic)
+            .lte('fatura_tarihi', ay_bitis)
+          if (error) return { hata: error.message }
+          const toplam = (data ?? []).reduce((s, x) => s + Number(x.genel_toplam ?? 0), 0)
+          const odenen = (data ?? []).reduce((s, x) => s + Number(x.odenen_toplam ?? 0), 0)
+          return {
+            tip,
+            tarih_araligi: { baslangic: ay_baslangic, bitis: ay_bitis },
+            fatura_sayisi: data?.length ?? 0,
+            toplam_tutar: toplam,
+            tahsil_edilen: odenen,
+            bekleyen: toplam - odenen,
+          }
+        }
+        case 'acik_talep_durumu': {
+          const { data, error } = await supa
+            .from('servis_talepleri')
+            .select('durum, aciliyet')
+            .not('durum', 'in', '("tamamlandi","iptal")')
+            .limit(10000)
+          if (error) return { hata: error.message }
+          const durumSayim: Record<string, number> = {}
+          const acilSayim: Record<string, number> = {}
+          for (const r of (data ?? [])) {
+            durumSayim[r.durum ?? '?'] = (durumSayim[r.durum ?? '?'] ?? 0) + 1
+            acilSayim[r.aciliyet ?? '?'] = (acilSayim[r.aciliyet ?? '?'] ?? 0) + 1
+          }
+          return { tip, toplam_acik: data?.length ?? 0, durum_dagilimi: durumSayim, aciliyet_dagilimi: acilSayim }
+        }
+        case 'yaklasan_lisanslar': {
+          const bugun = new Date().toISOString().slice(0, 10)
+          const ileri = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+          const { data, error } = await supa
+            .from('trassir_lisanslar')
+            .select('firma_adi, lisans_no, bitis_tarihi, kamera_sayisi, durum')
+            .gte('bitis_tarihi', bugun)
+            .lte('bitis_tarihi', ileri)
+            .order('bitis_tarihi', { ascending: true })
+            .limit(limit)
+          if (error) return { hata: error.message }
+          return { tip, gun_araligi: 60, yaklasan_lisanslar: data ?? [] }
+        }
+        default:
+          return { hata: `Bilinmeyen istatistik tipi: ${tip}. Geçerli: en_cok_ziyaret_edilen_musteri, en_cok_talep_olan_musteri, en_aktif_personel, bu_ay_satis_toplami, acik_talep_durumu, yaklasan_lisanslar` }
+      }
     }
 
     default:
