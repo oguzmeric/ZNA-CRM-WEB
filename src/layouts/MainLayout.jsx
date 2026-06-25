@@ -8,12 +8,58 @@ import {
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
-  Activity, Timer, Boxes, StickyNote,
+  Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
 import FloatingZeynaButton from '../components/FloatingZeynaButton'
 import { Avatar } from '../components/ui'
+import { useMenuSiralama } from '../hooks/useMenuSiralama'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// Drag-drop wrapper — bir menu satirini sortable hale getirir, ust solda
+// grip handle ekler (hover'da gorunur). Drag sadece grip'ten baslar — geri
+// kalan tikla/aç/kapat etkilesimleri aynen calisir.
+function SortableSatir({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        position: 'relative',
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : 'auto',
+      }}
+      className="menu-satir"
+    >
+      {/* Grip — sadece hover'da goz alti hizada */}
+      <span
+        {...attributes}
+        {...listeners}
+        title="Sürükle ile sırala"
+        style={{
+          position: 'absolute',
+          left: -6, top: '50%', transform: 'translateY(-50%)',
+          width: 16, height: 22,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'grab',
+          color: 'var(--text-on-dark-muted)',
+          opacity: 0,
+          transition: 'opacity 0.12s',
+          zIndex: 5,
+        }}
+        onPointerDown={e => e.stopPropagation()}
+      >
+        <GripVertical size={14} strokeWidth={1.5} />
+      </span>
+      {children}
+    </div>
+  )
+}
 
 const menuItems = [
   { id: 'dashboard', isim: 'Panel', Icon: LayoutDashboard, yol: '/dashboard', modul: null },
@@ -199,11 +245,29 @@ function MainLayout({ children }) {
   }
 
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun)
-  const gorunenMenu = menuItems.filter(
+  const gorunenMenuRaw = menuItems.filter(
     (m) => m.modul === null
       || kullanici?.rol === 'admin'
       || kullanici?.moduller?.includes(m.modul)
   )
+
+  // Kullanıcı bazlı menü sıralaması (drag-drop ile yeniden sıralanabilir)
+  const { siralanmis: gorunenMenu, yenidenSirala, ozellestirildiMi, sifirla: menuSifirla } =
+    useMenuSiralama(gorunenMenuRaw, kullanici?.id)
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  )
+
+  const dragSonu = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = gorunenMenu.findIndex(m => m.id === active.id)
+    const newIndex = gorunenMenu.findIndex(m => m.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const newOrder = arrayMove(gorunenMenu, oldIndex, newIndex).map(m => m.id)
+    yenidenSirala(newOrder)
+  }
 
   const menuAcik = (id) => {
     if (id === 'stok') return stokAcik
@@ -398,12 +462,15 @@ function MainLayout({ children }) {
 
         {/* Nav */}
         <nav aria-label="Ana menü" style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={dragSonu}>
+          <SortableContext items={gorunenMenu.map(m => m.id)} strategy={verticalListSortingStrategy}>
           {gorunenMenu.map(item => {
             if (item.altMenu) {
               const altAktif = item.altMenu.some(a => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
               const acik = menuAcik(item.id)
               return (
-                <div key={item.id}>
+                <SortableSatir id={item.id} key={item.id}>
+                <div>
                   <button
                     onClick={() => menuToggle(item.id)}
                     style={{
@@ -485,14 +552,15 @@ function MainLayout({ children }) {
                     </div>
                   )}
                 </div>
+                </SortableSatir>
               )
             }
 
             const aktif = location.pathname === item.yol ||
               (item.yol !== '/dashboard' && location.pathname.startsWith(item.yol))
             return (
+              <SortableSatir id={item.id} key={item.id}>
               <button
-                key={item.id}
                 onClick={() => navigate(item.yol)}
                 style={{
                   width: '100%',
@@ -528,8 +596,36 @@ function MainLayout({ children }) {
                   </span>
                 )}
               </button>
+              </SortableSatir>
             )
           })}
+          </SortableContext>
+          </DndContext>
+
+          {/* Hover'da grip handle gozuksun + ozellestirildiyse 'sifirla' kucuk link */}
+          <style>{`
+            .menu-satir:hover > span[title="Sürükle ile sırala"] { opacity: 0.6; }
+            .menu-satir:hover > span[title="Sürükle ile sırala"]:hover { opacity: 1; }
+          `}</style>
+          {ozellestirildiMi && (
+            <button
+              onClick={menuSifirla}
+              title="Menü sıralamasını sıfırla"
+              style={{
+                marginTop: 10, padding: '6px 8px',
+                background: 'transparent',
+                border: '1px dashed var(--border-on-dark)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-on-dark-muted)',
+                font: '400 11px/14px var(--font-sans)',
+                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+              }}
+            >
+              <RotateCcw size={11} strokeWidth={1.5} />
+              Sıralamayı sıfırla
+            </button>
+          )}
         </nav>
 
         {/* Logout */}
