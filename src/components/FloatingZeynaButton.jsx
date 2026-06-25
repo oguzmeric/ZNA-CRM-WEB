@@ -17,13 +17,14 @@ export default function FloatingZeynaButton() {
     <>
       <style>{`
         @keyframes zeyna-fab-glow {
-          0%, 100% { box-shadow: 0 6px 20px rgba(30,90,168,0.35); }
-          50%      { box-shadow: 0 6px 24px rgba(74,197,229,0.45); }
+          0%, 100% { box-shadow: 0 6px 20px rgba(46,35,128,0.35); }
+          50%      { box-shadow: 0 6px 26px rgba(245,166,35,0.4); }
         }
         .zeyna-fab:hover { transform: translateY(-2px) scale(1.05); }
         .zeyna-fab {
           transition: transform 0.15s ease;
           animation: zeyna-fab-glow 3s ease-in-out infinite;
+          border-radius: 50%;
         }
       `}</style>
       <button
