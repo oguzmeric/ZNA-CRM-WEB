@@ -51,3 +51,5 @@ desktop.ini
 # Supabase CLI link cache
 supabase/.temp/
 .vercel
+scripts/debug-zeyna.mjs
+scripts/test-zeyna.mjs

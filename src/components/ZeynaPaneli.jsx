@@ -9,9 +9,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Sparkles } from 'lucide-react'
 import ZeynaAvatar from './ZeynaAvatar'
+import { useAuth } from '../context/AuthContext'
 import { zeynaMesajGonder, konusmaMesajlariniGetir } from '../services/zeynaService'
 
+// Kullanicinin ilk adini al — bosluga gore ayir, ilk parcayi capitalize et
+function ilkAd(adSoyad) {
+  if (!adSoyad) return ''
+  const parca = String(adSoyad).trim().split(/\s+/)[0]
+  if (!parca) return ''
+  // 'OGUZ' → 'Oguz', 'oguz' → 'Oguz', 'Oguz' → 'Oguz'
+  return parca.charAt(0).toLocaleUpperCase('tr-TR') + parca.slice(1).toLocaleLowerCase('tr-TR')
+}
+
 export default function ZeynaPaneli({ acik, onKapat }) {
+  const { kullanici } = useAuth()
+  const ad = ilkAd(kullanici?.ad)
   const [mesajlar, setMesajlar] = useState([])
   const [girdi, setGirdi] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
@@ -172,7 +184,7 @@ export default function ZeynaPaneli({ acik, onKapat }) {
                   marginTop: 12, fontWeight: 700, fontSize: 16,
                   color: 'var(--text-primary)',
                 }}>
-                  Selam Oğuz Bey 👋
+                  {ad ? `Selam ${ad} 👋` : 'Selam 👋'}
                 </div>
                 <div style={{
                   marginTop: 4, fontSize: 13, lineHeight: 1.5,
