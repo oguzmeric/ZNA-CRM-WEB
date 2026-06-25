@@ -194,10 +194,10 @@ export default function ZeynaPaneli({ acik, onKapat }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
+                  { ikon: '📋', metin: 'Bana atanmış açık talepleri listele' },
+                  { ikon: '🔍', metin: 'Talay Lojistik\'in son taleplerini göster' },
+                  { ikon: '💰', metin: 'Bu ayki teklifleri özetle' },
                   { ikon: '✍️', metin: 'Müşteriye gönderilecek e-postayı düzelt' },
-                  { ikon: '🧠', metin: 'CCTV kurulumda hangi noktalara dikkat etmem gerekir?' },
-                  { ikon: '📋', metin: 'Bu görev için kısa bir kontrol listesi yap' },
-                  { ikon: '🔁', metin: 'Bu metni daha kibar dile çevir' },
                 ].map((s, i) => (
                   <button
                     key={i}
@@ -229,13 +229,13 @@ export default function ZeynaPaneli({ acik, onKapat }) {
 
               <div style={{
                 marginTop: 16, padding: '8px 12px',
-                background: 'rgba(245,166,35,0.08)',
-                border: '1px solid rgba(245,166,35,0.25)',
+                background: 'rgba(74,197,229,0.08)',
+                border: '1px solid rgba(90,74,209,0.20)',
                 borderRadius: 8,
                 fontSize: 11, lineHeight: 1.5,
                 color: 'var(--text-secondary)',
               }}>
-                💡 Yakında CRM verilerine de erişim sağlayacağım — talepler, teklifler, müşteriler hakkında direkt sorabileceksin.
+                🔗 CRM'e bağlıyım — müşteriler, talepler, teklifler hakkında direkt sorabilirsin.
               </div>
             </div>
           )}
