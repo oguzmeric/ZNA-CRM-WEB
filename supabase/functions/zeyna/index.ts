@@ -293,11 +293,13 @@ async function toolCalistir(
       const q = String(girdi.arama ?? '').trim()
       const limit = Number(girdi.limit ?? 10)
       if (!q) return { hata: 'Arama metni boş' }
+      // NOT: kullanicilar tablosunda 'soyad' kolonu yok — ad alani 'Ad Soyad'
+      // formatinda bos ayrik. kullanici_adi de aranabilir.
       const { data, error } = await supa
         .from('kullanicilar')
-        .select('id, ad, soyad, kullanici_adi, tip, durum')
+        .select('id, ad, kullanici_adi, tip, durum, email, unvan')
         .neq('tip', 'musteri')
-        .or(`ad.ilike.%${q}%,soyad.ilike.%${q}%,kullanici_adi.ilike.%${q}%`)
+        .or(`ad.ilike.%${q}%,kullanici_adi.ilike.%${q}%`)
         .limit(limit)
       if (error) return { hata: error.message }
       return { sonuc_sayisi: data?.length ?? 0, kullanicilar: data ?? [] }
