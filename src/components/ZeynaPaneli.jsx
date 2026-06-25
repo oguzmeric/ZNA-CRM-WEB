@@ -222,22 +222,22 @@ export default function ZeynaPaneli({ acik, onKapat }) {
             display: 'flex', alignItems: 'flex-end', gap: 8,
             background: 'var(--surface-bg, #F4F6F8)',
             border: '1px solid var(--border-default, #DEE3EC)',
-            borderRadius: 12, padding: '6px 6px 6px 12px',
+            borderRadius: 14, padding: '10px 10px 10px 14px',
           }}>
             <textarea
               ref={inputRef}
               value={girdi}
               onChange={e => setGirdi(e.target.value)}
               onKeyDown={enterIle}
-              rows={1}
+              rows={3}
               placeholder="Zeyna'ya bir şey sor… (Enter ile gönder, Shift+Enter yeni satır)"
               style={{
                 flex: 1, border: 'none', outline: 'none',
                 resize: 'none', background: 'transparent',
-                font: '400 13px/19px var(--font-sans)',
+                font: '400 14px/21px var(--font-sans)',
                 color: 'var(--text-primary)',
-                minHeight: 22, maxHeight: 120,
-                padding: '6px 0',
+                minHeight: 64, maxHeight: 200,
+                padding: '4px 0',
               }}
               disabled={gonderiliyor}
             />
@@ -246,7 +246,7 @@ export default function ZeynaPaneli({ acik, onKapat }) {
               disabled={!girdi.trim() || gonderiliyor}
               title="Gönder (Enter)"
               style={{
-                width: 34, height: 34, borderRadius: 10,
+                width: 40, height: 40, borderRadius: 12,
                 border: 'none', cursor: girdi.trim() && !gonderiliyor ? 'pointer' : 'not-allowed',
                 background: girdi.trim() && !gonderiliyor
                   ? 'linear-gradient(135deg, #1E5AA8, #4AC5E5)'
@@ -259,7 +259,7 @@ export default function ZeynaPaneli({ acik, onKapat }) {
               onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
             >
-              <Send size={15} />
+              <Send size={17} />
             </button>
           </div>
         </div>
