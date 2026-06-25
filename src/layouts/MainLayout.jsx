@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
+import FloatingZeynaButton from '../components/FloatingZeynaButton'
 import { Avatar } from '../components/ui'
 
 const menuItems = [
@@ -754,6 +755,7 @@ function MainLayout({ children }) {
 
       <ThemePaneli acik={temaPaneliAcik} kapat={() => setTemaPaneliAcik(false)} />
       <FloatingSohbetButton />
+      <FloatingZeynaButton />
     </div>
   )
 }
