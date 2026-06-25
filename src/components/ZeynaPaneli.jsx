@@ -8,6 +8,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Sparkles } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import ZeynaAvatar from './ZeynaAvatar'
 import { useAuth } from '../context/AuthContext'
 import { zeynaMesajGonder, konusmaMesajlariniGetir } from '../services/zeynaService'
@@ -433,21 +435,51 @@ function MesajBaloncuk({ mesaj }) {
       gap: 8,
     }}>
       {!benim && <ZeynaAvatar size={26} />}
-      <div style={{
-        maxWidth: '78%',
-        padding: '9px 13px',
-        borderRadius: 14,
-        borderTopRightRadius: benim ? 4 : 14,
-        borderTopLeftRadius: benim ? 14 : 4,
-        background: benim ? '#1E5AA8' : '#fff',
-        color: benim ? '#fff' : 'var(--text-primary, #0F1B2E)',
-        border: benim ? 'none' : '1px solid var(--border-subtle, #DEE3EC)',
-        font: '400 13px/19px var(--font-sans)',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        boxShadow: benim ? '0 1px 2px rgba(15,27,46,0.08)' : '0 1px 2px rgba(15,27,46,0.04)',
-      }}>
-        {mesaj.icerik}
+      <div
+        className={benim ? 'zeyna-msg-user' : 'zeyna-msg-bot'}
+        style={{
+          maxWidth: '82%',
+          padding: '10px 14px',
+          borderRadius: 14,
+          borderTopRightRadius: benim ? 4 : 14,
+          borderTopLeftRadius: benim ? 14 : 4,
+          background: benim ? '#1E5AA8' : '#fff',
+          color: benim ? '#fff' : 'var(--text-primary, #0F1B2E)',
+          border: benim ? 'none' : '1px solid var(--border-subtle, #DEE3EC)',
+          font: '400 13px/20px var(--font-sans)',
+          wordBreak: 'break-word',
+          boxShadow: benim ? '0 1px 2px rgba(15,27,46,0.08)' : '0 1px 2px rgba(15,27,46,0.04)',
+        }}
+      >
+        {benim ? (
+          <div style={{ whiteSpace: 'pre-wrap' }}>{mesaj.icerik}</div>
+        ) : (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ node, ...props }) => <p style={{ margin: '0 0 8px' }} {...props} />,
+              ul: ({ node, ...props }) => <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }} {...props} />,
+              ol: ({ node, ...props }) => <ol style={{ margin: '4px 0 8px', paddingLeft: 18 }} {...props} />,
+              li: ({ node, ...props }) => <li style={{ marginBottom: 2 }} {...props} />,
+              h1: ({ node, ...props }) => <h3 style={{ font: '700 14px/20px var(--font-sans)', margin: '4px 0 6px' }} {...props} />,
+              h2: ({ node, ...props }) => <h3 style={{ font: '700 14px/20px var(--font-sans)', margin: '4px 0 6px' }} {...props} />,
+              h3: ({ node, ...props }) => <h3 style={{ font: '700 13px/19px var(--font-sans)', margin: '4px 0 4px' }} {...props} />,
+              strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'var(--text-primary)' }} {...props} />,
+              em: ({ node, ...props }) => <em style={{ fontStyle: 'italic' }} {...props} />,
+              code: ({ node, inline, ...props }) => inline
+                ? <code style={{ background: 'rgba(30,90,168,0.08)', color: '#1E5AA8', padding: '1px 6px', borderRadius: 4, font: '500 12px/16px ui-monospace,Consolas,monospace' }} {...props} />
+                : <pre style={{ background: 'var(--surface-bg, #F4F6F8)', padding: 10, borderRadius: 8, overflowX: 'auto', font: '12px/18px ui-monospace,Consolas,monospace', margin: '6px 0' }}><code {...props} /></pre>,
+              a: ({ node, ...props }) => <a target="_blank" rel="noopener noreferrer" style={{ color: '#1E5AA8', textDecoration: 'underline' }} {...props} />,
+              hr: () => <hr style={{ border: 0, borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />,
+              blockquote: ({ node, ...props }) => <blockquote style={{ borderLeft: '3px solid #1E5AA8', paddingLeft: 10, margin: '6px 0', color: 'var(--text-secondary)' }} {...props} />,
+              table: ({ node, ...props }) => <table style={{ borderCollapse: 'collapse', margin: '6px 0', fontSize: 12 }} {...props} />,
+              th: ({ node, ...props }) => <th style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px', background: 'var(--surface-bg)' }} {...props} />,
+              td: ({ node, ...props }) => <td style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px' }} {...props} />,
+            }}
+          >
+            {mesaj.icerik}
+          </ReactMarkdown>
+        )}
       </div>
     </div>
   )
