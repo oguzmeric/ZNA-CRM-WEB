@@ -1,38 +1,39 @@
 // Zeyna AI asistanı — frontend service wrapper.
+//
+// NOT: supabase.functions.invoke yerine RAW FETCH kullaniyoruz —
+// supabase-js v2.104'te uzun (5-6 sn) yanitlarda 'Failed to send a request'
+// hatasi veriyordu. Raw fetch ile sorun yok.
 
 import { supabase } from '../lib/supabase'
 
-// Edge function generic 'Failed to send' yerine response body'deki gercek hatayi al
-async function hataMesaji(error) {
-  let mesaj = error?.message ?? 'İşlem başarısız.'
-  try {
-    const ctx = error?.context
-    if (ctx && typeof ctx.text === 'function') {
-      const text = await ctx.text()
-      if (text) {
-        try {
-          const body = JSON.parse(text)
-          if (body?.hata) mesaj = body.hata
-        } catch {
-          mesaj = text.slice(0, 300)
-        }
-      }
-    }
-  } catch {}
-  return mesaj
-}
+const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zeyna`
+const APIKEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 /**
- * Zeyna'ya mesaj gönder.
- * @param {string} mesaj
- * @param {number} [konusmaId] - opsiyonel: mevcut konuşmaya devam et
- * @returns {Promise<{ok:true, konusma_id:number, yanit:string, token_input:number, token_output:number}>}
+ * Zeyna'ya mesaj gönder. Raw fetch (supabase-js bypass).
  */
 export async function zeynaMesajGonder(mesaj, konusmaId) {
-  const { data, error } = await supabase.functions.invoke('zeyna', {
-    body: { mesaj, konusma_id: konusmaId },
+  // Aktif session'dan access_token al
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Oturum bulunamadı, tekrar giriş yap.')
+
+  const res = await fetch(FN_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: APIKEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ mesaj, konusma_id: konusmaId }),
   })
-  if (error) throw new Error(await hataMesaji(error))
+
+  let data = null
+  try { data = await res.json() } catch {}
+  if (!res.ok) {
+    const hata = data?.hata ?? `Sunucu hatasi (${res.status})`
+    throw new Error(hata)
+  }
   if (!data?.ok) throw new Error(data?.hata ?? 'Zeyna yanıt veremedi.')
   return data
 }
