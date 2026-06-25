@@ -23,8 +23,11 @@ const MAX_TOOL_LOOPS = 6   // agentic loop güvenlik (kötü tool çağrısı so
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // supabase-js yeni surumler x-supabase-api-version, x-supabase-auth-token gibi
+  // header'lar da yolluyor — '*' veya genis liste kullanmak lazim
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-auth-token, accept, accept-language',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE)
