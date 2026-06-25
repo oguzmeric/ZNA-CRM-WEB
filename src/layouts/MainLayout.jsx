@@ -58,7 +58,6 @@ function SortableSatir({ id, children }) {
         }}
         onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
         onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; e.currentTarget.style.background = 'transparent' }}
-        onPointerDown={e => e.stopPropagation()}
       >
         <GripVertical size={14} strokeWidth={2} />
       </span>
