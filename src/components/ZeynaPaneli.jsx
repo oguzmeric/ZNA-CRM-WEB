@@ -164,18 +164,78 @@ export default function ZeynaPaneli({ acik, onKapat }) {
           }}
         >
           {mesajlar.length === 0 && (
-            <div style={{
-              textAlign: 'center', padding: 24,
-              color: 'var(--text-tertiary, #98A3B6)',
-              font: '400 13px/19px var(--font-sans)',
-            }}>
-              <ZeynaAvatar size={56} glow />
-              <div style={{ marginTop: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                Selam! Ben Zeyna 👋
+            <div style={{ padding: '12px 8px' }}>
+              {/* Karsilama */}
+              <div style={{ textAlign: 'center', marginBottom: 22 }}>
+                <ZeynaAvatar size={56} glow />
+                <div style={{
+                  marginTop: 12, fontWeight: 700, fontSize: 16,
+                  color: 'var(--text-primary)',
+                }}>
+                  Selam Oğuz Bey 👋
+                </div>
+                <div style={{
+                  marginTop: 4, fontSize: 13, lineHeight: 1.5,
+                  color: 'var(--text-secondary)',
+                  maxWidth: 300, marginInline: 'auto',
+                }}>
+                  Ben Zeyna — ZNA için işleri hızlandırmak için buradayım.
+                </div>
               </div>
-              <div style={{ marginTop: 6, maxWidth: 280, marginInline: 'auto' }}>
-                Sorun ne olursa olsun yazabilirsin — yardımcı olmaya çalışırım.
-                Yakında CRM verilerine de erişim sağlanacak.
+
+              {/* Ornek sorular — kullaniciya ne sorabilecegini gostermek icin */}
+              <div style={{
+                fontSize: 11, fontWeight: 700,
+                color: 'var(--text-tertiary)',
+                textTransform: 'uppercase', letterSpacing: 0.6,
+                marginBottom: 8, paddingLeft: 4,
+              }}>
+                Şunları deneyebilirsin
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { ikon: '✍️', metin: 'Müşteriye gönderilecek e-postayı düzelt' },
+                  { ikon: '🧠', metin: 'CCTV kurulumda hangi noktalara dikkat etmem gerekir?' },
+                  { ikon: '📋', metin: 'Bu görev için kısa bir kontrol listesi yap' },
+                  { ikon: '🔁', metin: 'Bu metni daha kibar dile çevir' },
+                ].map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setGirdi(s.metin)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 10,
+                      background: '#fff',
+                      border: '1px solid var(--border-subtle, #DEE3EC)',
+                      cursor: 'pointer', textAlign: 'left',
+                      font: '500 13px/18px var(--font-sans)',
+                      color: 'var(--text-primary)',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'var(--accent, #5A4AD1)'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--border-subtle, #DEE3EC)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>{s.ikon}</span>
+                    <span>{s.metin}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{
+                marginTop: 16, padding: '8px 12px',
+                background: 'rgba(245,166,35,0.08)',
+                border: '1px solid rgba(245,166,35,0.25)',
+                borderRadius: 8,
+                fontSize: 11, lineHeight: 1.5,
+                color: 'var(--text-secondary)',
+              }}>
+                💡 Yakında CRM verilerine de erişim sağlayacağım — talepler, teklifler, müşteriler hakkında direkt sorabileceksin.
               </div>
             </div>
           )}
