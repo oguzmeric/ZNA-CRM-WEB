@@ -35,31 +35,32 @@ function SortableSatir({ id, children }) {
         zIndex: isDragging ? 10 : 'auto',
         background: isDragging ? 'rgba(255,255,255,0.06)' : 'transparent',
         borderRadius: 6,
+        paddingRight: 20,           // grip icin sag bosluk — chevron/badge ile cakismasin
       }}
       className="menu-satir"
     >
       {children}
-      {/* Grip — sag kenarda, her zaman gozukur */}
+      {/* Grip — sag kenarda paddingRight bolgesi icinde */}
       <span
         {...attributes}
         {...listeners}
         title="Sürükle ile sırala"
         style={{
           position: 'absolute',
-          right: 4, top: 6,
-          width: 18, height: 22,
+          right: 2, top: 6,
+          width: 16, height: 22,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'grab',
           color: '#fff',
-          opacity: 0.35,
+          opacity: 0.4,
           transition: 'opacity 0.12s, background 0.12s',
           borderRadius: 4,
           touchAction: 'none',
         }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; e.currentTarget.style.background = 'transparent' }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'transparent' }}
       >
-        <GripVertical size={14} strokeWidth={2} />
+        <GripVertical size={13} strokeWidth={2} />
       </span>
     </div>
   )
