@@ -608,7 +608,7 @@ function err(status: number, hata: string) {
   )
 }
 
-async function kullaniciCek(authHeader: string): Promise<ToolContext | null> {
+async function kullaniciCek(authHeader: string): Promise<(ToolContext & { kalanSoru: number }) | null> {
   try {
     const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
       global: { headers: { Authorization: authHeader } },
@@ -617,12 +617,38 @@ async function kullaniciCek(authHeader: string): Promise<ToolContext | null> {
     if (!ures?.user) return null
     const { data: krow } = await supa
       .from('kullanicilar')
-      .select('id, ad, tip')
+      .select('id, ad, tip, zeyna_kalan_soru')
       .eq('auth_id', ures.user.id)
       .maybeSingle()
     if (!krow || krow.tip === 'musteri') return null
-    return { kullaniciId: krow.id, kullaniciAd: krow.ad }
+    return {
+      kullaniciId: krow.id,
+      kullaniciAd: krow.ad,
+      kalanSoru: Number(krow.zeyna_kalan_soru ?? 0),
+    }
   } catch { return null }
+}
+
+// Soru hakkindan 1 dus, lifetime toplam +1
+async function kotaDus(kullaniciId: number) {
+  // Atomic decrement icin RPC olmasa da, race condition'da sorun yok (admin yenileyebilir)
+  await supa.rpc('zeyna_kota_dus', { in_kullanici_id: kullaniciId }).catch(async () => {
+    // RPC yoksa manuel update
+    const { data: row } = await supa
+      .from('kullanicilar')
+      .select('zeyna_kalan_soru, zeyna_toplam_soru')
+      .eq('id', kullaniciId)
+      .single()
+    if (row) {
+      await supa
+        .from('kullanicilar')
+        .update({
+          zeyna_kalan_soru: Math.max(0, Number(row.zeyna_kalan_soru ?? 0) - 1),
+          zeyna_toplam_soru: Number(row.zeyna_toplam_soru ?? 0) + 1,
+        })
+        .eq('id', kullaniciId)
+    }
+  })
 }
 
 async function konusmaBulVeyaOlustur(kullaniciId: number, konusmaId?: number): Promise<number> {
@@ -796,6 +822,19 @@ serve(async (req) => {
     const ctx = await kullaniciCek(authHeader)
     if (!ctx) return err(401, 'Oturum gerekli (sadece personel).')
 
+    // Kota kontrolu
+    if (ctx.kalanSoru <= 0) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          hata: 'Soru hakkın doldu. Lütfen yöneticinden daha fazla soru hakkı iste.',
+          kota_bitti: true,
+          kalan_soru: 0,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     const body = await req.json()
     const mesaj = (body?.mesaj ?? '').toString().trim()
     const konusmaIdRaw = body?.konusma_id
@@ -822,7 +861,7 @@ serve(async (req) => {
     // Agentic loop
     const { yanit, tokenInput, tokenOutput } = await agenticLoop(messages, ctx, cid)
 
-    // Asistan yanıtını kaydet
+    // Asistan yanıtını kaydet + kotadan dus
     await mesajKaydet({
       konusmaId: cid,
       rol: 'assistant',
@@ -830,6 +869,8 @@ serve(async (req) => {
       tokenInput,
       tokenOutput,
     })
+    await kotaDus(ctx.kullaniciId)
+    const yeniKalan = Math.max(0, ctx.kalanSoru - 1)
 
     return new Response(
       JSON.stringify({
@@ -838,6 +879,7 @@ serve(async (req) => {
         yanit,
         token_input: tokenInput,
         token_output: tokenOutput,
+        kalan_soru: yeniKalan,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

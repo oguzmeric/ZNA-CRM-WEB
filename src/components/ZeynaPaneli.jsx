@@ -24,6 +24,7 @@ function ilkAd(adSoyad) {
 export default function ZeynaPaneli({ acik, onKapat }) {
   const { kullanici } = useAuth()
   const ad = ilkAd(kullanici?.ad)
+  const [kalanSoru, setKalanSoru] = useState(null)  // null = bilinmiyor, ilk yanittan sonra dolar
   const [mesajlar, setMesajlar] = useState([])
   const [girdi, setGirdi] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
@@ -67,14 +68,25 @@ export default function ZeynaPaneli({ acik, onKapat }) {
     try {
       const res = await zeynaMesajGonder(mesaj, konusmaId ?? undefined)
       setKonusmaId(res.konusma_id)
+      if (typeof res.kalan_soru === 'number') setKalanSoru(res.kalan_soru)
       setMesajlar(prev => [...prev, { rol: 'assistant', icerik: res.yanit, id: `a-${Date.now()}` }])
     } catch (e) {
-      setHata(e.message)
-      setMesajlar(prev => [...prev, {
-        rol: 'assistant',
-        icerik: '⚠️ Bir sorun oluştu: ' + e.message,
-        id: `e-${Date.now()}`,
-      }])
+      // Kota bitti hatasi ozel mesaj
+      if (e.kota_bitti || /soru hakkın/i.test(e.message)) {
+        setKalanSoru(0)
+        setMesajlar(prev => [...prev, {
+          rol: 'assistant',
+          icerik: '🔒 Soru hakkın doldu.\n\nLütfen **yöneticinden daha fazla soru hakkı iste**. Yönetici Kullanıcılar sayfasından sana ek hak verebilir.',
+          id: `e-${Date.now()}`,
+        }])
+      } else {
+        setHata(e.message)
+        setMesajlar(prev => [...prev, {
+          rol: 'assistant',
+          icerik: '⚠️ Bir sorun oluştu: ' + e.message,
+          id: `e-${Date.now()}`,
+        }])
+      }
     } finally {
       setGonderiliyor(false)
       inputRef.current?.focus()
@@ -151,6 +163,26 @@ export default function ZeynaPaneli({ acik, onKapat }) {
               ZNA Teknoloji AI Asistan
             </div>
           </div>
+          {/* Kalan soru hakki rozeti */}
+          {kalanSoru != null && (
+            <div
+              title={kalanSoru === 0 ? 'Soru hakkın bitti — yöneticinden iste' : `${kalanSoru} soru hakkın kaldı`}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 999,
+                background: kalanSoru === 0
+                  ? 'rgba(239,68,68,0.12)'
+                  : kalanSoru <= 1 ? 'rgba(245,166,35,0.15)' : 'rgba(74,197,229,0.12)',
+                color: kalanSoru === 0
+                  ? '#DC2626'
+                  : kalanSoru <= 1 ? '#B45309' : '#1E5AA8',
+                font: '700 11px/14px var(--font-sans)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {kalanSoru === 0 ? 'Hak bitti' : `${kalanSoru} hak`}
+            </div>
+          )}
           <button
             onClick={onKapat}
             title="Kapat (ESC)"

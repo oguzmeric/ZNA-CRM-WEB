@@ -32,9 +32,15 @@ export async function zeynaMesajGonder(mesaj, konusmaId) {
   try { data = await res.json() } catch {}
   if (!res.ok) {
     const hata = data?.hata ?? `Sunucu hatasi (${res.status})`
-    throw new Error(hata)
+    const e = new Error(hata)
+    if (data?.kota_bitti) e.kota_bitti = true
+    throw e
   }
-  if (!data?.ok) throw new Error(data?.hata ?? 'Zeyna yanıt veremedi.')
+  if (!data?.ok) {
+    const e = new Error(data?.hata ?? 'Zeyna yanıt veremedi.')
+    if (data?.kota_bitti) e.kota_bitti = true
+    throw e
+  }
   return data
 }
 
