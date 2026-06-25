@@ -351,7 +351,7 @@ export default function ZeynaPaneli({ acik, onKapat }) {
               onChange={e => setGirdi(e.target.value)}
               onKeyDown={enterIle}
               rows={3}
-              placeholder="Zeyna'ya bir şey sor… (Enter ile gönder, Shift+Enter yeni satır)"
+              placeholder="Zeyna'ya bir şey sor…"
               style={{
                 flex: 1, border: 'none', outline: 'none',
                 resize: 'none', background: 'transparent',
