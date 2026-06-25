@@ -7,22 +7,15 @@ import { X } from 'lucide-react'
 import ZeynaAvatar from './ZeynaAvatar'
 import ZeynaPaneli from './ZeynaPaneli'
 
-const STORAGE_KEY = 'zeyna-greeting-shown-date'
+const STORAGE_KEY = 'zeyna-greeting-shown-session'
 
-// Bugun karsilama gosterildi mi? localStorage'a tarih kaydederiz, gun degisince yeniden gosterir.
-function bugunGosterildi() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return false
-    const bugun = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
-    return stored === bugun
-  } catch { return false }
+// Bu session'da karsilama gosterildi mi? sessionStorage — yeni sekme/giris'te tekrar gosterilir,
+// ayni sekme icindeki sayfa gecislerinde tekrar gosterilmez.
+function gosterildi() {
+  try { return sessionStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
 }
-
-function bugunIsaretle() {
-  try {
-    localStorage.setItem(STORAGE_KEY, new Date().toISOString().slice(0, 10))
-  } catch {}
+function isaretle() {
+  try { sessionStorage.setItem(STORAGE_KEY, '1') } catch {}
 }
 
 export default function FloatingZeynaButton() {
@@ -36,18 +29,18 @@ export default function FloatingZeynaButton() {
     location.pathname.startsWith('/p/')
   )
 
-  // Karsilama balonu: ilk yuklemede 2sn gecikme ile cikar, gunde 1 kez
+  // Karsilama balonu: ilk yuklemede 2sn gecikme ile cikar, session basina 1 kez
   useEffect(() => {
     if (!sayfaUygun) return
-    if (bugunGosterildi()) return
+    if (gosterildi()) return
     const t = setTimeout(() => setKarsilamaGoster(true), 2000)
     return () => clearTimeout(t)
   }, [sayfaUygun])
 
-  // Karsilamayi kapat ve "bugun gosterildi" isaretle
+  // Karsilamayi kapat ve "gosterildi" isaretle
   const karsilamaKapat = () => {
     setKarsilamaGoster(false)
-    bugunIsaretle()
+    isaretle()
   }
 
   // Panel acilinca da karsilama otomatik kaybolsun
@@ -149,29 +142,53 @@ export default function FloatingZeynaButton() {
         </div>
       )}
 
-      {/* Zeyna FAB — daha buyuk */}
-      <button
-        className="zeyna-fab"
-        onClick={panelAc}
-        title="Zeyna AI Asistanı"
-        style={{
-          position: 'fixed',
-          right: 24,
-          bottom: 96,           // Sohbet butonunun ustunde
-          zIndex: 950,
-          width: 72,
-          height: 72,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 0,
+      {/* Zeyna FAB + kalici etiket — buton ne icin oldugu anlasilsin */}
+      <div style={{
+        position: 'fixed',
+        right: 24,
+        bottom: 96,           // Sohbet butonunun ustunde
+        zIndex: 950,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+      }}>
+        <button
+          className="zeyna-fab"
+          onClick={panelAc}
+          title="Zeyna AI Asistanı"
+          style={{
+            width: 72,
+            height: 72,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ZeynaAvatar size={72} />
+        </button>
+        <div style={{
+          background: 'linear-gradient(135deg, #4234A8, #5346C7)',
+          color: '#fff',
+          padding: '2px 10px',
+          borderRadius: 999,
+          font: '700 10px/14px var(--font-sans)',
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          boxShadow: '0 2px 8px rgba(46,35,128,0.35)',
+          pointerEvents: 'none',
           display: 'inline-flex',
           alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ZeynaAvatar size={72} />
-      </button>
+          gap: 4,
+        }}>
+          <span style={{ fontSize: 9 }}>✨</span>
+          <span>Zeyna AI</span>
+        </div>
+      </div>
 
       <ZeynaPaneli acik={panelAcik} onKapat={() => setPanelAcik(false)} />
     </>
