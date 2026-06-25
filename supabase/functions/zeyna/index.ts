@@ -631,24 +631,20 @@ async function kullaniciCek(authHeader: string): Promise<(ToolContext & { kalanS
 
 // Soru hakkindan 1 dus, lifetime toplam +1
 async function kotaDus(kullaniciId: number) {
-  // Atomic decrement icin RPC olmasa da, race condition'da sorun yok (admin yenileyebilir)
-  await supa.rpc('zeyna_kota_dus', { in_kullanici_id: kullaniciId }).catch(async () => {
-    // RPC yoksa manuel update
-    const { data: row } = await supa
-      .from('kullanicilar')
-      .select('zeyna_kalan_soru, zeyna_toplam_soru')
-      .eq('id', kullaniciId)
-      .single()
-    if (row) {
-      await supa
-        .from('kullanicilar')
-        .update({
-          zeyna_kalan_soru: Math.max(0, Number(row.zeyna_kalan_soru ?? 0) - 1),
-          zeyna_toplam_soru: Number(row.zeyna_toplam_soru ?? 0) + 1,
-        })
-        .eq('id', kullaniciId)
-    }
-  })
+  // Read-modify-write — race condition'da sorun yok, admin yenileyebilir
+  const { data: row } = await supa
+    .from('kullanicilar')
+    .select('zeyna_kalan_soru, zeyna_toplam_soru')
+    .eq('id', kullaniciId)
+    .single()
+  if (!row) return
+  await supa
+    .from('kullanicilar')
+    .update({
+      zeyna_kalan_soru: Math.max(0, Number(row.zeyna_kalan_soru ?? 0) - 1),
+      zeyna_toplam_soru: Number(row.zeyna_toplam_soru ?? 0) + 1,
+    })
+    .eq('id', kullaniciId)
 }
 
 async function konusmaBulVeyaOlustur(kullaniciId: number, konusmaId?: number): Promise<number> {
