@@ -374,6 +374,7 @@ export default function Teklifler() {
                           { l: 'Teklif Açıklaması' },
                           { l: 'Fatura' },
                           { l: 'Düzenleme' },
+                          { l: 'Hazırlayan' },
                           { l: 'Toplam', align: 'right' },
                           { l: '', align: 'right' },
                         ].map((h, i) => (
@@ -467,6 +468,11 @@ export default function Teklifler() {
                               </div>
                               <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: 2 }}>
                                 {goreceTarih(t.tarih)}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                                {t.hazirlayan || '—'}
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
