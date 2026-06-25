@@ -2,6 +2,26 @@
 
 import { supabase } from '../lib/supabase'
 
+// Edge function generic 'Failed to send' yerine response body'deki gercek hatayi al
+async function hataMesaji(error) {
+  let mesaj = error?.message ?? 'İşlem başarısız.'
+  try {
+    const ctx = error?.context
+    if (ctx && typeof ctx.text === 'function') {
+      const text = await ctx.text()
+      if (text) {
+        try {
+          const body = JSON.parse(text)
+          if (body?.hata) mesaj = body.hata
+        } catch {
+          mesaj = text.slice(0, 300)
+        }
+      }
+    }
+  } catch {}
+  return mesaj
+}
+
 /**
  * Zeyna'ya mesaj gönder.
  * @param {string} mesaj
@@ -12,7 +32,7 @@ export async function zeynaMesajGonder(mesaj, konusmaId) {
   const { data, error } = await supabase.functions.invoke('zeyna', {
     body: { mesaj, konusma_id: konusmaId },
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(await hataMesaji(error))
   if (!data?.ok) throw new Error(data?.hata ?? 'Zeyna yanıt veremedi.')
   return data
 }
