@@ -195,46 +195,95 @@ export default function ZeynaPaneli({ acik, onKapat }) {
                 </div>
               </div>
 
-              {/* Ornek sorular — kullaniciya ne sorabilecegini gostermek icin */}
+              {/* Hizli baslangic kartlari */}
               <div style={{
-                fontSize: 11, fontWeight: 700,
+                fontSize: 10, fontWeight: 800,
                 color: 'var(--text-tertiary)',
-                textTransform: 'uppercase', letterSpacing: 0.6,
-                marginBottom: 8, paddingLeft: 4,
+                textTransform: 'uppercase', letterSpacing: 0.8,
+                marginBottom: 10, paddingLeft: 4,
               }}>
-                Şunları deneyebilirsin
+                Hızlı Başla
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+              }}>
                 {[
-                  { ikon: '📋', metin: 'Bana atanmış açık talepleri listele' },
-                  { ikon: '🔍', metin: 'Talay Lojistik\'in son taleplerini göster' },
-                  { ikon: '💰', metin: 'Bu ayki teklifleri özetle' },
-                  { ikon: '✍️', metin: 'Müşteriye gönderilecek e-postayı düzelt' },
+                  {
+                    renk: '#1E5AA8', renkBg: 'rgba(30,90,168,0.08)',
+                    Ikon: 'M9 11H7v5h2v-5zm4 0h-2v5h2v-5zm4 0h-2v5h2v-5zm2-7h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z',
+                    baslik: 'Açık Servisler',
+                    metin: 'Bana atanmış açık servis taleplerini listele',
+                  },
+                  {
+                    renk: '#5346C7', renkBg: 'rgba(83,70,199,0.08)',
+                    Ikon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+                    baslik: 'Müşteri 360',
+                    metin: 'Bir müşteri için 360 derece özet (firma adını söyle)',
+                  },
+                  {
+                    renk: '#0E7E5C', renkBg: 'rgba(14,126,92,0.08)',
+                    Ikon: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
+                    baslik: 'Bu Ay Satış',
+                    metin: 'Bu ay kesilen toplam fatura tutarı',
+                  },
+                  {
+                    renk: '#B45309', renkBg: 'rgba(180,83,9,0.08)',
+                    Ikon: 'M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
+                    baslik: 'Yaklaşan Lisans',
+                    metin: 'Önümüzdeki 30 gün içinde biten Trassir lisansları',
+                  },
+                  {
+                    renk: '#9F2B68', renkBg: 'rgba(159,43,104,0.08)',
+                    Ikon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z',
+                    baslik: 'Açık Talep Durumu',
+                    metin: 'Tüm açık taleplerin durum dağılımı',
+                  },
+                  {
+                    renk: '#4A4A4A', renkBg: 'rgba(74,74,74,0.06)',
+                    Ikon: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+                    baslik: 'E-posta Düzelt',
+                    metin: 'Müşteriye göndereceğim e-postayı dilini düzelt',
+                  },
                 ].map((s, i) => (
                   <button
                     key={i}
                     onClick={() => setGirdi(s.metin)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', borderRadius: 10,
+                      display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                      gap: 6, padding: '12px 12px',
+                      borderRadius: 12,
                       background: '#fff',
                       border: '1px solid var(--border-subtle, #DEE3EC)',
                       cursor: 'pointer', textAlign: 'left',
-                      font: '500 13px/18px var(--font-sans)',
-                      color: 'var(--text-primary)',
                       transition: 'all 0.15s',
+                      minHeight: 76,
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--accent, #5A4AD1)'
+                      e.currentTarget.style.borderColor = s.renk
                       e.currentTarget.style.transform = 'translateY(-1px)'
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${s.renkBg}`
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.borderColor = 'var(--border-subtle, #DEE3EC)'
                       e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = 'none'
                     }}
                   >
-                    <span style={{ fontSize: 16 }}>{s.ikon}</span>
-                    <span>{s.metin}</span>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 8,
+                      background: s.renkBg,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={s.renk}>
+                        <path d={s.Ikon} />
+                      </svg>
+                    </div>
+                    <div style={{
+                      fontSize: 12, fontWeight: 700, color: 'var(--text-primary)',
+                      lineHeight: 1.3,
+                    }}>{s.baslik}</div>
                   </button>
                 ))}
               </div>
