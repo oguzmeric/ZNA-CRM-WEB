@@ -19,9 +19,9 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// Drag-drop wrapper — bir menu satirini sortable hale getirir, ust solda
-// grip handle ekler (hover'da gorunur). Drag sadece grip'ten baslar — geri
-// kalan tikla/aç/kapat etkilesimleri aynen calisir.
+// Drag-drop wrapper — bir menu satirini sortable hale getirir, sag tarafa
+// kucuk grip handle ekler. Default opacity 0.3 (her zaman gozukur), hover 1.
+// Drag sadece grip'ten baslar — buton tikla/aç/kapat etkilesimleri aynen calisir.
 function SortableSatir({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
@@ -31,32 +31,37 @@ function SortableSatir({ id, children }) {
         position: 'relative',
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.6 : 1,
         zIndex: isDragging ? 10 : 'auto',
+        background: isDragging ? 'rgba(255,255,255,0.06)' : 'transparent',
+        borderRadius: 6,
       }}
       className="menu-satir"
     >
-      {/* Grip — sadece hover'da goz alti hizada */}
+      {children}
+      {/* Grip — sag kenarda, her zaman gozukur */}
       <span
         {...attributes}
         {...listeners}
         title="Sürükle ile sırala"
         style={{
           position: 'absolute',
-          left: -6, top: '50%', transform: 'translateY(-50%)',
-          width: 16, height: 22,
+          right: 4, top: 6,
+          width: 18, height: 22,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'grab',
-          color: 'var(--text-on-dark-muted)',
-          opacity: 0,
-          transition: 'opacity 0.12s',
-          zIndex: 5,
+          color: '#fff',
+          opacity: 0.35,
+          transition: 'opacity 0.12s, background 0.12s',
+          borderRadius: 4,
+          touchAction: 'none',
         }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; e.currentTarget.style.background = 'transparent' }}
         onPointerDown={e => e.stopPropagation()}
       >
-        <GripVertical size={14} strokeWidth={1.5} />
+        <GripVertical size={14} strokeWidth={2} />
       </span>
-      {children}
     </div>
   )
 }
@@ -602,11 +607,6 @@ function MainLayout({ children }) {
           </SortableContext>
           </DndContext>
 
-          {/* Hover'da grip handle gozuksun + ozellestirildiyse 'sifirla' kucuk link */}
-          <style>{`
-            .menu-satir:hover > span[title="Sürükle ile sırala"] { opacity: 0.6; }
-            .menu-satir:hover > span[title="Sürükle ile sırala"]:hover { opacity: 1; }
-          `}</style>
           {ozellestirildiMi && (
             <button
               onClick={menuSifirla}
