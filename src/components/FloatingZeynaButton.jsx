@@ -7,16 +7,8 @@ import { X } from 'lucide-react'
 import ZeynaAvatar from './ZeynaAvatar'
 import ZeynaPaneli from './ZeynaPaneli'
 
-const STORAGE_KEY = 'zeyna-greeting-shown-session'
-
-// Bu session'da karsilama gosterildi mi? sessionStorage — yeni sekme/giris'te tekrar gosterilir,
-// ayni sekme icindeki sayfa gecislerinde tekrar gosterilmez.
-function gosterildi() {
-  try { return sessionStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
-}
-function isaretle() {
-  try { sessionStorage.setItem(STORAGE_KEY, '1') } catch {}
-}
+// Karsilama balonu her sayfa yuklemesinde gosterilir (storage kullanmıyoruz —
+// kullanici 'gorunmuyor' diye sikayet etti). 2sn gecikme + 7sn sonra otomatik kaybolur.
 
 export default function FloatingZeynaButton() {
   const location = useLocation()
@@ -29,19 +21,15 @@ export default function FloatingZeynaButton() {
     location.pathname.startsWith('/p/')
   )
 
-  // Karsilama balonu: ilk yuklemede 2sn gecikme ile cikar, session basina 1 kez
+  // Karsilama balonu: her yuklemede 2sn gecikme ile cikar, 7sn sonra otomatik kaybolur
   useEffect(() => {
     if (!sayfaUygun) return
-    if (gosterildi()) return
-    const t = setTimeout(() => setKarsilamaGoster(true), 2000)
-    return () => clearTimeout(t)
+    const ac = setTimeout(() => setKarsilamaGoster(true), 2000)
+    const kapat = setTimeout(() => setKarsilamaGoster(false), 9000) // 2sn aciklis + 7sn duruş
+    return () => { clearTimeout(ac); clearTimeout(kapat) }
   }, [sayfaUygun])
 
-  // Karsilamayi kapat ve "gosterildi" isaretle
-  const karsilamaKapat = () => {
-    setKarsilamaGoster(false)
-    isaretle()
-  }
+  const karsilamaKapat = () => setKarsilamaGoster(false)
 
   // Panel acilinca da karsilama otomatik kaybolsun
   const panelAc = () => {
