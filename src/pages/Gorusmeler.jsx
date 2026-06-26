@@ -692,13 +692,13 @@ function Gorusmeler() {
             <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <colgroup>
                 <col style={{ width: 90 }} />
-                <col style={{ width: '20%' }} />
+                <col style={{ width: '22%' }} />
                 <col />
-                <col style={{ width: 90 }} />
                 <col style={{ width: 160 }} />
+                <col style={{ width: 130 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 80 }} />
+                <col style={{ width: 70 }} />
               </colgroup>
               <thead>
                 <tr>
@@ -791,8 +791,8 @@ function Gorusmeler() {
                         {g.takipNotu || '—'}
                       </p>
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                      <Badge tone="brand">{g.konu}</Badge>
+                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }} title={g.konu || ''}>
+                      <Badge tone="brand" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'middle' }}>{g.konu}</Badge>
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
                       {g.gorusen}
