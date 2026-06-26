@@ -890,12 +890,13 @@ function Stok() {
             </THead>
             <TBody>
               {sayfadakiUrunler.map((u) => {
-                const bakiye = stokBakiye(u.stokKodu)
+                const kalemOzet = kalemOzetleri.get(u.stokKodu)
+                // seri_takipli urunde gercek bakiye = depodaki seri kalem sayisi (stokBakiye eski aggregated, yaniltici)
+                const seriTakipli = !!u.seriTakipli || !!kalemOzet
+                const bakiye = seriTakipli ? (kalemOzet?.depoda ?? 0) : stokBakiye(u.stokKodu)
                 const opsiyon = opsiyonluMiktar(u.stokKodu)
                 const bos = bakiye - opsiyon
                 const kritik = Boolean(u.minStok) && bakiye <= Number(u.minStok)
-                const kalemOzet = kalemOzetleri.get(u.stokKodu)
-                const seriTakipli = !!kalemOzet
                 const gosterilenMarka = kalemOzet?.marka || u.marka || ''
                 const gosterilenModel = kalemOzet?.model || ''
                 return (
@@ -978,6 +979,11 @@ function Stok() {
                       }}>
                         {String(Math.round(Number(bakiye) || 0))}
                       </span>
+                      {seriTakipli && u.beklenenAdet ? (
+                        <div style={{ marginTop: 2, font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                          / {u.beklenenAdet} hedef
+                        </div>
+                      ) : null}
                       {kritik ? (
                         <div style={{ marginTop: 2 }}>
                           <Badge tone="kayip">Kritik</Badge>
