@@ -326,7 +326,11 @@ function MainLayout({ children }) {
   }
 
   const zamanFormat = (tarih) => {
-    const fark = Date.now() - new Date(tarih).getTime()
+    if (!tarih) return ''
+    const t = new Date(tarih).getTime()
+    if (isNaN(t)) return ''
+    const fark = Date.now() - t
+    if (fark < 0) return 'Az önce'
     const dk = Math.floor(fark / 60000)
     const saat = Math.floor(dk / 60)
     const gun = Math.floor(saat / 24)
@@ -802,7 +806,7 @@ function MainLayout({ children }) {
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{b.baslik}</div>
                               <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>{b.mesaj}</div>
-                              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{zamanFormat(b.tarih)}</div>
+                              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{zamanFormat(b.olusturmaTarih || b.tarih || b.olusturma_tarih)}</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                               {!b.okundu && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand-primary)' }} />}
