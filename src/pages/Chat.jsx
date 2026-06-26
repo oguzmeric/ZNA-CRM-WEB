@@ -52,7 +52,8 @@ function Chat() {
   const mesajSonuRef = useRef(null)
   const dosyaInputRef = useRef(null)
 
-  const digerKullanicilar = kullanicilar.filter(k => k.id !== kullanici?.id)
+  // Sadece personel (ZNA) ile mesajlasilir — musteriler chat listesine girmez
+  const digerKullanicilar = kullanicilar.filter(k => k.id !== kullanici?.id && k.tip !== 'musteri')
   const konusma = seciliKisi ? konusmaGetir(seciliKisi.id) : []
 
   useEffect(() => { if (seciliKisi) mesajlariOku(seciliKisi.id) }, [seciliKisi, konusma.length])
