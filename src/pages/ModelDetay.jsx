@@ -1,5 +1,5 @@
-// v2 — force chunk rebuild
 import { useState, useEffect, useMemo } from 'react'
+if (typeof window !== 'undefined') window.__MODEL_DETAY_VERSION__ = 'sn-ekle-v3'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
