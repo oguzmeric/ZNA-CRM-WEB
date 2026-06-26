@@ -96,7 +96,8 @@ function ModelDetay() {
     return top
   }, 0), [hareketler])
 
-  const seriTakipli = kalemler.length > 0
+  // seri_takipli ya urun field'indan (henuz seri eklenmemis de olsa true) ya da var olan kalemlerden anlasilir
+  const seriTakipli = !!urun?.seriTakipli || kalemler.length > 0
   const ornek = kalemler[0]
   const modelAdi = seriTakipli
     ? `${ornek?.marka ? ornek.marka + ' ' : ''}${ornek?.model || urun?.stokAdi || stokKodu}`
