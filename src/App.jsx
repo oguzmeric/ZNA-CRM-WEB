@@ -12,6 +12,7 @@ import Signup from './pages/Signup'
 import SifremiUnuttum from './pages/SifremiUnuttum'
 import Dashboard from './pages/Dashboard'
 import PaylasimBelge from './pages/PaylasimBelge'
+import DavetKabul from './pages/DavetKabul'
 import MainLayout from './layouts/MainLayout'
 import MusteriLayout from './layouts/MusteriLayout'
 
@@ -123,6 +124,16 @@ function App() {
     return (
       <Routes>
         <Route path="/p/:token" element={<PaylasimBelge />} />
+      </Routes>
+    )
+  }
+
+  // B2B portal davet linki — auth gate'in ONUNDE, herkese acik.
+  // Admin gonderdigi davet maili uzerinden musteri sifre belirleyip hesap aktive eder.
+  if (location.pathname.startsWith('/davet/')) {
+    return (
+      <Routes>
+        <Route path="/davet/:token" element={<DavetKabul />} />
       </Routes>
     )
   }

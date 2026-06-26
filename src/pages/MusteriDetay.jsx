@@ -3,8 +3,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
-  CheckCircle2,
+  CheckCircle2, Send,
 } from 'lucide-react'
+import MusteriDavetModal from '../components/MusteriDavetModal'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -70,6 +71,8 @@ function MusteriDetay() {
   const [lokasyonlar, setLokasyonlar]   = useState([])
   const [lokasyonForm, setLokasyonForm] = useState(null)
   const [lokKaydediliyor, setLokKaydediliyor] = useState(false)
+
+  const [davetAcik, setDavetAcik] = useState(false)
 
   const [gorusmeler, setGorusmeler] = useState([])
   const [teklifler, setTeklifler]   = useState([])
@@ -296,6 +299,9 @@ function MusteriDetay() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
             <Button variant="primary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={duzenleBaslat}>
               Düzenle
+            </Button>
+            <Button variant="secondary" iconLeft={<Send size={14} strokeWidth={1.5} />} onClick={() => setDavetAcik(true)}>
+              Portal Davet
             </Button>
             <Button variant="secondary" iconLeft={<FileText size={14} strokeWidth={1.5} />} onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}>
               Firma geçmişi
@@ -819,6 +825,12 @@ function MusteriDetay() {
         </Card>
       )}
 
+      <MusteriDavetModal
+        open={davetAcik}
+        onClose={() => setDavetAcik(false)}
+        musteri={musteri}
+        onayKisi={kisiler.find(k => k.anaKisi) || kisiler[0] || null}
+      />
     </div>
   )
 }
