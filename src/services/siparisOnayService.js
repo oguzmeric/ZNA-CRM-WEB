@@ -102,6 +102,31 @@ export async function siparisReddet(teklifId, { onaylayanId, onaylayanAd, redNed
 }
 
 /**
+ * Sipariş onayı için not güncelle — satıcı onaylayacak kişiye not bırakır.
+ * Sadece durum=bekliyor iken degisebilir.
+ */
+export async function siparisOnayNotuKaydet(teklifId, notMetni) {
+  // Mevcut siparis_onayi'ni cek, not field'ini guncelle
+  const { data: t, error: e1 } = await supabase
+    .from('teklifler')
+    .select('siparis_onayi')
+    .eq('id', teklifId)
+    .single()
+  if (e1) throw e1
+  const mevcut = t?.siparis_onayi || { durum: 'bekliyor' }
+  if (mevcut.durum !== 'bekliyor') {
+    throw new Error('Onaylanmış veya reddedilmiş siparişin notu değiştirilemez.')
+  }
+  const yeni = { ...mevcut, onay_notu: (notMetni || '').toString().slice(0, 1000) || null }
+  const { error: e2 } = await supabase
+    .from('teklifler')
+    .update({ siparis_onayi: yeni })
+    .eq('id', teklifId)
+  if (e2) throw e2
+  return yeni
+}
+
+/**
  * Raporlama özeti — bu ay/dönem onaylı toplam, bekleyen, reddedilen.
  */
 export async function siparisOnayRaporu(baslangic, bitis) {

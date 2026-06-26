@@ -286,6 +286,24 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
         <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odeme || '—'} />
       </div>
 
+      {/* Onay notu — varsa belirgin gozuksun */}
+      {s.onay_notu && (
+        <div style={{
+          background: 'rgba(245,158,11,0.08)', border: '1px solid #F59E0B',
+          borderRadius: 10, padding: 14, marginBottom: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <FileText size={14} style={{ color: '#B45309' }} />
+            <strong style={{ font: '700 12px/16px var(--font-sans)', color: '#92400E' }}>
+              {t.hazirlayan ? `${t.hazirlayan}'dan not` : 'Hazırlayandan not'}
+            </strong>
+          </div>
+          <div style={{ font: '400 13px/19px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+            {s.onay_notu}
+          </div>
+        </div>
+      )}
+
       {/* Mevcut durum bilgisi */}
       {sekme === 'onayli' && (
         <div style={{

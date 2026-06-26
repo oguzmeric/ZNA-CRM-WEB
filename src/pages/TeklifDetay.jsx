@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
-  CheckCircle2, Receipt, Inbox, Send,
+  CheckCircle2, Receipt, Inbox, Send, StickyNote, Save,
 } from 'lucide-react'
 import BelgePaylasModal from '../components/BelgePaylasModal'
+import { siparisOnayNotuKaydet } from '../services/siparisOnayService'
 import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -574,6 +575,15 @@ function TeklifDetay() {
           }}
         />
       </Card>
+
+      {/* Sipariş Onay Notu — kabul edilmiş ve onay bekliyor durumdaki tekliflerde gözükür */}
+      {!yeni && form?.onayDurumu === 'kabul' && form?.siparisOnayi?.durum === 'bekliyor' && (
+        <SiparisOnayNotuKart
+          teklifId={Number(id)}
+          mevcut={form.siparisOnayi?.onay_notu || ''}
+          onKaydedildi={(yeni) => setForm(f => ({ ...f, siparisOnayi: yeni }))}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16, marginBottom: 16 }}>
         {/* Sol — Teklif Bilgileri */}
@@ -1371,6 +1381,69 @@ function TeklifDetay() {
         )
       })()}
     </div>
+  )
+}
+
+// Siparis Onay Notu — kabul edilmis ve onay bekliyor durumdaki tekliflerde gozukur.
+// Personel onaylayacak kisiye 1000 karaktere kadar not birakabilir.
+function SiparisOnayNotuKart({ teklifId, mevcut, onKaydedildi }) {
+  const [not, setNot] = useState(mevcut || '')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [mesaj, setMesaj] = useState(null)
+  const degisti = not.trim() !== (mevcut || '').trim()
+
+  const kaydet = async () => {
+    setMesaj(null); setKaydediliyor(true)
+    try {
+      const yeni = await siparisOnayNotuKaydet(teklifId, not.trim())
+      onKaydedildi?.(yeni)
+      setMesaj({ tone: 'success', text: 'Not kaydedildi.' })
+      setTimeout(() => setMesaj(null), 2500)
+    } catch (e) {
+      setMesaj({ tone: 'danger', text: e?.message || 'Kaydedilemedi.' })
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
+  return (
+    <Card style={{ marginBottom: 16, borderLeft: '3px solid #F59E0B' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <StickyNote size={16} strokeWidth={1.5} style={{ color: '#B45309' }} />
+        <CardTitle style={{ margin: 0 }}>Sipariş Onay Notu</CardTitle>
+        <Badge tone="beklemede">Onay Bekliyor</Badge>
+      </div>
+      <p className="t-caption" style={{ marginBottom: 10 }}>
+        Onaylayacak kişiye iletmek istediğin bilgi varsa buraya yaz (örn. acil, özel indirim, stok durumu). Onaylayan kişi Sipariş Onayları sayfasında bu notu görür.
+      </p>
+      <Textarea
+        value={not}
+        onChange={e => setNot(e.target.value.slice(0, 1000))}
+        placeholder="Onaylayacak kişi için not…"
+        rows={3}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+          {not.length}/1000 karakter
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {mesaj && (
+            <span style={{ font: '500 12px/16px var(--font-sans)', color: mesaj.tone === 'success' ? 'var(--success)' : 'var(--danger)' }}>
+              {mesaj.text}
+            </span>
+          )}
+          <Button
+            variant="primary"
+            size="sm"
+            iconLeft={<Save size={12} strokeWidth={1.5} />}
+            disabled={!degisti || kaydediliyor}
+            onClick={kaydet}
+          >
+            {kaydediliyor ? 'Kaydediliyor…' : 'Notu Kaydet'}
+          </Button>
+        </div>
+      </div>
+    </Card>
   )
 }
 
