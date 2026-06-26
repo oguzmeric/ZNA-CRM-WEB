@@ -567,6 +567,49 @@ export default function RaporMerkezi() {
         </div>
       </Card>
 
+      {/* Satış Sipariş Onay özeti */}
+      {(() => {
+        const dahildi = (iso) => {
+          if (!iso) return false
+          const d = new Date(iso)
+          return d >= aralikBas && d <= aralikBit
+        }
+        const bekleyen = veri.teklifler.filter(t => t.siparisOnayi?.durum === 'bekliyor')
+        const donemOnayli = veri.teklifler.filter(t => t.siparisOnayi?.durum === 'onayli' && dahildi(t.siparisOnayi?.onay_tarihi))
+        const donemRed    = veri.teklifler.filter(t => t.siparisOnayi?.durum === 'reddedildi' && dahildi(t.siparisOnayi?.onay_tarihi))
+        const top = (l) => l.reduce((s, t) => s + Number(t.genelToplam || 0), 0)
+        return (
+          <Card style={{ marginBottom: 16 }}>
+            <p className="t-label" style={{ marginBottom: 12 }}>SATIŞ SİPARİŞ ONAY</p>
+            <div style={{
+              display: 'grid', gap: 12,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            }}>
+              <KPICard
+                label="Onay Bekliyor"
+                value={bekleyen.length}
+                footer={<span style={{ color: 'var(--warning)' }}>{formatPara(top(bekleyen))}</span>}
+              />
+              <KPICard
+                label="Onaylı (Dönem)"
+                value={donemOnayli.length}
+                footer={<span style={{ color: 'var(--success)' }}>{formatPara(top(donemOnayli))}</span>}
+              />
+              <KPICard
+                label="Reddedilen (Dönem)"
+                value={donemRed.length}
+                footer={<span style={{ color: 'var(--danger)' }}>{formatPara(top(donemRed))}</span>}
+              />
+              <KPICard
+                label="Toplam Onaylı Tutar"
+                value={formatPara(top(donemOnayli))}
+                footer={<span style={{ color: 'var(--text-tertiary)' }}>Satın almaya hazır</span>}
+              />
+            </div>
+          </Card>
+        )
+      })()}
+
       {/* Modül Tabloları */}
       {modulListesi.filter(m => seciliModuller[m.id]).map(modul => {
         const kayitlar = veri[modul.id]
