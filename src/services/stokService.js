@@ -204,6 +204,7 @@ export const stokKalemEkle = async (kalem) => {
     .select()
     .single()
   if (error) { console.error('stokKalemEkle hata:', error.message); throw error }
+  invalidatePrefix('stok')
   return toCamel(data)
 }
 
@@ -219,6 +220,7 @@ export const stokKalemleriToplu = async (kalemler) => {
     .insert(rows)
     .select()
   if (error) { console.error('stokKalemleriToplu hata:', error.message); throw error }
+  invalidatePrefix('stok')
   return arrayToCamel(data) ?? []
 }
 

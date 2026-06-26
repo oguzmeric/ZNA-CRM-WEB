@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
-  ArrowDown, ArrowUp, ArrowRightLeft, Box,
+  ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus,
 } from 'lucide-react'
 import {
   modelKalemleriniGetir, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
 } from '../services/stokService'
+import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard,
@@ -61,6 +62,8 @@ function ModelDetay() {
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [snEkleAcik, setSnEkleAcik] = useState(false)
+  const [yenile, setYenile] = useState(0)
 
   useEffect(() => {
     Promise.all([
@@ -79,7 +82,7 @@ function ModelDetay() {
       })
       .catch(err => console.error('[ModelDetay yükle]', err))
       .finally(() => setYukleniyor(false))
-  }, [stokKodu])
+  }, [stokKodu, yenile])
 
   const sayilar = useMemo(() => {
     const s = { toplam: kalemler.length, depoda: 0, teknisyende: 0, sahada: 0, arizada: 0, arizali_depoda: 0, tamirde: 0, hurda: 0 }
@@ -153,6 +156,18 @@ function ModelDetay() {
       >
         <ArrowLeft size={14} strokeWidth={1.5} /> Stok listesine dön
       </button>
+
+      {seriTakipli && urun && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <Button
+            variant="primary"
+            onClick={() => setSnEkleAcik(true)}
+            iconLeft={<Plus size={14} strokeWidth={1.5} />}
+          >
+            S/N Ekle
+          </Button>
+        </div>
+      )}
 
       {/* Özet Kartı */}
       <Card style={{ marginBottom: 16 }}>
@@ -485,6 +500,13 @@ function ModelDetay() {
           </Card>
         </div>
       )}
+
+      <SnEkleModal
+        open={snEkleAcik}
+        onClose={() => setSnEkleAcik(false)}
+        urun={urun}
+        onEklendi={() => setYenile(y => y + 1)}
+      />
     </div>
   )
 }
