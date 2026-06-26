@@ -1,3 +1,4 @@
+// v2 — force chunk rebuild
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
