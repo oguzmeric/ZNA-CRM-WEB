@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
 import {
   Save, LayoutDashboard, BarChart3, Settings, Check, AlertCircle,
   CheckCircle2, AlertTriangle,
@@ -36,6 +37,9 @@ const BAR_RENK = ['var(--brand-primary)', 'var(--success)', 'var(--info)', 'var(
 function Profil() {
   const { kullanici, kullaniciGuncelle, durumGuncelle } = useAuth()
   const [aktifSekme, setAktifSekme] = useState('genel')
+  const imzaFileRef = useRef(null)
+  const [imzaYukleniyor, setImzaYukleniyor] = useState(false)
+  const [imzaHata, setImzaHata] = useState(null)
   const [sifreDegistir, setSifreDegistir] = useState(false)
   const [form, setForm] = useState({
     ad: kullanici?.ad || '',
@@ -93,6 +97,41 @@ function Profil() {
   }).length
 
   const fmtTL = (n) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+
+  const imzaYukle = async (file) => {
+    setImzaHata(null)
+    if (!file.type.startsWith('image/')) { setImzaHata('Sadece görsel (JPG/PNG/WebP)'); return }
+    if (file.size > 5 * 1024 * 1024) { setImzaHata('Dosya 5 MB\'ı aşıyor'); return }
+    setImzaYukleniyor(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+      const yol = `kullanici-${kullanici.id}/profil-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('imzalar').upload(yol, file, {
+        contentType: file.type || 'image/png',
+        upsert: true,
+      })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('imzalar').getPublicUrl(yol)
+      await kullaniciGuncelle(kullanici.id, { imza: publicUrl })
+      setKaydetMesaj({ tone: 'success', text: 'İmza güncellendi.' })
+      setTimeout(() => setKaydetMesaj(null), 2500)
+    } catch (e) {
+      setImzaHata(e?.message || 'İmza yüklenemedi.')
+    } finally {
+      setImzaYukleniyor(false)
+      if (imzaFileRef.current) imzaFileRef.current.value = ''
+    }
+  }
+
+  const imzaKaldir = async () => {
+    try {
+      await kullaniciGuncelle(kullanici.id, { imza: null })
+      setKaydetMesaj({ tone: 'success', text: 'İmza kaldırıldı.' })
+      setTimeout(() => setKaydetMesaj(null), 2500)
+    } catch (e) {
+      setImzaHata(e?.message || 'Kaldırılamadı.')
+    }
+  }
 
   const bilgiKaydet = async () => {
     if (!form.ad || !form.kullaniciAdi) { setKaydetMesaj({ tone: 'danger', text: 'Ad ve kullanıcı adı zorunludur.' }); return }
@@ -427,6 +466,61 @@ function Profil() {
                 Kaydet
               </Button>
             </div>
+          </Card>
+
+          <Card>
+            <CardTitle>İmza</CardTitle>
+            <p className="t-caption" style={{ marginTop: 4, marginBottom: 12 }}>
+              Sipariş onaylarında ve resmi belgelerde kullanılacak imza görseli.
+            </p>
+            <div style={{
+              border: '2px dashed var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: 20,
+              background: kullanici?.imza ? 'var(--surface-card)' : 'var(--surface-sunken)',
+              textAlign: 'center',
+            }}>
+              {kullanici?.imza ? (
+                <>
+                  <img
+                    src={kullanici.imza}
+                    alt="İmza"
+                    style={{
+                      maxHeight: 120, maxWidth: 360,
+                      background: '#fff',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 6, padding: 8,
+                      marginBottom: 12,
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    <Button variant="secondary" onClick={() => imzaFileRef.current?.click()} disabled={imzaYukleniyor}>
+                      Değiştir
+                    </Button>
+                    <Button variant="tertiary" onClick={imzaKaldir}>Kaldır</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 12 }}>
+                    Henüz bir imza yüklemedin. JPG / PNG / WebP, en fazla 5 MB.
+                  </div>
+                  <Button variant="primary" onClick={() => imzaFileRef.current?.click()} disabled={imzaYukleniyor}>
+                    {imzaYukleniyor ? 'Yükleniyor…' : 'İmza Yükle'}
+                  </Button>
+                </>
+              )}
+              <input
+                ref={imzaFileRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={e => { const f = e.target.files?.[0]; if (f) imzaYukle(f) }}
+              />
+            </div>
+            {imzaHata && (
+              <Alert variant="danger" style={{ marginTop: 12 }}>{imzaHata}</Alert>
+            )}
           </Card>
 
           <Card>

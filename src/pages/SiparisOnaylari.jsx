@@ -207,6 +207,8 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
   const [hata, setHata] = useState(null)
 
   const s = t.siparisOnayi || {}
+  const profilImzasi = kullanici?.imza  // profilde yuklenmis imza
+  const imzaVar = !!(imzaDosyasi || profilImzasi)
 
   const imzaSec = (e) => {
     const f = e.target.files?.[0]
@@ -220,10 +222,16 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
 
   const onayla = async () => {
     setHata(null)
-    if (!imzaDosyasi) { setHata('Önce imza dosyası yükle.'); return }
+    if (!imzaDosyasi && !profilImzasi) {
+      setHata('İmza yok. Profilinden yükleyebilir veya buradan tek seferlik ekleyebilirsin.')
+      return
+    }
     setCalisiyor(true)
     try {
-      const url = await imzaYukle(imzaDosyasi, t.id)
+      // Yeni dosya secildiyse storage'a yukle, yoksa profil imzasini kullan
+      const url = imzaDosyasi
+        ? await imzaYukle(imzaDosyasi, t.id)
+        : profilImzasi
       await siparisOnayla(t.id, {
         onaylayanId: kullanici.id,
         onaylayanAd: kullanici.ad,
@@ -326,29 +334,50 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
           <div style={{
             border: '2px dashed var(--border-default)',
             borderRadius: 12, padding: 20, marginBottom: 14,
-            background: imzaPreview ? '#fff' : 'var(--surface-subtle)',
+            background: imzaPreview || profilImzasi ? '#fff' : 'var(--surface-subtle)',
             textAlign: 'center',
           }}>
             {imzaPreview ? (
+              // Yeni imza secildi (override)
               <div>
+                <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  Yeni İmza (Bu Onay İçin)
+                </div>
                 <img src={imzaPreview} alt="imza preview" style={{ maxHeight: 100, maxWidth: 320, marginBottom: 8 }} />
                 <div>
                   <button
                     onClick={() => { setImzaDosyasi(null); setImzaPreview(null); if (fileRef.current) fileRef.current.value = '' }}
                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    <X size={12} /> Kaldır
+                    <X size={12} /> Vazgeç, profil imzasını kullan
                   </button>
+                </div>
+              </div>
+            ) : profilImzasi ? (
+              // Profilden gelen imza kullanilacak
+              <div>
+                <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  Profil İmzan
+                </div>
+                <img src={profilImzasi} alt="profil imzası" style={{ maxHeight: 100, maxWidth: 320, marginBottom: 8 }} />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  <Button variant="tertiary" onClick={() => fileRef.current?.click()} iconLeft={<Upload size={12} />}>
+                    Bu onay için farklı imza yükle
+                  </Button>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={imzaSec} />
                 </div>
               </div>
             ) : (
               <>
                 <ImageIcon size={28} style={{ color: 'var(--text-tertiary)', marginBottom: 8 }} />
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                  Onay için imza görseli yükle (JPG / PNG / WebP, max 5 MB)
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  Henüz profilinde imza yok.
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+                  Profile imza yüklersen sonraki onaylarda otomatik kullanılır. Veya bu onaya özel:
                 </div>
                 <Button variant="secondary" onClick={() => fileRef.current?.click()} iconLeft={<Upload size={14} />}>
-                  Dosya Seç
+                  Bu onay için imza yükle
                 </Button>
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={imzaSec} />
               </>
@@ -365,7 +394,7 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
             <Button variant="tertiary" onClick={() => setRedModalAcik(true)} disabled={calisiyor}>
               <XCircle size={14} /> Reddet
             </Button>
-            <Button variant="primary" onClick={onayla} disabled={!imzaDosyasi || calisiyor}>
+            <Button variant="primary" onClick={onayla} disabled={!imzaVar || calisiyor}>
               <CheckCircle2 size={14} /> {calisiyor ? 'Kaydediliyor…' : 'Siparişi Onayla'}
             </Button>
           </div>
