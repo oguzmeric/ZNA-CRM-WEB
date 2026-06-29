@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
-import { gorevGetir, gorevGuncelle } from '../services/gorevService'
+import { gorevGetir, gorevGuncelle, gorevSil } from '../services/gorevService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions, segmentMetin } from '../lib/mention'
@@ -160,9 +160,44 @@ function GorevDetay() {
 
       {/* Başlık kartı */}
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-          {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
-          {durum   && <Badge tone={durum.tone}>{durum.isim}</Badge>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
+            {durum   && <Badge tone={durum.tone}>{durum.isim}</Badge>}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <Button
+              variant="secondary"
+              iconLeft={<Pencil size={14} strokeWidth={1.5} />}
+              onClick={() => navigate('/gorevler', { state: { duzenleGorevId: gorev.id } })}
+            >
+              Düzenle
+            </Button>
+            <Button
+              variant="secondary"
+              iconLeft={<Trash2 size={14} strokeWidth={1.5} />}
+              onClick={async () => {
+                const onay = await confirm({
+                  baslik: 'Görevi Sil',
+                  mesaj: `"${gorev.baslik}" görevi silinecek. Geri alınamaz. Emin misin?`,
+                  onayText: 'Evet, sil',
+                  iptalText: 'Vazgeç',
+                  tehlikeli: true,
+                })
+                if (!onay) return
+                try {
+                  await gorevSil(gorev.id)
+                  toast.success('Görev silindi.')
+                  navigate('/gorevler', { replace: true })
+                } catch (err) {
+                  toast.error('Görev silinemedi: ' + (err?.message ?? 'bilinmeyen hata'))
+                }
+              }}
+              style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
+            >
+              Sil
+            </Button>
+          </div>
         </div>
         <h1 className="t-h1" style={{ marginBottom: 8 }}>{gorev.baslik}</h1>
         {gorev.aciklama && (

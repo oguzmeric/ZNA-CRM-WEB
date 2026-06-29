@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useBildirim } from '../context/BildirimContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -256,6 +256,7 @@ function Gorevler() {
   const { talepOlusturGorevden } = useServisTalebi()
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { bildirimEkle } = useBildirim()
   const { toast } = useToast()
 
@@ -292,6 +293,18 @@ function Gorevler() {
 
   // İlk yükleme
   useEffect(() => { veriYukle({ ilkYukleme: true }) }, [veriYukle])
+
+  // GorevDetay'dan "Düzenle" tıklayınca state.duzenleGorevId ile gelir → form aç
+  useEffect(() => {
+    const hedefId = location.state?.duzenleGorevId
+    if (!hedefId || gorevler.length === 0) return
+    const g = gorevler.find(x => x.id === hedefId)
+    if (g) {
+      duzenleAc(g, { stopPropagation: () => {} })
+      // state'i temizle — sayfaya geri dönünce form tekrar açılmasın
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [gorevler, location.state?.duzenleGorevId])
 
   // Sayfa odağa dönünce tazele — detayda görev "tamamlandı" olarak
   // işaretlenip geri dönüldüğünde kanban senkron kalsın
