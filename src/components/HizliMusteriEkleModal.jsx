@@ -14,7 +14,16 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Modal, Input, Label } from './ui'
-import { musteriEkle } from '../services/musteriService'
+import { musteriEkle, musterileriGetir } from '../services/musteriService'
+
+// Musteriler.jsx ile ayni kod uretme mantigi — firma adindan 3 harfli prefix + sira
+function firmaKoduOlustur(firmaAdi, mevcutMusteriler) {
+  const temiz = (firmaAdi || '').toUpperCase().replace(/[^A-ZÇĞİÖŞÜ]/g, '')
+  const prefix = temiz.substring(0, 3).padEnd(3, 'X')
+  const ayniPrefix = (mevcutMusteriler || []).filter(m => m.kod?.startsWith(prefix))
+  const sayi = ayniPrefix.length + 1
+  return `${prefix}-${String(sayi).padStart(4, '0')}`
+}
 
 export default function HizliMusteriEkleModal({
   acik,
@@ -54,8 +63,12 @@ export default function HizliMusteriEkleModal({
     }
     setKaydediliyor(true)
     try {
+      // kod NOT NULL — Musteriler.jsx ile ayni mantikla auto-uret
+      const mevcut = await musterileriGetir()
+      const kod = firmaKoduOlustur(firma.trim(), mevcut)
       const yeni = await musteriEkle({
         firma: firma.trim(),
+        kod,
         ad: ad.trim(),
         soyad: soyad.trim() || null,
         telefon: telefon.trim() || null,
