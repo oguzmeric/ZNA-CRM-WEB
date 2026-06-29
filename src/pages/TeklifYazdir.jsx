@@ -26,6 +26,7 @@ export default function TeklifYazdir() {
   const [seciliTip, setSeciliTip] = useState(null)
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
   const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
+  const ciktiRef = useRef(null)
 
   useEffect(() => {
     Promise.all([teklifGetir(id), stokUrunleriniGetir()]).then(([data, urunler]) => {
@@ -51,8 +52,6 @@ export default function TeklifYazdir() {
   }
 
   const Cikti = ciktiMap[seciliTip] || StandartCikti
-
-  const ciktiRef = useRef(null)
 
   // Tarayicinin yazdirma diyaloguyla PDF kaydet — html2pdf complex CSS'te sorun cikariyordu.
   // Onceden dosya adini ayarla, browser print diyalogunda 'Save as PDF' secince
