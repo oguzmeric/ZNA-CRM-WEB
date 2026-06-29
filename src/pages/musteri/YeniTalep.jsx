@@ -26,7 +26,7 @@ const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: '
 
 const bosForm = {
   anaTur: '', altKategori: '', konu: '', lokasyon: '', cihazTuru: '',
-  aciklama: '', aciliyet: 'normal', ilgiliKisi: '', telefon: '', uygunZaman: '',
+  aciklama: '', aciliyet: 'normal', ilgiliKisi: '', telefon: '', email: '', uygunZaman: '',
 }
 
 export default function YeniTalep() {
@@ -97,6 +97,9 @@ export default function YeniTalep() {
     if (!form.aciklama.trim()) e.aciklama = 'Açıklama giriniz'
     if (yeniDosyalar.length === 0 || !yeniDosyalar.some(gorselMi)) {
       e.dosya = 'En az bir fotoğraf veya video eklemelisiniz'
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      e.email = 'Geçerli bir e-posta giriniz'
     }
     setHata(e)
     return Object.keys(e).length === 0
@@ -654,6 +657,17 @@ export default function YeniTalep() {
                     <Label>Telefon numarası</Label>
                     <Input type="tel" value={form.telefon} onChange={e => guncelle('telefon', e.target.value)} placeholder="0xxx xxx xx xx" />
                   </div>
+                </div>
+                <div>
+                  <Label>E-posta</Label>
+                  <Input
+                    type="email"
+                    value={form.email}
+                    onChange={e => guncelle('email', e.target.value)}
+                    placeholder="ornek@firma.com"
+                    style={hata.email ? { borderColor: 'var(--danger)' } : {}}
+                  />
+                  {hata.email && <p style={{ color: 'var(--danger)', font: '500 11px/16px var(--font-sans)', marginTop: 4 }}>{hata.email}</p>}
                 </div>
                 <div>
                   <Label>Uygun ziyaret / destek zamanı</Label>

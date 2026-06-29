@@ -174,6 +174,7 @@ export default function ServisTalepDetay() {
     { k: 'Cihaz/Sistem', v: talep.cihazTuru, Icon: Monitor },
     { k: 'İlgili Kişi', v: talep.ilgiliKisi, Icon: User },
     { k: 'Telefon',     v: talep.telefon,    Icon: Phone },
+    { k: 'E-posta',     v: talep.email,      Icon: Mail },
     { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman), Icon: Clock },
   ].filter(x => x.v && String(x.v).trim())
 
@@ -840,6 +841,7 @@ export default function ServisTalepDetay() {
                 talep.firmaAdi && { k: 'Firma', v: talep.firmaAdi },
                 { k: 'İlgili Kişi', v: talep.ilgiliKisi },
                 talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
+                talep.email && { k: 'E-posta', v: talep.email },
                 talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
               ].filter(Boolean).map(({ k, v, tabular }) => (
                 <div key={k}>

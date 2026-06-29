@@ -97,7 +97,7 @@ export default function MusteriTalepDetay() {
       konu: talep.konu, aciklama: talep.aciklama,
       lokasyon: talep.lokasyon || '', cihazTuru: talep.cihazTuru || '',
       aciliyet: talep.aciliyet, ilgiliKisi: talep.ilgiliKisi || '',
-      telefon: talep.telefon || '', uygunZaman: talep.uygunZaman || '',
+      telefon: talep.telefon || '', email: talep.email || '', uygunZaman: talep.uygunZaman || '',
     })
     setDuzenlemeModu(true)
   }
@@ -162,6 +162,7 @@ export default function MusteriTalepDetay() {
     talep.planliTarih && { k: 'Planlı Tarih', v: new Date(talep.planliTarih).toLocaleDateString('tr-TR'), tabular: true },
     { k: 'İlgili Kişi',    v: talep.ilgiliKisi },
     talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
+    talep.email && { k: 'E-posta', v: talep.email },
     talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
   ].filter(Boolean)
 
@@ -293,6 +294,10 @@ export default function MusteriTalepDetay() {
                     <Label>Telefon</Label>
                     <Input type="tel" value={duzenForm.telefon} onChange={e => setDuzenForm({ ...duzenForm, telefon: e.target.value })} />
                   </div>
+                </div>
+                <div>
+                  <Label>E-posta</Label>
+                  <Input type="email" value={duzenForm.email || ''} onChange={e => setDuzenForm({ ...duzenForm, email: e.target.value })} placeholder="ornek@firma.com" />
                 </div>
                 <div>
                   <Label>Uygun ziyaret zamanı</Label>

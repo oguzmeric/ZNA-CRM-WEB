@@ -165,6 +165,7 @@ export function ServisTalebiProvider({ children }) {
       aciliyet: formData.aciliyet || 'normal',
       ilgiliKisi: formData.ilgiliKisi || kullanici.ad,
       telefon: formData.telefon || '',
+      email: (formData.email || '').trim(),
       uygunZaman: formData.uygunZaman || '',
       durum: 'bekliyor',
       kaynak: 'musteri',          // migration 056 — musteri portalindan oluşturuldu
@@ -221,6 +222,7 @@ export function ServisTalebiProvider({ children }) {
         return kullanici.ad || ''
       })(),
       telefon: (formData.telefon && formData.telefon.trim()) || musteri?.telefon || '',
+      email: (formData.email && formData.email.trim()) || musteri?.email || '',
       uygunZaman: formData.uygunZaman || '',
       durum: baslangicDurum,
       atananKullaniciId: atanan?.id || null,
