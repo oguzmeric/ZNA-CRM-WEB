@@ -17,6 +17,7 @@ const TUR_META = {
 }
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
+import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState,
 } from '../../components/ui'
@@ -637,7 +638,15 @@ export default function YeniTalep() {
                 </div>
                 <div>
                   <Label>Uygun ziyaret / destek zamanı</Label>
-                  <Input value={form.uygunZaman} onChange={e => guncelle('uygunZaman', e.target.value)} placeholder="Örn: Hafta içi 09:00-17:00, öğleden sonra…" />
+                  <Input
+                    type="datetime-local"
+                    value={form.uygunZaman}
+                    onChange={e => guncelle('uygunZaman', e.target.value)}
+                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                  />
+                  <p style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    Takvimden uygun gördüğünüz tarih ve saati seçin. Ekip bu zamana göre planlama yapacaktır.
+                  </p>
                 </div>
               </div>
 
@@ -658,6 +667,7 @@ export default function YeniTalep() {
                     { k: 'Konu',     v: form.konu },
                     { k: 'Lokasyon', v: form.lokasyon || '—' },
                     { k: 'Aciliyet', v: ACILIYET_SEVIYELERI.find(a => a.id === form.aciliyet)?.isim, tone: ACIL_TONE[form.aciliyet] },
+                    ...(form.uygunZaman ? [{ k: 'Uygun Zaman', v: uygunZamanFormat(form.uygunZaman) }] : []),
                     ...(yeniDosyalar.length > 0 ? [{ k: 'Ekler', v: `${yeniDosyalar.length} dosya` }] : []),
                   ].map(({ k, v, tone }) => (
                     <div key={k}>

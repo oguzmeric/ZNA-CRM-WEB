@@ -14,6 +14,7 @@ import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
+import { uygunZamanFormat } from '../lib/uygunZamanFormat'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
 } from '../components/ui'
@@ -157,7 +158,7 @@ export default function ServisTalepDetay() {
     { k: 'Cihaz/Sistem', v: talep.cihazTuru, Icon: Monitor },
     { k: 'İlgili Kişi', v: talep.ilgiliKisi, Icon: User },
     { k: 'Telefon',     v: talep.telefon,    Icon: Phone },
-    { k: 'Uygun Zaman', v: talep.uygunZaman, Icon: Clock },
+    { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman), Icon: Clock },
   ].filter(x => x.v && String(x.v).trim())
 
   return (
@@ -820,7 +821,7 @@ export default function ServisTalepDetay() {
                 talep.firmaAdi && { k: 'Firma', v: talep.firmaAdi },
                 { k: 'İlgili Kişi', v: talep.ilgiliKisi },
                 talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
-                talep.uygunZaman && { k: 'Uygun Zaman', v: talep.uygunZaman },
+                talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
               ].filter(Boolean).map(({ k, v, tabular }) => (
                 <div key={k}>
                   <div className="t-label" style={{ marginBottom: 2 }}>{k.toUpperCase()}</div>

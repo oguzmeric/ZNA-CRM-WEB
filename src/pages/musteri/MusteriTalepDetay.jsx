@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
+import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge, Alert, EmptyState,
 } from '../../components/ui'
@@ -161,7 +162,7 @@ export default function MusteriTalepDetay() {
     talep.planliTarih && { k: 'Planlı Tarih', v: new Date(talep.planliTarih).toLocaleDateString('tr-TR'), tabular: true },
     { k: 'İlgili Kişi',    v: talep.ilgiliKisi },
     talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
-    talep.uygunZaman && { k: 'Uygun Zaman', v: talep.uygunZaman },
+    talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
   ].filter(Boolean)
 
   return (
@@ -295,7 +296,12 @@ export default function MusteriTalepDetay() {
                 </div>
                 <div>
                   <Label>Uygun ziyaret zamanı</Label>
-                  <Input value={duzenForm.uygunZaman} onChange={e => setDuzenForm({ ...duzenForm, uygunZaman: e.target.value })} placeholder="Örn: Hafta içi 09:00-17:00" />
+                  <Input
+                    type="datetime-local"
+                    value={/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(duzenForm.uygunZaman || '') ? duzenForm.uygunZaman.slice(0, 16) : ''}
+                    onChange={e => setDuzenForm({ ...duzenForm, uygunZaman: e.target.value })}
+                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                  />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <Button
