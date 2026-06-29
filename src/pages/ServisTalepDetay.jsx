@@ -175,7 +175,7 @@ export default function ServisTalepDetay() {
     { k: 'İlgili Kişi', v: talep.ilgiliKisi, Icon: User },
     { k: 'Telefon',     v: talep.telefon,    Icon: Phone },
     { k: 'E-posta',     v: talep.email,      Icon: Mail },
-    { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman), Icon: Clock },
+    { k: 'Talep Edilen Ziyaret Tarihi', v: uygunZamanFormat(talep.uygunZaman), Icon: Clock },
   ].filter(x => x.v && String(x.v).trim())
 
   return (
@@ -842,7 +842,7 @@ export default function ServisTalepDetay() {
                 { k: 'İlgili Kişi', v: talep.ilgiliKisi },
                 talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
                 talep.email && { k: 'E-posta', v: talep.email },
-                talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
+                talep.uygunZaman && { k: 'Talep Edilen Ziyaret Tarihi', v: uygunZamanFormat(talep.uygunZaman) },
               ].filter(Boolean).map(({ k, v, tabular }) => (
                 <div key={k}>
                   <div className="t-label" style={{ marginBottom: 2 }}>{k.toUpperCase()}</div>

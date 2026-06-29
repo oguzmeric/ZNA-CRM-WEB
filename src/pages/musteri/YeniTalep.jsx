@@ -670,7 +670,7 @@ export default function YeniTalep() {
                   {hata.email && <p style={{ color: 'var(--danger)', font: '500 11px/16px var(--font-sans)', marginTop: 4 }}>{hata.email}</p>}
                 </div>
                 <div>
-                  <Label>Uygun ziyaret / destek zamanı</Label>
+                  <Label>Talep edilen ziyaret tarihi</Label>
                   <Input
                     type="datetime-local"
                     value={form.uygunZaman}
@@ -700,7 +700,7 @@ export default function YeniTalep() {
                     { k: 'Konu',     v: form.konu },
                     { k: 'Lokasyon', v: form.lokasyon || '—' },
                     { k: 'Aciliyet', v: ACILIYET_SEVIYELERI.find(a => a.id === form.aciliyet)?.isim, tone: ACIL_TONE[form.aciliyet] },
-                    ...(form.uygunZaman ? [{ k: 'Uygun Zaman', v: uygunZamanFormat(form.uygunZaman) }] : []),
+                    ...(form.uygunZaman ? [{ k: 'Talep Edilen Ziyaret Tarihi', v: uygunZamanFormat(form.uygunZaman) }] : []),
                     ...(yeniDosyalar.length > 0 ? [{ k: 'Ekler', v: `${yeniDosyalar.length} dosya` }] : []),
                   ].map(({ k, v, tone }) => (
                     <div key={k}>

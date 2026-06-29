@@ -163,7 +163,7 @@ export default function MusteriTalepDetay() {
     { k: 'İlgili Kişi',    v: talep.ilgiliKisi },
     talep.telefon && { k: 'Telefon', v: talep.telefon, tabular: true },
     talep.email && { k: 'E-posta', v: talep.email },
-    talep.uygunZaman && { k: 'Uygun Zaman', v: uygunZamanFormat(talep.uygunZaman) },
+    talep.uygunZaman && { k: 'Talep Edilen Ziyaret Tarihi', v: uygunZamanFormat(talep.uygunZaman) },
   ].filter(Boolean)
 
   return (
@@ -300,7 +300,7 @@ export default function MusteriTalepDetay() {
                   <Input type="email" value={duzenForm.email || ''} onChange={e => setDuzenForm({ ...duzenForm, email: e.target.value })} placeholder="ornek@firma.com" />
                 </div>
                 <div>
-                  <Label>Uygun ziyaret zamanı</Label>
+                  <Label>Talep edilen ziyaret tarihi</Label>
                   <Input
                     type="datetime-local"
                     value={/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(duzenForm.uygunZaman || '') ? duzenForm.uygunZaman.slice(0, 16) : ''}
