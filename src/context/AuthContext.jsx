@@ -211,6 +211,20 @@ export function AuthProvider({ children }) {
     if (bulunan) {
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
+      // Aktivite logu — 'kullanici_giris' kaydi (Profilim/KullaniciYonetimi
+      // 'Toplam Giriş' sayaclarinin dolmasi icin gerekli)
+      try {
+        const kayitlar = JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
+        kayitlar.push({
+          id: crypto.randomUUID(),
+          kullaniciId: bulunan.id.toString(),
+          kullaniciAd: bulunan.ad,
+          tip: 'kullanici_giris',
+          tarih: new Date().toISOString(),
+          aciklama: 'Sisteme giriş yapıldı',
+        })
+        localStorage.setItem('aktiviteLog', JSON.stringify(kayitlar))
+      } catch (e) { console.warn('[girisYap] aktivite logu yazilamadi:', e) }
       // Durum güncelleme best-effort — login'i engellemez
       try { await kullaniciDurumGuncelle(bulunan.id, 'cevrimici') } catch (e) { console.warn('[girisYap] durum güncellenemedi:', e) }
       setKullanicilar((prev) =>
