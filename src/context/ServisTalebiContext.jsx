@@ -310,17 +310,33 @@ export function ServisTalebiProvider({ children }) {
     if (!mevcutTalep) return
 
     const durumDegisti = guncellenmis.durum && guncellenmis.durum !== mevcutTalep.durum
-    const yeniGecmis = durumDegisti
-      ? [
-          ...(mevcutTalep.durumGecmisi || []),
-          {
-            durum: guncellenmis.durum,
-            tarih: new Date().toISOString(),
-            kullaniciAd: kullaniciAd || 'Sistem',
-            aciklama,
-          },
-        ]
-      : mevcutTalep.durumGecmisi
+    // Atama degisikligi de durumGecmisi'ne loglanir — durum aynen kalsa bile.
+    const atananDegisti = 'atananKullaniciId' in guncellenmis
+      && (guncellenmis.atananKullaniciId ?? null) !== (mevcutTalep.atananKullaniciId ?? null)
+
+    let yeniGecmis = mevcutTalep.durumGecmisi || []
+    if (durumDegisti) {
+      yeniGecmis = [
+        ...yeniGecmis,
+        {
+          durum: guncellenmis.durum,
+          tarih: new Date().toISOString(),
+          kullaniciAd: kullaniciAd || 'Sistem',
+          aciklama,
+        },
+      ]
+    } else if (atananDegisti) {
+      yeniGecmis = [
+        ...yeniGecmis,
+        {
+          tip: 'atama',
+          durum: mevcutTalep.durum,
+          tarih: new Date().toISOString(),
+          kullaniciAd: kullaniciAd || 'Sistem',
+          aciklama,
+        },
+      ]
+    }
 
     const guncellenenData = {
       ...guncellenmis,

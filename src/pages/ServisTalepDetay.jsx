@@ -652,17 +652,20 @@ export default function ServisTalepDetay() {
                 <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
                 {[...(talep.durumGecmisi || [])].reverse().map((g, i) => {
                   const d = DURUM_LISTESI.find(x => x.id === g.durum)
+                  const atamaTipi = g.tip === 'atama'
                   return (
                     <div key={i} style={{ position: 'relative', paddingBottom: i < (talep.durumGecmisi?.length || 1) - 1 ? 16 : 0 }}>
                       <span style={{
                         position: 'absolute', left: -20, top: 2,
                         width: 17, height: 17, borderRadius: '50%',
                         background: 'var(--surface-card)',
-                        border: '2px solid var(--brand-primary)',
+                        border: `2px solid ${atamaTipi ? 'var(--success)' : 'var(--brand-primary)'}`,
                       }} />
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                          {d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
+                          {atamaTipi
+                            ? <Badge tone="aktif">👤 Atama</Badge>
+                            : d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
                         </div>
                         {g.aciklama && (
                           <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: '0 0 2px' }}>
