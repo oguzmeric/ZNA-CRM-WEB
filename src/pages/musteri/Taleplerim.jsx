@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, MapPin, User, Clock, Calendar, MessageSquare, Inbox } from 'lucide-react'
+import { Plus, MapPin, User, Clock, Calendar, MessageSquare, Inbox, Trash2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import CustomSelect from '../../components/CustomSelect'
@@ -14,7 +14,7 @@ const DURUM_TONE = {
 
 export default function Taleplerim() {
   const { kullanici } = useAuth()
-  const { musteriTalepleri, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { musteriTalepleri, talepSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [aramaMetni, setAramaMetni] = useState('')
@@ -32,6 +32,17 @@ export default function Taleplerim() {
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     return true
   }).sort((a, b) => new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi))
+
+  const silmeOnay = async (e, talep) => {
+    e.stopPropagation()
+    const onay = window.confirm(`"${talep.talepNo} — ${talep.konu}" talebini silmek istediğine emin misin?\n\nBu işlem geri alınamaz.`)
+    if (!onay) return
+    try {
+      await talepSil(talep.id)
+    } catch (err) {
+      alert('Talep silinemedi: ' + (err?.message || 'Bilinmeyen hata'))
+    }
+  }
 
   const tarihFormat = (tarih) => new Date(tarih).toLocaleDateString('tr-TR', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -130,6 +141,26 @@ export default function Taleplerim() {
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                             <User size={11} strokeWidth={1.5} /> {talep.atananKullaniciAd}
                           </span>
+                        )}
+                        {['bekliyor', 'iptal'].includes(talep.durum) && (
+                          <button
+                            onClick={e => silmeOnay(e, talep)}
+                            title="Talebi sil"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '4px 8px',
+                              background: 'transparent',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-sm)',
+                              color: 'var(--danger)',
+                              font: '500 11px/16px var(--font-sans)',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                          >
+                            <Trash2 size={11} strokeWidth={1.5} /> Sil
+                          </button>
                         )}
                       </div>
                     </div>
