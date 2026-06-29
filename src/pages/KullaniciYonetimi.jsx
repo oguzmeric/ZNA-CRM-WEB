@@ -13,8 +13,9 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from '../components/CustomSelect'
 import {
-  Button, Input, Label, Card, Badge, Avatar, EmptyState,
+  Button, Input, Label, Card, Badge, Avatar, EmptyState, SearchInput,
 } from '../components/ui'
+import { trContains } from '../lib/trSearch'
 
 const tumModuller = [
   { id: 'musteriler',        isim: 'Müşteri & Satış' },
@@ -41,6 +42,216 @@ const saniyeFormat = (s) => {
   if (s < 60) return `${s} s`
   if (s < 3600) return `${Math.floor(s / 60)} dk ${s % 60} s`
   return `${Math.floor(s / 3600)} sa ${Math.floor((s % 3600) / 60)} dk`
+}
+
+// Kullanici listesi — grup baslikli, durum noktasi, son giris, kompakt yetkiler.
+const DURUM_RENK = {
+  cevrimici: '#10B981', mesgul: '#DC2626', disarida: '#F59E0B',
+  toplantida: '#1E5AA8', cevrimdisi: '#9CA3AF',
+}
+const DURUM_ISIM = {
+  cevrimici: 'Çevrimiçi', mesgul: 'Meşgul', disarida: 'Dışarıda',
+  toplantida: 'Toplantıda', cevrimdisi: 'Çevrimdışı',
+}
+function sonGirisCevir(tarih) {
+  if (!tarih) return null
+  const d = new Date(tarih)
+  if (isNaN(d.getTime())) return null
+  const fark = Date.now() - d.getTime()
+  const dk = Math.floor(fark / 60000)
+  const saat = Math.floor(dk / 60)
+  const gun = Math.floor(saat / 24)
+  if (dk < 1)  return 'Az önce'
+  if (dk < 60) return `${dk} dk önce`
+  if (saat < 24) return `${saat} saat önce`
+  if (gun < 7)  return `${gun} gün önce`
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER, aramaMetni, setAramaMetni, onDuzenle, onSil }) {
+  const [yetkiAcik, setYetkiAcik] = useState({})
+  const ozetMap = useMemo(() => {
+    const m = new Map()
+    kullaniciOzet.forEach(o => m.set(o.id, o))
+    return m
+  }, [kullaniciOzet])
+
+  // Arama: ad, kullaniciAdi, firmaAdi
+  const filtreli = useMemo(() => kullanicilar.filter(k => {
+    if (!aramaMetni) return true
+    return trContains([k.ad, k.kullaniciAdi, k.firmaAdi].filter(Boolean).join(' '), aramaMetni)
+  }), [kullanicilar, aramaMetni])
+
+  // Tip'e gore grupla — yonetici/admin onde, ZNA personel, musteri
+  const gruplar = useMemo(() => {
+    const adminler  = filtreli.filter(k => k.rol === 'admin')
+    const personel  = filtreli.filter(k => k.tip !== 'musteri' && k.rol !== 'admin')
+    const musteri   = filtreli.filter(k => k.tip === 'musteri')
+    return [
+      { id: 'admin',    isim: 'Yöneticiler',    renk: '#DC2626', liste: adminler  },
+      { id: 'personel', isim: 'ZNA Personeli',  renk: 'var(--brand-primary)', liste: personel },
+      { id: 'musteri',  isim: 'Müşteri Portalı', renk: 'var(--success)', liste: musteri  },
+    ].filter(g => g.liste.length > 0)
+  }, [filtreli])
+
+  const KullaniciSatiri = ({ k }) => {
+    const ozet = ozetMap.get(k.id) || {}
+    const durum = k.durum || 'cevrimdisi'
+    const acik = !!yetkiAcik[k.id]
+
+    // Yetki itemlari
+    const yetkiler = k.tip === 'musteri'
+      ? (k.izinliTurler?.length > 0
+          ? k.izinliTurler.map(tid => ANA_TURLER.find(t => t.id === tid)?.isim).filter(Boolean)
+          : (k.firmaAdi ? ['Tüm türler açık'] : []))
+      : (k.moduller || []).map(mid => tumModuller.find(t => t.id === mid)?.isim).filter(Boolean)
+    const gosterilen = acik ? yetkiler : yetkiler.slice(0, 3)
+    const kalan = yetkiler.length - gosterilen.length
+
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '12px 16px',
+        borderBottom: '1px solid var(--border-default)',
+        transition: 'background 120ms',
+      }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        {/* Avatar + online dot */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar name={k.ad} size="md" />
+          <span aria-hidden style={{
+            position: 'absolute', bottom: -1, right: -1,
+            width: 11, height: 11, borderRadius: '50%',
+            background: DURUM_RENK[durum] || DURUM_RENK.cevrimdisi,
+            border: '2px solid var(--surface-card)',
+          }} title={DURUM_ISIM[durum] || 'Bilinmiyor'} />
+        </div>
+
+        {/* Isim + meta */}
+        <div style={{ minWidth: 0, flex: '0 0 240px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</span>
+            {k.rol === 'admin' && <Badge tone="kayip">Admin</Badge>}
+            {k.siparisOnayUstYetkili && <Badge tone="beklemede">Üst Onaycı</Badge>}
+            {k.siparisOnayYetkilisi && !k.siparisOnayUstYetkili && <Badge tone="brand">Onaycı</Badge>}
+          </div>
+          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            @{k.kullaniciAdi}
+            {k.firmaAdi && <span> · {k.firmaAdi}</span>}
+          </div>
+          {ozet.sonGiris && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2, font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              <Clock size={10} strokeWidth={1.5} />
+              {sonGirisCevir(ozet.sonGiris)}
+            </div>
+          )}
+        </div>
+
+        {/* Yetkiler */}
+        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {gosterilen.length === 0
+            ? <span className="t-caption" style={{ fontStyle: 'italic' }}>Yetki tanımlı değil</span>
+            : gosterilen.map(isim => (
+                <Badge key={isim} tone={k.tip === 'musteri' ? 'brand' : 'lead'}>{isim}</Badge>
+              ))}
+          {kalan > 0 && (
+            <button
+              onClick={() => setYetkiAcik(p => ({ ...p, [k.id]: true }))}
+              style={{
+                padding: '2px 8px', borderRadius: 999,
+                border: '1px dashed var(--border-default)',
+                background: 'transparent', cursor: 'pointer',
+                font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+              }}
+            >
+              +{kalan} daha
+            </button>
+          )}
+          {acik && yetkiler.length > 3 && (
+            <button
+              onClick={() => setYetkiAcik(p => ({ ...p, [k.id]: false }))}
+              style={{
+                padding: '2px 8px', borderRadius: 999,
+                border: '1px dashed var(--border-default)',
+                background: 'transparent', cursor: 'pointer',
+                font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+              }}
+            >
+              − Az göster
+            </button>
+          )}
+        </div>
+
+        {/* Aksiyon butonlari */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button
+            aria-label="Düzenle"
+            onClick={() => onDuzenle(k)}
+            style={{
+              width: 32, height: 32,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+          >
+            <Pencil size={14} strokeWidth={1.5} />
+          </button>
+          {k.silinebilir && (
+            <button
+              aria-label="Sil"
+              onClick={async () => await onSil(k.id)}
+              style={{
+                width: 32, height: 32,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              <Trash2 size={14} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Arama */}
+      <SearchInput
+        value={aramaMetni}
+        onChange={e => setAramaMetni(e.target.value)}
+        placeholder="Kullanıcı adı, kullanıcı adı veya firmaya göre ara…"
+      />
+
+      {filtreli.length === 0 ? (
+        <Card><EmptyState title="Eşleşen kullanıcı bulunamadı" /></Card>
+      ) : (
+        gruplar.map(g => (
+          <div key={g.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px 8px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: g.renk }} />
+              <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {g.isim}
+              </span>
+              <span style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                ({g.liste.length})
+              </span>
+            </div>
+            <Card padding={0}>
+              {g.liste.map(k => <KullaniciSatiri key={k.id} k={k} />)}
+            </Card>
+          </div>
+        ))
+      )}
+    </div>
+  )
 }
 
 // Path normalize — token/ID iceren URL'leri okunabilir kategoriye cevirir.
@@ -420,6 +631,7 @@ export default function KullaniciYonetimi() {
   // Düzenle/Yeni Ekle açıldığında formun göründüğüne emin olmak için
   const formCardRef = useRef(null)
   const [aktifSekme, setAktifSekme] = useState('kullanicilar')
+  const [aramaMetni, setAramaMetni] = useState('')
   const [seciliKullaniciId, setSeciliKullaniciId] = useState('hepsi')
   const [seciliGun, setSeciliGun] = useState('hepsi')
   const [isPending, startTransition] = useTransition()
@@ -1034,80 +1246,16 @@ export default function KullaniciYonetimi() {
             </Card>
           )}
 
-          <Card padding={0}>
-            {kullanicilar.map(k => (
-              <div
-                key={k.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '14px 20px',
-                  borderBottom: '1px solid var(--border-default)',
-                  transition: 'background 120ms',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <Avatar name={k.ad} size="md" />
-                <div style={{ minWidth: 0, flex: '0 0 220px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</span>
-                    {k.tip === 'musteri' && <Badge tone="brand">Müşteri Portalı</Badge>}
-                  </div>
-                  <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    @{k.kullaniciAdi}
-                    {k.firmaAdi && <span> · {k.firmaAdi}</span>}
-                  </div>
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {k.tip === 'musteri' ? (
-                    k.izinliTurler && k.izinliTurler.length > 0
-                      ? k.izinliTurler.map(tid => {
-                          const tur = ANA_TURLER.find(t => t.id === tid)
-                          return tur ? <Badge key={tid} tone="brand">{tur.isim}</Badge> : null
-                        })
-                      : <Badge tone="neutral">Tüm türler açık</Badge>
-                  ) : (
-                    k.moduller?.map(mid => {
-                      const m = tumModuller.find(t => t.id === mid)
-                      return <Badge key={mid} tone="lead">{m?.isim}</Badge>
-                    })
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  <button
-                    aria-label="Düzenle"
-                    onClick={() => duzenleBasla(k)}
-                    style={{
-                      width: 32, height: 32,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                  >
-                    <Pencil size={14} strokeWidth={1.5} />
-                  </button>
-                  {k.silinebilir && (
-                    <button
-                      aria-label="Sil"
-                      onClick={async () => await kullaniciSil(k.id)}
-                      style={{
-                        width: 32, height: 32,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'transparent', border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                    >
-                      <Trash2 size={14} strokeWidth={1.5} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </Card>
+          <KullaniciListesi
+            kullanicilar={kullanicilar}
+            kullaniciOzet={kullaniciOzet}
+            tumModuller={tumModuller}
+            ANA_TURLER={ANA_TURLER}
+            aramaMetni={aramaMetni}
+            setAramaMetni={setAramaMetni}
+            onDuzenle={duzenleBasla}
+            onSil={kullaniciSil}
+          />
         </>
       )}
 
