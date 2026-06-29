@@ -66,13 +66,14 @@ export async function imzaYukle(file, teklifId) {
 /**
  * Siparişi onayla — imza url'i ile birlikte.
  */
-export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUrl }) {
+export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUrl, onayGerekcesi = '' }) {
   const onay = {
     durum: 'onayli',
     onaylayan_id: onaylayanId,
     onaylayan_ad: onaylayanAd,
     onay_tarihi: new Date().toISOString(),
     imza_url: imzaUrl,
+    onay_gerekcesi: onayGerekcesi || null,
   }
   const { error } = await supabase
     .from('teklifler')

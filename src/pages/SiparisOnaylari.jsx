@@ -203,12 +203,16 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
   const [imzaPreview, setImzaPreview] = useState(null)
   const [redNedeni, setRedNedeni] = useState('')
   const [redModalAcik, setRedModalAcik] = useState(false)
+  const [onayGerekcesi, setOnayGerekcesi] = useState('')
   const [calisiyor, setCalisiyor] = useState(false)
   const [hata, setHata] = useState(null)
 
   const s = t.siparisOnayi || {}
   const profilImzasi = kullanici?.imza  // profilde yuklenmis imza
   const imzaVar = !!(imzaDosyasi || profilImzasi)
+  // Ust yetkili (Ali) degilse onaylamadan once gerekce girmek zorunda.
+  const ustYetkili = kullanici?.siparisOnayUstYetkili === true || kullanici?.siparis_onay_ust_yetkili === true
+  const gerekceZorunlu = !ustYetkili
 
   const imzaSec = (e) => {
     const f = e.target.files?.[0]
@@ -226,9 +230,12 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
       setHata('İmza yok. Profilinden yükleyebilir veya buradan tek seferlik ekleyebilirsin.')
       return
     }
+    if (gerekceZorunlu && !onayGerekcesi.trim()) {
+      setHata('Üst yetkili (Ali Aktepe) henüz onaylamadığı için onay gerekçesi girmen gerekiyor.')
+      return
+    }
     setCalisiyor(true)
     try {
-      // Yeni dosya secildiyse storage'a yukle, yoksa profil imzasini kullan
       const url = imzaDosyasi
         ? await imzaYukle(imzaDosyasi, t.id)
         : profilImzasi
@@ -236,6 +243,7 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
         onaylayanId: kullanici.id,
         onaylayanAd: kullanici.ad,
         imzaUrl: url,
+        onayGerekcesi: onayGerekcesi.trim(),
       })
       onTamamlandi()
     } catch (e) {
@@ -317,6 +325,12 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <strong>{s.onaylayan_ad}</strong> · {fmtTarih(s.onay_tarihi)}
           </div>
+          {s.onay_gerekcesi && (
+            <div style={{ marginTop: 10, padding: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid #F59E0B', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#92400E', fontWeight: 700, marginBottom: 4 }}>ONAY GEREKÇESİ</div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{s.onay_gerekcesi}</div>
+            </div>
+          )}
           {s.imza_url && (
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>İMZA</div>
@@ -402,6 +416,30 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
             )}
           </div>
 
+          {/* Gerekce zorunlu — ust yetkili degilse */}
+          {gerekceZorunlu && (
+            <div style={{
+              background: 'rgba(245,158,11,0.06)',
+              border: '1px solid #F59E0B',
+              borderRadius: 10, padding: 14, marginBottom: 14,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <strong style={{ font: '700 12px/16px var(--font-sans)', color: '#92400E' }}>
+                  Onay Gerekçesi <span style={{ color: '#DC2626' }}>*</span>
+                </strong>
+              </div>
+              <div style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Üst yetkili (Ali Aktepe) bu siparişi henüz onaylamadığı için onaylamadan önce gerekçe belirtmen gerekiyor.
+              </div>
+              <Textarea
+                value={onayGerekcesi}
+                onChange={e => setOnayGerekcesi(e.target.value)}
+                placeholder="Örn: Ali bey izinde, müşteri aciliyet bildirdiği için onaylıyorum…"
+                rows={3}
+              />
+            </div>
+          )}
+
           {hata && (
             <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', color: '#991B1B', fontSize: 13, marginBottom: 12 }}>
               {hata}
@@ -412,7 +450,11 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
             <Button variant="tertiary" onClick={() => setRedModalAcik(true)} disabled={calisiyor}>
               <XCircle size={14} /> Reddet
             </Button>
-            <Button variant="primary" onClick={onayla} disabled={!imzaVar || calisiyor}>
+            <Button
+              variant="primary"
+              onClick={onayla}
+              disabled={!imzaVar || calisiyor || (gerekceZorunlu && !onayGerekcesi.trim())}
+            >
               <CheckCircle2 size={14} /> {calisiyor ? 'Kaydediliyor…' : 'Siparişi Onayla'}
             </Button>
           </div>
