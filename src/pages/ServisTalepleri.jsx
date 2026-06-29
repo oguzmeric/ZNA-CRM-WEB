@@ -35,13 +35,14 @@ export default function ServisTalepleri() {
   const [durumFiltre, setDurumFiltre] = useState('tumu')
   const [turFiltre, setTurFiltre] = useState('tumu')
   const [aciliyetFiltre, setAciliyetFiltre] = useState('tumu')
-  // URL ?kaynak=musteri ile gelirse default filtre 'musteri' yoksa 'tumu'
-  const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'tumu')
+  // URL ?kaynak=musteri ile gelirse 'musteri', yoksa 'personel' (Servis Talepleri menusunde
+  // musteri talepleri gozukmesin — onlar kendi 'Musteri Talepleri' menusunde)
+  const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'personel')
   const [gorunum, setGorunum] = useState('liste')
 
   // URL param degisirse state'i de guncelle (sidebar'dan navigate edince)
   useEffect(() => {
-    const p = searchParams.get('kaynak') || 'tumu'
+    const p = searchParams.get('kaynak') || 'personel'
     if (p !== kaynakFiltre) setKaynakFiltre(p)
   }, [searchParams])
 
