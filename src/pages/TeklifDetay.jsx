@@ -405,47 +405,14 @@ function TeklifDetay() {
     }
     try {
       if (yeni) {
-        // Duplicate teklif_no'ya karsi: DB'den canli max TEK numarasi sorgula,
-        // sonra duplicate gelirse 20 kez retry (concurrent insert + stale cache)
-        let attemptNo = kaydedilecek.teklifNo
-        try {
-          const { data: maxRow } = await supabase
-            .from('teklifler')
-            .select('teklif_no')
-            .like('teklif_no', 'TEK-%')
-            .order('teklif_no', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-          const m = maxRow?.teklif_no?.match(/^TEK-(\d+)$/)
-          if (m) {
-            const dbMax = parseInt(m[1], 10)
-            attemptNo = `TEK-${String(dbMax + 1).padStart(4, '0')}`
-            console.info('[TeklifDetay.kaydet] DB max TEK:', maxRow.teklif_no, '→ kullanilacak:', attemptNo)
-          }
-        } catch (e) {
-          console.warn('[TeklifDetay.kaydet] max TEK sorgu fail, state ile devam:', e?.message)
-        }
-        let yeniTeklif = null
-        let attemptMatch = attemptNo?.match(/^TEK-(\d+)$/)
-        let attemptSayi = attemptMatch ? parseInt(attemptMatch[1], 10) : 0
-        for (let attempt = 0; attempt < 20; attempt++) {
-          try {
-            yeniTeklif = await teklifEkle({
-              ...kaydedilecek,
-              teklifNo: attemptNo,
-              olusturmaTarih: new Date().toISOString(),
-            })
-            break
-          } catch (insertErr) {
-            if (insertErr?.code === '23505' && attemptMatch && attempt < 19) {
-              attemptSayi += 1
-              attemptNo = `TEK-${String(attemptSayi).padStart(4, '0')}`
-              console.warn('[TeklifDetay.kaydet] duplicate teklif_no, retry with', attemptNo)
-              continue
-            }
-            throw insertErr
-          }
-        }
+        // teklif_no DB trigger 'tr_teklif_no_uret' tarafindan otomatik uretilir
+        // (migration 055). Client teklif_no gondermez → trigger max+1 ile set eder.
+        // Bu sayede race condition + stale state sorunlari yok.
+        const { teklifNo: _omit, ...payload } = kaydedilecek
+        const yeniTeklif = await teklifEkle({
+          ...payload,
+          olusturmaTarih: new Date().toISOString(),
+        })
         if (yeniTeklif) {
           if (hatirlatmaGun > 0) {
             hatirlatmaEkle(yeniTeklif, hatirlatmaGun)
