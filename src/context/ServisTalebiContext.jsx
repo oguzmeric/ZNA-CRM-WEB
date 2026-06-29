@@ -167,6 +167,7 @@ export function ServisTalebiProvider({ children }) {
       telefon: formData.telefon || '',
       uygunZaman: formData.uygunZaman || '',
       durum: 'bekliyor',
+      kaynak: 'musteri',          // migration 056 — musteri portalindan oluşturuldu
       atananKullaniciId: null,
       atananKullaniciAd: null,
       planliTarih: null,

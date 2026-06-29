@@ -112,6 +112,7 @@ const menuItems = [
     modul: 'servis_talepleri',
     altMenu: [
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
+      { id: 'musteri_talepleri', isim: 'Müşteri Talepleri', yol: '/servis-talepleri?kaynak=musteri' },
       { id: 'servis_raporlari', isim: 'Servis Raporları',   yol: '/servis-raporlari' },
       { id: 'memnuniyet',       isim: 'Müşteri Memnuniyeti', yol: '/memnuniyet' },
     ],

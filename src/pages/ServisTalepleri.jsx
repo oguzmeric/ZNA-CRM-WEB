@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains } from '../lib/trSearch'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -29,12 +29,21 @@ export default function ServisTalepleri() {
   const { talepler, talepSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const [silOnayId, setSilOnayId] = useState(null)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [aramaMetni, setAramaMetni] = useState('')
   const [durumFiltre, setDurumFiltre] = useState('tumu')
   const [turFiltre, setTurFiltre] = useState('tumu')
   const [aciliyetFiltre, setAciliyetFiltre] = useState('tumu')
+  // URL ?kaynak=musteri ile gelirse default filtre 'musteri' yoksa 'tumu'
+  const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'tumu')
   const [gorunum, setGorunum] = useState('liste')
+
+  // URL param degisirse state'i de guncelle (sidebar'dan navigate edince)
+  useEffect(() => {
+    const p = searchParams.get('kaynak') || 'tumu'
+    if (p !== kaynakFiltre) setKaynakFiltre(p)
+  }, [searchParams])
 
   const filtrelenmis = talepler.filter(t => {
     if (aramaMetni && !trContains(
@@ -44,6 +53,10 @@ export default function ServisTalepleri() {
     if (durumFiltre !== 'tumu' && t.durum !== durumFiltre) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     if (aciliyetFiltre !== 'tumu' && t.aciliyet !== aciliyetFiltre) return false
+    if (kaynakFiltre !== 'tumu') {
+      const k = t.kaynak || 'personel'   // eski kayitlar default personel
+      if (k !== kaynakFiltre) return false
+    }
     return true
   }).sort((a, b) => {
     // En yeni en üstte. Aciliyet kolonda zaten renkli badge olarak görünüyor +
@@ -72,8 +85,14 @@ export default function ServisTalepleri() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Servis Talepleri</h1>
-          <p className="t-caption" style={{ marginTop: 4 }}>Müşteri talep ve servis portalı</p>
+          <h1 className="t-h1">{kaynakFiltre === 'musteri' ? 'Müşteri Talepleri' : 'Servis Talepleri'}</h1>
+          <p className="t-caption" style={{ marginTop: 4 }}>
+            {kaynakFiltre === 'musteri'
+              ? 'Müşteri portalından gelen talepler'
+              : kaynakFiltre === 'personel'
+                ? 'Personel tarafından oluşturulan talepler'
+                : 'Müşteri talep ve servis portalı'}
+          </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <Button
