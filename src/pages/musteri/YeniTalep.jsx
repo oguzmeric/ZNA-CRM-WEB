@@ -60,6 +60,7 @@ export default function YeniTalep() {
   }, [form.altKategori, adim])
   const [yeniDosyalar, setYeniDosyalar] = useState([])
   const [gonderiliyor, setGonderiliyor] = useState(false)
+  const [gonderHata, setGonderHata] = useState('')
 
   const izinliTurler = kullanici?.izinliTurler
   const filtreliTurler = izinliTurler && izinliTurler.length > 0
@@ -96,11 +97,12 @@ export default function YeniTalep() {
   }
 
   const gonder = async () => {
+    setGonderHata('')
     if (!dogrula()) return
     setGonderiliyor(true)
     try {
       const talep = await talepOlustur(form, kullanici)
-      if (!talep?.id) throw new Error('Talep oluşturulamadı')
+      if (!talep?.id) throw new Error('Talep oluşturulamadı (kayıt sistemi yanıt vermedi).')
       // Dosyaları sırayla yükle
       for (const f of yeniDosyalar) {
         try { await dosyaYukle(talep.id, f, kullanici.ad) }
@@ -110,6 +112,8 @@ export default function YeniTalep() {
       setTimeout(() => navigate(`/musteri-portal/talep/${talep.id}`), 1500)
     } catch (e) {
       console.error('[gonder]', e)
+      const mesaj = e?.message || 'Bilinmeyen hata. Lütfen tekrar deneyin.'
+      setGonderHata(mesaj)
       setGonderiliyor(false)
     }
   }
@@ -666,6 +670,19 @@ export default function YeniTalep() {
                 </div>
               </div>
 
+              {gonderHata && (
+                <div style={{
+                  marginBottom: 12,
+                  padding: '12px 14px',
+                  background: 'var(--danger-soft)',
+                  border: '1px solid var(--danger-border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--danger)',
+                  font: '500 13px/19px var(--font-sans)',
+                }}>
+                  <strong style={{ fontWeight: 700 }}>Talep gönderilemedi:</strong> {gonderHata}
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => setAdim(2)}>Geri</Button>
                 <Button
