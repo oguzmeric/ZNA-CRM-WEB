@@ -71,9 +71,21 @@ function GorevDetay() {
   const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atanan?.toString())
 
   const durumGuncelle = async (yeniDurum) => {
+    const eskiDurum = gorev.durum
     await gorevGuncelle(gorev.id, { durum: yeniDurum })
     setGorev(prev => ({ ...prev, durum: yeniDurum }))
     toast.success('Durum güncellendi.')
+    // Atanan kişi mevcut kullanıcıdan farklıysa ona bildirim — kendi durumunu kendisi değiştirirken bildirim atmayalım
+    if (eskiDurum !== yeniDurum && gorev.atanan && gorev.atanan?.toString() !== kullanici?.id?.toString()) {
+      const yeniDurumIsim = durumlar.find(d => d.id === yeniDurum)?.isim || yeniDurum
+      bildirimEkle(
+        gorev.atanan,
+        '📋 Görev durumu güncellendi',
+        `"${gorev.baslik}" → ${yeniDurumIsim} (${kullanici?.ad || 'biri'} tarafından)`,
+        'gorev',
+        `/gorevler/${gorev.id}`,
+      ).catch(e => console.warn('[bildirim] gorev durum:', e?.message))
+    }
   }
 
   const yorumEkle = async () => {

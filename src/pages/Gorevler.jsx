@@ -353,6 +353,17 @@ function Gorevler() {
     try {
       const sonuc = await dbGorevGuncelle(mevcut.id, { durum: yeniDurum })
       if (!sonuc) throw new Error('DB null donerdü')
+      // Atanan kullaniciya bildirim — kendisi degilse
+      if (mevcut.atanan && mevcut.atanan?.toString() !== kullanici?.id?.toString()) {
+        const yeniDurumIsim = kolonlar.find(k => k.id === yeniDurum)?.isim || yeniDurum
+        bildirimEkle(
+          mevcut.atanan,
+          '📋 Görev durumu güncellendi',
+          `"${mevcut.baslik}" → ${yeniDurumIsim} (${kullanici?.ad || 'biri'} tarafından)`,
+          'gorev',
+          `/gorevler/${mevcut.id}`,
+        ).catch(e => console.warn('[bildirim] gorev durum drag:', e?.message))
+      }
     } catch (err) {
       console.error('[handleDragEnd] DB guncelleme fail:', err)
       // Rollback — UI'yi baslangic durumuna geri al
