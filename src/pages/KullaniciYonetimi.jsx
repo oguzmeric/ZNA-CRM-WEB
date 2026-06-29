@@ -43,6 +43,147 @@ const saniyeFormat = (s) => {
   return `${Math.floor(s / 3600)} sa ${Math.floor((s % 3600) / 60)} dk`
 }
 
+// Aktivite loglarini gun gun gruplayarak gosteren bolum.
+// 100lerce log varken duz akan tablo yerine: gun bazli accordion + sayfalama.
+function AktiviteLoglariBolumu({ filtreliLoglar, isPending, saniyeFormat, LOG_TIP }) {
+  const SAYFA_BOYUTU = 50
+  const [sayfa, setSayfa] = useState(1)
+  const [acikGunler, setAcikGunler] = useState({})
+
+  // Sayfalanmis loglar
+  const toplamSayfa = Math.max(1, Math.ceil(filtreliLoglar.length / SAYFA_BOYUTU))
+  const aktifSayfa = Math.min(sayfa, toplamSayfa)
+  const sayfaLoglari = filtreliLoglar.slice((aktifSayfa - 1) * SAYFA_BOYUTU, aktifSayfa * SAYFA_BOYUTU)
+
+  // Sayfa loglarini gune gore grupla (key: 'YYYY-MM-DD')
+  const gunGruplari = useMemo(() => {
+    const m = new Map()
+    sayfaLoglari.forEach(l => {
+      const d = new Date(l.tarih)
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      if (!m.has(key)) m.set(key, { tarih: d, loglar: [] })
+      m.get(key).loglar.push(l)
+    })
+    return [...m.entries()] // [key, {tarih, loglar}]
+  }, [sayfaLoglari])
+
+  // Yeni filtre/sayfa degisirse ilk gun otomatik acik, geri kalanlar kapali
+  useEffect(() => {
+    if (gunGruplari.length === 0) { setAcikGunler({}); return }
+    setAcikGunler({ [gunGruplari[0][0]]: true })
+  }, [filtreliLoglar.length, aktifSayfa])
+
+  const gunBaslik = (d) => {
+    const bugun = new Date()
+    const dun = new Date(); dun.setDate(dun.getDate() - 1)
+    const isSame = (a, b) => a.toDateString() === b.toDateString()
+    if (isSame(d, bugun)) return 'Bugün'
+    if (isSame(d, dun)) return 'Dün'
+    return d.toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+  }
+
+  if (filtreliLoglar.length === 0) {
+    return (
+      <Card padding={0}>
+        <div style={{ padding: 40 }}><EmptyState title="Henüz aktivite logu yok" /></div>
+      </Card>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: isPending ? 0.6 : 1, transition: 'opacity 150ms' }}>
+      {gunGruplari.map(([key, { tarih, loglar }]) => {
+        const acik = !!acikGunler[key]
+        const girisSayisi = loglar.filter(l => l.tip === 'kullanici_giris').length
+        const toplamSure = loglar.filter(l => l.tip === 'sayfa_cikis').reduce((s, l) => s + (l.sureSaniye || 0), 0)
+        return (
+          <Card key={key} padding={0} style={{ overflow: 'hidden' }}>
+            <button
+              onClick={() => setAcikGunler(p => ({ ...p, [key]: !p[key] }))}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                padding: '12px 16px',
+                background: acik ? 'var(--surface-sunken)' : 'transparent',
+                border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: '700 12px/1 var(--font-sans)' }}>
+                  {acik ? '−' : '+'}
+                </span>
+                <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{gunBaslik(tarih)}</span>
+                <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  {tarih.toLocaleDateString('tr-TR')}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                <span><strong style={{ color: 'var(--text-primary)' }}>{loglar.length}</strong> olay</span>
+                {girisSayisi > 0 && <span>{girisSayisi} giriş</span>}
+                {toplamSure > 0 && <span>{saniyeFormat(toplamSure)} aktif</span>}
+              </div>
+            </button>
+            {acik && (
+              <div style={{ overflowX: 'auto', borderTop: '1px solid var(--border-default)' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  <tbody>
+                    {loglar.map(l => {
+                      const tip = LOG_TIP[l.tip] || LOG_TIP.sayfa_giris
+                      const IconC = tip.C
+                      return (
+                        <tr key={l.id} style={{ transition: 'background 120ms' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap', width: 1 }}>
+                            <span style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                              {new Date(l.tarih).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar name={l.kullaniciAd} size="xs" />
+                              <span style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{l.kullaniciAd}</span>
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <Badge tone={tip.tone} icon={<IconC size={11} strokeWidth={1.5} />}>{tip.isim}</Badge>
+                          </td>
+                          <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)', maxWidth: 360, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {l.sayfa || l.aciklama || '—'}
+                          </td>
+                          <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-default)', font: '400 11.5px/16px var(--font-sans)', color: l.sureSaniye ? 'var(--text-secondary)' : 'var(--text-tertiary)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                            {l.sureSaniye ? saniyeFormat(l.sureSaniye) : ''}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )
+      })}
+
+      {/* Sayfalama */}
+      {toplamSayfa > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+            Toplam <strong style={{ color: 'var(--text-primary)' }}>{filtreliLoglar.length}</strong> kayıt · Sayfa {aktifSayfa} / {toplamSayfa}
+          </span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button variant="secondary" size="sm" disabled={aktifSayfa === 1} onClick={() => setSayfa(1)}>İlk</Button>
+            <Button variant="secondary" size="sm" disabled={aktifSayfa === 1} onClick={() => setSayfa(p => Math.max(1, p - 1))}>← Önceki</Button>
+            <Button variant="secondary" size="sm" disabled={aktifSayfa === toplamSayfa} onClick={() => setSayfa(p => Math.min(toplamSayfa, p + 1))}>Sonraki →</Button>
+            <Button variant="secondary" size="sm" disabled={aktifSayfa === toplamSayfa} onClick={() => setSayfa(toplamSayfa)}>Son</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function KullaniciYonetimi() {
   const { kullanicilar, kullaniciEkle, kullaniciSil, kullaniciGuncelle } = useAuth()
   const { toast } = useToast()
@@ -774,65 +915,12 @@ export default function KullaniciYonetimi() {
             </Button>
           </div>
 
-          <Card padding={0} style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 150ms' }}>
-            {filtreliLoglar.length === 0 ? (
-              <div style={{ padding: 40 }}><EmptyState title="Henüz aktivite logu yok" /></div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  <thead>
-                    <tr>
-                      {['Kullanıcı', 'İşlem', 'Sayfa / Detay', 'Süre', 'Tarih & Saat'].map((h, i) => (
-                        <th key={i} style={{
-                          background: 'var(--surface-sunken)',
-                          padding: '10px 14px',
-                          textAlign: 'left',
-                          font: '600 11px/16px var(--font-sans)',
-                          color: 'var(--text-tertiary)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          borderBottom: '1px solid var(--border-default)',
-                          whiteSpace: 'nowrap',
-                        }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtreliLoglar.slice(0, 200).map(l => {
-                      const tip = LOG_TIP[l.tip] || LOG_TIP.sayfa_giris
-                      const IconC = tip.C
-                      return (
-                        <tr key={l.id}
-                          style={{ transition: 'background 120ms' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <td style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                              <Avatar name={l.kullaniciAd} size="xs" />
-                              <span style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{l.kullaniciAd}</span>
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                            <Badge tone={tip.tone} icon={<IconC size={11} strokeWidth={1.5} />}>{tip.isim}</Badge>
-                          </td>
-                          <td style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', maxWidth: 320, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {l.sayfa || l.aciklama || '—'}
-                          </td>
-                          <td style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: l.sureSaniye ? 'var(--text-secondary)' : 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                            {l.sureSaniye ? saniyeFormat(l.sureSaniye) : '—'}
-                          </td>
-                          <td style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                            {new Date(l.tarih).toLocaleDateString('tr-TR')} {new Date(l.tarih).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
+          <AktiviteLoglariBolumu
+            filtreliLoglar={filtreliLoglar}
+            isPending={isPending}
+            saniyeFormat={saniyeFormat}
+            LOG_TIP={LOG_TIP}
+          />
         </div>
       )}
 
