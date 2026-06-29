@@ -369,7 +369,9 @@ export default function MusteriLayout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               type="button"
-              aria-label="Bildirimler"
+              aria-label="Bildirimler — Taleplerim sayfasına git"
+              onClick={() => navigate('/musteri-portal/taleplerim')}
+              title={acikTalepler.length > 0 ? `${acikTalepler.length} açık talep — listeye git` : 'Taleplerim'}
               style={{
                 position: 'relative',
                 width: 36, height: 36,
