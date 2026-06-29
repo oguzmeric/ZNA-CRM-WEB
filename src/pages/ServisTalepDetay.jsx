@@ -95,13 +95,29 @@ export default function ServisTalepDetay() {
 
   const atamayiKaydet = async () => {
     const k = secilenAtanan ? kullanicilar.find(x => x.id.toString() === secilenAtanan) : null
+    // Durum mantigi:
+    //   - Atama yaparken: sadece 'bekliyor' durumunda ise 'atandi'ya cek; diger
+    //     durumlarda (inceleniyor/devam_ediyor/tamamlandi) durumu KORU — sadece
+    //     kisi degistir. Boylece is yapilirken yeniden atama yapilabilir.
+    //   - Atama kaldirirken: sadece 'atandi' durumunda ise 'bekliyor'a don.
+    let yeniDurum = talep.durum
+    if (k && talep.durum === 'bekliyor') yeniDurum = 'atandi'
+    else if (!k && talep.durum === 'atandi') yeniDurum = 'bekliyor'
+
+    const oncekiAd = talep.atananKullaniciAd
+    const aciklama = k
+      ? (oncekiAd && oncekiAd !== k.ad
+          ? `${oncekiAd} → ${k.ad} olarak yeniden atandı`
+          : `${k.ad} kişisine atandı`)
+      : 'Atama kaldırıldı'
+
     setAtamaKaydediliyor(true)
     try {
       await talepGuncelle(
         talep.id,
-        { atananKullaniciId: k?.id || null, atananKullaniciAd: k?.ad || null, durum: k ? 'atandi' : (talep.durum === 'atandi' ? 'bekliyor' : talep.durum) },
+        { atananKullaniciId: k?.id || null, atananKullaniciAd: k?.ad || null, durum: yeniDurum },
         kullanici.ad,
-        k ? `${k.ad} kişisine atandı` : 'Atama kaldırıldı'
+        aciklama
       )
     } finally {
       setAtamaKaydediliyor(false)
