@@ -54,29 +54,23 @@ export default function TeklifYazdir() {
 
   const ciktiRef = useRef(null)
 
-  const pdfIndir = async () => {
-    if (!ciktiRef.current) return
+  // Tarayicinin yazdirma diyaloguyla PDF kaydet — html2pdf complex CSS'te sorun cikariyordu.
+  // Onceden dosya adini ayarla, browser print diyalogunda 'Save as PDF' secince
+  // varsayilan dosya adi olarak gelir. Sonra eski title'a don.
+  const pdfIndir = () => {
     setPdfYukleniyor(true)
-    try {
-      const { default: html2pdf } = await import('html2pdf.js')
-      const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}.pdf`
-      await html2pdf()
-        .from(ciktiRef.current)
-        .set({
-          margin: 0,
-          filename: dosyaAdi,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
-        })
-        .save()
-    } catch (err) {
-      console.error('[PDF indir]', err)
-      alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
-    } finally {
+    const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}`
+    const eskiTitle = document.title
+    document.title = dosyaAdi
+    // Print dialog'u kapatildiktan sonra restore — onafterprint event hooku
+    const restore = () => {
+      document.title = eskiTitle
       setPdfYukleniyor(false)
+      window.removeEventListener('afterprint', restore)
     }
+    window.addEventListener('afterprint', restore)
+    // Kucuk gecikme — title degisikligi DOM'a yansisin
+    setTimeout(() => window.print(), 100)
   }
 
   const excelIndir = async () => {
