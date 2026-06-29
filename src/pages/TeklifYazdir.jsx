@@ -53,23 +53,75 @@ export default function TeklifYazdir() {
 
   const Cikti = ciktiMap[seciliTip] || StandartCikti
 
-  // Tarayicinin yazdirma diyaloguyla PDF kaydet — html2pdf complex CSS'te sorun cikariyordu.
-  // Onceden dosya adini ayarla, browser print diyalogunda 'Save as PDF' secince
-  // varsayilan dosya adi olarak gelir. Sonra eski title'a don.
-  const pdfIndir = () => {
+  // PDF'i direkt indir — html2canvas + jsPDF, dialog acmaz.
+  // Cikti elementini off-screen container'a klonla (print CSS bypass icin),
+  // 794x1123 px (A4 96dpi) sabit genislik ver, capture et, multi-page PDF olarak indir.
+  const pdfIndir = async () => {
+    if (!ciktiRef.current) return
     setPdfYukleniyor(true)
-    const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}`
-    const eskiTitle = document.title
-    document.title = dosyaAdi
-    // Print dialog'u kapatildiktan sonra restore — onafterprint event hooku
-    const restore = () => {
-      document.title = eskiTitle
+    let klon = null
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+
+      const A4_W = 794   // px @ 96dpi
+      const A4_H = 1123
+
+      // Cikti'yi off-screen clone et — print:none stilleri etkilemesin
+      klon = ciktiRef.current.cloneNode(true)
+      klon.style.position = 'fixed'
+      klon.style.left = '-99999px'
+      klon.style.top = '0'
+      klon.style.width = A4_W + 'px'
+      klon.style.background = '#fff'
+      klon.style.zIndex = '-1'
+      document.body.appendChild(klon)
+
+      // Görseller yüklensin (CORS dahil)
+      await new Promise(r => setTimeout(r, 300))
+
+      const canvas = await html2canvas(klon, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: A4_W,
+        windowWidth: A4_W,
+      })
+
+      const imgW = 210               // mm (A4 width)
+      const imgH = (canvas.height * imgW) / canvas.width
+      const pageH = 297              // mm (A4 height)
+
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+
+      if (imgH <= pageH) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH)
+      } else {
+        // Multi-page split — img'i sayfa sayfa kaydirip ekle
+        let kalan = imgH
+        let pos = 0
+        while (kalan > 0) {
+          pdf.addImage(imgData, 'JPEG', 0, pos === 0 ? 0 : -(pos), imgW, imgH)
+          kalan -= pageH
+          pos += pageH
+          if (kalan > 0) pdf.addPage()
+        }
+      }
+
+      const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}.pdf`
+      pdf.save(dosyaAdi)
+    } catch (err) {
+      console.error('[PDF indir]', err)
+      alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
+    } finally {
+      if (klon) try { document.body.removeChild(klon) } catch {}
       setPdfYukleniyor(false)
-      window.removeEventListener('afterprint', restore)
     }
-    window.addEventListener('afterprint', restore)
-    // Kucuk gecikme — title degisikligi DOM'a yansisin
-    setTimeout(() => window.print(), 100)
   }
 
   const excelIndir = async () => {
