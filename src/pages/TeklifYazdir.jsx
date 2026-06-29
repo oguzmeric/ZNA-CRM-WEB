@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { teklifGetir } from '../services/teklifService'
+import { stokUrunleriniGetir } from '../services/stokService'
 import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
@@ -26,7 +27,18 @@ export default function TeklifYazdir() {
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
 
   useEffect(() => {
-    teklifGetir(id).then((data) => {
+    Promise.all([teklifGetir(id), stokUrunleriniGetir()]).then(([data, urunler]) => {
+      // Eski teklifler satirlarinda marka olmayabiliyor — stokKodu uzerinden enrich et
+      if (data?.satirlar?.length) {
+        const urunMap = new Map((urunler || []).map(u => [u.stokKodu, u]))
+        data = {
+          ...data,
+          satirlar: data.satirlar.map(s => ({
+            ...s,
+            marka: s.marka || urunMap.get(s.stokKodu)?.marka || '',
+          })),
+        }
+      }
       setTeklif(data)
       // Öncelik: URL ?tip= → kaydedilmiş teklifTipi → 'standart'
       setSeciliTip(tipUrl || data?.teklifTipi || 'standart')

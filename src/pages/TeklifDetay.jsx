@@ -274,6 +274,7 @@ function TeklifDetay() {
       stokKodu: urun?.stokKodu || '',
       stokAdi: urun?.stokAdi || '',
       birim: urun?.birim || 'Adet',
+      marka: urun?.marka || '',
     }
     setForm({ ...form, satirlar: yeniSatirlar })
   }
@@ -289,6 +290,7 @@ function TeklifDetay() {
         stokKodu: yeni.stokKodu,
         stokAdi: yeni.stokAdi,
         birim: yeni.birim || 'Adet',
+        marka: yeni.marka || '',
       }
       setForm({ ...form, satirlar: yeniSatirlar })
     }
