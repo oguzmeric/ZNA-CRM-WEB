@@ -127,7 +127,17 @@ function TeklifDetay() {
       musterileriGetir().then(setMusteriler),
       gorusmeleriGetir().then(setGorusmeler),
       stokUrunleriniGetir().then(setStokUrunler),
-      teklifleriGetir().then(data => { setTumTeklifler(data); setTeklifSayisi(data.length) }),
+      teklifleriGetir().then(data => {
+        setTumTeklifler(data)
+        // TEK-XXXX formatindaki mevcut en yuksek numarayi bul (eski farkli formatli
+        // 545 kayit + yeni TEK- formati karisik — total count + 1 yapinca duplicate olur)
+        const tekNumaralari = (data || [])
+          .map(t => t.teklifNo?.match(/^TEK-(\d+)$/)?.[1])
+          .filter(Boolean)
+          .map(n => parseInt(n, 10))
+        const sonNumara = tekNumaralari.length > 0 ? Math.max(...tekNumaralari) : 0
+        setTeklifSayisi(sonNumara)
+      }),
     ]
     if (!yeni) {
       promises.push(teklifGetir(id).then(setMevcutTeklif))
@@ -394,7 +404,29 @@ function TeklifDetay() {
     }
     try {
       if (yeni) {
-        const yeniTeklif = await teklifEkle({ ...kaydedilecek, olusturmaTarih: new Date().toISOString() })
+        // Duplicate teklif_no'ya karsi 5 kez retry — concurrent insert veya stale data icin
+        let yeniTeklif = null
+        let attemptNo = kaydedilecek.teklifNo
+        let attemptMatch = attemptNo?.match(/^TEK-(\d+)$/)
+        let attemptSayi = attemptMatch ? parseInt(attemptMatch[1], 10) : 0
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            yeniTeklif = await teklifEkle({
+              ...kaydedilecek,
+              teklifNo: attemptNo,
+              olusturmaTarih: new Date().toISOString(),
+            })
+            break
+          } catch (insertErr) {
+            if (insertErr?.code === '23505' && attemptMatch && attempt < 4) {
+              attemptSayi += 1
+              attemptNo = `TEK-${String(attemptSayi).padStart(4, '0')}`
+              console.warn('[TeklifDetay.kaydet] duplicate teklif_no, retry with', attemptNo)
+              continue
+            }
+            throw insertErr
+          }
+        }
         if (yeniTeklif) {
           if (hatirlatmaGun > 0) {
             hatirlatmaEkle(yeniTeklif, hatirlatmaGun)
