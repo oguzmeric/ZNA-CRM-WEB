@@ -87,12 +87,17 @@ export default function YeniTalep() {
     if (hata[alan]) setHata(prev => ({ ...prev, [alan]: '' }))
   }
 
+  const gorselMi = (f) => (f?.type || '').startsWith('image/') || (f?.type || '').startsWith('video/')
+
   const dogrula = () => {
     const e = {}
     if (!form.anaTur) e.anaTur = 'Talep türü seçiniz'
     if (!form.altKategori) e.altKategori = 'Alt kategori seçiniz'
     if (!form.konu.trim()) e.konu = 'Konu başlığı giriniz'
     if (!form.aciklama.trim()) e.aciklama = 'Açıklama giriniz'
+    if (yeniDosyalar.length === 0 || !yeniDosyalar.some(gorselMi)) {
+      e.dosya = 'En az bir fotoğraf veya video eklemelisiniz'
+    }
     setHata(e)
     return Object.keys(e).length === 0
   }
@@ -541,13 +546,16 @@ export default function YeniTalep() {
                   </div>
                 </div>
 
-                {/* Dosya ekleri */}
+                {/* Dosya ekleri — fotograf veya video zorunlu */}
                 <div>
-                  <Label>
+                  <Label required>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <Paperclip size={12} strokeWidth={1.5} /> Ekler (opsiyonel — fotoğraf, belge)
+                      <Paperclip size={12} strokeWidth={1.5} /> Fotoğraf veya video <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(en az 1 adet)</span>
                     </span>
                   </Label>
+                  <p style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
+                    Sorunu net gosteren bir gorsel veya video paylasmaniz teknige hizli tani koymasinda yardimci olur.
+                  </p>
                   {yeniDosyalar.length > 0 && (
                     <div style={{ marginBottom: 8 }}>
                       {yeniDosyalar.map((f, i) => (
@@ -581,25 +589,33 @@ export default function YeniTalep() {
                   <label style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     padding: '8px 14px',
-                    border: '1px dashed var(--border-default)',
+                    border: `1px dashed ${hata.dosya ? 'var(--danger)' : 'var(--border-default)'}`,
                     borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer',
-                    color: 'var(--text-secondary)',
+                    color: hata.dosya ? 'var(--danger)' : 'var(--text-secondary)',
                     font: '500 13px/18px var(--font-sans)',
-                    background: 'var(--surface-card)',
+                    background: hata.dosya ? 'var(--danger-soft)' : 'var(--surface-card)',
                   }}>
-                    <Upload size={14} strokeWidth={1.5} /> Dosya ekle
+                    <Upload size={14} strokeWidth={1.5} /> Fotoğraf / video seç
                     <input
                       type="file"
                       multiple
+                      accept="image/*,video/*"
+                      capture="environment"
                       onChange={e => {
                         const files = Array.from(e.target.files || [])
                         setYeniDosyalar(prev => [...prev, ...files])
+                        if (files.length > 0) setHata(prev => ({ ...prev, dosya: '' }))
                         e.target.value = ''
                       }}
                       style={{ display: 'none' }}
                     />
                   </label>
+                  {hata.dosya && (
+                    <p style={{ color: 'var(--danger)', font: '500 12px/16px var(--font-sans)', marginTop: 6 }}>
+                      {hata.dosya}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -612,6 +628,9 @@ export default function YeniTalep() {
                     const e = {}
                     if (!form.konu.trim()) e.konu = 'Konu başlığı giriniz'
                     if (!form.aciklama.trim()) e.aciklama = 'Açıklama giriniz'
+                    if (yeniDosyalar.length === 0 || !yeniDosyalar.some(gorselMi)) {
+                      e.dosya = 'En az bir fotoğraf veya video eklemelisiniz'
+                    }
                     if (Object.keys(e).length > 0) { setHata(e); return }
                     setAdim(3)
                   }}
