@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   Save, LayoutDashboard, BarChart3, Settings, Check, AlertCircle,
-  CheckCircle2, AlertTriangle,
+  CheckCircle2, AlertTriangle, TrendingUp, Target, Award, Activity,
+  ReceiptText, CheckSquare, Phone, ArrowUpRight, ArrowDownRight, Minus,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { teklifleriGetir } from '../services/teklifService'
@@ -33,6 +34,77 @@ const saniyeFormat = (s) => {
 }
 
 const BAR_RENK = ['var(--brand-primary)', 'var(--success)', 'var(--info)', 'var(--warning)', 'var(--danger)']
+
+// Sparkline'li KPI kartı — sol tarafta deger, sağda mini son 6 ay grafigi
+function KPIKarti({ Icon, renk, baslik, deger, altBilgi, buAy, gecenAy, spark }) {
+  const fark = buAy - gecenAy
+  const yon = fark > 0 ? 'up' : fark < 0 ? 'down' : 'flat'
+  const YonIcon = yon === 'up' ? ArrowUpRight : yon === 'down' ? ArrowDownRight : Minus
+  const yonRenk = yon === 'up' ? 'var(--success)' : yon === 'down' ? 'var(--danger)' : 'var(--text-tertiary)'
+
+  // SVG sparkline
+  const maxV = Math.max(1, ...spark)
+  const W = 100, H = 36, gap = W / Math.max(spark.length - 1, 1)
+  const pts = spark.map((v, i) => [i * gap, H - (v / maxV) * (H - 4) - 2])
+  const polyline = pts.map(p => p.join(',')).join(' ')
+  const areaPath = `M${pts[0][0]},${H} L${polyline.split(' ').join(' L')} L${pts[pts.length - 1][0]},${H} Z`
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ width: 26, height: 26, borderRadius: 7, background: `color-mix(in srgb, ${renk} 14%, transparent)`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: renk }}>
+              <Icon size={14} strokeWidth={1.8} />
+            </span>
+            <span style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {baslik}
+            </span>
+          </div>
+          <div style={{ font: '700 26px/30px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', marginBottom: 2 }}>
+            {deger}
+          </div>
+          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            {altBilgi}
+          </div>
+          <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 999, background: `color-mix(in srgb, ${yonRenk} 12%, transparent)`, color: yonRenk, font: '600 11px/14px var(--font-sans)' }}>
+            <YonIcon size={11} strokeWidth={2} />
+            {fark === 0 ? 'değişim yok' : `${fark > 0 ? '+' : ''}${fark} bu ay`}
+          </div>
+        </div>
+        <svg width={W} height={H} style={{ flexShrink: 0, opacity: 0.95 }}>
+          <defs>
+            <linearGradient id={`grad-${baslik}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={renk} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={renk} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill={`url(#grad-${baslik})`} />
+          <polyline points={polyline} fill="none" stroke={renk} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+          {pts.map((p, i) => i === pts.length - 1 && (
+            <circle key={i} cx={p[0]} cy={p[1]} r="2.4" fill={renk} />
+          ))}
+        </svg>
+      </div>
+    </Card>
+  )
+}
+
+// Yatay oran cubuğu
+function OranSatiri({ label, yuzde, renk }) {
+  const v = Math.max(0, Math.min(100, yuzde))
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{label}</span>
+        <span style={{ font: '700 15px/20px var(--font-sans)', color: renk, fontVariantNumeric: 'tabular-nums' }}>%{v}</span>
+      </div>
+      <div style={{ height: 6, background: 'var(--surface-sunken)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${v}%`, background: renk, borderRadius: 999, transition: 'width 360ms cubic-bezier(.2,.7,.3,1)' }} />
+      </div>
+    </div>
+  )
+}
 
 function Profil() {
   const { kullanici, kullaniciGuncelle, durumGuncelle } = useAuth()
@@ -321,57 +393,205 @@ function Profil() {
       )}
 
       {/* İSTATİSTİK */}
-      {aktifSekme === 'istatistik' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Teklif */}
-          <Card>
-            <CardTitle>Teklif İstatistikleri</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginTop: 16 }}>
-              {[
-                { l: 'Toplam',       v: benimTeklifler.length, c: 'var(--text-primary)' },
-                { l: 'Kabul',        v: benimTeklifler.filter(t => t.onayDurumu === 'kabul').length, c: 'var(--success)' },
-                { l: 'Takipte',      v: benimTeklifler.filter(t => t.onayDurumu === 'takipte').length, c: 'var(--info)' },
-                { l: 'Vazgeçildi',   v: benimTeklifler.filter(t => t.onayDurumu === 'vazgecildi').length, c: 'var(--danger)' },
-              ].map(i => (
-                <div key={i.l} style={{ textAlign: 'center' }}>
-                  <div style={{ font: '600 24px/1 var(--font-sans)', color: i.c, fontVariantNumeric: 'tabular-nums' }}>{i.v}</div>
-                  <div className="t-caption" style={{ marginTop: 4 }}>{i.l}</div>
-                </div>
-              ))}
-            </div>
-            {benimTeklifler.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-                <div className="t-label" style={{ marginBottom: 4 }}>KABUL EDİLEN TOPLAM TUTAR</div>
-                <div style={{ font: '600 24px/1 var(--font-sans)', color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                  ₺{fmtTL(benimTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0))}
-                </div>
-              </div>
-            )}
-          </Card>
+      {aktifSekme === 'istatistik' && (() => {
+        // Tum hesaplamalar zaten yuklu veriden — DB hit yok
+        const simdi = new Date()
+        const buAyBaslangic = new Date(simdi.getFullYear(), simdi.getMonth(), 1)
+        const oncekiAyBaslangic = new Date(simdi.getFullYear(), simdi.getMonth() - 1, 1)
+        const oncekiAyBitis = buAyBaslangic
 
-          {/* Görev */}
-          <Card>
-            <CardTitle>Görev İstatistikleri</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginTop: 16 }}>
-              {[
-                { l: 'Toplam',       v: benimGorevler.length, c: 'var(--text-primary)' },
-                { l: 'Tamamlandı',   v: tamamlananGorevler, c: 'var(--success)' },
-                { l: 'Devam Ediyor', v: benimGorevler.filter(g => g.durum === 'devam').length, c: 'var(--info)' },
-                { l: 'Bekliyor',     v: benimGorevler.filter(g => g.durum === 'bekliyor').length, c: 'var(--warning)' },
-              ].map(i => (
-                <div key={i.l} style={{ textAlign: 'center' }}>
-                  <div style={{ font: '600 24px/1 var(--font-sans)', color: i.c, fontVariantNumeric: 'tabular-nums' }}>{i.v}</div>
-                  <div className="t-caption" style={{ marginTop: 4 }}>{i.l}</div>
-                </div>
-              ))}
+        const tarihAl = (x) => new Date(x?.tarih || x?.olusturmaTarihi || x?.olusturulmaTarihi || 0)
+        const buAy = (x) => tarihAl(x) >= buAyBaslangic
+        const gecenAy = (x) => { const d = tarihAl(x); return d >= oncekiAyBaslangic && d < oncekiAyBitis }
+
+        // Son 6 ay teklif/gorev/gorusme histogrami
+        const aylar = []
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(simdi.getFullYear(), simdi.getMonth() - i, 1)
+          aylar.push({
+            label: d.toLocaleDateString('tr-TR', { month: 'short' }),
+            baslangic: d,
+            bitis: new Date(d.getFullYear(), d.getMonth() + 1, 1),
+          })
+        }
+        const aylikSay = (arr) => aylar.map(a =>
+          arr.filter(x => { const d = tarihAl(x); return d >= a.baslangic && d < a.bitis }).length
+        )
+        const teklifAylik   = aylikSay(benimTeklifler)
+        const gorevAylik    = aylikSay(benimGorevler)
+        const gorusmeAylik  = aylikSay(benimGorusmeler)
+
+        const kabulSayi = benimTeklifler.filter(t => t.onayDurumu === 'kabul').length
+        const kabulTutar = benimTeklifler.filter(t => t.onayDurumu === 'kabul').reduce((s, t) => s + (t.genelToplam || 0), 0)
+        const acikGorusme = benimGorusmeler.filter(g => g.durum === 'acik').length
+        const buAyTeklifSayi = benimTeklifler.filter(buAy).length
+        const gecenAyTeklifSayi = benimTeklifler.filter(gecenAy).length
+        const buAyGorevSayi = benimGorevler.filter(buAy).length
+        const gecenAyGorevSayi = benimGorevler.filter(gecenAy).length
+        const buAyGorusmeSayi = benimGorusmeler.filter(buAy).length
+        const gecenAyGorusmeSayi = benimGorusmeler.filter(gecenAy).length
+
+        // En cok calistigi musteri (firmaAdi bazli)
+        const firmaSay = {}
+        ;[...benimTeklifler, ...benimGorusmeler].forEach(x => {
+          const f = x.firmaAdi || x.musteriAd
+          if (f) firmaSay[f] = (firmaSay[f] || 0) + 1
+        })
+        const enCokMusteri = Object.entries(firmaSay).sort((a, b) => b[1] - a[1]).slice(0, 3)
+
+        // Son aktivite akisi
+        const aktiviteler = [
+          ...benimTeklifler.map(t => ({ tip: 'teklif', baslik: t.konu || t.teklifNo, ek: t.firmaAdi || '', tarih: tarihAl(t), durum: t.onayDurumu, link: `/teklifler/${t.id}` })),
+          ...benimGorevler.map(g => ({ tip: 'gorev', baslik: g.baslik, ek: g.firmaAdi || '', tarih: tarihAl(g), durum: g.durum, link: `/gorevler/${g.id}` })),
+          ...benimGorusmeler.map(g => ({ tip: 'gorusme', baslik: g.konu, ek: g.firmaAdi || g.musteriAd || '', tarih: tarihAl(g), durum: g.durum, link: `/gorusmeler/${g.id}` })),
+        ].filter(a => a.tarih.getTime() > 0).sort((a, b) => b.tarih - a.tarih).slice(0, 8)
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Ust 3 KPI — sparkline'li */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+              <KPIKarti
+                Icon={ReceiptText} renk="var(--brand-primary)"
+                baslik="Teklif" deger={benimTeklifler.length}
+                altBilgi={`${kabulSayi} kabul · ₺${fmtTL(kabulTutar)}`}
+                buAy={buAyTeklifSayi} gecenAy={gecenAyTeklifSayi}
+                spark={teklifAylik}
+              />
+              <KPIKarti
+                Icon={CheckSquare} renk="var(--success)"
+                baslik="Görev" deger={benimGorevler.length}
+                altBilgi={`%${gorevTamamlamaOrani} tamamlandı`}
+                buAy={buAyGorevSayi} gecenAy={gecenAyGorevSayi}
+                spark={gorevAylik}
+              />
+              <KPIKarti
+                Icon={Phone} renk="var(--info)"
+                baslik="Görüşme" deger={benimGorusmeler.length}
+                altBilgi={`${acikGorusme} açık`}
+                buAy={buAyGorusmeSayi} gecenAy={gecenAyGorusmeSayi}
+                spark={gorusmeAylik}
+              />
             </div>
+
+            {/* Performans + En cok musteri yan yana */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+              {/* Performans */}
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: 'color-mix(in srgb, var(--success) 14%, transparent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}>
+                    <Target size={16} strokeWidth={1.8} />
+                  </span>
+                  <CardTitle style={{ margin: 0 }}>Performans</CardTitle>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <OranSatiri label="Teklif kabul oranı" yuzde={kabulOrani} renk="var(--brand-primary)" />
+                  <OranSatiri label="Görev tamamlanma oranı" yuzde={gorevTamamlamaOrani} renk="var(--success)" />
+                  <OranSatiri
+                    label="Görüşme kapanış oranı"
+                    yuzde={benimGorusmeler.length > 0 ? Math.round((benimGorusmeler.filter(g => g.durum === 'kapali').length / benimGorusmeler.length) * 100) : 0}
+                    renk="var(--info)"
+                  />
+                </div>
+                {gecikmisGorevler.length > 0 && (
+                  <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--danger-soft)', border: '1px solid var(--danger-border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle size={14} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />
+                    <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--danger)' }}>
+                      <strong className="tabular-nums">{gecikmisGorevler.length}</strong> gecikmiş görev var
+                    </span>
+                  </div>
+                )}
+              </Card>
+
+              {/* En cok calistigi musteri */}
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: 'color-mix(in srgb, var(--warning) 14%, transparent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
+                    <Award size={16} strokeWidth={1.8} />
+                  </span>
+                  <CardTitle style={{ margin: 0 }}>En aktif müşteriler</CardTitle>
+                </div>
+                {enCokMusteri.length === 0 ? (
+                  <p className="t-caption" style={{ margin: 0 }}>Henüz müşteri etkileşimin yok.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {enCokMusteri.map(([firma, say], i) => {
+                      const tone = i === 0 ? 'var(--warning)' : i === 1 ? 'var(--brand-primary)' : 'var(--text-tertiary)'
+                      return (
+                        <div key={firma} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 8 }}>
+                          <span style={{ width: 22, height: 22, borderRadius: '50%', background: tone, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: '700 11px/1 var(--font-sans)' }}>
+                            {i + 1}
+                          </span>
+                          <span style={{ flex: 1, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {firma}
+                          </span>
+                          <span style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {say} işlem
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Son aktivite akisi */}
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <span style={{ width: 28, height: 28, borderRadius: 8, background: 'color-mix(in srgb, var(--info) 14%, transparent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--info)' }}>
+                  <Activity size={16} strokeWidth={1.8} />
+                </span>
+                <CardTitle style={{ margin: 0 }}>Son aktivitelerim</CardTitle>
+              </div>
+              {aktiviteler.length === 0 ? (
+                <p className="t-caption" style={{ margin: 0 }}>Henüz aktivite yok.</p>
+              ) : (
+                <div style={{ position: 'relative', paddingLeft: 18 }}>
+                  <div style={{ position: 'absolute', left: 5, top: 4, bottom: 4, width: 1, background: 'var(--border-default)' }} />
+                  {aktiviteler.map((a, i) => {
+                    const tipMeta = a.tip === 'teklif' ? { Icon: ReceiptText, renk: 'var(--brand-primary)', isim: 'Teklif' }
+                                  : a.tip === 'gorev' ? { Icon: CheckSquare, renk: 'var(--success)', isim: 'Görev' }
+                                  : { Icon: Phone, renk: 'var(--info)', isim: 'Görüşme' }
+                    const TI = tipMeta.Icon
+                    const fark = simdi - a.tarih
+                    const gunCevir = fark < 86400000 ? 'Bugün'
+                                   : fark < 172800000 ? 'Dün'
+                                   : fark < 604800000 ? `${Math.floor(fark / 86400000)} gün önce`
+                                   : a.tarih.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
+                    return (
+                      <div key={i} style={{ position: 'relative', paddingBottom: i < aktiviteler.length - 1 ? 12 : 0 }}>
+                        <span style={{
+                          position: 'absolute', left: -16, top: 2,
+                          width: 11, height: 11, borderRadius: '50%',
+                          background: 'var(--surface-card)',
+                          border: `2px solid ${tipMeta.renk}`,
+                        }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                          <TI size={12} strokeWidth={1.5} style={{ color: tipMeta.renk }} />
+                          <Badge tone="neutral">{tipMeta.isim}</Badge>
+                          <span style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                            {gunCevir}
+                          </span>
+                        </div>
+                        <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{a.baslik || '—'}</div>
+                        {a.ek && (
+                          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>{a.ek}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
 
             {gecikmisGorevler.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-                <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--danger)', marginBottom: 8 }}>
-                  <AlertTriangle size={14} strokeWidth={1.5} />
-                  <span className="tabular-nums">{gecikmisGorevler.length}</span> gecikmiş görev
-                </p>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--danger-soft)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)' }}>
+                    <AlertTriangle size={16} strokeWidth={1.8} />
+                  </span>
+                  <CardTitle style={{ margin: 0, color: 'var(--danger)' }}>Gecikmiş görevler</CardTitle>
+                </div>
                 <div>
                   {gecikmisGorevler.map(g => (
                     <div key={g.id} style={{
@@ -384,28 +604,11 @@ function Profil() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             )}
-          </Card>
-
-          {/* Görüşme */}
-          <Card>
-            <CardTitle>Görüşme İstatistikleri</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 16 }}>
-              {[
-                { l: 'Toplam', v: benimGorusmeler.length, c: 'var(--text-primary)' },
-                { l: 'Açık',   v: benimGorusmeler.filter(g => g.durum === 'acik').length, c: 'var(--info)' },
-                { l: 'Kapalı', v: benimGorusmeler.filter(g => g.durum === 'kapali').length, c: 'var(--success)' },
-              ].map(i => (
-                <div key={i.l} style={{ textAlign: 'center' }}>
-                  <div style={{ font: '600 24px/1 var(--font-sans)', color: i.c, fontVariantNumeric: 'tabular-nums' }}>{i.v}</div>
-                  <div className="t-caption" style={{ marginTop: 4 }}>{i.l}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        )
+      })()}
 
       {/* AYARLAR */}
       {aktifSekme === 'ayarlar' && (
