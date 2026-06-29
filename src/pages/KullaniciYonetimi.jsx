@@ -43,6 +43,228 @@ const saniyeFormat = (s) => {
   return `${Math.floor(s / 3600)} sa ${Math.floor((s % 3600) / 60)} dk`
 }
 
+// Path normalize — token/ID iceren URL'leri okunabilir kategoriye cevirir.
+// 'Servis Talepleri' (lower-case key url'leri de iceriyor — sayfaIsimleri'nden gelmis)
+const PATH_KATEGORI = [
+  { re: /^\/servis-talepleri\/[^/]+\/yazdir$/i, isim: 'Servis Talebi · Yazdırma' },
+  { re: /^\/servis-talepleri\/\d+$/i,           isim: 'Servis Talep Detayı' },
+  { re: /^\/servis-talepleri/i,                 isim: 'Servis Talepleri' },
+  { re: /^\/servis-raporlari/i,                 isim: 'Servis Raporları' },
+  { re: /^\/teklifler\/\d+$/i,                  isim: 'Teklif Detayı' },
+  { re: /^\/teklifler/i,                        isim: 'Teklifler' },
+  { re: /^\/musteriler\/\d+$/i,                 isim: 'Müşteri Detayı' },
+  { re: /^\/musteriler/i,                       isim: 'Müşteriler' },
+  { re: /^\/firmalar/i,                         isim: 'Firmalar' },
+  { re: /^\/firma-gecmisi\//i,                  isim: 'Firma Geçmişi' },
+  { re: /^\/gorevler\/\d+$/i,                   isim: 'Görev Detayı' },
+  { re: /^\/gorevler/i,                         isim: 'Görevler' },
+  { re: /^\/gorusmeler/i,                       isim: 'Görüşmeler' },
+  { re: /^\/stok-hareketleri/i,                 isim: 'Stok Hareketleri' },
+  { re: /^\/stok-opsiyon/i,                     isim: 'Stok Opsiyonları' },
+  { re: /^\/stok\/model\//i,                    isim: 'Stok Model Detayı' },
+  { re: /^\/stok/i,                             isim: 'Stok' },
+  { re: /^\/demolar\/\d+/i,                     isim: 'Demo Detayı' },
+  { re: /^\/demolar/i,                          isim: 'Demolar' },
+  { re: /^\/satislar\/\d+/i,                    isim: 'Fatura Detayı' },
+  { re: /^\/satislar/i,                         isim: 'Satış Faturaları' },
+  { re: /^\/notlarim/i,                         isim: 'Notlarım' },
+  { re: /^\/takvim/i,                           isim: 'Takvim' },
+  { re: /^\/dashboard/i,                        isim: 'Panel' },
+  { re: /^\/panel/i,                            isim: 'Panel' },
+  { re: /^\/login/i,                            isim: 'Giriş' },
+  { re: /^\/profil/i,                           isim: 'Profil' },
+  { re: /^\/kullanici-yonetimi/i,               isim: 'Kullanıcı Yönetimi' },
+  { re: /^\/raporlar/i,                         isim: 'Raporlar' },
+  { re: /^\/rapor-merkezi/i,                    isim: 'Rapor Merkezi' },
+  { re: /^\/performans/i,                       isim: 'Performans' },
+  { re: /^\/trassir-lisanslar/i,                isim: 'Trassir Lisanslar' },
+  { re: /^\/sla-ayarlari/i,                     isim: 'SLA Ayarları' },
+  { re: /^\/ayarlar/i,                          isim: 'Ayarlar' },
+  { re: /^\/siparis-onaylari/i,                 isim: 'Sipariş Onayları' },
+  { re: /^\/memnuniyet/i,                       isim: 'Müşteri Memnuniyeti' },
+  { re: /^\/duyurular/i,                        isim: 'Duyurular' },
+  { re: /^\/sohbet|chat/i,                      isim: 'Sohbet' },
+  { re: /^\/mesajlar/i,                         isim: 'Mesajlar' },
+  { re: /^\/dokuman-merkezi/i,                  isim: 'Doküman Merkezi' },
+  { re: /^\/kargolar/i,                         isim: 'Kargo Takip' },
+  { re: /^\/p\//i,                              isim: 'Paylaşım Linki' },
+]
+
+function sayfaNormalize(s) {
+  if (!s) return 'Diğer'
+  const txt = String(s).trim()
+  // Eger zaten okunabilir bir Turkce isimse (sayfaIsimleri'nden geldiyse) oldugu gibi birak
+  if (!txt.startsWith('/')) return txt
+  for (const k of PATH_KATEGORI) {
+    if (k.re.test(txt)) return k.isim
+  }
+  // Bilinmeyen path: yalniz ilk segment goster
+  const seg = txt.split('?')[0].split('/').filter(Boolean)[0]
+  return seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : 'Diğer'
+}
+
+function OzetRaporBolumu({ kullaniciOzet, tumLoglar, saniyeFormat }) {
+  const [tumGosterilen, setTumGosterilen] = useState({})
+
+  // En aktif (toplamSure) onde, hic aktivitesi olmayan en sona
+  const siralanmis = useMemo(() => [...kullaniciOzet].sort((a, b) => {
+    const aktifA = (a.toplamGiris > 0 || a.toplamSure > 0) ? 1 : 0
+    const aktifB = (b.toplamGiris > 0 || b.toplamSure > 0) ? 1 : 0
+    if (aktifA !== aktifB) return aktifB - aktifA
+    return (b.toplamSure || 0) - (a.toplamSure || 0)
+  }), [kullaniciOzet])
+
+  const aktif = siralanmis.filter(k => k.toplamGiris > 0 || k.toplamSure > 0)
+  const pasif = siralanmis.filter(k => !(k.toplamGiris > 0 || k.toplamSure > 0))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {aktif.map(k => {
+        // Sayfa dagilimi — normalize edilmis kategori bazli
+        const kategoriSay = {}
+        tumLoglar.filter(l => String(l.kullaniciId) === String(k.id) && l.tip === 'sayfa_giris').forEach(l => {
+          const norm = sayfaNormalize(l.sayfa)
+          kategoriSay[norm] = (kategoriSay[norm] || 0) + 1
+        })
+        const sirali = Object.entries(kategoriSay).sort((a, b) => b[1] - a[1])
+        const enCokKategori = sirali[0]?.[0] || '—'
+        const tumGoster = !!tumGosterilen[k.id]
+        const gosterilen = tumGoster ? sirali : sirali.slice(0, 8)
+        const kalan = sirali.length - gosterilen.length
+        const enYuksek = sirali[0]?.[1] || 1
+
+        return (
+          <Card key={k.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <Avatar name={k.ad} size="md" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</div>
+                <div className="t-caption">@{k.kullaniciAdi}</div>
+              </div>
+              {k.sonGiris && (
+                <div style={{ textAlign: 'right' }}>
+                  <div className="t-label">SON GİRİŞ</div>
+                  <div style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {new Date(k.sonGiris).toLocaleDateString('tr-TR')} · {new Date(k.sonGiris).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mini KPI ler */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
+              {[
+                { l: 'Toplam Giriş',  v: k.toplamGiris, renk: 'var(--brand-primary)' },
+                { l: 'Aktif Süre',    v: saniyeFormat(k.toplamSure), renk: 'var(--success)' },
+                { l: 'En Çok',        v: enCokKategori, renk: 'var(--info)', truncate: true },
+                { l: 'Sayfa Çeşidi',  v: sirali.length, renk: 'var(--warning)' },
+              ].map(i => (
+                <div key={i.l} style={{
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-sunken)',
+                  borderLeft: `3px solid ${i.renk}`,
+                }}>
+                  <div style={{ font: '500 10.5px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{i.l}</div>
+                  <div style={{
+                    font: '700 15px/20px var(--font-sans)',
+                    color: 'var(--text-primary)',
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: i.truncate ? 'nowrap' : 'normal',
+                    overflow: i.truncate ? 'hidden' : 'visible',
+                    textOverflow: i.truncate ? 'ellipsis' : 'clip',
+                  }}>
+                    {i.v}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sayfa dagilimi — yatay bar liste */}
+            {sirali.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <p className="t-label" style={{ margin: 0 }}>SAYFA ZİYARET DAĞILIMI</p>
+                  <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>{sirali.length} kategori</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {gosterilen.map(([sayfa, adet]) => (
+                    <div key={sayfa} style={{ position: 'relative', padding: '6px 10px', borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: `linear-gradient(to right, var(--brand-primary-soft) ${(adet / enYuksek) * 100}%, transparent ${(adet / enYuksek) * 100}%)`,
+                        opacity: 0.55,
+                      }} />
+                      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ font: '500 12.5px/18px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sayfa}
+                        </span>
+                        <span style={{ font: '700 12.5px/18px var(--font-sans)', color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums', marginLeft: 12 }}>
+                          {adet}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {kalan > 0 && (
+                  <button
+                    onClick={() => setTumGosterilen(p => ({ ...p, [k.id]: !p[k.id] }))}
+                    style={{
+                      marginTop: 6, padding: '4px 10px',
+                      background: 'transparent', border: '1px dashed var(--border-default)',
+                      borderRadius: 6, cursor: 'pointer',
+                      font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                  >
+                    + Diğer {kalan} kategoriyi göster
+                  </button>
+                )}
+                {tumGoster && (
+                  <button
+                    onClick={() => setTumGosterilen(p => ({ ...p, [k.id]: false }))}
+                    style={{
+                      marginTop: 6, padding: '4px 10px',
+                      background: 'transparent', border: '1px dashed var(--border-default)',
+                      borderRadius: 6, cursor: 'pointer',
+                      font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                  >
+                    − Az göster
+                  </button>
+                )}
+              </div>
+            )}
+          </Card>
+        )
+      })}
+
+      {/* Pasif kullanicilar tek kompakt blok */}
+      {pasif.length > 0 && (
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <p className="t-label" style={{ margin: 0 }}>AKTİVİTESİ OLMAYAN ({pasif.length})</p>
+            <span className="t-caption">Henüz giriş yapmamış kullanıcılar</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {pasif.map(k => (
+              <div key={k.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '6px 10px',
+                background: 'var(--surface-sunken)',
+                borderRadius: 999,
+              }}>
+                <Avatar name={k.ad} size="xs" />
+                <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>{k.ad}</span>
+                <span className="t-caption">@{k.kullaniciAdi}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 // Aktivite loglarini gun gun gruplayarak gosteren bolum.
 // 100lerce log varken duz akan tablo yerine: gun bazli accordion + sayfalama.
 function AktiviteLoglariBolumu({ filtreliLoglar, isPending, saniyeFormat, LOG_TIP }) {
@@ -926,67 +1148,11 @@ export default function KullaniciYonetimi() {
 
       {/* ÖZET */}
       {aktifSekme === 'ozet' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {kullaniciOzet.map(k => (
-            <Card key={k.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <Avatar name={k.ad} size="md" />
-                <div>
-                  <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</div>
-                  <div className="t-caption">@{k.kullaniciAdi}</div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-                {[
-                  { l: 'TOPLAM GİRİŞ', v: k.toplamGiris, c: 'var(--text-primary)' },
-                  { l: 'TOPLAM SÜRE',  v: saniyeFormat(k.toplamSure), c: 'var(--success)' },
-                  { l: 'EN ÇOK ZİYARET', v: k.enCokSayfa, c: 'var(--text-primary)', truncate: true },
-                  { l: 'SON GİRİŞ',    v: k.sonGiris
-                      ? `${new Date(k.sonGiris).toLocaleDateString('tr-TR')} ${new Date(k.sonGiris).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
-                      : '—',
-                    c: 'var(--text-primary)' },
-                ].map(i => (
-                  <div key={i.l} style={{
-                    background: 'var(--surface-sunken)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '12px 14px',
-                  }}>
-                    <div className="t-label" style={{ marginBottom: 4 }}>{i.l}</div>
-                    <div style={{
-                      font: '600 16px/22px var(--font-sans)',
-                      color: i.c,
-                      fontVariantNumeric: 'tabular-nums',
-                      whiteSpace: i.truncate ? 'nowrap' : 'normal',
-                      overflow: i.truncate ? 'hidden' : 'visible',
-                      textOverflow: i.truncate ? 'ellipsis' : 'clip',
-                    }}>
-                      {i.v}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 16 }}>
-                <p className="t-label" style={{ marginBottom: 8 }}>SAYFA ZİYARET DAĞILIMI</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {Object.entries(
-                    tumLoglar
-                      .filter(l => String(l.kullaniciId) === String(k.id) && l.tip === 'sayfa_giris')
-                      .reduce((acc, l) => { acc[l.sayfa] = (acc[l.sayfa] || 0) + 1; return acc }, {})
-                  )
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([sayfa, adet]) => (
-                      <Badge key={sayfa} tone="lead">
-                        {sayfa}: <strong style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{adet}</strong>
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <OzetRaporBolumu
+          kullaniciOzet={kullaniciOzet}
+          tumLoglar={tumLoglar}
+          saniyeFormat={saniyeFormat}
+        />
       )}
 
       {/* AYARLAR */}
