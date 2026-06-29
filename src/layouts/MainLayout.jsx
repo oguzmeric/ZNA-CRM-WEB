@@ -185,8 +185,12 @@ function MainLayout({ children }) {
   const { kullanici, cikisYap, durumGuncelle } = useAuth()
   const { okunmamis } = useChat()
   const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil } = useBildirim()
-  // Servis talebi rozetinde gösterilecek sayı — okunmamış servis_talebi bildirimleri
-  const servisTalebiOkunmamis = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi').length
+  // Servis talebi rozetleri — kaynak'a göre ayrılır: personel = "Servis Talepleri",
+  // musteri = "Müşteri Talepleri". Eski bildirimlerde meta.kaynak yoksa 'personel' kabul.
+  const _servisTalepBildirimleri = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi')
+  const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
+  const musteriTalepOkunmamis  = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
+  const servisTalebiOkunmamis  = personelTalepOkunmamis + musteriTalepOkunmamis
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -521,9 +525,12 @@ function MainLayout({ children }) {
                     <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, marginBottom: 4 }}>
                       {item.altMenu.map(alt => {
                         const aktif = location.pathname === alt.yol || location.pathname.startsWith(alt.yol + '/')
-                        // Servis Talepleri'ne yeni talep rozeti
-                        const rozet = alt.id === 'servis_talepleri' && servisTalebiOkunmamis > 0
-                          ? (servisTalebiOkunmamis > 99 ? '99+' : String(servisTalebiOkunmamis))
+                        // Kaynak bazli rozet: personel → Servis Talepleri, musteri → Musteri Talepleri
+                        const rozetSayi =
+                          alt.id === 'servis_talepleri'   ? personelTalepOkunmamis :
+                          alt.id === 'musteri_talepleri'  ? musteriTalepOkunmamis  : 0
+                        const rozet = rozetSayi > 0
+                          ? (rozetSayi > 99 ? '99+' : String(rozetSayi))
                           : null
                         return (
                           <button
