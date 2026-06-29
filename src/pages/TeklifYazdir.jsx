@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { teklifGetir } from '../services/teklifService'
 import { stokUrunleriniGetir } from '../services/stokService'
@@ -25,6 +25,7 @@ export default function TeklifYazdir() {
   const [teklif, setTeklif] = useState(null)
   const [seciliTip, setSeciliTip] = useState(null)
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
+  const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
 
   useEffect(() => {
     Promise.all([teklifGetir(id), stokUrunleriniGetir()]).then(([data, urunler]) => {
@@ -50,6 +51,33 @@ export default function TeklifYazdir() {
   }
 
   const Cikti = ciktiMap[seciliTip] || StandartCikti
+
+  const ciktiRef = useRef(null)
+
+  const pdfIndir = async () => {
+    if (!ciktiRef.current) return
+    setPdfYukleniyor(true)
+    try {
+      const { default: html2pdf } = await import('html2pdf.js')
+      const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}.pdf`
+      await html2pdf()
+        .from(ciktiRef.current)
+        .set({
+          margin: 0,
+          filename: dosyaAdi,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] },
+        })
+        .save()
+    } catch (err) {
+      console.error('[PDF indir]', err)
+      alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
+    } finally {
+      setPdfYukleniyor(false)
+    }
+  }
 
   const excelIndir = async () => {
     setExcelYukleniyor(true)
@@ -115,6 +143,17 @@ export default function TeklifYazdir() {
           🖨 Yazdır / PDF
         </button>
         <button
+          onClick={pdfIndir}
+          disabled={pdfYukleniyor}
+          style={{
+            background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8,
+            padding: '8px 18px', fontSize: 13, cursor: pdfYukleniyor ? 'wait' : 'pointer',
+            fontWeight: 600, opacity: pdfYukleniyor ? 0.6 : 1,
+          }}
+        >
+          {pdfYukleniyor ? 'Hazırlanıyor…' : '📄 PDF İndir'}
+        </button>
+        <button
           onClick={excelIndir}
           disabled={excelYukleniyor}
           style={{
@@ -133,7 +172,9 @@ export default function TeklifYazdir() {
         </button>
       </div>
 
-      <Cikti teklif={teklif} />
+      <div ref={ciktiRef}>
+        <Cikti teklif={teklif} />
+      </div>
     </>
   )
 }
