@@ -183,6 +183,9 @@ export default function MusteriLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileAcik, setMobileAcik] = useState(false)
+  // Bildirim ikonu tıklandığında badge'i lokal olarak gizle (görsel "okundu")
+  // gerçek talep tamamlanana kadar değişmez ama görsel feedback önemli
+  const [bildirimGorulen, setBildirimGorulen] = useState(false)
 
   const talepler = musteriTalepleri(kullanici?.musteriId)
   const acikTalepler = talepler.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
@@ -370,7 +373,7 @@ export default function MusteriLayout({ children }) {
             <button
               type="button"
               aria-label="Bildirimler — Taleplerim sayfasına git"
-              onClick={() => navigate('/musteri-portal/taleplerim')}
+              onClick={() => { setBildirimGorulen(true); navigate('/musteri-portal/taleplerim') }}
               title={acikTalepler.length > 0 ? `${acikTalepler.length} açık talep — listeye git` : 'Taleplerim'}
               style={{
                 position: 'relative',
@@ -387,7 +390,7 @@ export default function MusteriLayout({ children }) {
               onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
             >
               <Bell size={15} strokeWidth={1.6} />
-              {acikTalepler.length > 0 && (
+              {acikTalepler.length > 0 && !bildirimGorulen && (
                 <span
                   aria-hidden="true"
                   style={{
