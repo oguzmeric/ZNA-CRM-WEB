@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useBildirim } from '../context/BildirimContext'
@@ -323,15 +323,21 @@ function Gorevler() {
   const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const surukleBaslangic = useRef(null)
 
   const handleDragStart = (event) => {
     const gorev = gorevler.find(g => g.id.toString() === event.active.id)
     setAktifGorev(gorev || null)
+    // ORIJINAL durumu sakla — handleDragOver state'i degistiriyor,
+    // dragEnd'de orijinalle karsilastirmazsak DB'ye yazma atlaniyor
+    surukleBaslangic.current = gorev?.durum || null
   }
 
   const handleDragEnd = async (event) => {
     const { active, over } = event
     setAktifGorev(null)
+    const baslangicDurum = surukleBaslangic.current
+    surukleBaslangic.current = null
     if (!over) return
     const aktifId = active.id
     const hedefId = over.id
@@ -340,9 +346,19 @@ function Gorevler() {
     const yeniDurum = hedefKolon ? hedefKolon.id : hedefGorevKolonu
     if (!yeniDurum) return
     const mevcut = gorevler.find(g => g.id.toString() === aktifId)
-    if (!mevcut || mevcut.durum === yeniDurum) return
+    if (!mevcut) return
+    // baslangicDurum != yeniDurum ise gercekten kolon degisti — DB'ye yaz
+    if (baslangicDurum && baslangicDurum === yeniDurum) return
     setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: yeniDurum } : g))
-    await dbGorevGuncelle(mevcut.id, { durum: yeniDurum })
+    try {
+      const sonuc = await dbGorevGuncelle(mevcut.id, { durum: yeniDurum })
+      if (!sonuc) throw new Error('DB null donerdü')
+    } catch (err) {
+      console.error('[handleDragEnd] DB guncelleme fail:', err)
+      // Rollback — UI'yi baslangic durumuna geri al
+      setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: baslangicDurum } : g))
+      toast.error('Görev güncellenemedi: ' + (err?.message || 'bilinmeyen hata'))
+    }
   }
 
   const handleDragOver = (event) => {
