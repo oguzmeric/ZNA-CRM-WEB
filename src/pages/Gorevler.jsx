@@ -44,7 +44,7 @@ const bosForm = {
   servisTalebiOlustur: false,
 }
 
-function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, overlay = false }) {
+function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, onEdit, onSil, overlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: gorev.id.toString() })
 
@@ -78,11 +78,60 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, overlay = false 
       onClick={overlay ? undefined : onClick}
       {...attributes}
       {...listeners}
+      className="gorev-karti"
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 6 }}>
-        <Badge tone={oncelik?.tone}>{oncelik?.isim}</Badge>
-        {gecikti && <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
-        {bugunMu && !gecikti && <Badge tone="beklemede">Bugün</Badge>}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Badge tone={oncelik?.tone}>{oncelik?.isim}</Badge>
+          {gecikti && <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
+          {bugunMu && !gecikti && <Badge tone="beklemede">Bugün</Badge>}
+        </div>
+        {!overlay && (onEdit || onSil) && (
+          <div
+            className="gorev-aksiyon"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'inline-flex', gap: 2,
+              opacity: 0, transition: 'opacity 120ms',
+            }}
+          >
+            {onEdit && (
+              <button
+                aria-label="Düzenle"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onEdit(gorev, e) }}
+                style={{
+                  width: 24, height: 24,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                <Pencil size={11} strokeWidth={1.5} />
+              </button>
+            )}
+            {onSil && (
+              <button
+                aria-label="Sil"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onSil(gorev.id, e) }}
+                style={{
+                  width: 24, height: 24,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                <Trash2 size={11} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 4 }}>
@@ -135,7 +184,7 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, overlay = false 
   )
 }
 
-function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, onGorevClick }) {
+function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, onGorevClick, onEdit, onSil }) {
   const { setNodeRef, isOver } = useDroppable({ id: kolon.id })
 
   return (
@@ -193,6 +242,8 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, onGorevCli
               kullanicilar={kullanicilar}
               lokasyonAd={gorev.lokasyonId ? lokasyonMap?.get(gorev.lokasyonId)?.ad : null}
               onClick={() => onGorevClick(gorev.id)}
+              onEdit={onEdit}
+              onSil={onSil}
             />
           ))}
         </div>
@@ -590,6 +641,10 @@ function Gorevler() {
       )}
 
       {/* Kanban */}
+      <style>{`
+        .gorev-karti:hover .gorev-aksiyon { opacity: 1 !important; }
+        .gorev-karti:focus-within .gorev-aksiyon { opacity: 1 !important; }
+      `}</style>
       {gorunumModu === 'kanban' && (
         <DndContext sensors={sensors} collisionDetection={closestCenter}
           onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -602,6 +657,8 @@ function Gorevler() {
                 kullanicilar={kullanicilar}
                 lokasyonMap={lokasyonMap}
                 onGorevClick={(id) => navigate(`/gorevler/${id}`)}
+                onEdit={duzenleAc}
+                onSil={gorevSil}
               />
             ))}
           </div>
