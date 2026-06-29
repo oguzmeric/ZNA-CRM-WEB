@@ -3,10 +3,11 @@ import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains } from '../lib/trSearch'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus } from 'lucide-react'
+import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
+import { musterileriGetir } from '../services/musteriService'
 import {
-  Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState,
+  Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
 } from '../components/ui'
 
 const ACIL_TONE = {
@@ -25,8 +26,22 @@ const DURUM_TONE = {
 }
 
 export default function ServisTalepleri() {
-  const { kullanici } = useAuth()
+  const { kullanici, kullanicilar } = useAuth()
   const { talepler, talepSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const [musteriler, setMusteriler] = useState([])
+
+  useEffect(() => {
+    musterileriGetir().then(setMusteriler).catch(e => console.warn('[ServisTalepleri] musteri yukleme:', e))
+  }, [])
+
+  // musteriId -> yetkili (temsilci) personel adi
+  const yetkiliAdGetir = (musteriId) => {
+    if (!musteriId) return null
+    const m = musteriler.find(x => x.id === musteriId)
+    if (!m?.temsilciKullaniciId) return null
+    const k = kullanicilar?.find(u => u.id === m.temsilciKullaniciId)
+    return k?.ad || null
+  }
   const [silOnayId, setSilOnayId] = useState(null)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -193,11 +208,11 @@ export default function ServisTalepleri() {
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
                 <thead>
                   <tr>
-                    {['Talep No', 'Konu / Müşteri', 'Tür', 'Aciliyet', 'Durum', 'Tarih', ''].map((h, i) => (
+                    {['Talep No', 'Konu / Müşteri', 'Tür', 'Aciliyet', 'Durum', 'Atanan Personel', 'Yetkili Personel', 'Tarih', ''].map((h, i, arr) => (
                       <th key={i} style={{
                         background: 'var(--surface-sunken)',
                         padding: '10px 14px',
-                        textAlign: i === 6 ? 'right' : 'left',
+                        textAlign: i === arr.length - 1 ? 'right' : 'left',
                         font: '600 11px/16px var(--font-sans)',
                         color: 'var(--text-tertiary)',
                         textTransform: 'uppercase',
@@ -243,6 +258,30 @@ export default function ServisTalepleri() {
                           <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                             {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
                           </td>
+                          <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            {talep.atananKullaniciAd ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <Avatar name={talep.atananKullaniciAd} size="xs" />
+                                <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-primary)' }}>
+                                  {talep.atananKullaniciAd}
+                                </span>
+                              </span>
+                            ) : (
+                              <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            {(() => {
+                              const yetkili = yetkiliAdGetir(talep.musteriId)
+                              if (!yetkili) return <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <Avatar name={yetkili} size="xs" />
+                                  <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{yetkili}</span>
+                                </span>
+                              )
+                            })()}
+                          </td>
                           <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                             {new Date(talep.olusturmaTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
                           </td>
@@ -267,7 +306,7 @@ export default function ServisTalepleri() {
                         </tr>
                         {silOnayAcik && (
                           <tr>
-                            <td colSpan={7} style={{
+                            <td colSpan={9} style={{
                               padding: '12px 20px',
                               background: 'var(--danger-soft)',
                               borderTop: '1px solid var(--danger-border)',
