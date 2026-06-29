@@ -524,7 +524,19 @@ function MainLayout({ children }) {
                   {acik && (
                     <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, marginBottom: 4 }}>
                       {item.altMenu.map(alt => {
-                        const aktif = location.pathname === alt.yol || location.pathname.startsWith(alt.yol + '/')
+                        // alt.yol query string icerebilir (orn /servis-talepleri?kaynak=musteri).
+                        // pathname ve search'i ayri kontrol et.
+                        const [altPath, altQuery = ''] = alt.yol.split('?')
+                        const pathEslesti = location.pathname === altPath || location.pathname.startsWith(altPath + '/')
+                        const aktif = altQuery
+                          ? (pathEslesti && location.search.replace(/^\?/, '') === altQuery)
+                          : (pathEslesti
+                              // Query'siz item (Servis Talepleri) — kardes query'li link aktifse aktif degil
+                              && !item.altMenu.some(a2 => {
+                                if (a2 === alt || !a2.yol.includes('?')) return false
+                                const [p2, q2] = a2.yol.split('?')
+                                return p2 === altPath && location.search.replace(/^\?/, '') === q2
+                              }))
                         // Kaynak bazli rozet: personel → Servis Talepleri, musteri → Musteri Talepleri
                         const rozetSayi =
                           alt.id === 'servis_talepleri'   ? personelTalepOkunmamis :
