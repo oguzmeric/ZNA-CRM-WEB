@@ -128,6 +128,8 @@ function FirmaGecmisi() {
   const [aktifSekme, setAktifSekme] = useState('hepsi')
   const [yukleniyor, setYukleniyor] = useState(true)
   const [secilenLisans, setSecilenLisans] = useState(null)
+  const [gosterilenSayi, setGosterilenSayi] = useState(20)
+  useEffect(() => { setGosterilenSayi(20) }, [aktifSekme])
 
   const [gorusmeler, setGorusmeler] = useState([])
   const [teklifler, setTeklifler] = useState([])
@@ -282,12 +284,12 @@ function FirmaGecmisi() {
           />
         </div>
 
-        {/* Timeline */}
+        {/* Timeline — sayfalanmiş gösterim */}
         {filtreliOlaylar.length === 0 ? (
           <EmptyState icon={<Inbox size={32} strokeWidth={1.5} />} title="Bu kategoride kayıt bulunamadı" />
         ) : (
           <Timeline>
-            {filtreliOlaylar.map(olay => {
+            {filtreliOlaylar.slice(0, gosterilenSayi).map(olay => {
               const konf = OLAY_KONFIG[olay.tip] ?? OLAY_KONFIG.gorusme
               return (
                 <TimelineItem
@@ -338,6 +340,45 @@ function FirmaGecmisi() {
               )
             })}
           </Timeline>
+        )}
+
+        {/* Daha fazla göster */}
+        {filtreliOlaylar.length > gosterilenSayi && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setGosterilenSayi(s => s + 20)}
+              style={{
+                padding: '8px 20px',
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                font: '500 13px/18px var(--font-sans)',
+                color: 'var(--brand-primary)',
+              }}
+            >
+              + 20 daha göster
+            </button>
+            <button
+              onClick={() => setGosterilenSayi(filtreliOlaylar.length)}
+              style={{
+                padding: '8px 20px',
+                background: 'transparent',
+                border: '1px dashed var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                font: '400 13px/18px var(--font-sans)',
+                color: 'var(--text-tertiary)',
+              }}
+            >
+              Tümünü göster ({filtreliOlaylar.length})
+            </button>
+          </div>
+        )}
+        {filtreliOlaylar.length > 0 && (
+          <p style={{ textAlign: 'center', marginTop: 12, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            <span className="tabular-nums">{Math.min(gosterilenSayi, filtreliOlaylar.length)}</span> / <span className="tabular-nums">{filtreliOlaylar.length}</span> kayıt gösteriliyor
+          </p>
         )}
       </div>
 
