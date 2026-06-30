@@ -559,7 +559,27 @@ function Gorevler() {
       {/* Form */}
       {goster && (
         <Card style={{ marginBottom: 16 }}>
-          <h2 className="t-h2" style={{ marginBottom: 16 }}>{duzenleId ? 'Görevi Düzenle' : 'Yeni Görev'}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <button
+              onClick={iptal}
+              title="Görev listesine dön"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px',
+                background: 'transparent',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                font: '500 13px/18px var(--font-sans)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-sunken)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} /> Görev listesi
+            </button>
+            <h2 className="t-h2" style={{ margin: 0 }}>{duzenleId ? 'Görevi Düzenle' : 'Yeni Görev'}</h2>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
             <div>
               <Label required>Başlık</Label>
