@@ -125,34 +125,30 @@ export async function etkinlikOlustur(baglantiId, payload) {
   // Gerçek (Türkçe) hata mesajını bu Response gövdesinden okumamız gerek.
   if (error) {
     let mesaj = error.message ?? 'Etkinlik oluşturulamadı'
+    let scopeYok = false
     try {
       const ctx = error.context
-      // Response objesi ise gövdeyi text olarak oku, sonra JSON dene
       if (ctx && typeof ctx.text === 'function') {
         const text = await ctx.text()
         if (text) {
           try {
             const body = JSON.parse(text)
             if (body?.hata) mesaj = body.hata
-            if (body?.scopeYok) {
-              mesaj += ' (Takvim Bağlantıları sayfasından bağlantıyı kaldırıp tekrar bağla.)'
-            }
+            if (body?.scopeYok) scopeYok = true
           } catch {
-            // JSON değilse plain text olarak göster
             mesaj = text.slice(0, 300)
           }
         }
       } else if (typeof ctx === 'object' && ctx?.hata) {
-        // Eski versiyonlarda direkt parsed body olabiliyor
         mesaj = ctx.hata
-        if (ctx.scopeYok) {
-          mesaj += ' (Takvim Bağlantıları sayfasından bağlantıyı kaldırıp tekrar bağla.)'
-        }
+        if (ctx.scopeYok) scopeYok = true
       }
     } catch (e) {
       console.warn('[etkinlikOlustur error parse]', e)
     }
-    throw new Error(mesaj)
+    const err = new Error(mesaj)
+    err.scopeYok = scopeYok
+    throw err
   }
   if (!data?.ok) throw new Error(data?.hata ?? 'Etkinlik oluşturulamadı')
   // Cache invalidate — yeni etkinlik listede görünmeli

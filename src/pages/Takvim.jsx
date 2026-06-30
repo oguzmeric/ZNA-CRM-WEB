@@ -947,6 +947,7 @@ function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
 // CRM içinden Google Calendar'a etkinlik gönder, otomatik Meet linki üret, davetlilere mail at.
 
 function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }) {
+  const navigate = useNavigate()
   // Varsayılan başlangıç/bitiş hesapla:
   // - varsayilanTarih (YYYY-MM-DD) verilmişse o günü 09:00 - 10:00 olarak doldur
   // - Yoksa şimdiden 15 dk sonra başlat, 30 dk sürsün
@@ -989,10 +990,10 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
 
   const kaydet = async () => {
     setHata(null)
-    if (!baglantiId) { setHata('Bağlantı seç'); return }
-    if (!baslik.trim()) { setHata('Başlık zorunlu'); return }
-    if (!baslangic || !bitis) { setHata('Başlangıç ve bitiş zamanı zorunlu'); return }
-    if (new Date(bitis) <= new Date(baslangic)) { setHata('Bitiş, başlangıçtan sonra olmalı'); return }
+    if (!baglantiId) { setHata({ mesaj: 'Bağlantı seç' }); return }
+    if (!baslik.trim()) { setHata({ mesaj: 'Başlık zorunlu' }); return }
+    if (!baslangic || !bitis) { setHata({ mesaj: 'Başlangıç ve bitiş zamanı zorunlu' }); return }
+    if (new Date(bitis) <= new Date(baslangic)) { setHata({ mesaj: 'Bitiş, başlangıçtan sonra olmalı' }); return }
 
     // Davetli mail listesi: virgül veya satır ile ayrılmış, geçerli mailler
     const davetliler = davetlilerStr
@@ -1019,7 +1020,7 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
 
       setSonuc(res)  // başarılı — Meet linki + HTML linki göster
     } catch (e) {
-      setHata(e?.message ?? 'Etkinlik oluşturulamadı')
+      setHata({ mesaj: e?.message ?? 'Etkinlik oluşturulamadı', scopeYok: !!e?.scopeYok })
     } finally {
       setKaydediliyor(false)
     }
@@ -1031,7 +1032,7 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
       setKopyalandi(true)
       setTimeout(() => setKopyalandi(false), 2000)
     } catch {
-      setHata('Kopyalama başarısız')
+      setHata({ mesaj: 'Kopyalama başarısız' })
     }
   }
 
@@ -1364,7 +1365,25 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
             borderRadius: 'var(--radius-sm)',
             font: '500 12px/16px var(--font-sans)',
           }}>
-            {hata}
+            <div>{typeof hata === 'string' ? hata : hata.mesaj}</div>
+            {typeof hata === 'object' && hata.scopeYok && (
+              <button
+                type="button"
+                onClick={() => { onKapat(); navigate('/ayarlar/takvim-baglantilari') }}
+                style={{
+                  marginTop: 8,
+                  padding: '6px 12px',
+                  background: 'var(--danger)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  font: '600 12px/16px var(--font-sans)',
+                  cursor: 'pointer',
+                }}
+              >
+                → Takvim Bağlantıları'na Git
+              </button>
+            )}
           </div>
         )}
 
