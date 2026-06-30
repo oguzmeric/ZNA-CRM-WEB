@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, User, Phone, MessageCircle, Mail, Handshake,
   Building2, Monitor, Link2, Video, Send, Lightbulb, X,
   Paperclip, Upload, FileText, Image as ImageIcon, Download,
-  MapPin, Settings,
+  MapPin, Settings, Clock, AlertTriangle, ReceiptText, CheckSquare,
+  History, Zap, ArrowRight,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
@@ -61,6 +63,7 @@ function aktNo(mevcut) { return `ACT-${String(mevcut.length + 1).padStart(4, '0'
 
 function Gorusmeler() {
   const { kullanici, kullanicilar } = useAuth()
+  const { talepler } = useServisTalebi()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [gorusmeler, setGorusmeler] = useState([])
@@ -382,9 +385,12 @@ function Gorusmeler() {
       )}
       </div>)}
 
-      {/* Form */}
+      {/* Form — 3 bölge: üst context bar + sol form/sağ timeline + alt hızlı aksiyon */}
       {goster && (
-        <Card style={{ marginBottom: 16 }}>
+      <div>
+        <FirmaContextBar firma={form.firmaAdi || secilenFirma} gorusmeler={gorusmeler} talepler={talepler} navigate={navigate} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 320px)', gap: 14, alignItems: 'start' }}>
+        <Card style={{ marginBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
             <h2 className="t-h2" style={{ margin: 0 }}>
               {duzenleId ? 'Görüşmeyi Düzenle' : 'Yeni Görüşme'}
@@ -679,6 +685,17 @@ function Gorusmeler() {
             <Button variant="secondary" onClick={iptal}>İptal</Button>
           </div>
         </Card>
+        <Card padding={16} style={{ marginBottom: 0, position: 'sticky', top: 16, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+          <GecmisGorusmeler firma={form.firmaAdi || secilenFirma} gorusmeler={gorusmeler} navigate={navigate} mevcutId={duzenleId} />
+        </Card>
+        </div>
+        <HizliAksiyon
+          musteriId={form.musteriId}
+          firmaAdi={form.firmaAdi || secilenFirma}
+          navigate={navigate}
+          onayli={!!(form.firmaAdi || secilenFirma)}
+        />
+      </div>
       )}
 
       {/* Liste — form acikken gizle */}
@@ -887,6 +904,168 @@ function Gorusmeler() {
         onClose={() => setLokasyonModalAcik(false)}
       />
     </div>
+  )
+}
+
+// Form üst bandı — firma seçildiğinde mevcut yüklü veriden 4 hızlı metrik gösterir.
+// DB hit YOK: gorusmeler + talepler zaten state'te.
+function FirmaContextBar({ firma, gorusmeler, talepler, navigate }) {
+  if (!firma) {
+    return (
+      <Card style={{ marginBottom: 14, borderLeft: '3px solid var(--brand-primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)' }}>
+          <Building2 size={16} strokeWidth={1.5} />
+          <span style={{ font: '500 13px/18px var(--font-sans)' }}>Firma seçince geçmiş, açık iş ve son temas burada görünür.</span>
+        </div>
+      </Card>
+    )
+  }
+  const firmaGorusmeler = gorusmeler.filter(g => g.firmaAdi === firma)
+  const firmaTalepler = (talepler || []).filter(t => t.firmaAdi === firma)
+  const acikTalep = firmaTalepler.filter(t => !['tamamlandi', 'iptal'].includes(t.durum)).length
+  const sonTemas = firmaGorusmeler[0]?.tarih
+  const sonGorusen = firmaGorusmeler[0]?.gorusen
+  const gunFark = sonTemas ? Math.floor((Date.now() - new Date(sonTemas).getTime()) / 86400000) : null
+  const gunFarkText = gunFark === null ? '—' : gunFark === 0 ? 'bugün' : gunFark === 1 ? 'dün' : `${gunFark} gün önce`
+
+  const KART = ({ icon: I, renk, l, v, sub }) => (
+    <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--surface-sunken)', borderLeft: `3px solid ${renk}`, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <I size={11} strokeWidth={1.5} style={{ color: renk }} />
+        <span style={{ font: '600 10.5px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</span>
+      </div>
+      <div style={{ font: '700 14px/20px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v}</div>
+      {sub && <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+    </div>
+  )
+
+  return (
+    <Card style={{ marginBottom: 14, borderLeft: '3px solid var(--brand-primary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Building2 size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+        <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{firma}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+        <KART icon={Clock} renk="var(--brand-primary)" l="Son Temas" v={gunFarkText} sub={sonGorusen ? `${sonGorusen}` : undefined} />
+        <KART icon={History} renk="var(--info)" l="Geçmiş Görüşme" v={firmaGorusmeler.length} sub="toplam" />
+        <KART icon={AlertTriangle} renk={acikTalep > 0 ? 'var(--warning)' : 'var(--success)'} l="Açık Servis" v={acikTalep} sub={`${firmaTalepler.length} toplam`} />
+        <KART icon={CheckSquare} renk="var(--success)" l="Açık İş" v={firmaGorusmeler.filter(g => g.durum === 'acik').length} sub="görüşme" />
+      </div>
+    </Card>
+  )
+}
+
+// Sağ panel — bu firmayla geçmiş görüşmeler timeline
+function GecmisGorusmeler({ firma, gorusmeler, navigate, mevcutId }) {
+  const [hepsiAcik, setHepsiAcik] = useState(false)
+  const firmaGorusmeler = useMemo(
+    () => gorusmeler.filter(g => g.firmaAdi === firma && g.id !== mevcutId).slice(0, 50),
+    [firma, gorusmeler, mevcutId]
+  )
+  const goster = hepsiAcik ? firmaGorusmeler : firmaGorusmeler.slice(0, 6)
+  if (!firma) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: 'var(--text-tertiary)', flexDirection: 'column', gap: 8, padding: 20 }}>
+        <History size={28} strokeWidth={1.3} />
+        <span style={{ font: '500 12.5px/18px var(--font-sans)', textAlign: 'center' }}>Firma seçince bu alanda geçmiş görüşmeler listelenir.</span>
+      </div>
+    )
+  }
+  if (firmaGorusmeler.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: 'var(--text-tertiary)', flexDirection: 'column', gap: 8, padding: 20 }}>
+        <span style={{ font: '500 12.5px/18px var(--font-sans)', textAlign: 'center' }}>Bu firma ile henüz başka görüşme yok.</span>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+        <History size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+        <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>Geçmiş Görüşmeler</span>
+        <span style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{firmaGorusmeler.length}</span>
+      </div>
+      <div style={{ position: 'relative', paddingLeft: 16 }}>
+        <div style={{ position: 'absolute', left: 5, top: 4, bottom: 4, width: 1, background: 'var(--border-default)' }} />
+        {goster.map((g, i) => {
+          const d = new Date(g.tarih)
+          return (
+            <div key={g.id} style={{ position: 'relative', paddingBottom: i < goster.length - 1 ? 12 : 0 }}>
+              <span style={{ position: 'absolute', left: -15, top: 4, width: 11, height: 11, borderRadius: '50%', background: 'var(--surface-card)', border: '2px solid var(--brand-primary)' }} />
+              <button
+                onClick={() => navigate(`/gorusmeler/${g.id}`)}
+                style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', width: '100%' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                  {g.gorusen && <span style={{ font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>· {g.gorusen}</span>}
+                </div>
+                <div style={{ font: '600 12.5px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>{g.konu || '—'}</div>
+                {g.takipNotu && (
+                  <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {g.takipNotu}
+                  </div>
+                )}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      {firmaGorusmeler.length > 6 && (
+        <button
+          onClick={() => setHepsiAcik(!hepsiAcik)}
+          style={{ marginTop: 10, padding: '5px 10px', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: 6, cursor: 'pointer', font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)' }}
+        >
+          {hepsiAcik ? '− Daha az göster' : `+ ${firmaGorusmeler.length - 6} kayıt daha`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Hızlı aksiyon — bu görüşmeden direkt yeni iş başlat
+function HizliAksiyon({ musteriId, firmaAdi, navigate, onayli }) {
+  const stilB = (renk) => ({
+    flex: 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: '10px 14px',
+    background: 'var(--surface-card)',
+    border: `1.5px solid ${renk}`,
+    color: renk,
+    borderRadius: 8,
+    cursor: onayli ? 'pointer' : 'not-allowed',
+    opacity: onayli ? 1 : 0.45,
+    font: '600 13px/18px var(--font-sans)',
+    transition: 'background 120ms',
+  })
+  const handler = (yol) => () => {
+    if (!onayli) return
+    const params = new URLSearchParams()
+    if (musteriId) params.set('musteriId', String(musteriId))
+    if (firmaAdi)  params.set('firma', firmaAdi)
+    navigate(`${yol}?${params.toString()}`)
+  }
+  return (
+    <Card style={{ marginTop: 14, background: 'var(--brand-primary-soft)', border: '1px solid var(--brand-primary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Zap size={14} strokeWidth={1.8} style={{ color: 'var(--brand-primary)' }} />
+        <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>Bu görüşmeden →</span>
+        {!onayli && <span style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 6 }}>(önce firma seçin)</span>}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button style={stilB('var(--success)')} onClick={handler('/gorevler')} disabled={!onayli}>
+          <CheckSquare size={14} strokeWidth={1.8} /> Görev oluştur <ArrowRight size={12} strokeWidth={1.5} />
+        </button>
+        <button style={stilB('var(--warning)')} onClick={handler('/servis-talepleri/yeni')} disabled={!onayli}>
+          <AlertTriangle size={14} strokeWidth={1.8} /> Servis talebi aç <ArrowRight size={12} strokeWidth={1.5} />
+        </button>
+        <button style={stilB('var(--brand-primary)')} onClick={handler('/teklifler/yeni')} disabled={!onayli}>
+          <ReceiptText size={14} strokeWidth={1.8} /> Teklif başlat <ArrowRight size={12} strokeWidth={1.5} />
+        </button>
+      </div>
+    </Card>
   )
 }
 
