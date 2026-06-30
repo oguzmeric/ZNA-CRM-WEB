@@ -307,13 +307,24 @@ function Musteriler() {
             </div>
           </div>
 
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            margin: '4px 0 10px',
+            font: '600 12px/16px var(--font-sans)',
+            color: 'var(--text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+          }}>
+            <span>Yetkili Bilgileri</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
             <div>
-              <Label required>Ad</Label>
+              <Label required>Yetkili Adı</Label>
               <Input value={form.ad} onChange={e => setForm({ ...form, ad: e.target.value })} placeholder="Ahmet" />
             </div>
             <div>
-              <Label required>Soyad</Label>
+              <Label required>Yetkili Soyadı</Label>
               <Input value={form.soyad} onChange={e => setForm({ ...form, soyad: e.target.value })} placeholder="Yılmaz" />
             </div>
             <div>
