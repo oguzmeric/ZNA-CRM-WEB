@@ -59,7 +59,7 @@ function Musteriler() {
 
   // Sütun bazli filtreler
   const [kolonFiltre, setKolonFiltre] = useState({
-    kod: '', firma: '', yetkili: '', unvan: '', telefon: '', email: '', sehir: '',
+    kod: '', firma: '', yetkili: '', telefon: '', email: '', sehir: '',
   })
 
   useEffect(() => {
@@ -154,7 +154,6 @@ function Musteriler() {
       inSearch(m.kod, kolonFiltre.kod) &&
       inSearch(m.firma, kolonFiltre.firma) &&
       inSearch(`${m.ad ?? ''} ${m.soyad ?? ''}`, kolonFiltre.yetkili) &&
-      inSearch(m.unvan, kolonFiltre.unvan) &&
       inSearch(m.telefon, kolonFiltre.telefon) &&
       inSearch(m.email, kolonFiltre.email) &&
       inSearch(m.sehir, kolonFiltre.sehir)
@@ -411,7 +410,7 @@ function Musteriler() {
                 background: 'var(--surface-card)',
               }}>
                 <button
-                  onClick={() => setKolonFiltre({ kod:'', firma:'', yetkili:'', unvan:'', telefon:'', email:'', sehir:'' })}
+                  onClick={() => setKolonFiltre({ kod:'', firma:'', yetkili:'', telefon:'', email:'', sehir:'' })}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '6px 10px',
@@ -434,7 +433,6 @@ function Musteriler() {
                     <th style={thStyle}>Müşteri Kodu</th>
                     <th style={{ ...thStyle, minWidth: 220 }}>Firma</th>
                     <th style={thStyle}>Yetkili</th>
-                    <th style={thStyle}>Unvan</th>
                     <th style={thStyle}>Telefon</th>
                     <th style={thStyle}>E-posta</th>
                     <th style={thStyle}>Şehir</th>
@@ -459,11 +457,6 @@ function Musteriler() {
                         style={colFilterInput} />
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
-                      <input placeholder="ara…" value={kolonFiltre.unvan}
-                        onChange={e => { setKolonFiltre({ ...kolonFiltre, unvan: e.target.value }); setSayfa(1) }}
-                        style={colFilterInput} />
-                    </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.telefon}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, telefon: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
@@ -485,7 +478,7 @@ function Musteriler() {
                 <tbody>
                   {sayfadakiMusteriler.length === 0 && (
                     <tr>
-                      <td colSpan={10} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+                      <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
                         {arama || filtreVar ? 'Arama sonucu bulunamadı' : 'Henüz müşteri eklenmedi'}
                       </td>
                     </tr>
@@ -543,9 +536,6 @@ function Musteriler() {
                         </td>
                         <td style={{ ...tdStyle, color: 'var(--text-secondary)', textTransform: 'uppercase', font: '500 12px/16px var(--font-sans)' }}>
                           {m.ad ? `${m.ad} ${m.soyad || ''}`.trim() : '—'}
-                        </td>
-                        <td style={{ ...tdStyle, color: 'var(--text-secondary)' }}>
-                          {m.unvan || '—'}
                         </td>
                         <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
                           {m.telefon || '—'}
