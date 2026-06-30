@@ -163,7 +163,7 @@ export default function TrassirCikti({ teklif }) {
               const top = ara - isk
               return (
                 <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
-                  <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? '—' : 'ZNA')}</td>
+                  <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? 'Trassir' : 'ZNA')}</td>
                   <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
                   <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
                   <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
