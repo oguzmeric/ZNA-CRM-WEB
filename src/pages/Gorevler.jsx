@@ -695,7 +695,7 @@ function Gorevler() {
         .gorev-karti:hover .gorev-aksiyon { opacity: 1 !important; }
         .gorev-karti:focus-within .gorev-aksiyon { opacity: 1 !important; }
       `}</style>
-      {gorunumModu === 'kanban' && (
+      {!goster && gorunumModu === 'kanban' && (
         <DndContext sensors={sensors} collisionDetection={closestCenter}
           onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16 }}>
@@ -719,7 +719,7 @@ function Gorevler() {
       )}
 
       {/* Liste — Profesyonel tablo görünümü */}
-      {gorunumModu === 'liste' && (() => {
+      {!goster && gorunumModu === 'liste' && (() => {
         const durumChipler = [
           { id: 'hepsi',     isim: 'Tümü',      icon: List },
           { id: 'bekliyor',  isim: 'Açık',      icon: Circle,        renk: 'var(--info)' },
