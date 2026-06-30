@@ -330,6 +330,13 @@ function Gorevler() {
     }
   }, [veriYukle])
 
+  // Tarayıcı geri tuşu: form açıksa formu kapat
+  useEffect(() => {
+    const onPop = () => { if (goster) { setForm(bosForm); setDuzenleId(null); setGoster(false) } }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [goster])
+
   const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -396,7 +403,11 @@ function Gorevler() {
     setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: yeniDurum } : g))
   }
 
-  const formAc = () => { setForm(bosForm); setDuzenleId(null); setGoster(true) }
+  const formAc = () => {
+    setForm(bosForm); setDuzenleId(null); setGoster(true)
+    // Tarayıcı geri tuşu form'u kapatsın
+    window.history.pushState({ gorevFormu: true }, '', window.location.pathname)
+  }
 
   const kaydet = async () => {
     if (!form.baslik || !form.atanan || !form.sonTarih) {
@@ -440,7 +451,11 @@ function Gorevler() {
     setForm(bosForm); setDuzenleId(null); setGoster(false)
   }
 
-  const iptal = () => { setForm(bosForm); setDuzenleId(null); setGoster(false) }
+  const iptal = () => {
+    setForm(bosForm); setDuzenleId(null); setGoster(false)
+    // Garantiye al: detay sayfasından gelinmişse de listeye dön
+    if (location.pathname !== '/gorevler') navigate('/gorevler', { replace: true })
+  }
 
   const gorevSil = async (id, e) => {
     e.stopPropagation()
