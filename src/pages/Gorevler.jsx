@@ -11,6 +11,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import {
   Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock, MapPin, Settings,
+  FolderOpen, CheckCircle2, Circle, History, Filter, Calendar, ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
 import {
   gorevleriGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
@@ -273,6 +274,15 @@ function Gorevler() {
   const [gorunumModu, setGorunumModu] = useState('kanban')
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
+
+  // Liste görünümü için sütun filtreleri + sayfalama
+  const [kolonFiltre, setKolonFiltre] = useState({
+    takip: '', veren: '', alan: '', gorev: '',
+    basTarBas: '', basTarBit: '', bitTarBas: '', bitTarBit: '',
+    kontrol: '',
+  })
+  const [sayfa, setSayfa] = useState(1)
+  const SAYFA_BOYUT = 50
 
   const veriYukle = useCallback(({ ilkYukleme = false } = {}) => {
     Promise.all([
@@ -708,129 +718,415 @@ function Gorevler() {
         </DndContext>
       )}
 
-      {/* Liste */}
-      {gorunumModu === 'liste' && (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {[
-              { id: 'hepsi', isim: 'Hepsi' },
-              { id: 'bekliyor', isim: 'Bekliyor' },
-              { id: 'devam', isim: 'Devam Ediyor' },
-              { id: 'tamamlandi', isim: 'Tamamlandı' },
-            ].map(d => (
+      {/* Liste — Profesyonel tablo görünümü */}
+      {gorunumModu === 'liste' && (() => {
+        const durumChipler = [
+          { id: 'hepsi',     isim: 'Tümü',      icon: List },
+          { id: 'bekliyor',  isim: 'Açık',      icon: Circle,        renk: 'var(--info)' },
+          { id: 'devam',     isim: 'Beklemede', icon: Clock,         renk: 'var(--warning)' },
+          { id: 'tamamlandi',isim: 'Kapalı',    icon: CheckCircle2,  renk: 'var(--success)' },
+          { id: 'gecmis',    isim: 'Geçmiş',    icon: History,       renk: 'var(--danger)' },
+        ]
+
+        const bugun = new Date().toISOString().split('T')[0]
+        const inSearch = (val, q) => !q || String(val ?? '').toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
+        const inDateRange = (val, bas, bit) => {
+          if (!bas && !bit) return true
+          if (!val) return false
+          const d = String(val).slice(0, 10)
+          if (bas && d < bas) return false
+          if (bit && d > bit) return false
+          return true
+        }
+
+        const tabloRow = filtreliGorevler
+          .filter(g => {
+            if (filtre === 'gecmis') {
+              if (g.durum === 'tamamlandi') return false
+              return g.sonTarih && g.sonTarih < bugun
+            }
+            return true
+          })
+          .filter(g => {
+            const atananKisi = kullanicilar.find(k => k.id?.toString() === g.atanan)
+            const kolonAd = kolonlar.find(k => k.id === g.durum)?.isim
+            const oncAd = oncelikler.find(o => o.id === g.oncelik)?.isim
+            const basTar = g.olusturmaTarih ? String(g.olusturmaTarih).slice(0, 10) : ''
+            const bitTar = g.sonTarih || ''
+            return (
+              inSearch(kolonAd, kolonFiltre.takip) &&
+              inSearch(g.olusturanAd, kolonFiltre.veren) &&
+              inSearch(atananKisi?.ad, kolonFiltre.alan) &&
+              inSearch(g.baslik, kolonFiltre.gorev) &&
+              inDateRange(basTar, kolonFiltre.basTarBas, kolonFiltre.basTarBit) &&
+              inDateRange(bitTar, kolonFiltre.bitTarBas, kolonFiltre.bitTarBit) &&
+              inSearch(oncAd, kolonFiltre.kontrol)
+            )
+          })
+          .sort((a, b) => String(b.olusturmaTarih || '').localeCompare(String(a.olusturmaTarih || '')))
+
+        const toplam = tabloRow.length
+        const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUT))
+        const guvSayfa = Math.min(sayfa, toplamSayfa)
+        const dilim = tabloRow.slice((guvSayfa - 1) * SAYFA_BOYUT, guvSayfa * SAYFA_BOYUT)
+
+        const filtreVar = Object.values(kolonFiltre).some(Boolean)
+
+        const fmtTarih = (iso) => {
+          if (!iso) return ''
+          const s = String(iso).slice(0, 10)
+          const [y, m, d] = s.split('-')
+          if (!y) return s
+          const hh = String(iso).slice(11, 16)
+          return `${d}.${m}.${y}${hh ? ' ' + hh : ''}`
+        }
+
+        const thStyle = {
+          textAlign: 'left',
+          padding: '10px 12px',
+          font: '600 11px/14px var(--font-sans)',
+          color: 'var(--text-secondary)',
+          textTransform: 'uppercase',
+          letterSpacing: 0.3,
+          background: 'var(--surface-sunken)',
+          borderBottom: '1px solid var(--border-default)',
+          whiteSpace: 'nowrap',
+          position: 'sticky', top: 0, zIndex: 1,
+        }
+        const tdStyle = {
+          padding: '10px 12px',
+          font: '400 13px/18px var(--font-sans)',
+          color: 'var(--text-primary)',
+          borderBottom: '1px solid var(--border-default)',
+          verticalAlign: 'middle',
+          whiteSpace: 'nowrap',
+        }
+        const colFilterInput = {
+          width: '100%',
+          padding: '6px 8px',
+          font: '400 12px/16px var(--font-sans)',
+          color: 'var(--text-primary)',
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-sm)',
+          outline: 'none',
+        }
+
+        return (
+          <Card padding={0} style={{ overflow: 'hidden' }}>
+            {/* Üst durum şeridi: + Yeni · Açık · Beklemede · Kapalı · Geçmiş · Tümü */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
+              padding: '10px 12px',
+              borderBottom: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+            }}>
               <button
-                key={d.id}
-                onClick={() => setFiltre(d.id)}
+                onClick={formAc}
                 style={{
-                  padding: '6px 14px',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 12px',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: 'var(--brand-primary)',
+                  font: '600 13px/18px var(--font-sans)',
                   borderRadius: 'var(--radius-sm)',
-                  background: filtre === d.id ? 'var(--brand-primary)' : 'var(--surface-card)',
-                  color: filtre === d.id ? '#fff' : 'var(--text-secondary)',
-                  border: `1px solid ${filtre === d.id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                  font: '500 13px/18px var(--font-sans)',
-                  cursor: 'pointer',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-primary-soft)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                {d.isim}
+                <Plus size={14} strokeWidth={2} /> Yeni
               </button>
-            ))}
-          </div>
-
-          {filtreliGorevler.length === 0 ? (
-            <EmptyState title="Görev bulunamadı" />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filtreliGorevler.map(gorev => {
-                const oncelik = oncelikler.find(o => o.id === gorev.oncelik)
-                const kolon = kolonlar.find(k => k.id === gorev.durum)
-                const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atanan)
-                const gecikti = gorev.sonTarih && new Date(gorev.sonTarih) < new Date() && gorev.durum !== 'tamamlandi'
-                const kolonTone = gorev.durum === 'tamamlandi' ? 'aktif' : gorev.durum === 'devam' ? 'beklemede' : 'lead'
-
+              <div style={{ width: 1, height: 20, background: 'var(--border-default)', margin: '0 4px' }} />
+              {durumChipler.map(d => {
+                const aktif = filtre === d.id
+                const Icon = d.icon
                 return (
-                  <Card
-                    key={gorev.id}
-                    onClick={() => navigate(`/gorevler/${gorev.id}`)}
-                    padding={16}
+                  <button
+                    key={d.id}
+                    onClick={() => { setFiltre(d.id); setSayfa(1) }}
                     style={{
-                      cursor: 'pointer',
-                      borderLeft: `3px solid ${gecikti ? 'var(--danger)' : kolon?.renk ?? 'var(--border-default)'}`,
-                      transition: 'background 120ms',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px',
+                      background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
+                      color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                      border: 'none', cursor: 'pointer',
+                      borderRadius: 'var(--radius-sm)',
+                      font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                    onMouseEnter={e => { if (!aktif) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+                    onMouseLeave={e => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                          <Badge tone={oncelik?.tone}>{oncelik?.isim}</Badge>
-                          <Badge tone={kolonTone}>{kolon?.isim}</Badge>
-                          {gecikti && <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
-                        </div>
-                        <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.baslik}</div>
-                        {gorev.aciklama && (
-                          <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {gorev.aciklama}
-                          </p>
-                        )}
-                        {gorev.lokasyonId && lokasyonMap.get(gorev.lokasyonId) && (
-                          <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--brand-primary)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <MapPin size={11} strokeWidth={1.5} />
-                            {lokasyonMap.get(gorev.lokasyonId).ad}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-                        {atananKisi && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <Avatar name={atananKisi.ad} size="xs" />
-                            {atananKisi.ad}
-                          </span>
-                        )}
-                        {gorev.sonTarih && (
-                          <span style={{ color: gecikti ? 'var(--danger)' : 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                            {gorev.sonTarih}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        <button
-                          aria-label="Düzenle"
-                          onClick={e => duzenleAc(gorev, e)}
-                          style={{
-                            width: 32, height: 32,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'transparent', border: '1px solid var(--border-default)',
-                            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                        >
-                          <Pencil size={14} strokeWidth={1.5} />
-                        </button>
-                        <button
-                          aria-label="Sil"
-                          onClick={e => gorevSil(gorev.id, e)}
-                          style={{
-                            width: 32, height: 32,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'transparent', border: '1px solid var(--border-default)',
-                            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                        >
-                          <Trash2 size={14} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </div>
-                  </Card>
+                    <Icon size={13} strokeWidth={1.5} style={{ color: d.renk || undefined }} />
+                    {d.isim}
+                  </button>
                 )
               })}
+              {filtreVar && (
+                <button
+                  onClick={() => setKolonFiltre({ takip:'', veren:'', alan:'', gorev:'', basTarBas:'', basTarBit:'', bitTarBas:'', bitTarBit:'', kontrol:'' })}
+                  style={{
+                    marginLeft: 'auto',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '6px 10px',
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    color: 'var(--text-secondary)', cursor: 'pointer',
+                    borderRadius: 'var(--radius-sm)',
+                    font: '500 12px/16px var(--font-sans)',
+                  }}
+                >
+                  <X size={12} strokeWidth={1.5} /> Filtreleri temizle
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Tablo */}
+            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle, width: 64 }}></th>
+                    <th style={thStyle}>Takip</th>
+                    <th style={thStyle}>Görevi Veren</th>
+                    <th style={thStyle}>Görevi Alan</th>
+                    <th style={{ ...thStyle, minWidth: 360 }}>Görev</th>
+                    <th style={thStyle}>Baş. Tarih</th>
+                    <th style={thStyle}>Bit. Tarih</th>
+                    <th style={thStyle}>Öncelik</th>
+                  </tr>
+                  {/* Sütun filtre satırı */}
+                  <tr>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}></th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <input
+                        placeholder="ara…"
+                        value={kolonFiltre.takip}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, takip: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput}
+                      />
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <input placeholder="ara…" value={kolonFiltre.veren}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, veren: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <input placeholder="ara…" value={kolonFiltre.alan}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, alan: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <input placeholder="başlık / açıklama…" value={kolonFiltre.gorev}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, gorev: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input type="date" value={kolonFiltre.basTarBas}
+                          onChange={e => { setKolonFiltre({ ...kolonFiltre, basTarBas: e.target.value }); setSayfa(1) }}
+                          style={{ ...colFilterInput, width: 130 }} />
+                        <input type="date" value={kolonFiltre.basTarBit}
+                          onChange={e => { setKolonFiltre({ ...kolonFiltre, basTarBit: e.target.value }); setSayfa(1) }}
+                          style={{ ...colFilterInput, width: 130 }} />
+                      </div>
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input type="date" value={kolonFiltre.bitTarBas}
+                          onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTarBas: e.target.value }); setSayfa(1) }}
+                          style={{ ...colFilterInput, width: 130 }} />
+                        <input type="date" value={kolonFiltre.bitTarBit}
+                          onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTarBit: e.target.value }); setSayfa(1) }}
+                          style={{ ...colFilterInput, width: 130 }} />
+                      </div>
+                    </th>
+                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                      <input placeholder="ara…" value={kolonFiltre.kontrol}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, kontrol: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dilim.length === 0 && (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+                        Görev bulunamadı
+                      </td>
+                    </tr>
+                  )}
+                  {dilim.map(g => {
+                    const oncelik = oncelikler.find(o => o.id === g.oncelik)
+                    const kolon = kolonlar.find(k => k.id === g.durum)
+                    const atananKisi = kullanicilar.find(k => k.id?.toString() === g.atanan)
+                    const gecikti = g.sonTarih && g.sonTarih < bugun && g.durum !== 'tamamlandi'
+                    const durumIkon = g.durum === 'tamamlandi'
+                      ? <CheckCircle2 size={14} strokeWidth={1.8} style={{ color: 'var(--success)' }} />
+                      : g.durum === 'devam'
+                        ? <Clock size={14} strokeWidth={1.8} style={{ color: 'var(--warning)' }} />
+                        : <Circle size={14} strokeWidth={1.8} style={{ color: 'var(--info)' }} />
+                    const kolonTone = g.durum === 'tamamlandi' ? 'aktif' : g.durum === 'devam' ? 'beklemede' : 'lead'
+
+                    return (
+                      <tr
+                        key={g.id}
+                        onClick={() => navigate(`/gorevler/${g.id}`)}
+                        style={{ cursor: 'pointer', background: 'var(--surface-card)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                      >
+                        <td style={{ ...tdStyle, padding: '8px 12px' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'inline-flex', gap: 2 }}>
+                            <button
+                              aria-label="Detay"
+                              onClick={() => navigate(`/gorevler/${g.id}`)}
+                              title="Detay"
+                              style={{
+                                width: 26, height: 26,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'transparent', border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                            >
+                              <FolderOpen size={13} strokeWidth={1.5} />
+                            </button>
+                            <button
+                              aria-label={kolon?.isim}
+                              onClick={() => navigate(`/gorevler/${g.id}`)}
+                              title={kolon?.isim}
+                              style={{
+                                width: 26, height: 26,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'transparent', border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                              }}
+                            >
+                              {durumIkon}
+                            </button>
+                          </div>
+                        </td>
+                        <td style={tdStyle}>
+                          <Badge tone={kolonTone}>{kolon?.isim}</Badge>
+                          {gecikti && (
+                            <span style={{ marginLeft: 6 }}>
+                              <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ ...tdStyle, color: 'var(--text-secondary)', textTransform: 'uppercase', font: '500 12px/16px var(--font-sans)' }}>
+                          {g.olusturanAd || '—'}
+                        </td>
+                        <td style={{ ...tdStyle, color: 'var(--text-secondary)', textTransform: 'uppercase', font: '500 12px/16px var(--font-sans)' }}>
+                          {atananKisi ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar name={atananKisi.ad} size="xs" />
+                              {atananKisi.ad}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td style={{ ...tdStyle, maxWidth: 480, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.baslik}>
+                          {g.baslik}
+                        </td>
+                        <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
+                          {fmtTarih(g.olusturmaTarih)}
+                        </td>
+                        <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: gecikti ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                          {fmtTarih(g.sonTarih)}
+                        </td>
+                        <td style={tdStyle}>
+                          {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer: sayfalama */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '10px 16px',
+              borderTop: '1px solid var(--border-default)',
+              background: 'var(--surface-sunken)',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => setSayfa(1)}
+                  disabled={guvSayfa === 1}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    cursor: guvSayfa === 1 ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', font: '500 12px/16px var(--font-sans)',
+                    opacity: guvSayfa === 1 ? 0.5 : 1,
+                  }}
+                >«</button>
+                <button
+                  onClick={() => setSayfa(p => Math.max(1, p - 1))}
+                  disabled={guvSayfa === 1}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    cursor: guvSayfa === 1 ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center',
+                    opacity: guvSayfa === 1 ? 0.5 : 1,
+                  }}
+                ><ChevronLeft size={14} strokeWidth={1.5} /></button>
+                {(() => {
+                  const start = Math.max(1, guvSayfa - 4)
+                  const end = Math.min(toplamSayfa, start + 9)
+                  const baslangic = Math.max(1, end - 9)
+                  const sayilar = []
+                  for (let i = baslangic; i <= end; i++) sayilar.push(i)
+                  return sayilar.map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setSayfa(n)}
+                      style={{
+                        minWidth: 32, padding: '6px 10px',
+                        background: n === guvSayfa ? 'var(--brand-primary)' : 'var(--surface-card)',
+                        color: n === guvSayfa ? '#fff' : 'var(--text-secondary)',
+                        border: `1px solid ${n === guvSayfa ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        font: '500 12px/16px var(--font-sans)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >{n}</button>
+                  ))
+                })()}
+                <button
+                  onClick={() => setSayfa(p => Math.min(toplamSayfa, p + 1))}
+                  disabled={guvSayfa === toplamSayfa}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    cursor: guvSayfa === toplamSayfa ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center',
+                    opacity: guvSayfa === toplamSayfa ? 0.5 : 1,
+                  }}
+                ><ChevronRight size={14} strokeWidth={1.5} /></button>
+                <button
+                  onClick={() => setSayfa(toplamSayfa)}
+                  disabled={guvSayfa === toplamSayfa}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    cursor: guvSayfa === toplamSayfa ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', font: '500 12px/16px var(--font-sans)',
+                    opacity: guvSayfa === toplamSayfa ? 0.5 : 1,
+                  }}
+                >»</button>
+              </div>
+              <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                <span className="tabular-nums">{toplamSayfa}</span> sayfada toplam <strong style={{ color: 'var(--text-primary)' }} className="tabular-nums">{toplam}</strong> kayıt var
+              </div>
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Lokasyon yönetim modal'ı */}
       <LokasyonYonetModal
