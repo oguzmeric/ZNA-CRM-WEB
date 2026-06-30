@@ -480,35 +480,17 @@ function Gorusmeler() {
                 {kullanicilar.map(k => <option key={k.id} value={k.ad}>{k.ad}</option>)}
               </CustomSelect>
             </div>
-            <div style={{ gridColumn: 'span 2' }}>
+            <div>
               <Label>İrtibat şekli</Label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {irtibatSekilleri.map(i => {
-                  const active = form.irtibatSekli === i.id
-                  const IconC = IRTIBAT_ICONS[i.id] ?? Phone
-                  return (
-                    <button
-                      key={i.id}
-                      type="button"
-                      onClick={() => setForm({ ...form, irtibatSekli: active ? '' : i.id })}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '6px 12px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                        background: active ? 'var(--brand-primary)' : 'var(--surface-card)',
-                        color: active ? '#fff' : 'var(--text-secondary)',
-                        font: '500 12px/16px var(--font-sans)',
-                        cursor: 'pointer',
-                        transition: 'all 120ms',
-                      }}
-                    >
-                      <IconC size={13} strokeWidth={1.5} />
-                      {i.isim}
-                    </button>
-                  )
-                })}
-              </div>
+              <CustomSelect
+                value={form.irtibatSekli}
+                onChange={e => setForm({ ...form, irtibatSekli: e.target.value })}
+              >
+                <option value="">Seç…</option>
+                {irtibatSekilleri.map(i => (
+                  <option key={i.id} value={i.id}>{i.isim}</option>
+                ))}
+              </CustomSelect>
             </div>
             <div>
               <Label>Tarih</Label>
