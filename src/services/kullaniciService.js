@@ -14,13 +14,31 @@ export const kullanicilariGetir = async () => {
 // 1. auth.signInWithPassword(email, password)
 // 2. Başarılı ise kullanicilar tablosundan profili çek (auth_id ile)
 export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
-  // '@' içeriyorsa gerçek e-posta (self-kayıt kullanıcısı); yoksa kullanıcı adı → sentetik e-posta
+  // '@' içeriyorsa gerçek e-posta; yoksa önce DB'den gercek email cozumle (RPC),
+  // bulunamazsa sentetik @zna.local'e fallback yap.
   const girdi = (kullaniciAdi ?? '').trim()
-  const email = girdi.includes('@') ? girdi.toLowerCase() : kullaniciAdiToEmail(girdi)
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  let email = null
+  if (girdi.includes('@')) {
+    email = girdi.toLowerCase()
+  } else {
+    try {
+      const { data: cozulen } = await supabase.rpc('kullanici_adi_email_cozumle', { p_kullanici_adi: girdi })
+      if (cozulen && typeof cozulen === 'string') email = cozulen.toLowerCase()
+    } catch (e) { console.warn('[kullaniciGirisKontrol] email cozumle hata:', e?.message) }
+    if (!email) email = kullaniciAdiToEmail(girdi)
+  }
+  let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password: sifre,
   })
+  // Fallback: gercek email basarisizsa sentetik denenmis olabilir
+  if ((authError || !authData?.user) && !girdi.includes('@')) {
+    const sentetik = kullaniciAdiToEmail(girdi)
+    if (sentetik !== email) {
+      const retry = await supabase.auth.signInWithPassword({ email: sentetik, password: sifre })
+      if (!retry.error && retry.data?.user) { authData = retry.data; authError = null }
+    }
+  }
   if (authError || !authData?.user) return null
 
   const { data: profil, error: profilError } = await supabase
