@@ -196,6 +196,7 @@ function MusteriDetay() {
       vergiNo: musteri.vergiNo || '', telefon: musteri.telefon || '', email: musteri.email || '',
       durum: musteri.durum || 'aktif', notlar: musteri.notlar || '',
       temsilciKullaniciId: musteri.temsilciKullaniciId ?? null,
+      ad: musteri.ad || '', soyad: musteri.soyad || '', unvan: musteri.unvan || '',
     })
   }
 
@@ -361,6 +362,21 @@ function MusteriDetay() {
               <div>
                 <Label>Vergi no</Label>
                 <Input value={duzenleForm.vergiNo} onChange={e => setDuzenleForm(p => ({ ...p, vergiNo: e.target.value }))} />
+              </div>
+              <div style={{ gridColumn: 'span 2', marginTop: 4 }}>
+                <p className="t-label" style={{ marginBottom: 8 }}>YETKİLİ BİLGİLERİ</p>
+              </div>
+              <div>
+                <Label>Yetkili adı</Label>
+                <Input value={duzenleForm.ad} onChange={e => setDuzenleForm(p => ({ ...p, ad: e.target.value }))} placeholder="Ahmet" />
+              </div>
+              <div>
+                <Label>Yetkili soyadı</Label>
+                <Input value={duzenleForm.soyad} onChange={e => setDuzenleForm(p => ({ ...p, soyad: e.target.value }))} placeholder="Yılmaz" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Unvan</Label>
+                <Input value={duzenleForm.unvan} onChange={e => setDuzenleForm(p => ({ ...p, unvan: e.target.value }))} placeholder="Satın Alma Müdürü" />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <Label>Müşteri temsilcisi</Label>
