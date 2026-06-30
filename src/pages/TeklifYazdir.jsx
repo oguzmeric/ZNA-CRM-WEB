@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { Printer, FileDown, FileSpreadsheet, X } from 'lucide-react'
 import { teklifGetir } from '../services/teklifService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import StandartCikti from './teklifCikti/StandartCikti'
@@ -139,82 +140,121 @@ export default function TeklifYazdir() {
   }
 
   const tipBtnStil = (tip) => ({
-    padding: '6px 14px',
+    padding: '6px 12px',
     fontSize: 12,
-    fontWeight: seciliTip === tip ? 700 : 500,
+    fontWeight: seciliTip === tip ? 600 : 500,
     color: seciliTip === tip ? '#fff' : '#475569',
-    background: seciliTip === tip ? '#0176D3' : '#fff',
-    border: '1px solid ' + (seciliTip === tip ? '#0176D3' : '#cbd5e1'),
+    background: seciliTip === tip ? '#0f172a' : 'transparent',
+    border: 'none',
+    borderRadius: 6,
     cursor: 'pointer',
     transition: 'all 120ms',
   })
 
+  const aksiyonBtn = (bg, hoverBg) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '7px 12px',
+    fontSize: 12.5, fontWeight: 600,
+    color: '#fff',
+    background: bg,
+    border: 'none', borderRadius: 6,
+    cursor: 'pointer',
+    transition: 'background 120ms, transform 80ms',
+    _hover: hoverBg,
+  })
+
   return (
     <>
-      {/* Format seçici — baskıda gizlenir */}
-      <div className="no-print" style={{
-        position: 'fixed', top: 16, left: 16,
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: '#fff', borderRadius: 8, padding: '8px 12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 999,
-      }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginRight: 4 }}>Şablon:</span>
-        <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden' }}>
-          {tipSecenekleri.map((t, i) => (
-            <button
-              key={t.value}
-              onClick={() => setSeciliTip(t.value)}
-              style={{
-                ...tipBtnStil(t.value),
-                borderTopLeftRadius:    i === 0 ? 6 : 0,
-                borderBottomLeftRadius: i === 0 ? 6 : 0,
-                borderTopRightRadius:    i === tipSecenekleri.length - 1 ? 6 : 0,
-                borderBottomRightRadius: i === tipSecenekleri.length - 1 ? 6 : 0,
-                marginLeft: i > 0 ? -1 : 0,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <style>{`
+        @media print { .toolbar-yazdir { display: none !important; } body { padding-top: 0 !important; } }
+        body { padding-top: 56px; }
+        .toolbar-yazdir button:hover:not(:disabled) { filter: brightness(1.08); }
+        .toolbar-yazdir button:active:not(:disabled) { transform: translateY(1px); }
+      `}</style>
 
-      {/* Yazdır + Excel butonları — baskıda gizlenir */}
-      <div className="no-print" style={{ position: 'fixed', top: 16, right: 16, display: 'flex', gap: 8, zIndex: 999 }}>
-        <button
-          onClick={() => window.print()}
-          style={{ background: '#0176D3', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
-        >
-          🖨 Yazdır / PDF
-        </button>
-        <button
-          onClick={pdfIndir}
-          disabled={pdfYukleniyor}
-          style={{
-            background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8,
-            padding: '8px 18px', fontSize: 13, cursor: pdfYukleniyor ? 'wait' : 'pointer',
-            fontWeight: 600, opacity: pdfYukleniyor ? 0.6 : 1,
-          }}
-        >
-          {pdfYukleniyor ? 'Hazırlanıyor…' : '📄 PDF İndir'}
-        </button>
-        <button
-          onClick={excelIndir}
-          disabled={excelYukleniyor}
-          style={{
-            background: '#0d9f6e', color: '#fff', border: 'none', borderRadius: 8,
-            padding: '8px 18px', fontSize: 13, cursor: excelYukleniyor ? 'wait' : 'pointer',
-            fontWeight: 600, opacity: excelYukleniyor ? 0.6 : 1,
-          }}
-        >
-          {excelYukleniyor ? 'Hazırlanıyor…' : '📊 Excel İndir'}
-        </button>
-        <button
-          onClick={() => window.close()}
-          style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}
-        >
-          ✕ Kapat
-        </button>
+      {/* Tek satır üst toolbar */}
+      <div
+        className="no-print toolbar-yazdir"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          height: 48,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px', gap: 12,
+          background: '#fff',
+          borderBottom: '1px solid #e2e8f0',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          zIndex: 999,
+        }}
+      >
+        {/* Sol: Şablon seçici */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Şablon
+          </span>
+          <div style={{
+            display: 'inline-flex',
+            padding: 3,
+            background: '#f1f5f9',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+          }}>
+            {tipSecenekleri.map(t => (
+              <button key={t.value} onClick={() => setSeciliTip(t.value)} style={tipBtnStil(t.value)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sağ: Aksiyonlar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => window.print()}
+            style={aksiyonBtn('#0176D3')}
+            title="Yazdır / PDF"
+          >
+            <Printer size={14} strokeWidth={2} /> Yazdır
+          </button>
+          <button
+            onClick={pdfIndir}
+            disabled={pdfYukleniyor}
+            style={{
+              ...aksiyonBtn('#dc2626'),
+              cursor: pdfYukleniyor ? 'wait' : 'pointer',
+              opacity: pdfYukleniyor ? 0.6 : 1,
+            }}
+            title="PDF olarak indir"
+          >
+            <FileDown size={14} strokeWidth={2} /> {pdfYukleniyor ? 'Hazırlanıyor…' : 'PDF'}
+          </button>
+          <button
+            onClick={excelIndir}
+            disabled={excelYukleniyor}
+            style={{
+              ...aksiyonBtn('#0d9f6e'),
+              cursor: excelYukleniyor ? 'wait' : 'pointer',
+              opacity: excelYukleniyor ? 0.6 : 1,
+            }}
+            title="Excel olarak indir"
+          >
+            <FileSpreadsheet size={14} strokeWidth={2} /> {excelYukleniyor ? 'Hazırlanıyor…' : 'Excel'}
+          </button>
+          <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
+          <button
+            onClick={() => window.close()}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '7px 10px', fontSize: 12.5, fontWeight: 500,
+              color: '#64748b',
+              background: 'transparent',
+              border: '1px solid #e2e8f0',
+              borderRadius: 6, cursor: 'pointer',
+            }}
+            title="Kapat"
+          >
+            <X size={14} strokeWidth={2} /> Kapat
+          </button>
+        </div>
       </div>
 
       <div ref={ciktiRef}>
