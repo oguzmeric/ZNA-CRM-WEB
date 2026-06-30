@@ -271,7 +271,7 @@ function Gorevler() {
   const [goster, setGoster] = useState(false)
   const [duzenleId, setDuzenleId] = useState(null)
   const [aktifGorev, setAktifGorev] = useState(null)
-  const [gorunumModu, setGorunumModu] = useState('kanban')
+  const [gorunumModu, setGorunumModu] = useState('liste')
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
 
