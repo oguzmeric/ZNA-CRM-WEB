@@ -12,6 +12,7 @@ import {
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
+import { gorevleriGetir, gorevGuncelle } from '../services/gorevService'
 import { supabase } from '../lib/supabase'
 import { arrayToCamel } from '../lib/mapper'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
@@ -83,6 +84,24 @@ function Gorusmeler() {
   const [manuelKonuAc, setManuelKonuAc] = useState(false)
   const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
   const [mevcutDosyalar, setMevcutDosyalar] = useState([]) // Sunucudaki dosyalar
+  const [bagliGorevler, setBagliGorevler] = useState([])   // Bu gorusme'den acilan gorevler
+  // Edit modunda gorusme_id'ye bagli gorevleri yukle
+  useEffect(() => {
+    if (!duzenleId) { setBagliGorevler([]); return }
+    gorevleriGetir()
+      .then(tum => setBagliGorevler((tum || []).filter(g => String(g.gorusmeId) === String(duzenleId))))
+      .catch(e => console.warn('[bagliGorevler]', e?.message))
+  }, [duzenleId])
+
+  const gorevDurumDegis = async (gorevId, yeniDurum) => {
+    try {
+      const guncel = await gorevGuncelle(gorevId, { durum: yeniDurum })
+      if (guncel) {
+        setBagliGorevler(prev => prev.map(g => g.id === gorevId ? { ...g, durum: yeniDurum } : g))
+        toast.success('Görev durumu güncellendi')
+      }
+    } catch (e) { toast.error('Güncellenemedi: ' + (e?.message || 'hata')) }
+  }
   const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
 
@@ -668,7 +687,77 @@ function Gorusmeler() {
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          {/* Bagli gorevler — bu gorusmeden acilan gorevlerin durumunu buradan degistir */}
+          {duzenleId && bagliGorevler.length > 0 && (
+            <div style={{ marginTop: 16, padding: 14, background: 'var(--surface-sunken)', borderRadius: 8, border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <CheckSquare size={14} strokeWidth={1.8} style={{ color: 'var(--success)' }} />
+                <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  Bu görüşmeden açılan görevler
+                </span>
+                <span style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                  {bagliGorevler.length}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {bagliGorevler.map(g => {
+                  const DURUM_OPT = [
+                    { id: 'bekliyor',   isim: 'Bekliyor',     renk: 'var(--info)' },
+                    { id: 'devam',      isim: 'Devam Ediyor', renk: 'var(--warning)' },
+                    { id: 'tamamlandi', isim: 'Tamamlandı',   renk: 'var(--success)' },
+                  ]
+                  return (
+                    <div key={g.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                      padding: '10px 12px',
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 6,
+                    }}>
+                      <button
+                        onClick={() => navigate(`/gorevler/${g.id}`)}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', textAlign: 'left', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={g.baslik}
+                      >
+                        {g.baslik}
+                      </button>
+                      {g.sonTarih && (
+                        <span style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {new Date(g.sonTarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+                        </span>
+                      )}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {DURUM_OPT.map(opt => {
+                          const aktif = g.durum === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => !aktif && gorevDurumDegis(g.id, opt.id)}
+                              disabled={aktif}
+                              style={{
+                                padding: '4px 10px',
+                                background: aktif ? opt.renk : 'transparent',
+                                color: aktif ? '#fff' : opt.renk,
+                                border: `1px solid ${opt.renk}`,
+                                borderRadius: 999,
+                                cursor: aktif ? 'default' : 'pointer',
+                                font: '600 11px/14px var(--font-sans)',
+                                opacity: aktif ? 1 : 0.75,
+                              }}
+                            >
+                              {opt.isim}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <Button variant="primary" onClick={kaydet} disabled={dosyaYukleniyor}>
               {dosyaYukleniyor ? 'Dosyalar yükleniyor…' : (duzenleId ? 'Güncelle' : 'Kaydet')}
             </Button>
