@@ -315,6 +315,8 @@ function Gorusmeler() {
         </Button>
       </div>
 
+      {/* Form acikken filtreler gizlensin — odaklanma icin */}
+      {!goster && (<div>
       {/* Durum filter */}
       <div style={{ marginBottom: 12 }}>
         <SegmentedControl
@@ -378,6 +380,7 @@ function Gorusmeler() {
           <span className="t-caption tabular-nums">{gorunenGorusmeler.length} sonuç</span>
         </div>
       )}
+      </div>)}
 
       {/* Form */}
       {goster && (
@@ -678,7 +681,8 @@ function Gorusmeler() {
         </Card>
       )}
 
-      {/* Liste */}
+      {/* Liste — form acikken gizle */}
+      {!goster && (
       <Card padding={0}>
         {gorunenGorusmeler.length === 0 ? (
           <div style={{ padding: 32 }}>
@@ -862,6 +866,7 @@ function Gorusmeler() {
           </div>
         )}
       </Card>
+      )}
 
       {/* Lokasyon yönetim modal'ı — firma seçili olduğunda formdan açılır */}
       <LokasyonYonetModal
