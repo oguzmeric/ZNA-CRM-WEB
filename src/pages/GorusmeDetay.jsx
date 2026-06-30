@@ -13,6 +13,7 @@ import CustomSelect from '../components/CustomSelect'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import { musterileriGetir } from '../services/musteriService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
@@ -76,7 +77,14 @@ function GorusmeDetay() {
   const [gorevFormAcik, setGorevFormAcik] = useState(false)
   const [gorevForm, setGorevForm] = useState(bosGorevForm)
   const [gorusmeLokasyonlari, setGorusmeLokasyonlari] = useState([])
+  const [musteriler, setMusteriler] = useState([])
   const { talepOlusturGorevden } = useServisTalebi()
+  useEffect(() => {
+    musterileriGetir().then(setMusteriler).catch(e => console.warn('[GorusmeDetay] musteri:', e?.message))
+  }, [])
+  const benzersizFirmalar = [...new Map(
+    (musteriler || []).filter(m => m.firma).map(m => [m.firma, m])
+  ).values()].sort((a, b) => (a.firma || '').localeCompare(b.firma || '', 'tr'))
 
   useEffect(() => {
     (async () => {
@@ -119,6 +127,8 @@ function GorusmeDetay() {
   const duzenleAc = () => {
     const manuelMi = !varsayilanKonular.includes(gorusme.konu)
     setDuzenleForm({
+      firmaAdi: gorusme.firmaAdi || '',
+      musteriId: gorusme.musteriId || '',
       takipNotu: gorusme.notlar || '',
       konu: manuelMi ? '' : gorusme.konu,
       manuelKonu: manuelMi ? gorusme.konu : '',
@@ -132,6 +142,8 @@ function GorusmeDetay() {
     const sonKonu = manuelKonuAc ? duzenleForm.manuelKonu : duzenleForm.konu
     if (!sonKonu) return
     gorusmeGuncelle({
+      firmaAdi: duzenleForm.firmaAdi || null,
+      musteriId: duzenleForm.musteriId || null,
       notlar: duzenleForm.takipNotu,
       konu: sonKonu,
       durum: duzenleForm.durum,
@@ -318,6 +330,26 @@ function GorusmeDetay() {
         {/* Düzenleme */}
         {duzenleAcik && (
           <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            {/* Firma — degistirilebilir (musteri_id de otomatik baglanir) */}
+            <div style={{ marginBottom: 12 }}>
+              <Label required>Firma</Label>
+              <CustomSelect
+                value={duzenleForm.firmaAdi || ''}
+                onChange={e => {
+                  const yeniFirma = e.target.value
+                  const yeniM = benzersizFirmalar.find(m => m.firma === yeniFirma)
+                  setDuzenleForm({
+                    ...duzenleForm,
+                    firmaAdi: yeniFirma,
+                    musteriId: yeniM?.id ? String(yeniM.id) : '',
+                  })
+                }}
+              >
+                <option value="">Firma seç…</option>
+                {benzersizFirmalar.map(m => <option key={m.id} value={m.firma}>{m.firma}</option>)}
+              </CustomSelect>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
               <div>
                 <Label>Konu</Label>
