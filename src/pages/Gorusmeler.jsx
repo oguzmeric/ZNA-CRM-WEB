@@ -149,8 +149,16 @@ function Gorusmeler() {
 
   const handleFirmaSec = (firmaAdi) => {
     setSecilenFirma(firmaAdi)
+    // Yeni firma'nin musteri kaydini bul — boylece DB'de firma_adi + musteri_id
+    // birlikte guncellenir (eski yanlis baglanti kopar)
+    const yeniMusteri = (musteriler || []).find(m => m.firma === firmaAdi)
     // Firma değişince lokasyon da resetlensin (eski firmanın lokasyonu yeni firmaya yapışmasın)
-    setForm({ ...form, firmaAdi, musteriId: '', muhatapId: '', muhatapAd: '', lokasyonId: '' })
+    setForm({
+      ...form,
+      firmaAdi,
+      musteriId: yeniMusteri?.id ? String(yeniMusteri.id) : '',
+      muhatapId: '', muhatapAd: '', lokasyonId: '',
+    })
   }
 
   const handleKisiSec = (musteriId) => {
