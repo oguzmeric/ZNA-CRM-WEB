@@ -278,7 +278,7 @@ function Gorevler() {
   // Liste görünümü için sütun filtreleri + sayfalama
   const [kolonFiltre, setKolonFiltre] = useState({
     takip: '', veren: '', alan: '', gorev: '',
-    basTarBas: '', basTarBit: '', bitTarBas: '', bitTarBit: '',
+    basTar: '', bitTar: '',
     kontrol: '',
   })
   const [sayfa, setSayfa] = useState(1)
@@ -730,13 +730,10 @@ function Gorevler() {
 
         const bugun = new Date().toISOString().split('T')[0]
         const inSearch = (val, q) => !q || String(val ?? '').toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
-        const inDateRange = (val, bas, bit) => {
-          if (!bas && !bit) return true
+        const inDateEq = (val, q) => {
+          if (!q) return true
           if (!val) return false
-          const d = String(val).slice(0, 10)
-          if (bas && d < bas) return false
-          if (bit && d > bit) return false
-          return true
+          return String(val).slice(0, 10) === q
         }
 
         const tabloRow = filtreliGorevler
@@ -758,8 +755,8 @@ function Gorevler() {
               inSearch(g.olusturanAd, kolonFiltre.veren) &&
               inSearch(atananKisi?.ad, kolonFiltre.alan) &&
               inSearch(g.baslik, kolonFiltre.gorev) &&
-              inDateRange(basTar, kolonFiltre.basTarBas, kolonFiltre.basTarBit) &&
-              inDateRange(bitTar, kolonFiltre.bitTarBas, kolonFiltre.bitTarBit) &&
+              inDateEq(basTar, kolonFiltre.basTar) &&
+              inDateEq(bitTar, kolonFiltre.bitTar) &&
               inSearch(oncAd, kolonFiltre.kontrol)
             )
           })
@@ -863,7 +860,7 @@ function Gorevler() {
               })}
               {filtreVar && (
                 <button
-                  onClick={() => setKolonFiltre({ takip:'', veren:'', alan:'', gorev:'', basTarBas:'', basTarBit:'', bitTarBas:'', bitTarBit:'', kontrol:'' })}
+                  onClick={() => setKolonFiltre({ takip:'', veren:'', alan:'', gorev:'', basTar:'', bitTar:'', kontrol:'' })}
                   style={{
                     marginLeft: 'auto',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -920,24 +917,14 @@ function Gorevler() {
                         style={colFilterInput} />
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <input type="date" value={kolonFiltre.basTarBas}
-                          onChange={e => { setKolonFiltre({ ...kolonFiltre, basTarBas: e.target.value }); setSayfa(1) }}
-                          style={{ ...colFilterInput, width: 130 }} />
-                        <input type="date" value={kolonFiltre.basTarBit}
-                          onChange={e => { setKolonFiltre({ ...kolonFiltre, basTarBit: e.target.value }); setSayfa(1) }}
-                          style={{ ...colFilterInput, width: 130 }} />
-                      </div>
+                      <input type="date" value={kolonFiltre.basTar}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, basTar: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <input type="date" value={kolonFiltre.bitTarBas}
-                          onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTarBas: e.target.value }); setSayfa(1) }}
-                          style={{ ...colFilterInput, width: 130 }} />
-                        <input type="date" value={kolonFiltre.bitTarBit}
-                          onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTarBit: e.target.value }); setSayfa(1) }}
-                          style={{ ...colFilterInput, width: 130 }} />
-                      </div>
+                      <input type="date" value={kolonFiltre.bitTar}
+                        onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTar: e.target.value }); setSayfa(1) }}
+                        style={colFilterInput} />
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.kontrol}
