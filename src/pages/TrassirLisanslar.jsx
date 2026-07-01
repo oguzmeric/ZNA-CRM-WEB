@@ -8,6 +8,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
+import ComboBox from '../components/ComboBox'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, KPICard, Alert, EmptyState, SegmentedControl,
@@ -349,17 +350,22 @@ function TrassirLisanslar() {
               </CustomSelect>
             </div>
 
-            <div>
-              <Label>Müşteri seç</Label>
-              <CustomSelect value={form.musteriId} onChange={e => handleMusteriSec(e.target.value)}>
-                <option value="">Müşteri seç…</option>
-                {musteriler.map(m => <option key={m.id} value={m.id}>{m.ad} {m.soyad} — {m.firma}</option>)}
-              </CustomSelect>
-            </div>
-
-            <div style={{ gridColumn: 'span 2' }}>
-              <Label required>Firma adı</Label>
-              <Input value={form.firmaAdi} onChange={e => setForm({ ...form, firmaAdi: e.target.value })} placeholder="Müşteri seçin veya direkt yazın…" />
+            <div style={{ gridColumn: 'span 3' }}>
+              <Label required>Firma</Label>
+              <ComboBox
+                value={form.firmaAdi}
+                onChange={v => {
+                  const eslesen = musteriler.find(m => (m.firma || '') === v)
+                  setForm({
+                    ...form,
+                    firmaAdi: v,
+                    musteriId: eslesen ? eslesen.id : '',
+                    ...(eslesen && !form.lokasyon ? { lokasyon: '' } : {}),
+                  })
+                }}
+                options={[...new Set(musteriler.map(m => m.firma).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))}
+                placeholder="Müşteri seç veya firma adı yaz…"
+              />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
