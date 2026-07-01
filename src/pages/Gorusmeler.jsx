@@ -447,12 +447,25 @@ function Gorusmeler() {
             </div>
             <div>
               <Label>Muhatap kişi</Label>
-              <CustomSelect value={form.muhatapId} onChange={e => handleKisiSec(e.target.value)} disabled={!secilenFirma}>
-                <option value="">{secilenFirma ? 'Kişi seç…' : 'Önce firma seçin'}</option>
+              <Input
+                list="gorusme-muhatap-oneriler"
+                value={form.muhatapAd}
+                onChange={e => {
+                  const v = e.target.value
+                  const eslesen = firmaKisileri.find(m => `${m.ad} ${m.soyad}` === v)
+                  setForm({
+                    ...form,
+                    muhatapAd: v,
+                    muhatapId: eslesen ? eslesen.id : '',
+                  })
+                }}
+                placeholder={secilenFirma ? 'Kişi seç veya adı yaz…' : 'İsim yaz…'}
+              />
+              <datalist id="gorusme-muhatap-oneriler">
                 {firmaKisileri.map(m => (
-                  <option key={m.id} value={m.id}>{m.ad} {m.soyad}{m.unvan ? ` — ${m.unvan}` : ''}</option>
+                  <option key={m.id} value={`${m.ad} ${m.soyad}`}>{m.unvan || ''}</option>
                 ))}
-              </CustomSelect>
+              </datalist>
             </div>
             {secilenFirma && firmaKisileri.length > 0 && (
               <div>
