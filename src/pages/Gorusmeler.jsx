@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, User, Phone, MessageCircle, Mail, Handshake,
   Building2, Monitor, Link2, Video, Send, Lightbulb, X,
@@ -67,6 +67,7 @@ function Gorusmeler() {
   const { talepler } = useServisTalebi()
   const navigate = useNavigate()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [gorusmeler, setGorusmeler] = useState([])
   const [musteriler, setMusteriler] = useState([])
   const [tumLokasyonlar, setTumLokasyonlar] = useState([]) // tüm lokasyonlar — list satırları + form dropdown'ı için
@@ -141,6 +142,16 @@ function Gorusmeler() {
     setSecilenFirma(''); setManuelKonuAc(false); setDuzenleId(null); setGoster(true)
     setYeniDosyalar([]); setMevcutDosyalar([])
   }
+
+  // Panel'den ?yeni=1 ile gelinirse formu direkt aç
+  useEffect(() => {
+    if (searchParams.get('yeni') === '1' && kullanici?.ad) {
+      formAc()
+      const kopya = new URLSearchParams(searchParams)
+      kopya.delete('yeni')
+      setSearchParams(kopya, { replace: true })
+    }
+  }, [searchParams, setSearchParams, kullanici?.ad])
 
   const duzenleAc = (g) => {
     const manuelMi = !varsayilanKonular.includes(g.konu)

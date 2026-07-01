@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, MapPin, ArrowRight,
   FolderOpen, CheckCircle2, Circle, AlertTriangle, List,
@@ -44,6 +44,7 @@ function firmaKoduOlustur(firmaAdi, mevcutMusteriler, mevcutKod = '') {
 
 function Musteriler() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const [musteriler, setMusteriler] = useState([])
@@ -65,6 +66,17 @@ function Musteriler() {
   useEffect(() => {
     musterileriGetir().then(data => { setMusteriler(data); setYukleniyor(false) })
   }, [])
+
+  // Panel/dashboard'dan ?yeni=1 ile gelinirse formu direkt aç
+  useEffect(() => {
+    if (searchParams.get('yeni') === '1') {
+      setForm(bosForm); setKodModu('otomatik'); setDuzenleId(null); setGoster(true)
+      // param'ı temizle → sayfa yenilenince form açık kalmasın
+      const kopya = new URLSearchParams(searchParams)
+      kopya.delete('yeni')
+      setSearchParams(kopya, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const formAc = () => {
     setForm(bosForm); setKodModu('otomatik'); setDuzenleId(null); setGoster(true)

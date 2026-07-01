@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useBildirim } from '../context/BildirimContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -258,6 +258,7 @@ function Gorevler() {
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { bildirimEkle } = useBildirim()
   const { toast } = useToast()
 
@@ -397,6 +398,16 @@ function Gorevler() {
   }
 
   const formAc = () => { setForm(bosForm); setDuzenleId(null); setGoster(true) }
+
+  // Panel'den ?yeni=1 ile gelinirse formu direkt aç
+  useEffect(() => {
+    if (searchParams.get('yeni') === '1') {
+      formAc()
+      const kopya = new URLSearchParams(searchParams)
+      kopya.delete('yeni')
+      setSearchParams(kopya, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const kaydet = async () => {
     if (!form.baslik || !form.atanan || !form.sonTarih) {

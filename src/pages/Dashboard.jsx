@@ -286,7 +286,7 @@ export default function Dashboard() {
     if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni teklif',   yol: '/teklifler' })
     if (kullanici?.moduller?.includes('gorusmeler')) a.push({ isim: 'Yeni görüşme',  yol: '/gorusmeler' })
     if (kullanici?.moduller?.includes('gorevler'))   a.push({ isim: 'Yeni görev',    yol: '/gorevler' })
-    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni müşteri',  yol: '/musteriler' })
+    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni müşteri',  yol: '/musteriler?yeni=1' })
     return a
   }, [kullanici])
 
