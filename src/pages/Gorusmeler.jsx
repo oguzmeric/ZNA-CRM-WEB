@@ -14,6 +14,7 @@ import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSi
 import { musterileriGetir } from '../services/musteriService'
 import { gorevleriGetir, gorevGuncelle } from '../services/gorevService'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
+import ComboBox from '../components/ComboBox'
 import { supabase } from '../lib/supabase'
 import { arrayToCamel } from '../lib/mapper'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
@@ -469,23 +470,19 @@ function Gorusmeler() {
             </div>
             <div>
               <Label>Muhatap kişi</Label>
-              <Input
-                list="gorusme-muhatap-oneriler"
+              <ComboBox
                 value={form.muhatapAd}
-                onChange={e => {
-                  const v = e.target.value
-                  const eslesen = firmaKisileri.find(m => `${m.ad} ${m.soyad}` === v)
+                onChange={v => {
+                  const eslesen = firmaKisileri.find(m => `${m.ad} ${m.soyad}`.trim() === v)
                   setForm({
                     ...form,
                     muhatapAd: v,
                     muhatapId: eslesen ? eslesen.id : '',
                   })
                 }}
+                options={muhatapOnerileri}
                 placeholder={secilenFirma ? 'Kişi seç veya adı yaz…' : 'İsim yaz…'}
               />
-              <datalist id="gorusme-muhatap-oneriler">
-                {muhatapOnerileri.map(ad => <option key={ad} value={ad} />)}
-              </datalist>
             </div>
             {secilenFirma && firmaKisileri.length > 0 && (
               <div>
@@ -530,12 +527,10 @@ function Gorusmeler() {
             )}
             <div>
               <Label required>Aktivite konusu</Label>
-              <Input
-                list="gorusme-konu-oneriler"
+              <ComboBox
                 value={manuelKonuAc ? form.manuelKonu : form.konu}
-                onChange={e => {
-                  const v = e.target.value
-                  const isVarsayilan = varsayilanKonular.includes(v)
+                onChange={v => {
+                  const isVarsayilan = konuOnerileri.includes(v)
                   if (isVarsayilan) {
                     setManuelKonuAc(false)
                     setForm({ ...form, konu: v, manuelKonu: '' })
@@ -544,11 +539,9 @@ function Gorusmeler() {
                     setForm({ ...form, konu: '', manuelKonu: v.toUpperCase() })
                   }
                 }}
+                options={konuOnerileri}
                 placeholder="Konu seç veya kendin yaz…"
               />
-              <datalist id="gorusme-konu-oneriler">
-                {konuOnerileri.map(k => <option key={k} value={k} />)}
-              </datalist>
             </div>
             <div>
               <Label required>Görüşen</Label>
