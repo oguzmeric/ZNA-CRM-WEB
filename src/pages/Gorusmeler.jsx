@@ -229,7 +229,9 @@ function Gorusmeler() {
   }
 
   const kaydet = async () => {
-    const sonKonu = manuelKonuAc ? form.manuelKonu : form.konu
+    const sonKonu = manuelKonuAc
+      ? (form.manuelKonu || '').trim().toLocaleUpperCase('tr')
+      : form.konu
     if (!form.firmaAdi || !sonKonu || !form.gorusen) {
       toast.error('Firma, konu ve görüşen zorunludur.'); return
     }
@@ -483,6 +485,11 @@ function Gorusmeler() {
                 options={muhatapOnerileri}
                 placeholder={secilenFirma ? 'Kişi seç veya adı yaz…' : 'İsim yaz…'}
               />
+              {form.muhatapAd?.trim() && !form.muhatapId && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--success)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Plus size={11} strokeWidth={2} /> Yeni kişi olarak kaydedilecek
+                </p>
+              )}
             </div>
             {secilenFirma && firmaKisileri.length > 0 && (
               <div>
@@ -536,12 +543,17 @@ function Gorusmeler() {
                     setForm({ ...form, konu: v, manuelKonu: '' })
                   } else {
                     setManuelKonuAc(true)
-                    setForm({ ...form, konu: '', manuelKonu: v.toUpperCase() })
+                    setForm({ ...form, konu: '', manuelKonu: v })
                   }
                 }}
                 options={konuOnerileri}
                 placeholder="Konu seç veya kendin yaz…"
               />
+              {manuelKonuAc && (form.manuelKonu || '').trim() && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--success)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Plus size={11} strokeWidth={2} /> Yeni konu olarak kaydedilecek
+                </p>
+              )}
             </div>
             <div>
               <Label required>Görüşen</Label>
