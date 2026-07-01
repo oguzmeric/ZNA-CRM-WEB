@@ -517,11 +517,11 @@ function TrassirLisanslar() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <thead>
                 <tr>
-                  {['Kod', 'Lisans ID', 'Firma / Lokasyon', 'Tür', 'Tip', 'Sunucu', 'Kanal', 'Bitiş', 'Durum', ''].map((h, i) => (
+                  {['Kod', 'Lisans ID', 'Firma / Lokasyon', 'Proje Adı', 'Tür', 'Tip', 'Sunucu', 'Kanal', 'Bitiş', 'Durum', ''].map((h, i, arr) => (
                     <th key={i} style={{
                       background: 'var(--surface-sunken)',
                       padding: '10px 14px',
-                      textAlign: i === 9 ? 'right' : 'left',
+                      textAlign: i === arr.length - 1 ? 'right' : 'left',
                       font: '600 11px/16px var(--font-sans)',
                       color: 'var(--text-tertiary)',
                       textTransform: 'uppercase',
@@ -553,16 +553,14 @@ function TrassirLisanslar() {
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {l.firmaAdi}
                         </div>
-                        {l.proje && (
-                          <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--brand-primary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.proje}>
-                            {l.proje}
-                          </div>
-                        )}
                         {l.lokasyon && (
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
                             <MapPin size={11} strokeWidth={1.5} /> {l.lokasyon}
                           </div>
                         )}
+                      </td>
+                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 200, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.proje || ''}>
+                        {l.proje || <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                       </td>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <Badge tone="brand">{l.lisansTuru}</Badge>
