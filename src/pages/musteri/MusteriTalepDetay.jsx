@@ -50,6 +50,7 @@ export default function MusteriTalepDetay() {
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
+  const [aktifTab, setAktifTab] = useState('detay') // detay | feed | iliskili
   const [duzenlemeModu, setDuzenlemeModu] = useState(false)
   const [duzenForm, setDuzenForm] = useState(null)
   const [onayAsamasi, setOnayAsamasi] = useState(null)
@@ -204,13 +205,85 @@ export default function MusteriTalepDetay() {
         )}
       </div>
 
+      {/* Lightning Path — durum ilerleme şeridi */}
+      {(() => {
+        const yolAsamalar = [
+          { id: 'bekliyor',      isim: 'Bekliyor' },
+          { id: 'inceleniyor',   isim: 'İnceleniyor' },
+          { id: 'atandi',        isim: 'Atandı' },
+          { id: 'devam_ediyor',  isim: 'Devam Ediyor' },
+          { id: 'tamamlandi',    isim: 'Tamamlandı' },
+        ]
+        // iptal edilmişse path'i gösterme
+        if (talep.durum === 'iptal') return null
+        const aktifIdx = yolAsamalar.findIndex(y => y.id === talep.durum)
+        return (
+          <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
+            {yolAsamalar.map((y, i) => {
+              const gecildi = i < aktifIdx
+              const aktif = i === aktifIdx
+              return (
+                <div key={y.id} style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: aktif ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+                  color: aktif ? '#fff' : (gecildi ? 'var(--text-secondary)' : 'var(--text-tertiary)'),
+                  borderRadius: 'var(--radius-sm)',
+                  textAlign: 'center',
+                  font: aktif ? '600 12px/16px var(--font-sans)' : '500 12px/16px var(--font-sans)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  border: aktif ? 'none' : '1px solid var(--border-default)',
+                }}>
+                  {gecildi && <Check size={13} strokeWidth={2} style={{ color: 'var(--success)' }} />}
+                  {aktif && <Clock size={13} strokeWidth={1.8} />}
+                  {y.isim}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 14, alignItems: 'start' }}>
 
         {/* Sol */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Tab bar */}
+          {!duzenlemeModu && (
+            <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border-default)', marginBottom: -6 }}>
+              {[
+                { id: 'detay', isim: 'Detay', icon: FileText },
+                { id: 'feed', isim: `Yazışmalar${talep.notlar.length > 0 ? ` (${talep.notlar.length})` : ''}`, icon: MessageSquare },
+                { id: 'iliskili', isim: 'Geçmiş', icon: Clock },
+              ].map(t => {
+                const aktif = aktifTab === t.id
+                const Icon = t.icon
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setAktifTab(t.id)}
+                    style={{
+                      padding: '8px 14px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                      color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                      font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                      cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      borderRadius: 0,
+                    }}
+                  >
+                    <Icon size={13} strokeWidth={1.5} />
+                    {t.isim}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Detay veya düzenleme formu */}
-          {duzenlemeModu ? (
+          {(duzenlemeModu || aktifTab === 'detay') && (duzenlemeModu ? (
             <Card padding={0}>
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -378,9 +451,10 @@ export default function MusteriTalepDetay() {
                 </div>
               )}
             </Card>
-          )}
+          ))}
 
           {/* Yazışmalar */}
+          {!duzenlemeModu && aktifTab === 'feed' && (
           <Card padding={0}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -468,9 +542,10 @@ export default function MusteriTalepDetay() {
               </div>
             )}
           </Card>
+          )}
 
           {/* Durum geçmişi */}
-          {talep.durumGecmisi.length > 0 && (
+          {!duzenlemeModu && aktifTab === 'iliskili' && talep.durumGecmisi.length > 0 && (
             <Card padding={14}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <Clock size={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
@@ -530,6 +605,73 @@ export default function MusteriTalepDetay() {
               ))}
             </div>
           </Card>
+
+          {/* Hızlı Aksiyonlar */}
+          {!['tamamlandi', 'iptal'].includes(talep.durum) && (
+            <Card padding={14}>
+              <p style={{ margin: '0 0 10px', font: '600 11px/14px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Hızlı Aksiyonlar</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <button
+                  onClick={() => setAktifTab('feed')}
+                  style={{
+                    padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                    font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                >
+                  <MessageSquare size={13} strokeWidth={1.5} /> Not ekle
+                </button>
+                {duzenlenebilir && (
+                  <button
+                    onClick={duzenlemeyiAc}
+                    style={{
+                      padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    <Pencil size={13} strokeWidth={1.5} /> Düzenle
+                  </button>
+                )}
+                {talep.telefon && (
+                  <a
+                    href={`tel:${talep.telefon}`}
+                    style={{
+                      padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', textDecoration: 'none',
+                      font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    <Send size={13} strokeWidth={1.5} /> Ara
+                  </a>
+                )}
+                {talep.email && (
+                  <a
+                    href={`mailto:${talep.email}`}
+                    style={{
+                      padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', textDecoration: 'none',
+                      font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    <Send size={13} strokeWidth={1.5} /> E-posta
+                  </a>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Onay / memnuniyet akışı */}
           {talep.durum === 'tamamlandi' && (
