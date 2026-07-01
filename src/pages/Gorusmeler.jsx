@@ -15,6 +15,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { gorevleriGetir, gorevGuncelle } from '../services/gorevService'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import ComboBox from '../components/ComboBox'
+import KonuYonetimModal from '../components/KonuYonetimModal'
 import { supabase } from '../lib/supabase'
 import { arrayToCamel } from '../lib/mapper'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
@@ -81,6 +82,7 @@ function Gorusmeler() {
   const [filtre, setFiltre] = useState('hepsi')
   const [gorusenFiltre, setGorusenFiltre] = useState('')
   const [konuFiltre, setKonuFiltre] = useState('')
+  const [konuYonetimAcik, setKonuYonetimAcik] = useState(false)
   const [arama, setArama] = useState('')
   const [sayfa, setSayfa] = useState(1)
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
@@ -107,6 +109,12 @@ function Gorusmeler() {
   }
   const [dosyaYukleniyor, setDosyaYukleniyor] = useState(false)
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
+
+  const gorusmeleriYenile = () => {
+    gorusmeleriGetir()
+      .then(g => setGorusmeler(g || []))
+      .catch(err => console.error('[Gorusmeler yenile]', err))
+  }
 
   useEffect(() => {
     Promise.all([
@@ -533,7 +541,21 @@ function Gorusmeler() {
               </div>
             )}
             <div>
-              <Label required>Aktivite konusu</Label>
+              <Label required>
+                Aktivite konusu
+                <button
+                  type="button"
+                  onClick={() => setKonuYonetimAcik(true)}
+                  title="Konuları yönet"
+                  style={{
+                    background: 'none', border: 'none', padding: '0 0 0 6px',
+                    cursor: 'pointer', color: 'var(--brand-primary)',
+                    font: '500 11px/14px var(--font-sans)',
+                  }}
+                >
+                  <Settings size={11} strokeWidth={1.5} style={{ verticalAlign: -1 }} /> yönet
+                </button>
+              </Label>
               <ComboBox
                 value={manuelKonuAc ? form.manuelKonu : form.konu}
                 onChange={v => {
@@ -1037,6 +1059,14 @@ function Gorusmeler() {
           }
         }}
         onClose={() => setLokasyonModalAcik(false)}
+      />
+
+      <KonuYonetimModal
+        acik={konuYonetimAcik}
+        onClose={() => setKonuYonetimAcik(false)}
+        gorusmeler={gorusmeler}
+        varsayilanKonular={varsayilanKonular}
+        onGuncellendi={gorusmeleriYenile}
       />
     </div>
   )

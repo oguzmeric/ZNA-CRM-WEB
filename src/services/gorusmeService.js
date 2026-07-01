@@ -40,6 +40,21 @@ export const gorusmeGuncelle = async (id, guncellenmis) => {
   return toCamel(data)
 }
 
+// Konu adını toplu yeniden adlandır — eski konu'yu tüm görüşmelerde yenisiyle değiştir
+// Döner: etkilenen kayıt sayısı (veya null hata durumunda)
+export const konuTopluYeniden = async (eskiAd, yeniAd) => {
+  if (!eskiAd || !yeniAd) return null
+  if (eskiAd === yeniAd) return 0
+  const { data, error } = await supabase
+    .from('gorusmeler')
+    .update({ konu: yeniAd })
+    .eq('konu', eskiAd)
+    .select('id')
+  if (error) { console.error('konuTopluYeniden hata:', error.message); return null }
+  invalidate('gorusmeler:list')
+  return data?.length ?? 0
+}
+
 export const gorusmeSil = async (id) => {
   const { data: g } = await supabase.from('gorusmeler').select('dosyalar').eq('id', id).single()
   const dosyaPaths = (g?.dosyalar || []).map(d => d.path).filter(Boolean)
