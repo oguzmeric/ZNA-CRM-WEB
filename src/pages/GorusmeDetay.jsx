@@ -10,6 +10,7 @@ import { useBildirim } from '../context/BildirimContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
+import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
@@ -134,6 +135,7 @@ function GorusmeDetay() {
       manuelKonu: manuelMi ? gorusme.konu : '',
       durum: gorusme.durum,
       muhatapAd: gorusme.muhatapAd || '',
+      gorusen: gorusme.gorusen || '',
     })
     setManuelKonuAc(manuelMi); setDuzenleAcik(true)
   }
@@ -148,6 +150,7 @@ function GorusmeDetay() {
       konu: sonKonu,
       durum: duzenleForm.durum,
       muhatapAd: (duzenleForm.muhatapAd || '').trim(),
+      gorusen: duzenleForm.gorusen || '',
     })
     setDuzenleAcik(false)
   }
@@ -384,7 +387,15 @@ function GorusmeDetay() {
                 </CustomSelect>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <Label>Görüşülen kişi</Label>
+                <Label required>Görüşen</Label>
+                <GorusenCokluSecim
+                  value={duzenleForm.gorusen || ''}
+                  onChange={v => setDuzenleForm({ ...duzenleForm, gorusen: v })}
+                  kullanicilar={kullanicilar || []}
+                />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Görüşülen kişi (karşı taraf)</Label>
                 <Input
                   value={duzenleForm.muhatapAd || ''}
                   onChange={e => setDuzenleForm({ ...duzenleForm, muhatapAd: e.target.value })}
