@@ -167,59 +167,47 @@ export default function MusteriTalepDetay() {
   ].filter(Boolean)
 
   return (
-    <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
+    <div style={{ padding: '16px 20px', maxWidth: 1440, margin: '0 auto' }}>
 
-      <button
-        onClick={() => navigate('/musteri-portal/taleplerim')}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
-          marginBottom: 16,
-        }}
-        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
-        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
-      >
-        <ArrowLeft size={14} strokeWidth={1.5} /> Taleplerime dön
-      </button>
-
-      {/* Başlık kartı */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-              <CodeBadge>{talep.talepNo}</CodeBadge>
-              {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
-              {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
-              {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
-            </div>
-            <h1 className="t-h1">{talep.konu}</h1>
-            <p className="t-caption" style={{ marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-              Oluşturulma: {tarihFormat(talep.olusturmaTarihi)}
-              {talep.guncellemeTarihi !== talep.olusturmaTarihi && (
-                <> · Güncellendi: {tarihFormat(talep.guncellemeTarihi)}</>
-              )}
-            </p>
-          </div>
-
-          {duzenlenebilir && !duzenlemeModu && (
-            <Button variant="secondary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={duzenlemeyiAc}>
-              Düzenle
-            </Button>
-          )}
-        </div>
-
+      {/* Kompakt üst şerit — tek satır: geri + rozetler + başlık + düzenle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => navigate('/musteri-portal/taleplerim')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px',
+            background: 'transparent', border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            color: 'var(--text-secondary)',
+            font: '500 12px/16px var(--font-sans)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-sunken)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          <ArrowLeft size={13} strokeWidth={1.5} /> Taleplerim
+        </button>
+        <CodeBadge>{talep.talepNo}</CodeBadge>
+        {durum && <Badge tone={DURUM_TONE[durum.id]}>{durum.isim}</Badge>}
+        {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
+        {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
+        <h1 style={{ margin: 0, font: '600 18px/24px var(--font-sans)', color: 'var(--text-primary)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={talep.konu}>
+          {talep.konu}
+        </h1>
+        <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {tarihFormat(talep.olusturmaTarihi)}
+        </span>
         {duzenlenebilir && !duzenlemeModu && (
-          <Alert variant="info" style={{ marginTop: 16 }}>
-            Talebiniz henüz incelemeye alınmadı. İçeriği düzenleyebilirsiniz.
-          </Alert>
+          <Button variant="secondary" size="sm" iconLeft={<Pencil size={13} strokeWidth={1.5} />} onClick={duzenlemeyiAc}>
+            Düzenle
+          </Button>
         )}
-      </Card>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 2fr) minmax(280px, 1fr))', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 14, alignItems: 'start' }}>
 
         {/* Sol */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {/* Detay veya düzenleme formu */}
           {duzenlemeModu ? (
@@ -323,40 +311,37 @@ export default function MusteriTalepDetay() {
               </div>
             </Card>
           ) : (
-            <Card>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-                <h2 className="t-h2" style={{ margin: 0 }}>Talep Detayı</h2>
+            <Card padding={14}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 style={{ margin: 0, font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Talep Detayı</h2>
               </div>
-              <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+              <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
                 {talep.aciklama}
               </p>
               {(talep.lokasyon || talep.cihazTuru) && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-default)' }}>
                   {talep.lokasyon && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '400 13px/18px var(--font-sans)' }}>
-                      <MapPin size={12} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
-                      <span className="t-caption">Lokasyon:</span>
-                      <span style={{ color: 'var(--text-secondary)' }}>{talep.lokasyon}</span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                      <MapPin size={11} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+                      {talep.lokasyon}
                     </div>
                   )}
                   {talep.cihazTuru && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '400 13px/18px var(--font-sans)' }}>
-                      <Monitor size={12} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
-                      <span className="t-caption">Cihaz/Sistem:</span>
-                      <span style={{ color: 'var(--text-secondary)' }}>{talep.cihazTuru}</span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                      <Monitor size={11} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+                      {talep.cihazTuru}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Dosyalar */}
+              {/* Dosyalar — kompakt yatay chip'ler */}
               {(talep.dosyalar?.length || 0) > 0 && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-                  <div className="t-label" style={{ marginBottom: 6 }}>
-                    <Paperclip size={12} strokeWidth={1.5} style={{ verticalAlign: '-2px', marginRight: 4 }} />
-                    Ekler ({talep.dosyalar.length})
-                  </div>
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '600 11px/14px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.3, marginRight: 4 }}>
+                    <Paperclip size={11} strokeWidth={1.5} /> Ekler ({talep.dosyalar.length})
+                  </span>
                   {talep.dosyalar.map(d => (
                     <button
                       key={d.path}
@@ -367,25 +352,26 @@ export default function MusteriTalepDetay() {
                           window.open(url, '_blank')
                         } catch {}
                       }}
+                      title={d.name}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                        padding: '8px 12px', marginBottom: 6,
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '4px 8px',
                         border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--surface-card)',
-                        cursor: 'pointer', textAlign: 'left',
+                        borderRadius: 'var(--radius-pill)',
+                        background: 'var(--surface-sunken)',
+                        cursor: 'pointer',
+                        font: '500 11px/14px var(--font-sans)',
+                        color: 'var(--text-secondary)',
+                        maxWidth: 180,
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-sunken)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                     >
                       {d.type?.startsWith('image/')
-                        ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
-                        : <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
-                      <span style={{ flex: 1, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        ? <ImageIcon size={11} strokeWidth={1.5} />
+                        : <FileText size={11} strokeWidth={1.5} />}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {d.name}
-                      </span>
-                      <span className="t-caption">
-                        {d.size ? `${(d.size / 1024).toFixed(0)} KB` : ''}
                       </span>
                     </button>
                   ))}
@@ -396,13 +382,14 @@ export default function MusteriTalepDetay() {
 
           {/* Yazışmalar */}
           <Card padding={0}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <MessageSquare size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-                <h2 className="t-h2" style={{ margin: 0 }}>Yazışmalar & Notlar</h2>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <MessageSquare size={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 style={{ margin: 0, font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Yazışmalar & Notlar</h2>
               </div>
+              <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>{talep.notlar.length} mesaj</span>
             </div>
-            <div style={{ minHeight: 160, maxHeight: 380, overflowY: 'auto', padding: 16 }}>
+            <div style={{ minHeight: 220, maxHeight: 320, overflowY: 'auto', padding: 12 }}>
               {talep.notlar.length === 0 ? (
                 <EmptyState title="Henüz yazışma yok" />
               ) : (
@@ -459,7 +446,7 @@ export default function MusteriTalepDetay() {
               )}
             </div>
             {!['tamamlandi', 'iptal'].includes(talep.durum) && (
-              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+              <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <Input
@@ -484,12 +471,12 @@ export default function MusteriTalepDetay() {
 
           {/* Durum geçmişi */}
           {talep.durumGecmisi.length > 0 && (
-            <Card>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Clock size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-                <h2 className="t-h2" style={{ margin: 0 }}>Durum Geçmişi</h2>
+            <Card padding={14}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <Clock size={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <h2 style={{ margin: 0, font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Durum Geçmişi</h2>
               </div>
-              <div style={{ position: 'relative', paddingLeft: 24 }}>
+              <div style={{ position: 'relative', paddingLeft: 22, maxHeight: 180, overflowY: 'auto' }}>
                 <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
                 {[...talep.durumGecmisi].reverse().map((g, i) => {
                   const d = DURUM_LISTESI.find(x => x.id === g.durum)
@@ -518,24 +505,27 @@ export default function MusteriTalepDetay() {
           )}
         </div>
 
-        {/* Sağ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card>
-            <p className="t-label" style={{ marginBottom: 14 }}>TALEP BİLGİLERİ</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Sağ — sticky */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 12 }}>
+          <Card padding={14}>
+            <p style={{ margin: '0 0 10px', font: '600 11px/14px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Talep Bilgileri</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', rowGap: 8, columnGap: 8 }}>
               {talepBilgileri.map(({ k, v, tabular }) => (
-                <div key={k}>
-                  <p className="t-caption" style={{ marginBottom: 2 }}>{k}</p>
-                  {isValidElement(v)
-                    ? v
-                    : <p style={{
-                        font: '500 13px/18px var(--font-sans)',
-                        color: 'var(--text-primary)', margin: 0,
-                        fontVariantNumeric: tabular ? 'tabular-nums' : 'normal',
-                      }}>
-                        {v}
-                      </p>
-                  }
+                <div key={k} style={{ display: 'contents' }}>
+                  <span style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>{k}</span>
+                  <div style={{ minWidth: 0 }}>
+                    {isValidElement(v)
+                      ? v
+                      : <span style={{
+                          font: '500 12px/16px var(--font-sans)',
+                          color: 'var(--text-primary)',
+                          fontVariantNumeric: tabular ? 'tabular-nums' : 'normal',
+                          wordBreak: 'break-word',
+                        }}>
+                          {v}
+                        </span>
+                    }
+                  </div>
                 </div>
               ))}
             </div>
