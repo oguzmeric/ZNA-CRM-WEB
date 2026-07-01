@@ -211,11 +211,33 @@ function GorevDetay() {
             </Button>
           </div>
         </div>
-        <h1 className="t-h1" style={{ marginBottom: 8 }}>{gorev.baslik}</h1>
-        {gorev.aciklama && (
-          <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
-            {gorev.aciklama}
-          </p>
+        <h1 className="t-h1" style={{ marginBottom: 12 }}>{gorev.baslik}</h1>
+        {gorev.aciklama ? (
+          <div style={{
+            padding: '12px 14px',
+            background: 'var(--surface-sunken)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            marginTop: 4,
+          }}>
+            <div className="t-label" style={{ marginBottom: 6 }}>AÇIKLAMA</div>
+            <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+              {gorev.aciklama}
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            padding: '10px 14px',
+            background: 'var(--surface-sunken)',
+            border: '1px dashed var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            marginTop: 4,
+            font: '400 13px/18px var(--font-sans)',
+            color: 'var(--text-tertiary)',
+            fontStyle: 'italic',
+          }}>
+            Açıklama girilmedi.
+          </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
