@@ -10,6 +10,7 @@ import { KargoProvider } from './context/KargoContext'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import { HatirlatmaProvider } from './context/HatirlatmaContext'
+import { ToplantiHatirlaticiProvider } from './context/ToplantiHatirlaticiContext'
 import { ThemeProvider } from './context/ThemeContext'
 import './styles/tokens.css'
 import './styles/typography.css'
@@ -29,7 +30,9 @@ createRoot(document.getElementById('root')).render(
                   <AktiviteProvider>
                     <ConfirmProvider>
                       <HatirlatmaProvider>
-                        <App />
+                        <ToplantiHatirlaticiProvider>
+                          <App />
+                        </ToplantiHatirlaticiProvider>
                       </HatirlatmaProvider>
                     </ConfirmProvider>
                   </AktiviteProvider>
