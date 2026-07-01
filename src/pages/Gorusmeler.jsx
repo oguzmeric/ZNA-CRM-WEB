@@ -497,20 +497,25 @@ function Gorusmeler() {
             )}
             <div>
               <Label required>Aktivite konusu</Label>
-              <CustomSelect value={manuelKonuAc ? '__manuel__' : form.konu} onChange={e => handleKonuSec(e.target.value)}>
-                <option value="">Konu seç…</option>
-                {varsayilanKonular.map(k => <option key={k} value={k}>{k}</option>)}
-                <option value="__manuel__">+ Manuel gir</option>
-              </CustomSelect>
-              {manuelKonuAc && (
-                <Input
-                  style={{ marginTop: 8 }}
-                  value={form.manuelKonu}
-                  onChange={e => setForm({ ...form, manuelKonu: e.target.value.toUpperCase() })}
-                  placeholder="Konu yazın…"
-                  autoFocus
-                />
-              )}
+              <Input
+                list="gorusme-konu-oneriler"
+                value={manuelKonuAc ? form.manuelKonu : form.konu}
+                onChange={e => {
+                  const v = e.target.value
+                  const isVarsayilan = varsayilanKonular.includes(v)
+                  if (isVarsayilan) {
+                    setManuelKonuAc(false)
+                    setForm({ ...form, konu: v, manuelKonu: '' })
+                  } else {
+                    setManuelKonuAc(true)
+                    setForm({ ...form, konu: '', manuelKonu: v.toUpperCase() })
+                  }
+                }}
+                placeholder="Konu seç veya kendin yaz…"
+              />
+              <datalist id="gorusme-konu-oneriler">
+                {varsayilanKonular.map(k => <option key={k} value={k} />)}
+              </datalist>
             </div>
             <div>
               <Label required>Görüşen</Label>
