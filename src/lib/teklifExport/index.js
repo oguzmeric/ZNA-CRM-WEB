@@ -1,6 +1,8 @@
 // Teklif Excel export — tipe göre dispatch + ortak yardımcılar.
 // Lazy: exceljs ~600KB; bu modülü ancak Excel İndir butonuna basılınca yükle.
 
+import { teklifDosyaAdi } from '../teklifDosyaAdi'
+
 export async function teklifiExcelOlarakIndir(teklif) {
   const tip = teklif.teklifTipi || 'standart'
   const { saveAs } = await import('file-saver')
@@ -17,8 +19,7 @@ export async function teklifiExcelOlarakIndir(teklif) {
     blob = await standartExcelOlustur(teklif)
   }
 
-  const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${tip}.xlsx`
-  saveAs(blob, dosyaAdi)
+  saveAs(blob, teklifDosyaAdi(teklif, 'xlsx'))
 }
 
 // Yardımcı: public/teklif-assets/...'tan görseli ArrayBuffer olarak çek

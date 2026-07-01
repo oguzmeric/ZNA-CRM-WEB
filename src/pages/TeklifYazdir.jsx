@@ -6,6 +6,7 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
+import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -114,8 +115,7 @@ export default function TeklifYazdir() {
         }
       }
 
-      const dosyaAdi = `Teklif_${teklif.teklifNo || teklif.id}_${seciliTip}.pdf`
-      pdf.save(dosyaAdi)
+      pdf.save(teklifDosyaAdi(teklif, 'pdf'))
     } catch (err) {
       console.error('[PDF indir]', err)
       alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
