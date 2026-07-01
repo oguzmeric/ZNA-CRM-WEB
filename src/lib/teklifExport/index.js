@@ -2,10 +2,10 @@
 // Lazy: exceljs ~600KB; bu modülü ancak Excel İndir butonuna basılınca yükle.
 
 import { teklifDosyaAdi } from '../teklifDosyaAdi'
+import { dosyayiKaydet } from '../dosyaIndir'
 
 export async function teklifiExcelOlarakIndir(teklif) {
   const tip = teklif.teklifTipi || 'standart'
-  const { saveAs } = await import('file-saver')
 
   let blob
   if (tip === 'trassir') {
@@ -19,7 +19,7 @@ export async function teklifiExcelOlarakIndir(teklif) {
     blob = await standartExcelOlustur(teklif)
   }
 
-  saveAs(blob, teklifDosyaAdi(teklif, 'xlsx'))
+  await dosyayiKaydet(blob, teklifDosyaAdi(teklif, 'xlsx'))
 }
 
 // Yardımcı: public/teklif-assets/...'tan görseli ArrayBuffer olarak çek

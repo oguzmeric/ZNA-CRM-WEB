@@ -7,6 +7,7 @@ import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
 import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
+import { dosyayiKaydet } from '../lib/dosyaIndir'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -115,7 +116,8 @@ export default function TeklifYazdir() {
         }
       }
 
-      pdf.save(teklifDosyaAdi(teklif, 'pdf'))
+      const blob = pdf.output('blob')
+      await dosyayiKaydet(blob, teklifDosyaAdi(teklif, 'pdf'))
     } catch (err) {
       console.error('[PDF indir]', err)
       alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
