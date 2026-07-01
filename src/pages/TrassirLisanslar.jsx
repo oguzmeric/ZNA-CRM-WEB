@@ -36,7 +36,7 @@ const durumlar = [
 const bosForm = {
   lisansKodu: '', lisansId: '', lisansTuru: '',
   lisansTipi: 'sureksiz', demoGun: '30',
-  musteriId: '', firmaAdi: '', lokasyon: '',
+  musteriId: '', firmaAdi: '', proje: '', lokasyon: '',
   sunucuAdi: '', kanalSayisi: '',
   baslangicTarih: new Date().toISOString().split('T')[0],
   bitisTarih: '', durum: 'aktif', notlar: '',
@@ -101,7 +101,7 @@ function TrassirLisanslar() {
     setForm({
       lisansKodu: l.lisansKodu, lisansId: l.lisansId || '', lisansTuru: l.lisansTuru,
       lisansTipi: l.lisansTipi || 'sureksiz', demoGun: l.demoGun || '30',
-      musteriId: l.musteriId || '', firmaAdi: l.firmaAdi || '', lokasyon: l.lokasyon || '',
+      musteriId: l.musteriId || '', firmaAdi: l.firmaAdi || '', proje: l.proje || '', lokasyon: l.lokasyon || '',
       sunucuAdi: l.sunucuAdi || '', kanalSayisi: l.kanalSayisi || '',
       baslangicTarih: l.baslangicTarih || '', bitisTarih: l.bitisTarih || '',
       durum: l.durum, notlar: l.notlar || '',
@@ -176,7 +176,7 @@ function TrassirLisanslar() {
   const gorunenLisanslar = lisanslar
     .filter(l => filtre === 'hepsi' || l.durum === filtre)
     .filter(l => trContains(
-      [l.lisansKodu, l.lisansId, l.firmaAdi, l.lokasyon, l.sunucuAdi, l.lisansTuru, l.notlar].filter(Boolean).join(' '),
+      [l.lisansKodu, l.lisansId, l.firmaAdi, l.proje, l.lokasyon, l.sunucuAdi, l.lisansTuru, l.notlar].filter(Boolean).join(' '),
       arama,
     ))
 
@@ -235,7 +235,7 @@ function TrassirLisanslar() {
           <SearchInput
             value={arama}
             onChange={e => setArama(e.target.value)}
-            placeholder="Lisans kodu, ID, firma, sunucu ara…"
+            placeholder="Lisans kodu, ID, firma, proje, sunucu ara…"
           />
         </div>
         <SegmentedControl
@@ -360,6 +360,15 @@ function TrassirLisanslar() {
             <div style={{ gridColumn: 'span 2' }}>
               <Label required>Firma adı</Label>
               <Input value={form.firmaAdi} onChange={e => setForm({ ...form, firmaAdi: e.target.value })} placeholder="Müşteri seçin veya direkt yazın…" />
+            </div>
+
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Proje</Label>
+              <Input
+                value={form.proje}
+                onChange={e => setForm({ ...form, proje: e.target.value })}
+                placeholder="Örn: Depo blok A, Kütüphane genişletme, Şube 3"
+              />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
@@ -538,6 +547,11 @@ function TrassirLisanslar() {
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {l.firmaAdi}
                         </div>
+                        {l.proje && (
+                          <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--brand-primary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.proje}>
+                            {l.proje}
+                          </div>
+                        )}
                         {l.lokasyon && (
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
                             <MapPin size={11} strokeWidth={1.5} /> {l.lokasyon}
