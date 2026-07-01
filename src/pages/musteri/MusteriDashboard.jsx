@@ -5,6 +5,7 @@ import {
   Plus, Clock, Loader2, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, Minus,
   AlertOctagon, CalendarRange, Briefcase, Phone, MessageSquare,
   Inbox, ArrowRight, Bell, Sparkles, User,
+  PlayCircle, MessageCircle, RefreshCcw, UserCheck, Mail, Timer, Target, FolderOpen,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
@@ -70,8 +71,9 @@ function Sparkline({ data, stroke }) {
   )
 }
 
-function StatKart({ sayi, baslik, Icon, bar, iconTint, trend, sparkData, onClick, bos }) {
+function KPIKarti({ sayi, baslik, Icon, borderColor, chipBg, chipFg, onClick }) {
   const [hover, setHover] = useState(false)
+  const bos = sayi === 0
   return (
     <motion.button
       type="button"
@@ -84,68 +86,32 @@ function StatKart({ sayi, baslik, Icon, bar, iconTint, trend, sparkData, onClick
       style={{
         position: 'relative',
         background: 'var(--surface-card)',
-        border: `1px solid ${hover ? PORTAL_BLUE[200] : 'var(--border-default)'}`,
+        border: `1px solid ${hover ? 'var(--border-strong, #d0d5dd)' : 'var(--border-default)'}`,
+        borderLeft: `3px solid ${borderColor}`,
         borderRadius: 'var(--radius-md)',
-        padding: '12px 14px 10px 18px',
+        padding: '14px 16px 14px 16px',
         textAlign: 'left',
         cursor: 'pointer',
         overflow: 'hidden',
         transition: 'border-color 120ms',
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-          background: bar,
-        }}
-      />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span
           style={{
-            width: 26, height: 26, borderRadius: 6,
-            background: iconTint.bg, color: iconTint.fg,
+            width: 28, height: 28, borderRadius: 6,
+            background: chipBg, color: chipFg,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <Icon size={14} strokeWidth={1.8} />
+          <Icon size={15} strokeWidth={1.8} />
         </span>
-        {trend != null && !bos && (() => {
-          const pozitif = trend > 0
-          const nolla   = trend === 0
-          const Ikon = nolla ? Minus : (pozitif ? TrendingUp : TrendingDown)
-          const renkler = nolla
-            ? { bg: 'var(--surface-sunken)', fg: 'var(--text-tertiary)' }
-            : pozitif
-              ? { bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[800] }
-              : { bg: '#FBE8E8', fg: '#B23A3A' }
-          return (
-            <span
-              title="Son 30 gün / önceki 30 gün"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 2,
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-pill)',
-                font: '500 10px/14px var(--font-sans)',
-                color: renkler.fg,
-                background: renkler.bg,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              <Ikon size={10} strokeWidth={2} />
-              %{Math.abs(trend)}
-            </span>
-          )
-        })()}
       </div>
-      <div style={{ font: '500 22px/26px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-        {bos ? '—' : <CountUp value={sayi} />}
+      <div style={{ font: '500 24px/28px var(--font-sans)', color: bos ? 'var(--text-muted, var(--text-tertiary))' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+        <CountUp value={sayi} />
       </div>
-      <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-        {bos ? 'Son 30 günde veri yok' : baslik}
-      </div>
-      <div style={{ marginTop: 6, color: iconTint.fg, opacity: 0.7 }}>
-        <Sparkline data={sparkData} stroke={iconTint.fg} />
+      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+        {baslik}
       </div>
     </motion.button>
   )
@@ -304,7 +270,6 @@ export default function MusteriDashboard() {
   const { musteriTalepleri, ANA_TURLER } = useServisTalebi()
   const navigate = useNavigate()
 
-  const [hacimAraligi, setHacimAraligi] = useState(6)
   const [musteriKaydi, setMusteriKaydi] = useState(null)
   const [duyurular, setDuyurular] = useState([])
 
@@ -331,39 +296,36 @@ export default function MusteriDashboard() {
   const devam      = talepler.filter(t => ['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum))
   const tamamlandi = talepler.filter(t => t.durum === 'tamamlandi')
   const acil       = talepler.filter(t => t.aciliyet === 'acil' && !['tamamlandi', 'iptal'].includes(t.durum))
+  const iptal      = talepler.filter(t => t.durum === 'iptal')
+  const aktifTalepler = talepler.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
+
+  // Hizmet performansı metrikleri
+  const ortCozumSuresiGun = useMemo(() => {
+    if (tamamlandi.length === 0) return null
+    const toplamMs = tamamlandi.reduce((acc, t) => {
+      const bas = new Date(t.olusturmaTarihi).getTime()
+      const bit = new Date(t.guncellemeTarihi || t.olusturmaTarihi).getTime()
+      return acc + Math.max(0, bit - bas)
+    }, 0)
+    const ortMs = toplamMs / tamamlandi.length
+    return ortMs / (1000 * 60 * 60 * 24)
+  }, [tamamlandi.length])
+
+  const ilkCozumOrani = useMemo(() => {
+    const toplam = tamamlandi.length + iptal.length
+    if (toplam === 0) return null
+    return Math.round((tamamlandi.length / toplam) * 100)
+  }, [tamamlandi.length, iptal.length])
+
+  const enEskiAcikGun = useMemo(() => {
+    if (aktifTalepler.length === 0) return null
+    const eski = Math.min(...aktifTalepler.map(t => new Date(t.olusturmaTarihi).getTime()))
+    return Math.floor((Date.now() - eski) / (1000 * 60 * 60 * 24))
+  }, [aktifTalepler.length])
 
   const sonTalepler = [...talepler]
     .sort((a, b) => new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi))
     .slice(0, 5)
-
-  const hacim = useMemo(() => aylikTalepHacmi(talepler, hacimAraligi), [talepler, hacimAraligi])
-
-  // Her kart için son 6 ayın aylık sayımı (sparkline)
-  const sparkBekleyen    = useMemo(() => aylikTalepHacmi(acik, 6).map(h => h.count), [acik])
-  const sparkDevam       = useMemo(() => aylikTalepHacmi(devam, 6).map(h => h.count), [devam])
-  const sparkTamamlandi  = useMemo(() => aylikTalepHacmi(tamamlandi, 6).map(h => h.count), [tamamlandi])
-  const sparkAcil        = useMemo(() => aylikTalepHacmi(acil, 6).map(h => h.count), [acil])
-
-  // Trend yüzdesi — son 30 gün / önceki 30 gün karşılaştırması
-  const trendHesapla = useMemo(() => {
-    const simdi = Date.now()
-    const gun30 = 30 * 24 * 60 * 60 * 1000
-    return liste => {
-      const son = liste.filter(t => simdi - new Date(t.olusturmaTarihi).getTime() <= gun30).length
-      const onceki = liste.filter(t => {
-        const fark = simdi - new Date(t.olusturmaTarihi).getTime()
-        return fark > gun30 && fark <= 2 * gun30
-      }).length
-      if (onceki === 0 && son === 0) return null
-      if (onceki === 0) return 100 * son
-      return Math.round(((son - onceki) / onceki) * 100)
-    }
-  }, [talepler.length])
-
-  const trendBekleyen   = trendHesapla(acik)
-  const trendDevam      = trendHesapla(devam)
-  const trendTamamlandi = trendHesapla(tamamlandi)
-  const trendAcil       = trendHesapla(acil)
 
   const temsilciK = musteriKaydi?.temsilci
   const temsilciInisyal = temsilciK?.ad
@@ -380,17 +342,77 @@ export default function MusteriDashboard() {
     zaman: tarihFormat(d.baslangicTarihi),
     ton: DUYURU_TON[d.seviye] || PORTAL_BLUE[400],
   }))
-  const aktiviteler = sonTalepler.slice(0, 4).map(t => ({
-    id: t.id,
-    refId: t.talepNo,
-    aciklama: `${t.konu} güncellendi`,
-    zaman: tarihFormat(t.olusturmaTarihi),
-  }))
+  // Detaylı aktiviteler: notlar + durum geçmişi + atamalar
+  const aktiviteler = useMemo(() => {
+    const items = []
+    for (const t of talepler) {
+      // Son 2 not
+      const notlar = Array.isArray(t.notlar) ? t.notlar.slice(-2) : []
+      for (const n of notlar) {
+        const metin = String(n?.metin || n?.icerik || n?.text || '').trim()
+        const zaman = n?.olusturmaTarihi || n?.tarih || n?.createdAt
+        if (zaman) {
+          items.push({
+            id: `${t.id}-not-${zaman}`,
+            refId: t.talepNo,
+            tip: 'not',
+            aciklama: metin ? `yeni not: "${metin.slice(0, 50)}${metin.length > 50 ? '…' : ''}"` : 'yeni not eklendi',
+            zamanTs: new Date(zaman).getTime(),
+            talepId: t.id,
+          })
+        }
+      }
+      // Son durum geçmişi
+      const dg = Array.isArray(t.durumGecmisi) ? t.durumGecmisi.slice(-1) : []
+      for (const d of dg) {
+        const zaman = d?.tarih || d?.olusturmaTarihi || d?.createdAt
+        const yeniDurum = d?.yeniDurum || d?.durum
+        if (zaman) {
+          const durumIsmi = DURUM_ROZET[yeniDurum]?.label || yeniDurum || 'güncellendi'
+          items.push({
+            id: `${t.id}-durum-${zaman}`,
+            refId: t.talepNo,
+            tip: 'durum',
+            aciklama: `durum: ${durumIsmi}`,
+            zamanTs: new Date(zaman).getTime(),
+            talepId: t.id,
+          })
+        }
+      }
+      // Atama
+      if (t.atamaTarihi && t.temsilciAdi) {
+        items.push({
+          id: `${t.id}-atama`,
+          refId: t.talepNo,
+          tip: 'atama',
+          aciklama: `${t.temsilciAdi} atandı`,
+          zamanTs: new Date(t.atamaTarihi).getTime(),
+          talepId: t.id,
+        })
+      }
+    }
+    // Hiç bir zengin aktivite yoksa, son talepleri ekle
+    if (items.length === 0) {
+      for (const t of sonTalepler.slice(0, 4)) {
+        items.push({
+          id: `${t.id}-olusturuldu`,
+          refId: t.talepNo,
+          tip: 'durum',
+          aciklama: 'talep oluşturuldu',
+          zamanTs: new Date(t.olusturmaTarihi).getTime(),
+          talepId: t.id,
+        })
+      }
+    }
+    return items
+      .filter(a => !Number.isNaN(a.zamanTs))
+      .sort((a, b) => b.zamanTs - a.zamanTs)
+      .slice(0, 5)
+      .map(a => ({ ...a, zaman: tarihFormat(a.zamanTs) }))
+  }, [talepler.length])
 
   const kullaniciAd = kullanici?.ad || 'Değerli müşterimiz'
   const bugun = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
-
-  const kartBos = talepler.length === 0
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -453,48 +475,40 @@ export default function MusteriDashboard() {
           gap: 12,
         }}
       >
-        <StatKart
+        <KPIKarti
           sayi={acik.length}
           baslik="Bekleyen talepler"
           Icon={Clock}
-          bar={PORTAL_BLUE[200]}
-          iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[800] }}
-          trend={trendBekleyen}
-          sparkData={sparkBekleyen}
-          bos={kartBos}
+          borderColor="#185FA5"
+          chipBg="#E6F1FB"
+          chipFg="#0C447C"
           onClick={() => navigate('/musteri-portal/taleplerim?durum=bekliyor')}
         />
-        <StatKart
+        <KPIKarti
           sayi={devam.length}
           baslik="Devam eden"
-          Icon={Loader2}
-          bar={PORTAL_BLUE[400]}
-          iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[600] }}
-          trend={trendDevam}
-          sparkData={sparkDevam}
-          bos={kartBos}
+          Icon={PlayCircle}
+          borderColor="#BA7517"
+          chipBg="#FAEEDA"
+          chipFg="#854F0B"
           onClick={() => navigate('/musteri-portal/taleplerim?durum=devam')}
         />
-        <StatKart
+        <KPIKarti
           sayi={tamamlandi.length}
           baslik="Tamamlanan"
           Icon={CheckCircle2}
-          bar={PORTAL_BLUE[600]}
-          iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[600] }}
-          trend={trendTamamlandi}
-          sparkData={sparkTamamlandi}
-          bos={kartBos}
+          borderColor="#0F6E56"
+          chipBg="#E1F5EE"
+          chipFg="#085041"
           onClick={() => navigate('/musteri-portal/taleplerim?durum=tamamlandi')}
         />
-        <StatKart
+        <KPIKarti
           sayi={acil.length}
           baslik="Acil talepler"
           Icon={AlertTriangle}
-          bar={PORTAL_BLUE[900]}
-          iconTint={{ bg: PORTAL_BLUE[50], fg: PORTAL_BLUE[900] }}
-          trend={trendAcil}
-          sparkData={sparkAcil}
-          bos={kartBos}
+          borderColor="#A32D2D"
+          chipBg="#FCEBEB"
+          chipFg="#791F1F"
           onClick={() => navigate('/musteri-portal/taleplerim?aciliyet=acil')}
         />
       </section>
@@ -511,7 +525,7 @@ export default function MusteriDashboard() {
         {/* Sol kolon */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
-          {/* Grafik */}
+          {/* Hizmet Performansı */}
           <div
             style={{
               background: 'var(--surface-card)',
@@ -520,51 +534,74 @@ export default function MusteriDashboard() {
               padding: 16,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                  Talep hacmi — son {hacimAraligi} ay
-                </div>
-                <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  Aylık talep sayısı
+            <div style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Hizmet Performansı
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+              {/* Ort. çözüm süresi */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    background: '#E6F1FB', color: '#0C447C',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <Timer size={18} strokeWidth={1.8} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ font: '500 20px/24px var(--font-sans)', color: ortCozumSuresiGun == null ? 'var(--text-tertiary)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {ortCozumSuresiGun == null ? '—' : `${ortCozumSuresiGun.toFixed(1)} gün`}
+                  </div>
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    Ort. çözüm süresi
+                  </div>
                 </div>
               </div>
-              <div
-                role="tablist"
-                style={{
-                  display: 'inline-flex',
-                  background: 'var(--surface-sunken)',
-                  padding: 2,
-                  borderRadius: 'var(--radius-sm)',
-                }}
-              >
-                {[6, 12].map(n => {
-                  const aktif = hacimAraligi === n
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      role="tab"
-                      aria-selected={aktif}
-                      onClick={() => setHacimAraligi(n)}
-                      style={{
-                        padding: '4px 10px',
-                        border: 'none',
-                        borderRadius: 'var(--radius-sm)',
-                        background: aktif ? 'var(--surface-card)' : 'transparent',
-                        color: aktif ? PORTAL_BLUE[800] : 'var(--text-secondary)',
-                        boxShadow: aktif ? 'var(--shadow-sm)' : 'none',
-                        font: '500 11px/16px var(--font-sans)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {n}A
-                    </button>
-                  )
-                })}
+              {/* İlk çözüm oranı */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    background: '#E1F5EE', color: '#085041',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <Target size={18} strokeWidth={1.8} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ font: '500 20px/24px var(--font-sans)', color: ilkCozumOrani == null ? 'var(--text-tertiary)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {ilkCozumOrani == null ? '—' : `${ilkCozumOrani}%`}
+                  </div>
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    İlk çözüm oranı
+                  </div>
+                </div>
+              </div>
+              {/* Açık talep + en eski */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    background: '#FAEEDA', color: '#854F0B',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <FolderOpen size={18} strokeWidth={1.8} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ font: '500 20px/24px var(--font-sans)', color: aktifTalepler.length === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {aktifTalepler.length}
+                  </div>
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    Açık talebiniz{enEskiAcikGun != null && enEskiAcikGun > 0 ? ` · en eskisi ${enEskiAcikGun} gün` : ''}
+                  </div>
+                </div>
               </div>
             </div>
-            <BarChart data={hacim} />
           </div>
 
           {/* Son talepler */}
@@ -737,7 +774,7 @@ export default function MusteriDashboard() {
         {/* Sağ kolon */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
-          {/* Temsilci */}
+          {/* Temsilci / Bize ulaşın */}
           <div
             style={{
               background: 'var(--surface-card)',
@@ -747,7 +784,7 @@ export default function MusteriDashboard() {
             }}
           >
             <div style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Temsilciniz
+              {temsilci ? 'Temsilciniz' : 'Bize ulaşın'}
             </div>
             {temsilci ? (
               <>
@@ -824,42 +861,79 @@ export default function MusteriDashboard() {
                 </div>
               </>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'var(--surface-sunken)', color: 'var(--text-tertiary)',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <User size={18} strokeWidth={1.6} />
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>Henüz atanmadı</div>
-                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    En kısa sürede temsilciniz atanacaktır.
-                  </div>
-                </div>
-              </div>
+              <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li>
+                  <a
+                    href="tel:+902120000000"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '6px 0',
+                      textDecoration: 'none',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: '#E6F1FB', color: '#0C447C',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Phone size={15} strokeWidth={1.8} />
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>Destek hattı</div>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginTop: 1 }}>0212 xxx xx xx</div>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="mailto:destek@znateknoloji.com"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '6px 0',
+                      textDecoration: 'none',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: '#E1F5EE', color: '#085041',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Mail size={15} strokeWidth={1.8} />
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>E-posta</div>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>destek@znateknoloji.com</div>
+                    </div>
+                  </a>
+                </li>
+              </ul>
             )}
           </div>
 
-          {/* Duyurular */}
-          <div
-            style={{
-              background: 'var(--surface-card)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              padding: 16,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                <Bell size={13} strokeWidth={1.8} /> Duyurular
-              </div>
-              {duyuruListe.length > 0 && (
+          {/* Duyurular — sadece varsa göster */}
+          {duyuruListe.length > 0 && (
+            <div
+              style={{
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                padding: 16,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  <Bell size={13} strokeWidth={1.8} /> Duyurular
+                </div>
                 <span
                   style={{
                     padding: '2px 8px',
@@ -871,13 +945,7 @@ export default function MusteriDashboard() {
                 >
                   {duyuruListe.length} aktif
                 </span>
-              )}
-            </div>
-            {duyuruListe.length === 0 ? (
-              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-                Aktif duyuru yok.
               </div>
-            ) : (
               <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {duyuruListe.map(d => (
                   <li key={d.id} style={{ display: 'flex', gap: 10 }}>
@@ -897,8 +965,8 @@ export default function MusteriDashboard() {
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Aktiviteler */}
           <div
@@ -917,26 +985,38 @@ export default function MusteriDashboard() {
                 Henüz aktivite yok.
               </div>
             ) : (
-              <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {aktiviteler.map(a => (
-                  <li key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: PORTAL_BLUE[600],
-                        marginTop: 7, flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                        <span style={{ color: PORTAL_BLUE[600], fontFamily: 'var(--font-mono)', fontWeight: 500 }}>{a.refId}</span>
-                        {' '}· {a.aciklama}
+              <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {aktiviteler.map(a => {
+                  const IkonMap = {
+                    not:    { Icon: MessageCircle, bg: '#FAEEDA', fg: '#854F0B' },
+                    durum:  { Icon: RefreshCcw,    bg: '#E1F5EE', fg: '#085041' },
+                    atama:  { Icon: UserCheck,     bg: '#E6F1FB', fg: '#0C447C' },
+                  }
+                  const tip = IkonMap[a.tip] || IkonMap.durum
+                  const IkonComp = tip.Icon
+                  return (
+                    <li key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 24, height: 24, borderRadius: '50%',
+                          background: tip.bg, color: tip.fg,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, marginTop: 1,
+                        }}
+                      >
+                        <IkonComp size={12} strokeWidth={1.8} />
+                      </span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                          <span style={{ color: PORTAL_BLUE[600], fontFamily: 'var(--font-mono)', fontWeight: 500, cursor: 'pointer' }} onClick={() => navigate(`/musteri-portal/talep/${a.talepId}`)}>{a.refId}</span>
+                          {' '}— {a.aciklama}
+                        </div>
+                        <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 1 }}>{a.zaman}</div>
                       </div>
-                      <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 1 }}>{a.zaman}</div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
