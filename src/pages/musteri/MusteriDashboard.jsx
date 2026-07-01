@@ -182,8 +182,8 @@ function BarChart({ data }) {
   const tonlar = [PORTAL_BLUE[100], PORTAL_BLUE[200], PORTAL_BLUE[200], PORTAL_BLUE[400], PORTAL_BLUE[400], PORTAL_BLUE[600], PORTAL_BLUE[600], PORTAL_BLUE[600], PORTAL_BLUE[800], PORTAL_BLUE[800], PORTAL_BLUE[900], PORTAL_BLUE[900]]
   const grids = [0.25, 0.5, 0.75, 1]
   return (
-    <div style={{ position: 'relative', height: h + 24 }}>
-      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+    <div style={{ position: 'relative', height: h + 24, overflow: 'hidden' }}>
+      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" style={{ overflow: 'hidden', display: 'block' }}>
         {grids.map((g, i) => (
           <line
             key={i}
