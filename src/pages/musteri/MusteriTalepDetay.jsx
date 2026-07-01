@@ -639,36 +639,6 @@ export default function MusteriTalepDetay() {
                     <Pencil size={13} strokeWidth={1.5} /> Düzenle
                   </button>
                 )}
-                {talep.telefon && (
-                  <a
-                    href={`tel:${talep.telefon}`}
-                    style={{
-                      padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
-                      background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', textDecoration: 'none',
-                      font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                  >
-                    <Send size={13} strokeWidth={1.5} /> Ara
-                  </a>
-                )}
-                {talep.email && (
-                  <a
-                    href={`mailto:${talep.email}`}
-                    style={{
-                      padding: '8px', display: 'inline-flex', alignItems: 'center', gap: 6,
-                      background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', textDecoration: 'none',
-                      font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                  >
-                    <Send size={13} strokeWidth={1.5} /> E-posta
-                  </a>
-                )}
               </div>
             </Card>
           )}
