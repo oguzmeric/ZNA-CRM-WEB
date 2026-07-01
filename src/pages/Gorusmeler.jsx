@@ -125,6 +125,28 @@ function Gorusmeler() {
 
   const firmaKisileri = secilenFirma ? musteriler.filter(m => m.firma === secilenFirma) : []
 
+  // Konu önerileri: varsayılan + geçmişte kullanılan tüm konular (deduped)
+  const konuOnerileri = useMemo(() => {
+    const gecmis = [...new Set((gorusmeler || []).map(g => g.konu).filter(Boolean))]
+    const varsay = new Set(varsayilanKonular)
+    const eklenen = gecmis.filter(k => !varsay.has(k))
+    return [...varsayilanKonular, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
+  }, [gorusmeler])
+
+  // Muhatap önerileri: seçili firmanın kişileri + o firmada geçmişte yazılmış muhatap adları
+  const muhatapOnerileri = useMemo(() => {
+    const kisiler = firmaKisileri.map(m => `${m.ad} ${m.soyad}`.trim()).filter(Boolean)
+    const gecmis = secilenFirma
+      ? [...new Set((gorusmeler || [])
+          .filter(g => g.firmaAdi === secilenFirma)
+          .map(g => g.muhatapAd)
+          .filter(Boolean))]
+      : []
+    const set = new Set(kisiler)
+    const eklenen = gecmis.filter(m => !set.has(m))
+    return [...kisiler, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
+  }, [firmaKisileri, gorusmeler, secilenFirma])
+
   // Seçili firmanın lokasyonları — firma adıyla eşleşen tüm musteri kayıtlarının lokasyonları (deduped)
   const firmaLokasyonlari = (() => {
     if (!secilenFirma) return []
@@ -462,9 +484,7 @@ function Gorusmeler() {
                 placeholder={secilenFirma ? 'Kişi seç veya adı yaz…' : 'İsim yaz…'}
               />
               <datalist id="gorusme-muhatap-oneriler">
-                {firmaKisileri.map(m => (
-                  <option key={m.id} value={`${m.ad} ${m.soyad}`}>{m.unvan || ''}</option>
-                ))}
+                {muhatapOnerileri.map(ad => <option key={ad} value={ad} />)}
               </datalist>
             </div>
             {secilenFirma && firmaKisileri.length > 0 && (
@@ -527,7 +547,7 @@ function Gorusmeler() {
                 placeholder="Konu seç veya kendin yaz…"
               />
               <datalist id="gorusme-konu-oneriler">
-                {varsayilanKonular.map(k => <option key={k} value={k} />)}
+                {konuOnerileri.map(k => <option key={k} value={k} />)}
               </datalist>
             </div>
             <div>
