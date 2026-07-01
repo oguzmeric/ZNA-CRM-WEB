@@ -369,7 +369,7 @@ function TrassirLisanslar() {
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
-              <Label>Proje</Label>
+              <Label>Proje Adı</Label>
               <Input
                 value={form.proje}
                 onChange={e => setForm({ ...form, proje: e.target.value })}
