@@ -118,6 +118,9 @@ export async function tazelikSyncTetikle(kullaniciId, threshDk = 5) {
 // baglantiId: hangi Google hesabına yazılacak (kullanici_takvim_baglantilari.id)
 // payload: { baslik, aciklama, lokasyon, baslangic (ISO), bitis (ISO), davetliler ([email,...]), meetOlustur (bool) }
 export async function etkinlikOlustur(baglantiId, payload) {
+  if (!baglantiId) {
+    throw new Error('Google Calendar bağlantısı seçilmedi. "Takvim Bağlantıları" sayfasından bağlantı ekleyin.')
+  }
   const { data, error } = await supabase.functions.invoke('google-takvim-etkinlik-olustur', {
     body: { baglantiId, ...payload },
   })
@@ -126,6 +129,10 @@ export async function etkinlikOlustur(baglantiId, payload) {
   if (error) {
     let mesaj = error.message ?? 'Etkinlik oluşturulamadı'
     let scopeYok = false
+    // "Failed to send a request to the Edge Function" — istemci ulaşamıyor
+    if (/failed to send.*edge function/i.test(mesaj)) {
+      mesaj = 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin, sayfayı yenileyin (Ctrl+Shift+R) veya oturumunuzu kapatıp tekrar açın. Sorun devam ederse ad-blocker/uzantıları kapatıp deneyin.'
+    }
     try {
       const ctx = error.context
       if (ctx && typeof ctx.text === 'function') {
@@ -146,6 +153,7 @@ export async function etkinlikOlustur(baglantiId, payload) {
     } catch (e) {
       console.warn('[etkinlikOlustur error parse]', e)
     }
+    console.error('[etkinlikOlustur] hata:', error, 'mesaj:', mesaj)
     const err = new Error(mesaj)
     err.scopeYok = scopeYok
     throw err
