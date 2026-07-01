@@ -31,6 +31,7 @@ export default function MentionTextarea({
   const [arama, setArama] = useState('')
   const [tetikIdx, setTetikIdx] = useState(-1) // @'in başladığı index
   const [vurguIdx, setVurguIdx] = useState(0)
+  const [yukariAc, setYukariAc] = useState(false)
 
   const filtreli = useMemo(() => {
     if (!pickerAcik) return []
@@ -56,6 +57,13 @@ export default function MentionTextarea({
           if (/^[\p{L}\p{N}_]*$/u.test(aranan)) {
             setTetikIdx(i)
             setArama(aranan)
+            // Dropdown yer varsa altta, yoksa üstte açılsın
+            const ta = taRef.current
+            if (ta) {
+              const r = ta.getBoundingClientRect()
+              const altBosluk = window.innerHeight - r.bottom
+              setYukariAc(altBosluk < 260 && r.top > 260)
+            }
             setPickerAcik(true)
             setVurguIdx(0)
             return
@@ -128,13 +136,13 @@ export default function MentionTextarea({
           position: 'absolute',
           left: 0,
           right: 0,
-          top: 'calc(100% + 4px)',
+          ...(yukariAc ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
           maxHeight: 220,
           overflowY: 'auto',
           background: 'var(--surface-card, #fff)',
           border: '1px solid var(--border-default, #e2e8f0)',
           borderRadius: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          boxShadow: yukariAc ? '0 -8px 24px rgba(0,0,0,0.12)' : '0 8px 24px rgba(0,0,0,0.12)',
           zIndex: 100,
         }}>
           <div style={{ padding: '6px 12px', font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-default)' }}>

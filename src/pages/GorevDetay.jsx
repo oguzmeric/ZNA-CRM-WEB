@@ -451,7 +451,13 @@ function GorevDetay() {
                 </div>
                 {duzenlemede ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                    <Textarea value={duzenleIcerik} onChange={e => setDuzenleIcerik(e.target.value)} rows={3} />
+                    <MentionTextarea
+                      value={duzenleIcerik}
+                      onChange={setDuzenleIcerik}
+                      kullanicilar={kullanicilar || []}
+                      rows={3}
+                      placeholder="Yorumu düzenle… (@ ile etiketle)"
+                    />
                     <div style={{ display: 'flex', gap: 8 }}>
                       <Button variant="primary" size="sm" onClick={yorumGuncelle}>Kaydet</Button>
                       <Button variant="secondary" size="sm" onClick={duzenlemeIptal}>İptal</Button>
