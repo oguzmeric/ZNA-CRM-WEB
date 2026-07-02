@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
-  CheckCircle2, Receipt, Inbox, Send, StickyNote, Save,
+  CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save,
 } from 'lucide-react'
 import BelgePaylasModal from '../components/BelgePaylasModal'
-import { siparisOnayNotuKaydet } from '../services/siparisOnayService'
+import { siparisOnayNotuKaydet, siparisOnayGeriAl } from '../services/siparisOnayService'
 import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -603,6 +603,17 @@ function TeklifDetay() {
           teklifId={Number(id)}
           mevcut={form.siparisOnayi?.onay_notu || ''}
           onKaydedildi={(yeni) => setForm(f => ({ ...f, siparisOnayi: yeni }))}
+        />
+      )}
+
+      {/* Sipariş Onay Durum — onaylandı/reddedildi ise durumu ve 'Geri Al' butonu göster.
+          Geri alma yetkisi: onaylayan kişinin kendisi VEYA üst yetkili. */}
+      {!yeni && (form?.siparisOnayi?.durum === 'onayli' || form?.siparisOnayi?.durum === 'reddedildi') && (
+        <SiparisOnayDurumKart
+          teklifId={Number(id)}
+          siparisOnayi={form.siparisOnayi}
+          kullanici={kullanici}
+          onGeriAlindi={(yeni) => setForm(f => ({ ...f, siparisOnayi: yeni }))}
         />
       )}
 
@@ -1462,6 +1473,79 @@ function SiparisOnayNotuKart({ teklifId, mevcut, onKaydedildi }) {
           >
             {kaydediliyor ? 'Kaydediliyor…' : 'Notu Kaydet'}
           </Button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// Siparis Onay Durum — 'onayli' veya 'reddedildi' durumda mevcut durumu gosterir
+// + yetkili ise 'Geri Al' butonu sunar. Yetki: onaylayan kisi veya ust yetkili.
+function SiparisOnayDurumKart({ teklifId, siparisOnayi, kullanici, onGeriAlindi }) {
+  const [calisiyor, setCalisiyor] = useState(false)
+  const [mesaj, setMesaj] = useState(null)
+  const s = siparisOnayi || {}
+  const onaylandiMi = s.durum === 'onayli'
+  const ustYetkili = kullanici?.siparisOnayUstYetkili === true || kullanici?.siparis_onay_ust_yetkili === true
+  const kararKimin = String(s.onaylayan_id) === String(kullanici?.id)
+  const geriAlYetkili = ustYetkili || kararKimin
+
+  const geriAl = async () => {
+    const eminMi = window.confirm(
+      onaylandiMi
+        ? 'Onay geri alınacak. Sipariş tekrar "bekleyen" olacak. Devam?'
+        : 'Red kararı geri alınacak. Sipariş tekrar "bekleyen" olacak. Devam?'
+    )
+    if (!eminMi) return
+    setMesaj(null); setCalisiyor(true)
+    try {
+      const yeni = await siparisOnayGeriAl(teklifId)
+      onGeriAlindi?.(yeni)
+      setMesaj({ tone: 'success', text: 'Karar geri alındı, sipariş tekrar bekleyene çevrildi.' })
+      setTimeout(() => setMesaj(null), 3000)
+    } catch (e) {
+      setMesaj({ tone: 'danger', text: e?.message || 'Geri alınamadı.' })
+    } finally {
+      setCalisiyor(false)
+    }
+  }
+
+  return (
+    <Card style={{
+      marginBottom: 16,
+      borderLeft: `3px solid ${onaylandiMi ? '#10B981' : '#DC2626'}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onaylandiMi
+            ? <CheckCircle2 size={18} strokeWidth={1.5} style={{ color: '#10B981' }} />
+            : <XCircle size={18} strokeWidth={1.5} style={{ color: '#DC2626' }} />}
+          <div>
+            <div style={{ font: '700 14px/18px var(--font-sans)', color: onaylandiMi ? '#065F46' : '#991B1B' }}>
+              {onaylandiMi ? 'Sipariş Onaylandı' : 'Sipariş Reddedildi'}
+            </div>
+            <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>
+              {s.onaylayan_ad || '—'}
+              {s.onay_tarihi && ' · ' + new Date(s.onay_tarihi).toLocaleDateString('tr-TR')}
+              {s.red_nedeni && <> · <strong>Red nedeni:</strong> {s.red_nedeni}</>}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {mesaj && (
+            <span style={{ font: '500 12px/16px var(--font-sans)', color: mesaj.tone === 'success' ? 'var(--success)' : 'var(--danger)' }}>
+              {mesaj.text}
+            </span>
+          )}
+          {geriAlYetkili ? (
+            <Button variant="secondary" size="sm" onClick={geriAl} disabled={calisiyor}>
+              {calisiyor ? 'İşleniyor…' : (onaylandiMi ? 'Onayı Geri Al' : 'Reddi Geri Al')}
+            </Button>
+          ) : (
+            <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              Geri alma yetkisi yok
+            </span>
+          )}
         </div>
       </div>
     </Card>
