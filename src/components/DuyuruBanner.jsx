@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Megaphone, Info, AlertTriangle, CheckCircle2, X } from 'lucide-react'
+import { Megaphone, X } from 'lucide-react'
 import { aktifDuyurulariGetir } from '../services/duyuruService'
 
-const SEVIYE = {
-  info:    { renk: '#2563EB', bg: 'rgba(37,99,235,0.08)',  Icon: Info },
-  warning: { renk: '#B45309', bg: 'rgba(180,83,9,0.10)',   Icon: AlertTriangle },
-  success: { renk: '#047857', bg: 'rgba(4,120,87,0.08)',   Icon: CheckCircle2 },
+const SEVIYE_RENK = {
+  info:    '#2563EB',
+  warning: '#B45309',
+  success: '#047857',
 }
 
 const OKUNAN_KEY = (uid) => `duyuru_okunanlar_${uid || 'anon'}`
 
-// Personel Dashboard'unun üstünde aktif duyuruları gösterir.
-// Dismiss edilen id'ler localStorage'da tutulur; kullanıcı bir daha görmez.
+// Aktif duyurular tek satırlık marquee — soldan sağa akar. Hover'da durur.
+// Kullanıcı X ile listeyi tümüyle gizler; localStorage'da tutulur.
 export default function DuyuruBanner({ kullaniciId }) {
   const [duyurular, setDuyurular] = useState([])
   const [okunanlar, setOkunanlar] = useState(() => {
@@ -35,53 +35,75 @@ export default function DuyuruBanner({ kullaniciId }) {
   if (gorunecek.length === 0) return null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-      {gorunecek.map(d => {
-        const s = SEVIYE[d.seviye] || SEVIYE.info
-        const IconC = s.Icon
-        return (
+    <>
+      <style>{`
+        @keyframes duyuruAk {
+          from { transform: translateX(-100%); }
+          to   { transform: translateX(100%); }
+        }
+        .duyuru-bant:hover .duyuru-akis { animation-play-state: paused; }
+      `}</style>
+      <div
+        className="duyuru-bant"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '8px 12px', marginBottom: 14,
+          background: 'var(--surface-sunken)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          color: 'var(--brand-primary)',
+          flexShrink: 0,
+          font: '600 12px/16px var(--font-sans)',
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+        }}>
+          <Megaphone size={14} strokeWidth={1.75} />
+          Duyuru
+        </div>
+
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', height: 20 }}>
           <div
-            key={d.id}
+            className="duyuru-akis"
             style={{
-              display: 'flex', alignItems: 'flex-start', gap: 12,
-              padding: '10px 14px',
-              background: s.bg,
-              border: `1px solid ${s.renk}33`,
-              borderLeft: `3px solid ${s.renk}`,
-              borderRadius: 8,
+              position: 'absolute', whiteSpace: 'nowrap',
+              animation: 'duyuruAk 30s linear infinite',
+              font: '500 13px/20px var(--font-sans)',
             }}
           >
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: s.renk, flexShrink: 0, marginTop: 2 }}>
-              <Megaphone size={14} strokeWidth={1.75} />
-              <IconC size={14} strokeWidth={1.75} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 2 }}>
-                {d.baslik}
-              </div>
-              {d.icerik && (
-                <div style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                  {d.icerik}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => okundu(d.id)}
-              title="Bu duyuruyu gizle"
-              style={{
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                color: 'var(--text-tertiary)', padding: 4,
-                display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-                borderRadius: 4,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-            >
-              <X size={14} strokeWidth={1.75} />
-            </button>
+            {gorunecek.map((d, i) => {
+              const renk = SEVIYE_RENK[d.seviye] || SEVIYE_RENK.info
+              return (
+                <span key={d.id}>
+                  <span style={{ color: renk, fontWeight: 700 }}>■ </span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{d.baslik}</span>
+                  {d.icerik && <span style={{ color: 'var(--text-secondary)' }}>{' — ' + d.icerik}</span>}
+                  {i < gorunecek.length - 1 && <span style={{ color: 'var(--text-tertiary)' }}>{'  •  '}</span>}
+                </span>
+              )
+            })}
           </div>
-        )
-      })}
-    </div>
+        </div>
+
+        <button
+          onClick={() => gorunecek.forEach(d => okundu(d.id))}
+          title="Duyuruları gizle"
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: 'var(--text-tertiary)', padding: 4,
+            display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+            borderRadius: 4,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+        >
+          <X size={14} strokeWidth={1.75} />
+        </button>
+      </div>
+    </>
   )
 }
