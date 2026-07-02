@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { servisRaporlariniGetir } from '../services/servisRaporService'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from './Skeleton'
 
 const tarihFmt = (s) => {
   if (!s) return '—'
@@ -79,12 +80,7 @@ export default function ServisRaporlariContent() {
   const gorunen = filtreli.slice(0, gosterilecek)
 
   if (yukleniyor) {
-    return (
-      <div className="text-center text-gray-400 py-20">
-        <div className="text-4xl mb-2 animate-pulse">📊</div>
-        <p className="text-sm">Servis raporları yükleniyor...</p>
-      </div>
-    )
+    return <SkeletonList satirSayisi={8} />
   }
 
   if (secili) {

@@ -6,6 +6,7 @@ import {
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
 } from '../components/ui'
+import { SkeletonList } from '../components/Skeleton'
 import { servisRaporlariSayfa, servisRaporFiltreSecenekleri } from '../services/servisRaporService'
 import ServisFormu from './servisCikti/ServisFormu'
 
@@ -315,15 +316,7 @@ export default function ServisRaporlari() {
   }
 
   if (yukleniyor) {
-    return (
-      <div style={{ padding: 24 }}>
-        <EmptyState
-          icon={<Wrench size={32} strokeWidth={1.5} />}
-          title="Servis raporları yükleniyor"
-          description="11.000+ kayıt aktarılıyor, lütfen bekleyin…"
-        />
-      </div>
-    )
+    return <SkeletonList satirSayisi={10} />
   }
 
   if (hata) {
