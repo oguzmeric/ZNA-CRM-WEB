@@ -194,7 +194,9 @@ function MusteriDetay() {
   const duzenleBaslat = () => {
     setDuzenleForm({
       firma: musteri.firma || '', kod: musteri.kod || '', sehir: musteri.sehir || '',
-      vergiNo: musteri.vergiNo || '', telefon: musteri.telefon || '', email: musteri.email || '',
+      vergiNo: musteri.vergiNo || '', vergiDairesi: musteri.vergiDairesi || '',
+      adres: musteri.adres || '',
+      telefon: musteri.telefon || '', email: musteri.email || '',
       durum: musteri.durum || 'aktif', notlar: musteri.notlar || '',
       temsilciKullaniciId: musteri.temsilciKullaniciId ?? null,
       ad: musteri.ad || '', soyad: musteri.soyad || '', unvan: musteri.unvan || '',
@@ -363,6 +365,14 @@ function MusteriDetay() {
               <div>
                 <Label>Vergi no</Label>
                 <Input value={duzenleForm.vergiNo} onChange={e => setDuzenleForm(p => ({ ...p, vergiNo: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Vergi dairesi</Label>
+                <Input value={duzenleForm.vergiDairesi} onChange={e => setDuzenleForm(p => ({ ...p, vergiDairesi: e.target.value }))} placeholder="Kadıköy Vergi Dairesi" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Açık adres</Label>
+                <Textarea value={duzenleForm.adres} onChange={e => setDuzenleForm(p => ({ ...p, adres: e.target.value }))} rows={2} placeholder="Mahalle, sokak, bina, kapı no…" />
               </div>
               <div style={{ gridColumn: 'span 2', marginTop: 4 }}>
                 <p className="t-label" style={{ marginBottom: 8 }}>YETKİLİ BİLGİLERİ</p>
