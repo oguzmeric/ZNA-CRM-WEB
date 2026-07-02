@@ -98,78 +98,93 @@ export default function ServisTalepleri() {
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="t-h1">{kaynakFiltre === 'musteri' ? 'Müşteri Talepleri' : 'Servis Talepleri'}</h1>
-          <p className="t-caption" style={{ marginTop: 4 }}>
-            {kaynakFiltre === 'musteri'
-              ? 'Müşteri portalından gelen talepler'
-              : kaynakFiltre === 'personel'
-                ? 'Personel tarafından oluşturulan talepler'
-                : 'Müşteri talep ve servis portalı'}
-          </p>
+      {/* Header — kompakt tek satır */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <h1 className="t-h2" style={{ margin: 0 }}>{kaynakFiltre === 'musteri' ? 'Müşteri Talepleri' : 'Servis Talepleri'}</h1>
+          <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            <span className="tabular-nums">{filtrelenmis.length}</span> gösteriliyor
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <Button
-          variant="primary"
-          iconLeft={<Plus size={14} strokeWidth={1.5} />}
-          onClick={() => navigate('/servis-talepleri/yeni')}
-        >
-          Yeni Talep
-        </Button>
-        <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
-          <button
-            onClick={() => setGorunum('liste')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px',
-              borderRadius: 'calc(var(--radius-sm) - 2px)',
-              background: gorunum === 'liste' ? 'var(--surface-card)' : 'transparent',
-              boxShadow: gorunum === 'liste' ? 'var(--shadow-sm)' : 'none',
-              color: gorunum === 'liste' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none', cursor: 'pointer',
-              font: '500 13px/18px var(--font-sans)',
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            iconLeft={<Plus size={13} strokeWidth={1.5} />}
+            onClick={() => navigate('/servis-talepleri/yeni')}
           >
-            <List size={14} strokeWidth={1.5} /> Liste
-          </button>
-          <button
-            onClick={() => setGorunum('pano')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px',
-              borderRadius: 'calc(var(--radius-sm) - 2px)',
-              background: gorunum === 'pano' ? 'var(--surface-card)' : 'transparent',
-              boxShadow: gorunum === 'pano' ? 'var(--shadow-sm)' : 'none',
-              color: gorunum === 'pano' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none', cursor: 'pointer',
-              font: '500 13px/18px var(--font-sans)',
-            }}
-          >
-            <LayoutGrid size={14} strokeWidth={1.5} /> Pano
-          </button>
-        </div>
+            Yeni Talep
+          </Button>
+          <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+            <button
+              onClick={() => setGorunum('liste')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px',
+                borderRadius: 'calc(var(--radius-sm) - 2px)',
+                background: gorunum === 'liste' ? 'var(--surface-card)' : 'transparent',
+                boxShadow: gorunum === 'liste' ? 'var(--shadow-sm)' : 'none',
+                color: gorunum === 'liste' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer',
+                font: '500 12px/16px var(--font-sans)',
+              }}
+            >
+              <List size={12} strokeWidth={1.5} /> Liste
+            </button>
+            <button
+              onClick={() => setGorunum('pano')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px',
+                borderRadius: 'calc(var(--radius-sm) - 2px)',
+                background: gorunum === 'pano' ? 'var(--surface-card)' : 'transparent',
+                boxShadow: gorunum === 'pano' ? 'var(--shadow-sm)' : 'none',
+                color: gorunum === 'pano' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer',
+                font: '500 12px/16px var(--font-sans)',
+              }}
+            >
+              <LayoutGrid size={12} strokeWidth={1.5} /> Pano
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* İstatistik kartları */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPICard label="TOPLAM"      value={ist.toplam} />
-        <KPICard label="BEKLİYOR"    value={ist.bekliyor}    footer={<span style={{ color: 'var(--text-tertiary)' }}>İşleme alınmadı</span>} />
-        <KPICard label="DEVAM EDEN"  value={ist.devam}       footer={<span style={{ color: 'var(--warning)' }}>İşlemde</span>} />
-        <KPICard label="TAMAMLANDI"  value={ist.tamamlandi}  footer={<span style={{ color: 'var(--success)' }}>Kapalı</span>} />
-        <KPICard label="ACİL"        value={ist.acil}        footer={ist.acil > 0 ? <><AlertTriangle size={12} strokeWidth={1.5} style={{ color: 'var(--danger)' }} /><span style={{ color: 'var(--danger)' }}>Müdahale bekliyor</span></> : <span style={{ color: 'var(--text-tertiary)' }}>Yok</span>} />
+      {/* KPI — kompakt yatay şerit */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 4,
+        padding: '6px 10px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: 10,
+        alignItems: 'stretch',
+      }}>
+        {[
+          { l: 'Toplam',      v: ist.toplam,      ton: 'var(--text-primary)' },
+          { l: 'Bekliyor',    v: ist.bekliyor,    ton: 'var(--text-secondary)' },
+          { l: 'Devam eden',  v: ist.devam,       ton: 'var(--warning)' },
+          { l: 'Tamamlandı',  v: ist.tamamlandi,  ton: 'var(--success)' },
+          { l: 'Acil',        v: ist.acil,        ton: ist.acil > 0 ? 'var(--danger)' : 'var(--text-tertiary)' },
+        ].map((k, i, arr) => [
+          <div key={k.l} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
+            <span style={{ font: '700 14px/18px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
+          </div>,
+          i < arr.length - 1 && (
+            <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
+          ),
+        ])}
       </div>
 
-      {/* Filtreler */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+      {/* Filtreler — kompakt tek şerit */}
+      <Card style={{ marginBottom: 10, padding: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6 }}>
           <div style={{ gridColumn: 'span 2' }}>
             <SearchInput
               value={aramaMetni}
               onChange={e => setAramaMetni(e.target.value)}
-              placeholder="Talep no, konu, müşteri veya firma ara…"
+              placeholder="Talep no, konu, müşteri, firma…"
             />
           </div>
           <CustomSelect value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)}>
@@ -184,19 +199,13 @@ export default function ServisTalepleri() {
             <option value="tumu">Tüm Aciliyet</option>
             {ACILIYET_SEVIYELERI.map(a => <option key={a.id} value={a.id}>{a.isim}</option>)}
           </CustomSelect>
-        </div>
-        {filtreAktif && (
-          <div style={{ marginTop: 10 }}>
-            <Button variant="tertiary" size="sm" iconLeft={<X size={14} strokeWidth={1.5} />} onClick={temizle}>
+          {filtreAktif && (
+            <Button variant="tertiary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />} onClick={temizle}>
               Filtreleri temizle
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
-
-      <p className="t-caption" style={{ marginBottom: 12 }}>
-        <span className="tabular-nums">{filtrelenmis.length}</span> talep gösteriliyor
-      </p>
 
       {/* Liste */}
       {gorunum === 'liste' && (
