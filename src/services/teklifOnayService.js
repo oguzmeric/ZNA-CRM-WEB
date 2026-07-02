@@ -5,13 +5,13 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
 
-// Bekleyen teklif onayları (durum='bekliyor')
+// Bekleyen teklif onayları (durum='bekliyor'). En yeni önce (id DESC).
 export async function bekleyenTeklifOnaylariniGetir() {
   const { data, error } = await supabase
     .from('teklifler')
     .select('*')
     .eq('teklif_onayi->>durum', 'bekliyor')
-    .order('teklif_onayi->>gonderme_tarih', { ascending: true })
+    .order('id', { ascending: false })
   if (error) { console.error('[bekleyenTeklifOnaylari]', error.message); return [] }
   return arrayToCamel(data)
 }

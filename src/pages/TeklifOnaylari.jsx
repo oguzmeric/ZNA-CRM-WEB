@@ -14,7 +14,14 @@ import {
   bekleyenTeklifOnaylariniGetir, onaylananTeklifOnaylariniGetir, reddedilenTeklifOnaylariniGetir,
   teklifOnayla, teklifReddet, teklifOnayGeriAl,
 } from '../services/teklifOnayService'
-import TeklifKalemTablosu from '../components/TeklifKalemTablosu'
+import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
+
+// Teklif genel toplamını al: DB'deki value 0/null ise satırlardan hesapla
+function gerçekToplam(t) {
+  const db = Number(t?.genelToplam || 0)
+  if (db > 0) return db
+  return toplamHesapla(t?.satirlar).genelToplam
+}
 
 const fmtPara = (tutar, pb = 'TL') => {
   const n = Number(tutar || 0)
@@ -145,7 +152,7 @@ export default function TeklifOnaylari() {
                       <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                         {sekme === 'bekleyen' ? `Gönderen: ${to.gonderen_ad || '—'}` : fmtTarih(t.tarih)}
                       </span>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</strong>
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(gerçekToplam(t), t.paraBirimi)}</strong>
                     </div>
                     {sekme === 'onayli' && to.onaylayan_ad && (
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
@@ -248,7 +255,7 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
         <BilgiKart Icon={Calendar} etiket="Teklif Tarihi" deger={fmtTarih(t.tarih)} />
         <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.hazirlayan || t.musteriTemsilcisi || '—'} />
-        <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(t.genelToplam, t.paraBirimi)} vurgu />
+        <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(gerçekToplam(t), t.paraBirimi)} vurgu />
         <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odemeSekli || t.odemeSecenegi || '—'} />
         {(t.gecerlilikTarihi || t.teslimTarihi) && (
           <BilgiKart Icon={Calendar} etiket={t.teslimTarihi ? 'Teslim' : 'Geçerlilik'} deger={fmtTarih(t.teslimTarihi || t.gecerlilikTarihi)} />

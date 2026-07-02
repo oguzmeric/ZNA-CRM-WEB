@@ -3,6 +3,20 @@
 
 const paraSembol = (pb) => pb === 'TL' ? '₺' : pb === 'USD' ? '$' : pb === 'EUR' ? '€' : (pb || '')
 
+// Bir teklifin kalemlerinden ara toplam + KDV + genel toplamı hesapla
+export function toplamHesapla(satirlar) {
+  const rows = Array.isArray(satirlar) ? satirlar : []
+  const ara = rows.reduce((s, k) => {
+    const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskonto || 0)
+    return s + m * f * (1 - i / 100)
+  }, 0)
+  const kdv = rows.reduce((s, k) => {
+    const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskonto || 0)
+    return s + m * f * (1 - i / 100) * (Number(k.kdv || 0) / 100)
+  }, 0)
+  return { araToplam: ara, kdvToplam: kdv, genelToplam: ara + kdv }
+}
+
 const fmtTutar = (v, pb) => {
   const n = Number(v || 0)
   return `${paraSembol(pb)} ${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
