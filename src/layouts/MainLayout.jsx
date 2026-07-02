@@ -296,14 +296,23 @@ function MainLayout({ children }) {
     navigate('/login', { replace: true })
   }
 
-  // Admin tüm modülleri görür (moduller listesi ne olursa olsun)
-  const gorunenMenuRaw = menuItems.filter(
-    (m) => m.modul === null
+  // 'Yönetim' grubu (Raporlar, Kullanıcılar, Duyurular, Performans, SLA Ayarları)
+  // sadece Ali ve Oğuz'a açık — admin rolü olsa bile başka biri göremez.
+  // İsim eşleşmesi TR karakter ve büyük/küçük harf duyarsız.
+  const yonetimErisimi = (() => {
+    const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
+    return /\b(oğuz|oguz|ali)\b/i.test(ad)
+  })()
+
+  // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
+  const gorunenMenuRaw = menuItems.filter((m) => {
+    if (m.grup === 'yonetim') return yonetimErisimi
+    return m.modul === null
       || kullanici?.rol === 'admin'
       || (m.modul === '_siparis_onay_yetkilisi' && kullanici?.siparisOnayYetkilisi)
       || (m.modul === '_onay_yetkisi' && (kullanici?.siparisOnayYetkilisi || kullanici?.teklifOnayYetkilisi))
       || kullanici?.moduller?.includes(m.modul)
-  )
+  })
 
   // Kullanıcı bazlı menü sıralaması (drag-drop ile yeniden sıralanabilir)
   const { siralanmis: gorunenMenu, yenidenSirala, ozellestirildiMi, sifirla: menuSifirla } =
