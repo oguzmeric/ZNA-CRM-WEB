@@ -441,7 +441,7 @@ export default function Teklifler() {
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                              <div style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                                 {ilgiliFatura ? (
                                   <button
                                     onClick={() => navigate(`/satislar/${ilgiliFatura.id}`)}
@@ -458,9 +458,8 @@ export default function Teklifler() {
                                     Fatura oluştur
                                   </Button>
                                 ) : (
-                                  <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                                  <Badge tone={onay.tone}>{onay.isim}</Badge>
                                 )}
-                                <Badge tone={onay.tone}>{onay.isim}</Badge>
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
@@ -476,18 +475,21 @@ export default function Teklifler() {
                                 {t.hazirlayan || '—'}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                              {fmtPara(t.genelToplam, t.paraBirimi)}
-                              {t.paraBirimi && t.paraBirimi !== 'TL' && (
+                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 140 }}>
+                                <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                                  {fmtPara(t.genelToplam, t.paraBirimi)}
+                                </span>
                                 <span style={{
-                                  marginLeft: 6,
-                                  padding: '1px 6px',
+                                  width: 34,
+                                  textAlign: 'center',
+                                  padding: '1px 0',
                                   borderRadius: 8,
-                                  background: 'var(--warning-soft)',
-                                  color: 'var(--warning)',
+                                  background: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning-soft)' : 'transparent',
+                                  color: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning)' : 'transparent',
                                   font: '700 9px/13px var(--font-sans)',
-                                }}>{t.paraBirimi}</span>
-                              )}
+                                }}>{t.paraBirimi && t.paraBirimi !== 'TL' ? t.paraBirimi : '·'}</span>
+                              </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', gap: 4 }}>
