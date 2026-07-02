@@ -130,7 +130,7 @@ function GorusmeDetay() {
     setDuzenleForm({
       firmaAdi: gorusme.firmaAdi || '',
       musteriId: gorusme.musteriId || '',
-      takipNotu: gorusme.notlar || '',
+      takipNotu: gorusme.notlar || gorusme.takipNotu || '',
       konu: manuelMi ? '' : gorusme.konu,
       manuelKonu: manuelMi ? gorusme.konu : '',
       durum: gorusme.durum,
