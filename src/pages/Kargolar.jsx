@@ -407,99 +407,169 @@ export default function Kargolar() {
         </div>
       </div>
 
-      {/* Liste */}
-      {filtreli.length === 0 ? (
-        <EmptyState
-          icon={<Package size={32} strokeWidth={1.5} />}
-          title={aramaMetni || durumFiltre !== 'hepsi' ? 'Arama sonucu bulunamadı' : 'Henüz kargo kaydı eklenmedi'}
-        />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtreli.map(kargo => {
-            const durum = durumlar.find(d => d.id === kargo.durum)
-            const firma = KARGO_FIRMALARI.find(f => f.id === kargo.kargoFirmasi)
-            const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date()
-              && !['teslim_edildi', 'iade'].includes(kargo.durum)
-            const TipIcon = kargo.tip === 'giden' ? ArrowUpRight : ArrowDownLeft
+      {/* Liste — Tablo formatı */}
+      {(() => {
+        const thStyle = {
+          textAlign: 'left',
+          padding: '10px 12px',
+          font: '600 11px/14px var(--font-sans)',
+          color: 'var(--text-secondary)',
+          textTransform: 'uppercase',
+          letterSpacing: 0.3,
+          background: 'var(--surface-sunken)',
+          borderBottom: '1px solid var(--border-default)',
+          whiteSpace: 'nowrap',
+          position: 'sticky', top: 0, zIndex: 1,
+        }
+        const tdStyle = {
+          padding: '10px 12px',
+          font: '400 13px/18px var(--font-sans)',
+          color: 'var(--text-primary)',
+          borderBottom: '1px solid var(--border-default)',
+          verticalAlign: 'middle',
+          whiteSpace: 'nowrap',
+        }
 
-            return (
-              <div key={kargo.id}>
-                <Card
-                  onClick={() => navigate(`/kargolar/${kargo.id}`)}
-                  padding={16}
-                  style={{
-                    cursor: 'pointer',
-                    borderLeft: `3px solid ${gecikti ? 'var(--danger)' : 'var(--border-default)'}`,
-                    transition: 'background 120ms',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{
-                      width: 36, height: 36,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      borderRadius: 'var(--radius-sm)',
-                      background: kargo.tip === 'giden' ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
-                      color: kargo.tip === 'giden' ? 'var(--brand-primary)' : 'var(--success)',
-                      flexShrink: 0,
-                    }}>
-                      <TipIcon size={16} strokeWidth={1.5} />
-                    </span>
+        return filtreli.length === 0 ? (
+          <EmptyState
+            icon={<Package size={32} strokeWidth={1.5} />}
+            title={aramaMetni || durumFiltre !== 'hepsi' ? 'Arama sonucu bulunamadı' : 'Henüz kargo kaydı eklenmedi'}
+          />
+        ) : (
+          <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: 30 }}></th>
+                  <th style={thStyle}>Kargo No</th>
+                  <th style={thStyle}>Firma</th>
+                  <th style={thStyle}>Takip No</th>
+                  <th style={{ ...thStyle, minWidth: 240 }}>Gönderen → Alıcı</th>
+                  <th style={{ ...thStyle, minWidth: 180 }}>İçerik</th>
+                  <th style={thStyle}>Durum</th>
+                  <th style={thStyle}>Tarih</th>
+                  <th style={{ ...thStyle, width: 40 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtreli.map(kargo => {
+                  const durum = durumlar.find(d => d.id === kargo.durum)
+                  const firma = KARGO_FIRMALARI.find(f => f.id === kargo.kargoFirmasi)
+                  const gecikti = kargo.tahminiTeslim && new Date(kargo.tahminiTeslim) < new Date()
+                    && !['teslim_edildi', 'iade'].includes(kargo.durum)
+                  const TipIcon = kargo.tip === 'giden' ? ArrowUpRight : ArrowDownLeft
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                  return (
+                    <tr
+                      key={kargo.id}
+                      onClick={() => navigate(`/kargolar/${kargo.id}`)}
+                      style={{
+                        cursor: 'pointer',
+                        background: 'var(--surface-card)',
+                        borderLeft: gecikti ? '3px solid var(--danger)' : '3px solid transparent',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
+                    >
+                      <td style={tdStyle} title={kargo.tip === 'giden' ? 'Giden' : 'Gelen'}>
+                        <span style={{
+                          width: 26, height: 26,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: 'var(--radius-sm)',
+                          background: kargo.tip === 'giden' ? 'var(--brand-primary-soft)' : 'var(--success-soft)',
+                          color: kargo.tip === 'giden' ? 'var(--brand-primary)' : 'var(--success)',
+                        }}>
+                          <TipIcon size={13} strokeWidth={1.5} />
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
                         <CodeBadge>{kargo.kargoNo}</CodeBadge>
-                        {firma && <Badge tone="brand">{firma.isim}</Badge>}
-                        {kargo.takipNo && <CodeBadge>{kargo.takipNo}</CodeBadge>}
-                        {gecikti && <Badge tone="kayip" icon={<AlertTriangle size={11} strokeWidth={1.5} />}>Gecikti</Badge>}
-                      </div>
-                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {kargo.gonderen?.firma || kargo.gonderen?.ad || '?'}
-                        <span style={{ color: 'var(--text-tertiary)', margin: '0 8px' }}>→</span>
-                        {kargo.alici?.firma || kargo.alici?.ad || '?'}
-                      </div>
-                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {kargo.icerik}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                      {durum && <Badge tone={KARGO_DURUM_TONE[durum.id] ?? 'neutral'}>{durum.isim}</Badge>}
-                      <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                        {kargo.tahminiTeslim ? `Tah. ${kargo.tahminiTeslim}` : new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR')}
-                      </span>
-                    </div>
-
-                    <ChevronRight size={16} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                  </div>
-                </Card>
-
-                {silOnayId === kargo.id && (
-                  <div style={{
-                    margin: '0 8px',
-                    padding: '10px 16px',
-                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
-                    background: 'var(--danger-soft)',
-                    border: '1px solid var(--danger-border)',
-                    borderTop: 'none',
-                    display: 'flex', alignItems: 'center', gap: 12,
-                  }}>
-                    <AlertTriangle size={14} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />
-                    <span style={{ flex: 1, font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
-                      Bu kargoyu silmek istediğinize emin misiniz?
-                    </span>
-                    <Button variant="danger" size="sm" iconLeft={<Trash2 size={12} strokeWidth={1.5} />} onClick={() => { kargoSil(kargo.id); setSilOnayId(null) }}>
-                      Evet, sil
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setSilOnayId(null)}>İptal</Button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+                        {gecikti && <span style={{ display: 'inline-flex', marginLeft: 6 }}><Badge tone="kayip" icon={<AlertTriangle size={10} strokeWidth={1.5} />}>Gecikti</Badge></span>}
+                      </td>
+                      <td style={tdStyle}>
+                        {firma
+                          ? <Badge tone="brand">{firma.isim}</Badge>
+                          : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                      </td>
+                      <td style={tdStyle}>
+                        {kargo.takipNo
+                          ? <CodeBadge>{kargo.takipNo}</CodeBadge>
+                          : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: 500 }}>
+                        <span style={{ maxWidth: 320, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                          {kargo.gonderen?.firma || kargo.gonderen?.ad || '?'}
+                          <span style={{ color: 'var(--text-tertiary)', margin: '0 6px' }}>→</span>
+                          {kargo.alici?.firma || kargo.alici?.ad || '?'}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-secondary)' }}>
+                        <span style={{ maxWidth: 220, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }} title={kargo.icerik}>
+                          {kargo.icerik || '—'}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        {durum && <Badge tone={KARGO_DURUM_TONE[durum.id] ?? 'neutral'}>{durum.isim}</Badge>}
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {kargo.tahminiTeslim
+                          ? <span title="Tahmini teslim">Tah. {kargo.tahminiTeslim}</span>
+                          : new Date(kargo.olusturmaTarihi).toLocaleDateString('tr-TR')}
+                      </td>
+                      <td style={{ ...tdStyle, padding: '8px 12px' }} onClick={e => e.stopPropagation()}>
+                        {silOnayId === kargo.id ? (
+                          <div style={{ display: 'inline-flex', gap: 4 }}>
+                            <button
+                              onClick={() => { kargoSil(kargo.id); setSilOnayId(null) }}
+                              title="Evet, sil"
+                              aria-label="Sil"
+                              style={{
+                                width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'var(--danger)', color: '#fff', border: 'none',
+                                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                              }}
+                            >
+                              <Check size={13} strokeWidth={1.8} />
+                            </button>
+                            <button
+                              onClick={() => setSilOnayId(null)}
+                              title="İptal"
+                              aria-label="İptal"
+                              style={{
+                                width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'transparent', color: 'var(--text-secondary)',
+                                border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setSilOnayId(kargo.id)}
+                            aria-label="Sil"
+                            title="Sil"
+                            style={{
+                              width: 26, height: 26,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              background: 'transparent', border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                          >
+                            <Trash2 size={13} strokeWidth={1.5} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      })()}
     </div>
   )
 }
