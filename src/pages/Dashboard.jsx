@@ -21,6 +21,7 @@ import {
   CurrencyBox, EmptyState,
 } from '../components/ui'
 import { SkeletonPanel } from '../components/Skeleton'
+import DuyuruBanner from '../components/DuyuruBanner'
 
 const AYLAR_KISA = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
 
@@ -318,6 +319,9 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
+
+      {/* Aktif duyurular — Oğuz'un yayınladığı bildirimler herkese düşer */}
+      <DuyuruBanner kullaniciId={kullanici?.id} />
 
       {/* ── Hoşgeldin — kompakt tek satır ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>

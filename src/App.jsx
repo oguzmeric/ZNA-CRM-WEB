@@ -82,6 +82,15 @@ function YonetimGuard({ children }) {
   return children
 }
 
+// Duyuru yayınlama sadece Oğuz'a — Yönetim'den bir tık daha sıkı.
+function OguzGuard({ children }) {
+  const { kullanici } = useAuth()
+  const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
+  const izinli = /\b(oğuz|oguz)\b/i.test(ad)
+  if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 const SayfaYukleniyor = () => (
   <div style={{
     minHeight: '60vh',
@@ -234,7 +243,7 @@ function App() {
           <Route path="/gorevler" element={<Gorevler />} />
           <Route path="/gorevler/:id" element={<GorevDetay />} />
           <Route path="/kullanici-yonetimi" element={<YonetimGuard><KullaniciYonetimi /></YonetimGuard>} />
-          <Route path="/duyurular" element={<YonetimGuard><Duyurular /></YonetimGuard>} />
+          <Route path="/duyurular" element={<OguzGuard><Duyurular /></OguzGuard>} />
           <Route path="/musteriler" element={<Musteriler />} />
           <Route path="/musteriler/:id" element={<MusteriDetay />} />
           <Route path="/firmalar" element={<Firmalar />} />

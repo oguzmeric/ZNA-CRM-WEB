@@ -156,7 +156,7 @@ const menuItems = [
   },
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
-  { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
 ]
@@ -299,13 +299,13 @@ function MainLayout({ children }) {
   // 'Yönetim' grubu (Raporlar, Kullanıcılar, Duyurular, Performans, SLA Ayarları)
   // sadece Ali ve Oğuz'a açık — admin rolü olsa bile başka biri göremez.
   // İsim eşleşmesi TR karakter ve büyük/küçük harf duyarsız.
-  const yonetimErisimi = (() => {
-    const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
-    return /\b(oğuz|oguz|ali)\b/i.test(ad)
-  })()
+  const _adLc = (kullanici?.ad || '').toLocaleLowerCase('tr')
+  const yonetimErisimi = /\b(oğuz|oguz|ali)\b/i.test(_adLc)
+  const oguzMu = /\b(oğuz|oguz)\b/i.test(_adLc)
 
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
+    if (m.sadeceOguz) return oguzMu
     if (m.grup === 'yonetim') return yonetimErisimi
     return m.modul === null
       || kullanici?.rol === 'admin'
