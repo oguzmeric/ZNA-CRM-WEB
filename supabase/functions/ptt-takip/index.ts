@@ -1,9 +1,9 @@
-// PTT Gönderi Takip Servisi — verilen takip numarasının son durumunu ve
-// tüm hareket geçmişini döndürür.
+// PTT AVM Gönderi Takip Servisi — verilen tracking_id'nin durumunu döndürür.
 //
-// PTT'nin resmi SOAP endpoint'ini kullanır:
-//   https://pttws.ptt.gov.tr/PttVeriYukleme/services/Sorgu?wsdl
-// Referans: https://github.com/ahmeti/ptt-kargo-api (PHP client)
+// Resmi PTT AVM REST endpoint kullanır:
+//   POST https://shipment.pttavm.com/api/v1/barcode-status
+//   Body: { tracking_id: string }
+//   Response: durum bilgisi (completed / error / pending) + gönderi detayları
 //
 // POST body: { takipNo: string }
 //
@@ -12,20 +12,19 @@
 //   { ok: false, hata: string }
 //
 // Env:
-//   PTT_MUSTERI_ID    — PTT İl Müdürlüğünden alınan Müşteri ID
-//   PTT_MUSTERI_SIFRE — Müşteri şifresi
-//   PTT_SOAP_URL      — SOAP endpoint (default: pttws.ptt.gov.tr)
-//   PTT_DEMO=true     — credentials olmadan mock veri döndür (UI test)
-//
-// Not: Kredensiyaller PTT_DEMO=true iken göz ardı edilir, sahte data döner.
-// Frontend UI'ı bu şekilde credentials gelene kadar test edilebilir.
+//   PTT_API_URL         — default 'https://shipment.pttavm.com/api/v1'
+//   PTT_KULLANICI_AD    — Basic Auth kullanıcı adı (PTT AVM'den gelir)
+//   PTT_SIFRE           — Basic Auth şifresi
+//   PTT_INTEGRATION_KEY — default 'pttavm' (multi-carrier destekliyorsa değişir)
+//   PTT_DEMO=true       — credentials olmadan mock veri döndür (UI test)
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
-const PTT_SOAP_URL     = Deno.env.get('PTT_SOAP_URL') || 'https://pttws.ptt.gov.tr/PttVeriYukleme/services/Sorgu'
-const PTT_MUSTERI_ID   = Deno.env.get('PTT_MUSTERI_ID') || ''
-const PTT_MUSTERI_SIFRE = Deno.env.get('PTT_MUSTERI_SIFRE') || ''
-const PTT_DEMO         = Deno.env.get('PTT_DEMO') === 'true'
+const PTT_API_URL         = Deno.env.get('PTT_API_URL') || 'https://shipment.pttavm.com/api/v1'
+const PTT_KULLANICI_AD    = Deno.env.get('PTT_KULLANICI_AD') || ''
+const PTT_SIFRE           = Deno.env.get('PTT_SIFRE') || ''
+const PTT_INTEGRATION_KEY = Deno.env.get('PTT_INTEGRATION_KEY') || 'pttavm'
+const PTT_DEMO            = Deno.env.get('PTT_DEMO') === 'true'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +35,21 @@ const CORS = {
 
 const yanit = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: CORS })
+
+// PTT AVM status kodunu Türkçe insan-okur metne çevir
+function durumMetni(status: string): string {
+  const map: Record<string, string> = {
+    completed: 'Teslim edildi',
+    pending:   'İşlem devam ediyor',
+    error:     'Hata oluştu',
+    delivered: 'Teslim edildi',
+    in_transit: 'Yolda',
+    dispatched: 'Kargoya verildi',
+    picked_up: 'Alındı',
+    processing: 'İşleniyor',
+  }
+  return map[status?.toLowerCase()] || status || 'Bilinmiyor'
+}
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -48,8 +62,7 @@ serve(async (req: Request) => {
   if (!takipNo) return yanit({ ok: false, hata: 'takipNo zorunlu' }, 400)
 
   // ─── DEMO MOD (credentials yokken) ──────────────────────────────────────
-  // Gerçek PTT credentials env'de yoksa mock data döndür — UI test için.
-  if (PTT_DEMO || !PTT_MUSTERI_ID || !PTT_MUSTERI_SIFRE) {
+  if (PTT_DEMO || !PTT_KULLANICI_AD || !PTT_SIFRE) {
     return yanit({
       ok: true,
       demo: true,
@@ -80,78 +93,57 @@ serve(async (req: Request) => {
     })
   }
 
-  // ─── GERÇEK PTT SOAP ÇAĞRISI ────────────────────────────────────────────
-  // PTT SOAP endpoint: barkodSorgu(PttMusteriId, PttMusteriSifre, barkod)
-  // Response XML → parse → hareketler dizisi
-
-  const envelope = `<?xml version="1.0" encoding="utf-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:sor="http://sorgu.pttyukleme.com/">
-  <soapenv:Header/>
-  <soapenv:Body>
-    <sor:barkodSorgu>
-      <PttMusteriId>${PTT_MUSTERI_ID}</PttMusteriId>
-      <PttMusteriSifre>${PTT_MUSTERI_SIFRE}</PttMusteriSifre>
-      <Barkod>${takipNo}</Barkod>
-    </sor:barkodSorgu>
-  </soapenv:Body>
-</soapenv:Envelope>`
-
+  // ─── GERÇEK PTT AVM REST ÇAĞRISI ────────────────────────────────────────
   try {
-    const resp = await fetch(PTT_SOAP_URL, {
+    const authHeader = 'Basic ' + btoa(`${PTT_KULLANICI_AD}:${PTT_SIFRE}`)
+
+    const resp = await fetch(`${PTT_API_URL}/barcode-status`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': '"barkodSorgu"',
+        'Content-Type':    'application/json',
+        'Authorization':   authHeader,
+        'Integration-Key': PTT_INTEGRATION_KEY,
       },
-      body: envelope,
+      body: JSON.stringify({ tracking_id: takipNo }),
     })
-    if (!resp.ok) {
-      return yanit({ ok: false, hata: `PTT SOAP hata: HTTP ${resp.status}` }, 502)
-    }
-    const xml = await resp.text()
 
-    // SOAP Fault kontrolü
-    if (xml.includes('<soap:Fault>') || xml.includes('<soapenv:Fault>')) {
-      const faultMatch = xml.match(/<faultstring[^>]*>([^<]*)<\/faultstring>/i)
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '')
       return yanit({
         ok: false,
-        hata: 'PTT SOAP Fault: ' + (faultMatch?.[1] || 'bilinmeyen'),
+        hata: `PTT API hata: HTTP ${resp.status}${txt ? ' — ' + txt.slice(0, 200) : ''}`,
       }, 502)
     }
 
-    // Basit XML → hareketler parse
-    // PTT response şeması netleştikçe bu bölüm iyileştirilecek.
-    // Beklenen alanlar: UnitName (konum), TransactionName (aciklama),
-    // TransactionDate/EventDate (tarih), SubUnitName (alt konum).
-    const hareketler: Array<Record<string, string>> = []
-    const itemRegex = /<(?:item|Item|GonderiHareket)[^>]*>([\s\S]*?)<\/(?:item|Item|GonderiHareket)>/g
-    let m: RegExpExecArray | null
-    while ((m = itemRegex.exec(xml)) !== null) {
-      const bloc = m[1]
-      const alan = (tag: string) => {
-        const rx = new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`, 'i')
-        return bloc.match(rx)?.[1]?.trim() || ''
-      }
-      hareketler.push({
-        tarih:    alan('TransactionDate') || alan('EventDate') || alan('IslemTarihi'),
-        konum:    [alan('UnitName') || alan('SubeAdi'), alan('SubUnitName')].filter(Boolean).join(' · '),
-        aciklama: alan('TransactionName') || alan('IslemAdi') || alan('Durum') || '—',
-        durum:    (alan('TransactionCode') || '').toLowerCase(),
-      })
-    }
+    const ptt = await resp.json().catch(() => ({}))
 
-    // En yeni önce sırala (tarih varsa)
-    hareketler.sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''))
+    // PTT AVM cevap şeması netleşene kadar esnek mapping:
+    //   status: 'completed'|'pending'|'error'
+    //   history / movements / events: [{ date, location, description, status }]
+    const raw = ptt as Record<string, unknown>
+    const hareketlerRaw = (raw?.history || raw?.movements || raw?.events || raw?.transactions || []) as Array<Record<string, unknown>>
+
+    const hareketler = hareketlerRaw.map((h) => ({
+      tarih:    (h.date || h.datetime || h.timestamp || h.tarih) as string,
+      konum:    (h.location || h.branch || h.konum || h.unit_name) as string,
+      aciklama: (h.description || h.status_text || h.event || h.aciklama || durumMetni(h.status as string)) as string,
+      durum:    ((h.status || h.code || '') as string).toLowerCase(),
+    }))
+
+    // Ana durum
+    const anaDurum = durumMetni(raw?.status as string) || hareketler[0]?.aciklama || 'Kayıt bulunamadı'
+    const anaTarih = (raw?.last_updated || raw?.updated_at || hareketler[0]?.tarih || new Date().toISOString()) as string
 
     return yanit({
       ok: true,
       takipNo,
-      sonDurum:      hareketler[0]?.aciklama || 'Kayıt bulunamadı',
-      sonGuncelleme: hareketler[0]?.tarih || new Date().toISOString(),
+      status: raw?.status,
+      sonDurum: anaDurum,
+      sonGuncelleme: anaTarih,
       hareketler,
     })
   } catch (e) {
-    console.error('[ptt-takip] SOAP hata:', e)
+    console.error('[ptt-takip] fetch hata:', e)
     return yanit({ ok: false, hata: (e as Error).message }, 500)
   }
 })
