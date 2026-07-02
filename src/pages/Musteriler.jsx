@@ -31,7 +31,7 @@ const durumlar = [
 
 const bosForm = {
   ad: '', soyad: '', firma: '', unvan: '', telefon: '', email: '',
-  sehir: '', vergiNo: '', notlar: '', durum: 'aktif', kod: '',
+  sehir: '', adres: '', vergiNo: '', notlar: '', durum: 'aktif', kod: '',
 }
 
 
@@ -89,7 +89,7 @@ function Musteriler() {
     setForm({
       ad: m.ad, soyad: m.soyad, firma: m.firma, unvan: m.unvan || '',
       telefon: m.telefon, email: m.email || '', sehir: m.sehir || '',
-      vergiNo: m.vergiNo || '', notlar: m.notlar || '',
+      adres: m.adres || '', vergiNo: m.vergiNo || '', notlar: m.notlar || '',
       durum: m.durum, kod: m.kod,
     })
     setKodModu('manuel'); setDuzenleId(m.id); setGoster(true)
@@ -369,6 +369,16 @@ function Musteriler() {
                 {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
               </CustomSelect>
             </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <Label>Açık Adres</Label>
+            <Textarea
+              value={form.adres || ''}
+              onChange={e => setForm({ ...form, adres: e.target.value })}
+              rows={2}
+              placeholder="Mahalle, sokak, bina, kapı no…"
+            />
           </div>
 
           <div style={{ marginBottom: 16 }}>
