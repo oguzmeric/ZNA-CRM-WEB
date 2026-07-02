@@ -27,7 +27,8 @@ export function googleOAuthBaslat(kullaniciId, mevcutOrigin) {
     response_type: 'code',
     scope: GOOGLE_SCOPE,
     access_type: 'offline',        // refresh_token al
-    prompt: 'consent',              // her bağlantıda izin sor (refresh_token gelmesi için)
+    prompt: 'select_account consent',  // her bağlantıda hem hesap seçtir hem izin sor
+                                       // (birden fazla Gmail hesabı bağlayabilmek için kritik)
     state,
   })
 
