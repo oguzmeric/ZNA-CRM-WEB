@@ -72,6 +72,16 @@ const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const YeniZimmet = lazy(() => import('./pages/YeniZimmet'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 
+// Yönetim grubu erişim guard'ı — sadece Ali ve Oğuz.
+// URL'yi elle yazmayı engeller; sidebar'daki gizleme ile paralel.
+function YonetimGuard({ children }) {
+  const { kullanici } = useAuth()
+  const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
+  const izinli = /\b(oğuz|oguz|ali)\b/i.test(ad)
+  if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 const SayfaYukleniyor = () => (
   <div style={{
     minHeight: '60vh',
@@ -223,8 +233,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/gorevler" element={<Gorevler />} />
           <Route path="/gorevler/:id" element={<GorevDetay />} />
-          <Route path="/kullanici-yonetimi" element={<KullaniciYonetimi />} />
-          <Route path="/duyurular" element={<Duyurular />} />
+          <Route path="/kullanici-yonetimi" element={<YonetimGuard><KullaniciYonetimi /></YonetimGuard>} />
+          <Route path="/duyurular" element={<YonetimGuard><Duyurular /></YonetimGuard>} />
           <Route path="/musteriler" element={<Musteriler />} />
           <Route path="/musteriler/:id" element={<MusteriDetay />} />
           <Route path="/firmalar" element={<Firmalar />} />
@@ -242,8 +252,8 @@ function App() {
           <Route path="/teklif-onaylari" element={<TeklifOnaylari />} />
           <Route path="/satislar" element={<Satislar />} />
           <Route path="/satislar/:id" element={<SatisDetay />} />
-          <Route path="/raporlar" element={<Raporlar />} />
-          <Route path="/rapor-merkezi" element={<RaporMerkezi />} />
+          <Route path="/raporlar" element={<YonetimGuard><Raporlar /></YonetimGuard>} />
+          <Route path="/rapor-merkezi" element={<YonetimGuard><RaporMerkezi /></YonetimGuard>} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/profil" element={<Profil />} />
           <Route path="/firma-gecmisi/:firmaAdi" element={<FirmaGecmisi />} />
@@ -264,8 +274,8 @@ function App() {
           <Route path="/oauth/google/callback" element={<OAuthGoogleCallback />} />
           <Route path="/notlarim" element={<Notlarim />} />
           <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
-          <Route path="/sla-ayarlari" element={<SlaAyarlari />} />
-          <Route path="/performans" element={<Performans />} />
+          <Route path="/sla-ayarlari" element={<YonetimGuard><SlaAyarlari /></YonetimGuard>} />
+          <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
