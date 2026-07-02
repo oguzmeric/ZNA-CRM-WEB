@@ -182,7 +182,7 @@ function GorusmeDetay() {
     const eklenen = await gorevEkle(yeniGorev)
     if (eklenen) setGorevler(prev => [...prev, eklenen])
     const oncelik = gorevOncelikleri.find(o => o.id === gorevForm.oncelik)
-    bildirimEkle(gorevForm.atanan, 'Yeni Görev Atandı', `"${gorevForm.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}`, 'bilgi', '/gorevler')
+    bildirimEkle(gorevForm.atanan, 'Yeni Görev Atandı', `"${gorevForm.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}`, 'gorev', '/gorevler')
 
     // Servis talebi de istendiyse oluştur ve kullanıcıyı oraya yönlendir
     if (gorevForm.servisTalebiOlustur && eklenen) {

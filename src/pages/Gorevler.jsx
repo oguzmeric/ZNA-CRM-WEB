@@ -430,7 +430,7 @@ function Gorevler() {
         setGorevler(prev => [eklenen, ...prev])
         toast.success('Görev eklendi.')
         const oncelik = oncelikler.find(o => o.id === form.oncelik)
-        bildirimEkle(form.atanan, 'Yeni Görev Atandı', `"${form.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}. Son tarih: ${form.sonTarih}`, 'bilgi', '/gorevler')
+        bildirimEkle(form.atanan, 'Yeni Görev Atandı', `"${form.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}. Son tarih: ${form.sonTarih}`, 'gorev', '/gorevler')
 
         // Servis talebi de istendiyse oluştur ve oraya yönlendir
         if (servisTalebiOlustur && form.musteriId) {

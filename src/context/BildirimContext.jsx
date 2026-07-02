@@ -22,6 +22,35 @@ import {
 
 const BildirimContext = createContext(null)
 
+// Tarayıcı sistem bildirimi — sekme arka planda bile görünür.
+// İzin yoksa sessizce iste, verilirse notification göster; reddedilirse yut.
+function gonderTarayiciBildirimi(baslik, mesaj, link, navigate) {
+  try {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    const goster = () => {
+      const n = new Notification(baslik, {
+        body: mesaj,
+        icon: '/logo.jpeg',
+        tag: 'crm-bildirim-' + Date.now(),
+      })
+      n.onclick = () => {
+        try { window.focus() } catch {}
+        if (link && navigate) { try { navigate(link) } catch {} }
+        n.close()
+      }
+    }
+    if (Notification.permission === 'granted') {
+      goster()
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((izin) => {
+        if (izin === 'granted') goster()
+      }).catch(() => {})
+    }
+  } catch (e) {
+    console.warn('[tarayıcı bildirimi]', e?.message)
+  }
+}
+
 export function BildirimProvider({ children }) {
   const { kullanici } = useAuth()
   const toastCtx = useToast()
@@ -47,6 +76,8 @@ export function BildirimProvider({ children }) {
       }
     })
     // Realtime — yeni bildirim gelince listeye ekle + sağ üstte toast göster
+    // Görev/servis atamalarında ayrıca tarayıcı sistem notification'ı (sekme
+    // arka planda bile görünür) — kullanıcı ilk gorev/servis'te izin ister.
     subRef.current = bildirimleriDinle(kullanici.id, (yeni) => {
       setBildirimler(prev => {
         if (prev.some(b => b.id === yeni.id)) return prev
@@ -57,20 +88,28 @@ export function BildirimProvider({ children }) {
 
       const baslik = yeni.baslik || 'Yeni bildirim'
       const mesaj  = (yeni.mesaj || '').slice(0, 160)
-      const sure = 8000
-
-      // Tip'e göre toast varyantı seç
       const tip = yeni.tip || 'bilgi'
+
+      // Görev atamaları için daha belirgin, uzun süreli toast
+      const gorevTipi = tip === 'gorev' || /görev atandı/i.test(baslik)
+      const sure = gorevTipi ? 15000 : 8000
+
       const toast = toastCtx?.toast
-      if (!toast) return
-      if (tip === 'servis_talebi') {
-        toast.info(mesaj, { baslik, sure })
-      } else if (tip === 'hata' || tip === 'kritik') {
-        toast.error(mesaj, { baslik, sure })
-      } else if (tip === 'basari') {
-        toast.success(mesaj, { baslik, sure })
-      } else {
-        toast.info(mesaj, { baslik, sure })
+      if (toast) {
+        if (tip === 'servis_talebi' || gorevTipi) {
+          toast.info(mesaj, { baslik, sure })
+        } else if (tip === 'hata' || tip === 'kritik') {
+          toast.error(mesaj, { baslik, sure })
+        } else if (tip === 'basari') {
+          toast.success(mesaj, { baslik, sure })
+        } else {
+          toast.info(mesaj, { baslik, sure })
+        }
+      }
+
+      // Tarayıcı sistem bildirimi — sekme arka planda bile görünür
+      if (gorevTipi || tip === 'servis_talebi') {
+        gonderTarayiciBildirimi(baslik, mesaj, yeni.link, navigate)
       }
     })
     return () => {
