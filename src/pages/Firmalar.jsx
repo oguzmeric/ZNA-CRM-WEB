@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Phone, Mail, MapPin, Receipt, ArrowRight } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { firmalariGetir, firmaEkle, firmaGuncelle, firmaSil as dbFirmaSil } from '../services/firmaService'
@@ -99,7 +100,7 @@ function Firmalar() {
   )
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonList />
   }
 
   return (

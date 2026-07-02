@@ -14,6 +14,7 @@ import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, Avatar, SegmentedControl, EmptyState,
 } from '../components/ui'
+import { SkeletonList } from '../components/Skeleton'
 
 const durumIkonu = (durumId) => {
   if (durumId === 'aktif') return <CheckCircle2 size={14} strokeWidth={1.8} style={{ color: 'var(--success)' }} />
@@ -188,7 +189,7 @@ function Musteriler() {
   }
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonList satirSayisi={10} />
   }
 
   return (

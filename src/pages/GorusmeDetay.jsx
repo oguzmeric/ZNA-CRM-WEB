@@ -11,6 +11,7 @@ import { useHatirlatma } from '../context/HatirlatmaContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
+import { SkeletonDetay } from '../components/Skeleton'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
@@ -102,7 +103,7 @@ function GorusmeDetay() {
     })()
   }, [id])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonDetay />
 
   if (!gorusme) return (
     <div style={{ padding: 24 }}>

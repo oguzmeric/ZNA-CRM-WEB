@@ -6,6 +6,7 @@ import {
 import { X as XIcon, AlertTriangle, Package } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
@@ -175,7 +176,7 @@ function Raporlar() {
 
   const gecikenler = filtreliGorevler.filter(g => g.durum !== 'tamamlandi' && g.sonTarih && new Date(g.sonTarih) < new Date())
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>

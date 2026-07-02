@@ -8,6 +8,7 @@ import {
 import { demoCihazlariGetir } from '../services/demoService'
 import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
+import { SkeletonList } from '../components/Skeleton'
 
 const SEKMELER = [
   { id: 'tumu',         isim: 'Tümü',         renk: 'var(--text-secondary)' },
@@ -67,7 +68,7 @@ export default function Demolar() {
     })
   }, [cihazlar, sekme, arama])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>

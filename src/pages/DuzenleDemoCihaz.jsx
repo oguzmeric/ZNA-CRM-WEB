@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { Button, Card, Input, Textarea, Select, Label } from '../components/ui'
+import { SkeletonDetay } from '../components/Skeleton'
 import { demoCihazGetir, demoCihazGuncelle } from '../services/demoService'
 import { useToast } from '../context/ToastContext'
 
@@ -61,7 +62,7 @@ export default function DuzenleDemoCihaz() {
     navigate(`/demolar/${id}`)
   }
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><Card>Yükleniyor…</Card></div>
+  if (yukleniyor) return <SkeletonDetay />
 
   return (
     <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>

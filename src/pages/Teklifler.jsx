@@ -15,6 +15,7 @@ import {
 import { satislariGetir } from '../services/satisService'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, EmptyState,
 } from '../components/ui'
@@ -88,7 +89,7 @@ export default function Teklifler() {
       .finally(() => setYukleniyor(false))
   }, [])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   const bekleyenSayisi = musteriTalepleri.filter(t => t.durum === 'bekliyor').length
 

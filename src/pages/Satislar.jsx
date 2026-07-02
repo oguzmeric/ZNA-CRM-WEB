@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState,
 } from '../components/ui'
+import { SkeletonList } from '../components/Skeleton'
 
 const durumBadge = (durum, vadeTarihi) => {
   const bugun = new Date()
@@ -93,7 +94,7 @@ export default function Satislar() {
     toast.success('Fatura silindi.')
   }
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>

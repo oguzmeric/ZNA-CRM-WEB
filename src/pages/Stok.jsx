@@ -13,6 +13,7 @@ import {
   stokKalemOzetleriniGetir, stokKalemleriToplu,
 } from '../services/stokService'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import { trContains } from '../lib/trSearch'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -421,7 +422,7 @@ function Stok() {
   const seriTakipliSayi = kalemOzetleri.size
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonList />
   }
 
   const gecerliExcelSayi = excelOnizleme?.filter(s => s.hatalar.length === 0).length || 0

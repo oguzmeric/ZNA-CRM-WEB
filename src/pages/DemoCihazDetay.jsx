@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import DemoIadeAlModal from '../components/DemoIadeAlModal'
 import DemoSureyiUzatModal from '../components/DemoSureyiUzatModal'
 
+import { SkeletonDetay } from '../components/Skeleton'
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
 const KARAR_ROZETI = {
@@ -38,7 +39,7 @@ export default function DemoCihazDetay() {
 
   useEffect(() => { yukle() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonDetay />
   if (!cihaz) return <div style={{ padding: 24 }}><EmptyState title="Cihaz bulunamadı" /></div>
 
   const aktif = gecmis.find(z => !z.gercekIadeTarihi)

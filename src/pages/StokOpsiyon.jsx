@@ -5,6 +5,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import { stokUrunleriniGetir, stokHareketleriniGetir } from '../services/stokService'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -127,7 +128,7 @@ function StokOpsiyon() {
 
   const yetkili = kullanici?.moduller?.includes('kullanici_yonetimi') || kullanici?.moduller?.includes('stok')
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>

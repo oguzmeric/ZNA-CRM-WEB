@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { musteriGetir, musteriGuncelle, musterileriGetir } from '../services/musteriService'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonDetay } from '../components/Skeleton'
 import { musteriKisileriniGetir, musteriKisiEkle, musteriKisiGuncelle, musteriKisiSil } from '../services/musteriKisiService'
 import { musteriLokasyonlariniGetir, musteriLokasyonEkle, musteriLokasyonGuncelle, musteriLokasyonSil } from '../services/musteriLokasyonService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
@@ -113,7 +114,7 @@ function MusteriDetay() {
     yukle()
   }, [id])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonDetay />
 
   if (!musteri) return (
     <div style={{ padding: 24 }}>

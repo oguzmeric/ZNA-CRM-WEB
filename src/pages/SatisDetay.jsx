@@ -13,6 +13,7 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import { useConfirm } from '../context/ConfirmContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonDetay } from '../components/Skeleton'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge,
   EmptyState, Modal, Table, THead, TBody, TR, TH, TD,
@@ -377,7 +378,7 @@ function SatisDetay() {
   }
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonDetay />
   }
 
   // Aranabilir müşteri açılır listesi

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { Button, Card, Input, Select, Label } from '../components/ui'
+import { SkeletonDetay } from '../components/Skeleton'
 import { demoCihazGetir, demoZimmetAc } from '../services/demoService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
@@ -73,7 +74,7 @@ export default function YeniZimmet() {
     navigate(`/demolar/${id}`)
   }
 
-  if (!cihaz) return <div style={{ padding: 24 }}><Card>Yükleniyor…</Card></div>
+  if (!cihaz) return <SkeletonDetay />
 
   return (
     <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>

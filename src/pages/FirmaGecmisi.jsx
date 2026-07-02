@@ -14,6 +14,7 @@ import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Card, CardTitle, Badge, CodeBadge, Modal, EmptyState, Avatar,
 } from '../components/ui'
+import { SkeletonDetay } from '../components/Skeleton'
 
 const lisansTipiLabel = { sureksiz: 'Süreli', sureksiz_demo: 'Demo', sureksiz_surekli: 'Sürekli' }
 const lisansDurumTone = { aktif: 'aktif', pasif: 'pasif', suresi_doldu: 'kayip', beklemede: 'beklemede' }
@@ -222,7 +223,7 @@ function FirmaGecmisi() {
   const filtreliOlaylar = aktifSekme === 'hepsi' ? tumOlaylar : tumOlaylar.filter(o => o.tip === aktifSekme)
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonDetay />
   }
 
   const toplamTeklif = teklifler.reduce((s, t) => s + (t.genelToplam || 0), 0)

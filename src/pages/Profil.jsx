@@ -13,6 +13,7 @@ import { sifreDegistir as authSifreDegistir, kullaniciGirisKontrol } from '../se
 import {
   Button, Input, Label, Card, CardTitle, Badge, Avatar, Alert, EmptyState,
 } from '../components/ui'
+import { SkeletonDetay } from '../components/Skeleton'
 
 const durumRenk = {
   cevrimici:  'var(--success)',
@@ -226,7 +227,7 @@ function Profil() {
     setTimeout(() => setKaydetMesaj(null), 3000)
   }
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonDetay />
 
   const mevcutDurum = kullanici?.durum || 'cevrimici'
 

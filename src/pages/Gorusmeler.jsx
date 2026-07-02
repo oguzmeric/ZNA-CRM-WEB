@@ -21,6 +21,7 @@ import { arrayToCamel } from '../lib/mapper'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, EmptyState, SegmentedControl,
@@ -371,7 +372,7 @@ function Gorusmeler() {
   }
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonList />
   }
 
   return (

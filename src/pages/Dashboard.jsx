@@ -20,6 +20,7 @@ import {
   Table, THead, TBody, TR, TH, TD,
   CurrencyBox, EmptyState,
 } from '../components/ui'
+import { SkeletonPanel } from '../components/Skeleton'
 
 const AYLAR_KISA = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
 

@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import { stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle } from '../services/stokService'
 import { trContains } from '../lib/trSearch'
 import { musterileriGetir } from '../services/musteriService'
@@ -61,7 +62,7 @@ export default function StokHareketleri() {
       .finally(() => setYukleniyor(false))
   }, [])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   const secilenUrun = urunler.find(u => u.stokKodu === form.stokKodu)
 

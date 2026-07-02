@@ -11,6 +11,7 @@ import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions, segmentMetin } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
+import { SkeletonDetay } from '../components/Skeleton'
 import {
   Button, Textarea, Card, CardTitle, Badge, Avatar, EmptyState, SegmentedControl,
 } from '../components/ui'
@@ -50,7 +51,7 @@ function GorevDetay() {
       .finally(() => setYukleniyor(false))
   }, [id])
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonDetay />
 
   if (!gorev) return (
     <div style={{ padding: 24 }}>

@@ -17,6 +17,7 @@ import {
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 
+import { SkeletonDetay } from '../components/Skeleton'
 const durumTone = {
   depoda: 'info',
   teknisyende: 'lead',
@@ -130,7 +131,7 @@ function ModelDetay() {
   }, [hareketler])
 
   if (yukleniyor) {
-    return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+    return <SkeletonDetay />
   }
 
   const kritikMi = urun?.minStok && bakiye <= Number(urun.minStok)

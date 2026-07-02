@@ -21,6 +21,7 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import CustomSelect from '../components/CustomSelect'
+import { SkeletonList } from '../components/Skeleton'
 import {
   Button, Card, Input, Textarea, Label,
   Badge, EmptyState, Avatar,
@@ -509,7 +510,7 @@ function Gorevler() {
     return g.durum === filtre
   })
 
-  if (yukleniyor) return <div style={{ padding: 24 }}><EmptyState title="Yükleniyor…" /></div>
+  if (yukleniyor) return <SkeletonList />
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
