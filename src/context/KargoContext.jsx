@@ -58,12 +58,42 @@ export function KargoProvider({ children }) {
   const [kargolar, setKargolar] = useState([])
 
   // Senkron — başka kullanıcı kargo oluşturup/güncellerse anında yansısın.
-  // Tek-mount fetch + realtime INSERT/UPDATE + sekme focus dönüşünde refetch.
+  // Tek-mount fetch + realtime INSERT/UPDATE/DELETE + sekme focus dönüşünde refetch.
+  //
+  // Kayıp kayıt fix'i:
+  //   * fetch sirasi — sadece EN SON tetiklenen istek state'i yazsın (stale
+  //     response'lar overwrite yapmasin)
+  //   * bosuna refetch — son fetch <3sn içinde ise atla (visibility flip'te
+  //     paralel fetch'ler yaris etmesin)
+  //   * bos array guard — pagedFetch hatasi partial/bos return ederse mevcut
+  //     kargolar silinmesin
   useEffect(() => {
     let iptal = false
-    const ilkYukle = () => kargolariGetir()
-      .then(d => { if (!iptal) setKargolar(d) })
-      .catch(e => console.warn('[kargolar]', e?.message))
+    let sonFetchZamani = 0
+    let fetchSayaci = 0
+
+    const ilkYukle = async () => {
+      const simdi = Date.now()
+      if (simdi - sonFetchZamani < 3000) return  // debounce
+      sonFetchZamani = simdi
+      const benim = ++fetchSayaci
+      try {
+        const d = await kargolariGetir()
+        if (iptal) return
+        // Stale — daha yeni fetch başlamışsa bu sonucu yok say
+        if (benim !== fetchSayaci) return
+        // Boş sonuç guard: mevcut liste doluysa boş array ile ezme
+        setKargolar(prev => {
+          if ((!d || d.length === 0) && prev.length > 0) {
+            console.warn('[kargolar] bos/hatali fetch — mevcut liste korundu')
+            return prev
+          }
+          return d
+        })
+      } catch (e) {
+        console.warn('[kargolar]', e?.message)
+      }
+    }
     ilkYukle()
 
     const channel = supabase
@@ -80,6 +110,12 @@ export function KargoProvider({ children }) {
         (payload) => {
           const guncel = toCamel(payload.new)
           setKargolar(prev => prev.map(k => k.id === guncel.id ? { ...k, ...guncel } : k))
+        },
+      )
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'kargolar' },
+        (payload) => {
+          setKargolar(prev => prev.filter(k => k.id !== payload.old?.id))
         },
       )
       .subscribe()
