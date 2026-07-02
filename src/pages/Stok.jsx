@@ -430,44 +430,53 @@ function Stok() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="t-h1">Stok Kartları</h1>
-          <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{toplamUrun}</span> ürün kayıtlı
-          </p>
+      {/* Header — kompakt tek satır */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <h1 className="t-h2" style={{ margin: 0 }}>Stok Kartları</h1>
+          <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            <span className="tabular-nums">{toplamUrun}</span> ürün
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="tertiary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={sablonIndir}>
-            Şablon indir
-          </Button>
-          <Button variant="tertiary" iconLeft={<Upload size={14} strokeWidth={1.5} />} onClick={() => dosyaRef.current?.click()}>
-            Excel'den aktar
-          </Button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={sablonIndir}>Şablon</Button>
+          <Button variant="tertiary" size="sm" iconLeft={<Upload size={13} strokeWidth={1.5} />} onClick={() => dosyaRef.current?.click()}>Excel aktar</Button>
           <input ref={dosyaRef} type="file" accept=".xlsx,.xls" onChange={excelOku} style={{ display: 'none' }} />
-          <Button variant="secondary" iconLeft={<ClipboardList size={14} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>
-            Opsiyonlar
-          </Button>
-          <Button variant="secondary" iconLeft={<ArrowLeftRight size={14} strokeWidth={1.5} />} onClick={() => navigate('/stok-hareketleri')}>
-            Hareketler
-          </Button>
-          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={formAc}>
-            Yeni ürün
-          </Button>
+          <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>Opsiyonlar</Button>
+          <Button variant="secondary" size="sm" iconLeft={<ArrowLeftRight size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-hareketleri')}>Hareketler</Button>
+          <Button variant="primary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.5} />} onClick={formAc}>Yeni ürün</Button>
         </div>
       </div>
 
-      {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPICard label="Toplam ürün" value={toplamUrun} icon={<Package size={16} strokeWidth={1.5} />} />
-        <KPICard label="Toplam stok bakiye" value={Math.round(toplamBakiye)} icon={<Hash size={16} strokeWidth={1.5} />} />
-        <KPICard label="Kritik seviye" value={kritikSayi} icon={<AlertTriangle size={16} strokeWidth={1.5} />} />
-        <KPICard label="S/N takipli" value={seriTakipliSayi} icon={<Tag size={16} strokeWidth={1.5} />} />
+      {/* KPI — kompakt yatay şerit */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 4,
+        padding: '6px 10px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: 10,
+        alignItems: 'stretch',
+      }}>
+        {[
+          { l: 'Toplam ürün',        v: toplamUrun,                 ton: 'var(--text-primary)',   Icon: Package },
+          { l: 'Toplam stok bakiye', v: Math.round(toplamBakiye),   ton: 'var(--text-primary)',   Icon: Hash },
+          { l: 'Kritik seviye',      v: kritikSayi,                 ton: kritikSayi > 0 ? 'var(--danger)' : 'var(--text-tertiary)',    Icon: AlertTriangle },
+          { l: 'S/N takipli',        v: seriTakipliSayi,            ton: 'var(--text-secondary)', Icon: Tag },
+        ].map((k, i, arr) => [
+          <div key={k.l} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <k.Icon size={13} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+            <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
+            <span style={{ font: '700 14px/18px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
+          </div>,
+          i < arr.length - 1 && (
+            <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
+          ),
+        ])}
       </div>
 
       {/* Filter bar */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 240, maxWidth: 480 }}>
           <SearchInput
             value={arama}
