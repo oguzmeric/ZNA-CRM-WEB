@@ -269,26 +269,27 @@ function MusteriDetay() {
         </Alert>
       )}
 
-      {/* Ana başlık kartı */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
-            <Avatar name={musteri.firma || musteri.ad} size="lg" />
+      {/* Ana başlık kartı — kompakt */}
+      <Card style={{ marginBottom: 12, padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+            <Avatar name={musteri.firma || musteri.ad} size="md" />
             <div style={{ minWidth: 0 }}>
-              <h1 className="t-h1" style={{ marginBottom: 6 }}>{musteri.firma || '—'}</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 2 }}>
+                {musteri.firma || '—'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                 <Badge tone={durum.tone}>{durum.isim}</Badge>
                 {musteri.kod && <CodeBadge>{musteri.kod}</CodeBadge>}
                 {musteri.sehir && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                     <MapPin size={11} strokeWidth={1.5} /> {musteri.sehir}
                   </span>
                 )}
                 {musteri.vergiNo && (
-                  <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                    VKN: {musteri.vergiNo}
-                  </span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>VKN: {musteri.vergiNo}</span>
                 )}
+                {musteri.vergiDairesi && <span>· {musteri.vergiDairesi}</span>}
                 {musteri.temsilciKullaniciId && (() => {
                   const t = personelListesi.find(k => k.id === musteri.temsilciKullaniciId)
                   return t ? (
@@ -300,31 +301,32 @@ function MusteriDetay() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-            <Button variant="primary" iconLeft={<Pencil size={14} strokeWidth={1.5} />} onClick={duzenleBaslat}>
-              Düzenle
-            </Button>
-            <Button variant="secondary" iconLeft={<Send size={14} strokeWidth={1.5} />} onClick={() => setDavetAcik(true)}>
-              Portal Davet
-            </Button>
-            <Button variant="secondary" iconLeft={<FileText size={14} strokeWidth={1.5} />} onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}>
-              Firma geçmişi
-            </Button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
+            <Button variant="primary" size="sm" iconLeft={<Pencil size={13} strokeWidth={1.5} />} onClick={duzenleBaslat}>Düzenle</Button>
+            <Button variant="secondary" size="sm" iconLeft={<Send size={13} strokeWidth={1.5} />} onClick={() => setDavetAcik(true)}>Portal Davet</Button>
+            <Button variant="secondary" size="sm" iconLeft={<FileText size={13} strokeWidth={1.5} />} onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}>Firma geçmişi</Button>
           </div>
         </div>
 
-        {musteri.notlar && !duzenleForm && (
-          <div style={{
-            marginTop: 16,
-            padding: '12px 14px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--brand-primary-soft)',
-            border: '1px solid var(--border-default)',
-            font: '400 13px/20px var(--font-sans)',
-            color: 'var(--text-secondary)',
-            whiteSpace: 'pre-wrap',
-          }}>
-            {musteri.notlar}
+        {(musteri.adres || musteri.notlar) && !duzenleForm && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {musteri.adres && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 6,
+                font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+              }}>
+                <MapPin size={11} strokeWidth={1.5} style={{ marginTop: 2, color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                <span style={{ whiteSpace: 'pre-wrap' }}>{musteri.adres}</span>
+              </div>
+            )}
+            {musteri.notlar && (
+              <div style={{
+                font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+                fontStyle: 'italic', whiteSpace: 'pre-wrap',
+              }}>
+                {musteri.notlar}
+              </div>
+            )}
           </div>
         )}
 
@@ -419,39 +421,56 @@ function MusteriDetay() {
         )}
       </Card>
 
-      {/* Özet KPI 4'lü */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+      {/* Özet — kompakt yatay şerit */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 4,
+        padding: '6px 10px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: 12,
+        alignItems: 'stretch',
+      }}>
         {[
           { key: 'gorusme', isim: 'Görüşme', sayi: gorusmeler.length, Icon: Phone },
           { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
           { key: 'fatura',  isim: 'Fatura',  sayi: satislar.length,   Icon: Receipt },
           { key: 'gorev',   isim: 'Görev',   sayi: gorevler.length,   Icon: CheckSquare },
-        ].map(k => (
-          <button
-            key={k.key}
-            onClick={() => setAktifSekme(k.key)}
-            style={{
-              textAlign: 'left',
-              background: 'var(--surface-card)',
-              border: `1px solid ${aktifSekme === k.key ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-              borderRadius: 'var(--radius-md)',
-              padding: 16,
-              cursor: 'pointer',
-              transition: 'all 120ms',
-              boxShadow: aktifSekme === k.key ? 'var(--shadow-sm)' : 'none',
-            }}
-            onMouseEnter={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-strong)' }}
-            onMouseLeave={e => { if (aktifSekme !== k.key) e.currentTarget.style.borderColor = 'var(--border-default)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, color: 'var(--text-tertiary)' }}>
-              <span className="t-label">{k.isim}</span>
-              <k.Icon size={14} strokeWidth={1.5} />
-            </div>
-            <div style={{ font: '600 24px/1 var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-              {k.sayi}
-            </div>
-          </button>
-        ))}
+        ].map((k, i, arr) => {
+          const aktif = aktifSekme === k.key
+          return [
+            <button
+              key={k.key}
+              onClick={() => setAktifSekme(k.key)}
+              style={{
+                background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                transition: 'background 120ms',
+              }}
+              onMouseEnter={e => { if (!aktif) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+              onMouseLeave={e => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
+            >
+              <k.Icon size={13} strokeWidth={1.5} style={{ color: aktif ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
+              <span style={{ font: '500 12px/16px var(--font-sans)', color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                {k.isim}
+              </span>
+              <span style={{
+                font: '700 14px/18px var(--font-sans)',
+                color: aktif ? 'var(--brand-primary)' : 'var(--text-primary)',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {k.sayi}
+              </span>
+            </button>,
+            i < arr.length - 1 && (
+              <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
+            ),
+          ]
+        })}
       </div>
 
       {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
