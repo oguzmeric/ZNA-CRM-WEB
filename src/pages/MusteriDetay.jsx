@@ -488,9 +488,17 @@ function MusteriDetay() {
             onChange={setAktifSekme}
           />
         </div>
-        <div style={{ padding: 16, maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ padding: 12, maxHeight: 360, overflowY: 'auto' }}>
           {filtreliOlaylar.length === 0 ? (
-            <EmptyState icon={<Inbox size={28} strokeWidth={1.5} />} title="Bu kategoride kayıt bulunamadı" />
+            <div style={{
+              padding: '10px 14px',
+              font: '400 12px/16px var(--font-sans)',
+              color: 'var(--text-tertiary)',
+              fontStyle: 'italic',
+              textAlign: 'center',
+            }}>
+              Bu kategoride kayıt bulunamadı.
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {filtreliOlaylar.map(olay => {
@@ -591,12 +599,13 @@ function MusteriDetay() {
         )}
 
         {kisiler.length === 0 && !kisiForm ? (
-          <div style={{ padding: 32 }}>
-            <EmptyState
-              icon={<Users size={28} strokeWidth={1.5} />}
-              title="Henüz ilgili kişi eklenmedi"
-              action={<Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setKisiForm({ ...bosKisi })}>İlk kişiyi ekle</Button>}
-            />
+          <div style={{
+            padding: '10px 14px',
+            font: '400 12px/16px var(--font-sans)',
+            color: 'var(--text-tertiary)',
+            fontStyle: 'italic',
+          }}>
+            Henüz ilgili kişi eklenmedi. Üstteki <b style={{ fontStyle: 'normal', color: 'var(--text-secondary)' }}>+ Kişi ekle</b> butonundan ekleyebilirsin.
           </div>
         ) : (
           <div>
@@ -719,12 +728,13 @@ function MusteriDetay() {
         )}
 
         {lokasyonlar.length === 0 && !lokasyonForm ? (
-          <div style={{ padding: 32 }}>
-            <EmptyState
-              icon={<MapPin size={28} strokeWidth={1.5} />}
-              title="Henüz lokasyon eklenmedi"
-              action={<Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setLokasyonForm({ ...bosLok })}>İlk lokasyonu ekle</Button>}
-            />
+          <div style={{
+            padding: '10px 14px',
+            font: '400 12px/16px var(--font-sans)',
+            color: 'var(--text-tertiary)',
+            fontStyle: 'italic',
+          }}>
+            Henüz lokasyon eklenmedi. Üstteki <b style={{ fontStyle: 'normal', color: 'var(--text-secondary)' }}>+ Lokasyon ekle</b> butonundan ekleyebilirsin.
           </div>
         ) : (
           <div>
