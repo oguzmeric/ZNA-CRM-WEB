@@ -141,13 +141,42 @@ export default function Kargolar() {
         </Button>
       </div>
 
-      {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPICard label="TOPLAM"       value={ist.toplam}    icon={<Package size={16} strokeWidth={1.5} />} />
-        <KPICard label="AKTİF"        value={ist.aktif}     footer={<span style={{ color: 'var(--warning)' }}>İşlemde</span>} />
-        <KPICard label="DAĞITIMDA"    value={ist.dagitimda} footer={<span style={{ color: 'var(--warning)' }}>Yolda</span>} />
-        <KPICard label="TESLİM"       value={ist.teslim}    footer={<span style={{ color: 'var(--success)' }}>Tamamlandı</span>} />
-        <KPICard label="İADE"         value={ist.iade}      footer={ist.iade > 0 ? <span style={{ color: 'var(--danger)' }}>Var</span> : <span style={{ color: 'var(--text-tertiary)' }}>Yok</span>} />
+      {/* KPI — kompakt yatay şerit */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8,
+        padding: '10px 14px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: 16,
+        alignItems: 'center',
+      }}>
+        {[
+          { l: 'Toplam',    v: ist.toplam,    ton: 'var(--text-primary)',   ikon: <Package size={13} strokeWidth={1.6} /> },
+          { l: 'Aktif',     v: ist.aktif,     ton: 'var(--warning)' },
+          { l: 'Dağıtımda', v: ist.dagitimda, ton: 'var(--warning)' },
+          { l: 'Teslim',    v: ist.teslim,    ton: 'var(--success)' },
+          { l: 'İade',      v: ist.iade,      ton: ist.iade > 0 ? 'var(--danger)' : 'var(--text-tertiary)' },
+        ].map((k) => (
+          <div key={k.l} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px',
+            font: '400 12px/16px var(--font-sans)',
+            color: 'var(--text-secondary)',
+          }}>
+            {k.ikon && <span style={{ color: 'var(--text-tertiary)' }}>{k.ikon}</span>}
+            <span style={{ textTransform: 'uppercase', fontSize: 11, letterSpacing: 0.4, color: 'var(--text-tertiary)' }}>{k.l}</span>
+            <span style={{
+              font: '700 14px/18px var(--font-sans)',
+              color: k.ton,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {k.v}
+            </span>
+          </div>
+        )).flatMap((el, i, arr) => i < arr.length - 1
+          ? [el, <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />]
+          : [el])}
       </div>
 
       {/* Form */}
