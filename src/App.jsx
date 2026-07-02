@@ -95,7 +95,7 @@ function App() {
     if (kullanici) tumChunklariOnyukle()
   }, [kullanici])
 
-  // Global Ctrl+K / ⌘+K listener
+  // Global Ctrl+K / ⌘+K listener + programatik açma eventi
   useEffect(() => {
     if (!kullanici) return
     const handleKey = (e) => {
@@ -104,8 +104,13 @@ function App() {
         setKomutPaletiAcik(prev => !prev)
       }
     }
+    const handleAcEvent = () => setKomutPaletiAcik(true)
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+    window.addEventListener('komut-paleti-ac', handleAcEvent)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('komut-paleti-ac', handleAcEvent)
+    }
   }, [kullanici])
 
   if (location.pathname === '/design-system') {

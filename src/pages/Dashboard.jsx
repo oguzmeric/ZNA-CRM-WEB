@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import {
   Users, CheckSquare, Phone, KeyRound, FileText, TrendingUp, AlertTriangle,
-  Package, BarChart3, UserCog, Plus, ArrowRight, Clock, AlertCircle, Star, Boxes,
+  Package, BarChart3, UserCog, Plus, ArrowRight, Clock, AlertCircle, Star, Boxes, Search,
 } from 'lucide-react'
 import { satislariGetir } from '../services/satisService'
 import { musterileriGetir } from '../services/musteriService'
@@ -326,6 +326,24 @@ export default function Dashboard() {
           <span className="t-caption" style={{ color: 'var(--text-tertiary)' }}>
             {bugun.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </span>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('komut-paleti-ac'))}
+            title="Komut paleti — her yerden hızlı arama"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: 'var(--surface-sunken)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-tertiary)',
+              font: '500 11px/16px var(--font-sans)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-primary)'; e.currentTarget.style.borderColor = 'var(--brand-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+          >
+            <Search size={11} strokeWidth={1.5} /> ⌘K menüde ara
+          </button>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <CurrencyBox code="USD" value={kurlar.USD ? `₺${kurlar.USD}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
@@ -643,41 +661,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ── Modüller ── */}
-      {gorunenModuller.length > 0 && (
-        <section>
-          <p className="t-label" style={{ marginBottom: 12 }}>MODÜLLER</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-            {gorunenModuller.map(modul => {
-              const IconC = MODUL_ICONS[modul.id] ?? BarChart3
-              return (
-                <Card
-                  key={modul.id}
-                  onClick={() => navigate(modul.yol)}
-                  style={{ cursor: 'pointer', transition: 'border-color 120ms, box-shadow 120ms' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
-                >
-                  <div style={{
-                    width: 36, height: 36,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'var(--brand-primary-soft)',
-                    color: 'var(--brand-primary)',
-                    borderRadius: 'var(--radius-sm)',
-                    marginBottom: 10,
-                  }}>
-                    <IconC size={18} strokeWidth={1.5} />
-                  </div>
-                  <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 2 }}>
-                    {modul.isim}
-                  </div>
-                  <div className="t-caption">{modul.aciklama}</div>
-                </Card>
-              )
-            })}
-          </div>
-        </section>
-      )}
     </div>
   )
 }
