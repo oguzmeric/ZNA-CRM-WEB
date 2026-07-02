@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Trash2, ArrowUpRight, ArrowDownLeft, Phone, MapPin, AlertTriangle,
-  Check, Pencil, Package, Send,
+  Check, Pencil, Package, Send, ExternalLink, Copy,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -218,6 +218,36 @@ export default function KargoDetay() {
               <span style={{ flex: 1, font: '500 13px/18px var(--font-mono)', color: kargo.takipNo ? 'var(--brand-primary)' : 'var(--text-tertiary)' }}>
                 {kargo.takipNo || 'Henüz eklenmedi'}
               </span>
+              {kargo.takipNo && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  iconLeft={<Copy size={12} strokeWidth={1.5} />}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(kargo.takipNo)
+                  }}
+                  title="Kopyala"
+                >
+                  Kopyala
+                </Button>
+              )}
+              {kargo.takipNo && firma?.takipUrl && (
+                <a
+                  href={firma.takipUrl(kargo.takipNo)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    iconLeft={<ExternalLink size={12} strokeWidth={1.5} />}
+                    title={`${firma.isim} sitesinde takip et`}
+                  >
+                    {firma.isim.replace(' Kargo', '')}'de Takip Et
+                  </Button>
+                </a>
+              )}
               <Button
                 variant="secondary"
                 size="sm"

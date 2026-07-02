@@ -10,16 +10,27 @@ import { toCamel } from '../lib/mapper'
 
 const KargoContext = createContext(null)
 
+// takipUrl(takipNo) — firmanın online takip sayfasını numarayla açan URL üretir.
+// Kullanıcı butona basınca yeni sekmede o firmanın kendi sitesi açılır.
 export const KARGO_FIRMALARI = [
-  { id: 'mng',     isim: 'MNG Kargo',     renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { id: 'yurtici', isim: 'Yurtiçi Kargo', renk: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-  { id: 'ptt',     isim: 'PTT Kargo',     renk: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  { id: 'aras',    isim: 'Aras Kargo',    renk: '#014486', bg: 'rgba(1,68,134,0.1)' },
-  { id: 'surat',   isim: 'Sürat Kargo',   renk: '#0176D3', bg: 'rgba(1,118,211,0.1)' },
-  { id: 'dhl',     isim: 'DHL',           renk: '#d97706', bg: 'rgba(217,119,6,0.1)' },
-  { id: 'ups',     isim: 'UPS',           renk: '#92400e', bg: 'rgba(146,64,14,0.1)' },
-  { id: 'fedex',   isim: 'FedEx',         renk: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
-  { id: 'diger',   isim: 'Diğer',         renk: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  { id: 'mng',     isim: 'MNG Kargo',     renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)',
+    takipUrl: (t) => `https://kargotakip.mngkargo.com.tr/?takipNo=${encodeURIComponent(t)}` },
+  { id: 'yurtici', isim: 'Yurtiçi Kargo', renk: '#ef4444', bg: 'rgba(239,68,68,0.1)',
+    takipUrl: (t) => `https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=${encodeURIComponent(t)}` },
+  { id: 'ptt',     isim: 'PTT Kargo',     renk: '#3b82f6', bg: 'rgba(59,130,246,0.1)',
+    takipUrl: (t) => `https://gonderitakip.ptt.gov.tr/Track/summary?q=${encodeURIComponent(t)}` },
+  { id: 'aras',    isim: 'Aras Kargo',    renk: '#014486', bg: 'rgba(1,68,134,0.1)',
+    takipUrl: (t) => `https://kargotakip.araskargo.com.tr/?code=${encodeURIComponent(t)}` },
+  { id: 'surat',   isim: 'Sürat Kargo',   renk: '#0176D3', bg: 'rgba(1,118,211,0.1)',
+    takipUrl: (t) => `https://www.suratkargo.com.tr/KargoTakip/?kargotakipno=${encodeURIComponent(t)}` },
+  { id: 'dhl',     isim: 'DHL',           renk: '#d97706', bg: 'rgba(217,119,6,0.1)',
+    takipUrl: (t) => `https://www.dhl.com/tr-tr/home/tracking/tracking-express.html?tracking-id=${encodeURIComponent(t)}` },
+  { id: 'ups',     isim: 'UPS',           renk: '#92400e', bg: 'rgba(146,64,14,0.1)',
+    takipUrl: (t) => `https://www.ups.com/track?tracknum=${encodeURIComponent(t)}` },
+  { id: 'fedex',   isim: 'FedEx',         renk: '#7c3aed', bg: 'rgba(124,58,237,0.1)',
+    takipUrl: (t) => `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(t)}` },
+  { id: 'diger',   isim: 'Diğer',         renk: '#6b7280', bg: 'rgba(107,114,128,0.1)',
+    takipUrl: null },
 ]
 
 export const DURUM_LISTESI = [
