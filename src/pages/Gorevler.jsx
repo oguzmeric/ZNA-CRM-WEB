@@ -41,11 +41,15 @@ const kolonlar = [
 ]
 
 const bosForm = {
-  baslik: '', aciklama: '', atanan: '', oncelik: 'orta', sonTarih: '',
+  baslik: '', aciklama: '', atanan: '', oncelik: 'orta',
+  baslamaTarih: '', bitisTarih: '', sonTarih: '',
   musteriId: '', musteriAdi: '', firmaAdi: '',
   lokasyonId: '',
   servisTalebiOlustur: false,
 }
+
+// datetime-local (YYYY-MM-DDTHH:mm) → 'YYYY-MM-DD' (sonTarih legacy için)
+const dtToTarih = (dt) => (dt || '').slice(0, 10)
 
 function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, onEdit, onSil, overlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -59,7 +63,8 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, onEdit, onSil, o
 
   const oncelik = oncelikler.find(o => o.id === gorev.oncelik)
   const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atanan)
-  const gecikti = gorev.sonTarih && new Date(gorev.sonTarih) < new Date() && gorev.durum !== 'tamamlandi'
+  const bitisRef = gorev.bitisTarih || (gorev.sonTarih ? `${gorev.sonTarih}T23:59:59` : null)
+  const gecikti = bitisRef && new Date(bitisRef) < new Date() && gorev.durum !== 'tamamlandi'
   const bugun = new Date().toISOString().split('T')[0]
   const bugunMu = gorev.sonTarih === bugun && gorev.durum !== 'tamamlandi'
 
@@ -171,15 +176,19 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, onClick, onEdit, onSil, o
             {atananKisi?.ad}
           </span>
         </div>
-        {gorev.sonTarih && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            font: '400 12px/16px var(--font-sans)',
-            color: gecikti ? 'var(--danger)' : 'var(--text-tertiary)',
-            fontVariantNumeric: 'tabular-nums',
-          }}>
+        {(gorev.bitisTarih || gorev.sonTarih) && (
+          <span
+            title={gorev.baslamaTarih ? `Başlama: ${new Date(gorev.baslamaTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}` : undefined}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              font: '400 12px/16px var(--font-sans)',
+              color: gecikti ? 'var(--danger)' : 'var(--text-tertiary)',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
             <Clock size={11} strokeWidth={1.5} />
-            {gorev.sonTarih}
+            {gorev.bitisTarih
+              ? new Date(gorev.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+              : gorev.sonTarih}
           </span>
         )}
       </div>
@@ -412,9 +421,11 @@ function Gorevler() {
   }, [searchParams, setSearchParams])
 
   const kaydet = async () => {
-    if (!form.baslik || !form.atanan || !form.sonTarih) {
-      toast.error('Başlık, atanacak kişi ve son tarih zorunludur.'); return
+    if (!form.baslik || !form.atanan || !form.bitisTarih) {
+      toast.error('Başlık, atanacak kişi ve bitiş tarihi zorunludur.'); return
     }
+    // Kaydetmeden önce sonTarih'i bitisTarih'in tarih kısmından türet (geriye uyum)
+    form.sonTarih = dtToTarih(form.bitisTarih)
     if (duzenleId) {
       const eski = gorevler.find(g => g.id === duzenleId)
       await dbGorevGuncelle(duzenleId, form)
@@ -425,7 +436,7 @@ function Gorevler() {
         // Yeni atanana SMS (kısa, kurumsal). Sessiz — hata olursa toast'a çevirmiyoruz.
         gorevAtamaSMSGonderVeIsaretle({
           gorevId: duzenleId, atananId: form.atanan,
-          gorevBaslik: form.baslik, sonTarih: form.sonTarih, oncelik: form.oncelik,
+          gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: form.oncelik,
         }).catch(() => {})
       }
     } else {
@@ -440,7 +451,7 @@ function Gorevler() {
         // SMS gönder — atanan kişinin telefonu varsa
         gorevAtamaSMSGonderVeIsaretle({
           gorevId: eklenen.id, atananId: form.atanan,
-          gorevBaslik: form.baslik, sonTarih: form.sonTarih, oncelik: oncelik?.isim,
+          gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: oncelik?.isim,
         }).catch(() => {})
 
         // Servis talebi de istendiyse oluştur ve oraya yönlendir
@@ -483,9 +494,21 @@ function Gorevler() {
 
   const duzenleAc = (g, e) => {
     e.stopPropagation()
+    // timestamptz → 'YYYY-MM-DDTHH:mm' (datetime-local formatı)
+    const dtLocal = (ts) => {
+      if (!ts) return ''
+      const d = new Date(ts)
+      if (isNaN(d.getTime())) return ''
+      const pad = n => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
     setForm({
       baslik: g.baslik, aciklama: g.aciklama || '', atanan: g.atanan, oncelik: g.oncelik,
-      sonTarih: g.sonTarih, musteriId: g.musteriId || '', musteriAdi: g.musteriAdi || '', firmaAdi: g.firmaAdi || '',
+      sonTarih: g.sonTarih,
+      baslamaTarih: dtLocal(g.baslamaTarih),
+      // bitisTarih önceliği: yeni bitis_tarih varsa onu, yoksa legacy son_tarih'i 23:59'a taşı
+      bitisTarih: g.bitisTarih ? dtLocal(g.bitisTarih) : (g.sonTarih ? `${g.sonTarih}T23:59` : ''),
+      musteriId: g.musteriId || '', musteriAdi: g.musteriAdi || '', firmaAdi: g.firmaAdi || '',
       lokasyonId: g.lokasyonId || '',
     })
     // Lokasyonları çek (varsa dropdown göstereceğiz)
@@ -700,8 +723,20 @@ function Gorevler() {
               </CustomSelect>
             </div>
             <div>
-              <Label required>Son tarih</Label>
-              <Input type="date" value={form.sonTarih} onChange={e => setForm({ ...form, sonTarih: e.target.value })} />
+              <Label>Başlama tarihi</Label>
+              <Input
+                type="datetime-local"
+                value={form.baslamaTarih}
+                onChange={e => setForm({ ...form, baslamaTarih: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label required>Bitiş tarihi</Label>
+              <Input
+                type="datetime-local"
+                value={form.bitisTarih}
+                onChange={e => setForm({ ...form, bitisTarih: e.target.value, sonTarih: dtToTarih(e.target.value) })}
+              />
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
