@@ -1,0 +1,14 @@
+{
+  "aciklama": "CRM'de hesabı olmayan ama telefon numarası bilinen personel. Hesap açıldığında personel-telefon-import.mjs tekrar çalıştırılınca ekleyecek.",
+  "personel": [
+    { "ad": "MEHMET AKİF EREL", "cep_telefon": "5453487155" },
+    { "ad": "ALP ASLAN", "cep_telefon": "5558940843" },
+    { "ad": "ENSAR KOÇYİĞİT", "cep_telefon": "5516544365" },
+    { "ad": "MUHAMMET EMİN ERDEM", "cep_telefon": "5386319007" },
+    { "ad": "MUHAMMET EMİN NAYMAN", "cep_telefon": "5336342441" },
+    { "ad": "ÖMER ÇADIRCI", "cep_telefon": "5392981244" },
+    { "ad": "SALİH ÇAKMAKLI", "cep_telefon": "5316769172" },
+    { "ad": "SEFA ÖVÜNGEN", "cep_telefon": "5538825031" },
+    { "ad": "YASİN ZOR", "cep_telefon": "5426745884" }
+  ]
+}
