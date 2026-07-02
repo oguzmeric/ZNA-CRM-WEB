@@ -334,107 +334,104 @@ export default function ServisRaporlari() {
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="t-h1">Servis Raporları</h1>
-          <p className="t-caption" style={{ marginTop: 4 }}>
+      {/* Header — kompakt tek satır */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <h1 className="t-h2" style={{ margin: 0 }}>Servis Raporları</h1>
+          <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
             <span className="tabular-nums">{toplam.toLocaleString('tr-TR')}</span> kayıt
-          </p>
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button
-            variant="primary"
-            iconLeft={<Printer size={14} strokeWidth={1.5} />}
-            onClick={listePdfYazdir}
-            disabled={toplam === 0}
-          >
-            Liste PDF ({toplam.toLocaleString('tr-TR')})
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          iconLeft={<Printer size={13} strokeWidth={1.5} />}
+          onClick={listePdfYazdir}
+          disabled={toplam === 0}
+        >
+          Liste PDF ({toplam.toLocaleString('tr-TR')})
+        </Button>
       </div>
 
-      {/* Filters */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
+      {/* Filters — kompakt tek şerit */}
+      <Card style={{ marginBottom: 12, padding: 10 }}>
+        {(() => {
+          const inpStil = {
+            padding: '6px 10px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-default)',
+            background: 'var(--surface-card)',
+            color: 'var(--text-primary)',
+            font: '400 12px/16px var(--font-sans)',
+            outline: 'none',
+            height: 30,
+            width: '100%',
+          }
+          const labStil = { font: '500 10px/12px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2, display: 'block' }
+          return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginBottom: 8 }}>
           <div style={{ gridColumn: 'span 2' }}>
-            <Label>Arama</Label>
+            <label style={labStil}>Arama</label>
             <SearchInput
               value={arama}
               onChange={e => setArama(e.target.value)}
-              placeholder="Fiş no, firma, lokasyon, sonuç, teknisyen…"
+              placeholder="Fiş, firma, lokasyon, sonuç, teknisyen…"
             />
           </div>
           <div>
-            <Label>Müşteri Adı</Label>
+            <label style={labStil}>Müşteri Adı</label>
             <Select value={firmaFiltre} onChange={e => setFirmaFiltre(e.target.value)}>
               <option value="">Tümü</option>
               {firmalar.map(f => <option key={f} value={f}>{f}</option>)}
             </Select>
           </div>
           <div>
-            <Label>Teknisyen</Label>
+            <label style={labStil}>Teknisyen</label>
             <Select value={teknisyenFiltre} onChange={e => setTeknisyenFiltre(e.target.value)}>
               <option value="">Tümü</option>
               {teknisyenler.map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
           </div>
           <div>
-            <Label>Arıza kodu</Label>
+            <label style={labStil}>Arıza kodu</label>
             <Select value={arizaFiltre} onChange={e => setArizaFiltre(e.target.value)}>
               <option value="">Tümü</option>
               {arizaKodlari.map(a => <option key={a} value={a}>{a}</option>)}
             </Select>
           </div>
           <div>
-            <Label>Takip durumu</Label>
+            <label style={labStil}>Takip durumu</label>
             <Select value={takipFiltre} onChange={e => setTakipFiltre(e.target.value)}>
               <option value="">Tümü</option>
               {takipDurumlari.map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
           </div>
           <div>
-            <Label>Tarih başlangıç</Label>
+            <label style={labStil}>Tarih başlangıç</label>
             <input
               type="date"
               value={tarihBaslangic}
               onChange={e => setTarihBaslangic(e.target.value)}
               max={tarihBitis || undefined}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-default)',
-                background: 'var(--surface-card)',
-                color: 'var(--text-primary)',
-                font: '400 13px/20px var(--font-sans)',
-                outline: 'none',
-              }}
+              style={inpStil}
             />
           </div>
           <div>
-            <Label>Tarih bitiş</Label>
+            <label style={labStil}>Tarih bitiş</label>
             <input
               type="date"
               value={tarihBitis}
               onChange={e => setTarihBitis(e.target.value)}
               min={tarihBaslangic || undefined}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-default)',
-                background: 'var(--surface-card)',
-                color: 'var(--text-primary)',
-                font: '400 13px/20px var(--font-sans)',
-                outline: 'none',
-              }}
+              style={inpStil}
             />
           </div>
         </div>
+          )
+        })()}
 
         {/* Hızlı tarih kısayolları */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {[
             { label: 'Bugün', gun: 0 },
             { label: 'Son 7 gün', gun: 7 },
