@@ -15,7 +15,7 @@ import {
 } from '../components/ui'
 import {
   bekleyenSiparisleriGetir, onaylananSiparisleriGetir, reddedilenSiparisleriGetir,
-  imzaYukle, siparisOnayla, siparisReddet,
+  imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
 
 const fmtPara = (tutar, pb = 'TL') => {
@@ -272,6 +272,30 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
     }
   }
 
+  // Kararı geri al — onaylı ya da reddedilmiş siparişi bekleyen konumuna döndürür.
+  // Onaylayan kişi VEYA üst yetkili yapabilir.
+  const kararKimin = String(s.onaylayan_id) === String(kullanici?.id)
+  const geriAlYetkili = ustYetkili || kararKimin
+  const geriAl = async () => {
+    if (!geriAlYetkili) { setHata('Bu kararı sadece onaylayan kişi veya üst yetkili geri alabilir.'); return }
+    const eminMi = window.confirm(
+      sekme === 'onayli'
+        ? 'Onay geri alınacak. Sipariş tekrar "bekleyen" olacak, mevcut imza silinecek. Devam?'
+        : 'Red kararı geri alınacak. Sipariş tekrar "bekleyen" olacak. Devam?'
+    )
+    if (!eminMi) return
+    setHata(null)
+    setCalisiyor(true)
+    try {
+      await siparisOnayGeriAl(t.id)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Karar geri alınamadı.')
+    } finally {
+      setCalisiyor(false)
+    }
+  }
+
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
@@ -337,6 +361,22 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
               <img src={s.imza_url} alt="imza" style={{ maxHeight: 80, maxWidth: 240, background: '#fff', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: 4 }} />
             </div>
           )}
+          {geriAlYetkili && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(16,185,129,0.25)' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={geriAl}
+                disabled={calisiyor}
+                iconLeft={<Clock size={12} strokeWidth={1.5} />}
+              >
+                {calisiyor ? 'İşleniyor…' : 'Onayı Geri Al'}
+              </Button>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                Yanlışlıkla onayladıysan burada tekrar bekleyene çevirebilirsin.
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -355,6 +395,22 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
           {s.red_nedeni && (
             <div style={{ marginTop: 8, padding: 8, background: '#fff', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}>
               <strong>Neden:</strong> {s.red_nedeni}
+            </div>
+          )}
+          {geriAlYetkili && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(220,38,38,0.2)' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={geriAl}
+                disabled={calisiyor}
+                iconLeft={<Clock size={12} strokeWidth={1.5} />}
+              >
+                {calisiyor ? 'İşleniyor…' : 'Reddi Geri Al'}
+              </Button>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                Yanlışlıkla reddettiysen burada tekrar bekleyene çevirebilirsin.
+              </div>
             </div>
           )}
         </div>

@@ -103,6 +103,31 @@ export async function siparisReddet(teklifId, { onaylayanId, onaylayanAd, redNed
 }
 
 /**
+ * Onay/red kararını geri al — siparişi tekrar bekleyen konumuna döndürür.
+ * Onaylayanın kendisi VEYA üst yetkili yapabilir (frontend kontrol eder).
+ * Hazırlayan tarafından bırakılan onay_notu korunur.
+ */
+export async function siparisOnayGeriAl(teklifId) {
+  const { data: t, error: e1 } = await supabase
+    .from('teklifler')
+    .select('siparis_onayi')
+    .eq('id', teklifId)
+    .single()
+  if (e1) throw e1
+  const mevcut = t?.siparis_onayi || {}
+  const onay = {
+    durum: 'bekliyor',
+    onay_notu: mevcut.onay_notu || null,   // hazırlayan notu korunur
+  }
+  const { error: e2 } = await supabase
+    .from('teklifler')
+    .update({ siparis_onayi: onay })
+    .eq('id', teklifId)
+  if (e2) throw e2
+  return onay
+}
+
+/**
  * Sipariş onayı için not güncelle — satıcı onaylayacak kişiye not bırakır.
  * Sadece durum=bekliyor iken degisebilir.
  */
