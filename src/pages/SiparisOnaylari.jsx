@@ -17,6 +17,7 @@ import {
   bekleyenSiparisleriGetir, onaylananSiparisleriGetir, reddedilenSiparisleriGetir,
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
+import TeklifKalemTablosu from '../components/TeklifKalemTablosu'
 
 const fmtPara = (tutar, pb = 'TL') => {
   const n = Number(tutar || 0)
@@ -315,8 +316,18 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
         <BilgiKart Icon={Calendar} etiket="Teklif Tarihi" deger={fmtTarih(t.tarih)} />
         <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.hazirlayan || '—'} />
         <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(t.genelToplam, t.paraBirimi)} vurgu />
-        <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odeme || '—'} />
+        <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odemeSekli || t.odemeSecenegi || '—'} />
+        {(t.gecerlilikTarihi || t.teslimTarihi) && (
+          <BilgiKart Icon={Calendar} etiket={t.teslimTarihi ? 'Teslim Tarihi' : 'Geçerlilik'} deger={fmtTarih(t.teslimTarihi || t.gecerlilikTarihi)} />
+        )}
+        {t.aciklama && (
+          <BilgiKart Icon={FileText} etiket="Açıklama" deger={t.aciklama} />
+        )}
       </div>
+
+      {/* Kalem tablosu — teklif detayı */}
+      <TeklifKalemTablosu satirlar={t.satirlar} paraBirimi={t.paraBirimi} />
+
 
       {/* Onay notu — varsa belirgin gozuksun */}
       {s.onay_notu && (

@@ -103,7 +103,16 @@ const menuItems = [
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
   },
-  { id: 'siparis_onaylari', isim: 'Sipariş Onayları', Icon: BadgeCheck, yol: '/siparis-onaylari', modul: '_siparis_onay_yetkilisi' },
+  {
+    id: 'onaylar',
+    isim: 'Onaylar',
+    Icon: BadgeCheck,
+    modul: '_onay_yetkisi',
+    altMenu: [
+      { id: 'teklif_onaylari',  isim: 'Teklif Onayı',  yol: '/teklif-onaylari' },
+      { id: 'siparis_onaylari', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
+    ],
+  },
   { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar' },
   {
     id: 'servis',
@@ -274,6 +283,7 @@ function MainLayout({ children }) {
     (m) => m.modul === null
       || kullanici?.rol === 'admin'
       || (m.modul === '_siparis_onay_yetkilisi' && kullanici?.siparisOnayYetkilisi)
+      || (m.modul === '_onay_yetkisi' && (kullanici?.siparisOnayYetkilisi || kullanici?.teklifOnayYetkilisi))
       || kullanici?.moduller?.includes(m.modul)
   )
 

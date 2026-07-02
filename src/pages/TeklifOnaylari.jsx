@@ -1,0 +1,409 @@
+// Teklif Onayları — teklif onay yetkilileri burada bekleyen teklifleri görür.
+// Onaylanınca teklif sipariş onayına düşer (bir sonraki aşama).
+
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  CheckCircle2, XCircle, Clock, FileText, Building2, User as UserIcon, Calendar, Receipt,
+} from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import {
+  Card, CardTitle, Button, Badge, EmptyState, Textarea,
+} from '../components/ui'
+import {
+  bekleyenTeklifOnaylariniGetir, onaylananTeklifOnaylariniGetir, reddedilenTeklifOnaylariniGetir,
+  teklifOnayla, teklifReddet, teklifOnayGeriAl,
+} from '../services/teklifOnayService'
+import TeklifKalemTablosu from '../components/TeklifKalemTablosu'
+
+const fmtPara = (tutar, pb = 'TL') => {
+  const n = Number(tutar || 0)
+  const sembol = pb === 'TL' ? '₺' : pb === 'USD' ? '$' : pb === 'EUR' ? '€' : pb
+  return `${sembol} ${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+const fmtTarih = (iso) => {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
+  } catch { return iso }
+}
+
+const SEKMELER = [
+  { id: 'bekleyen', label: 'Bekleyen', renk: '#F59E0B' },
+  { id: 'onayli',   label: 'Onaylı',   renk: '#10B981' },
+  { id: 'red',      label: 'Reddedilen', renk: '#DC2626' },
+]
+
+export default function TeklifOnaylari() {
+  const { kullanici } = useAuth()
+  const navigate = useNavigate()
+  const [sekme, setSekme] = useState('bekleyen')
+  const [liste, setListe] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [secili, setSecili] = useState(null)
+
+  const yetkili = kullanici?.teklifOnayYetkilisi === true || kullanici?.teklif_onay_yetkilisi === true
+
+  const yukle = async () => {
+    setYukleniyor(true)
+    try {
+      const d = sekme === 'bekleyen' ? await bekleyenTeklifOnaylariniGetir()
+              : sekme === 'onayli' ? await onaylananTeklifOnaylariniGetir()
+              : await reddedilenTeklifOnaylariniGetir()
+      setListe(d)
+    } catch (e) {
+      console.error('[teklif onay liste]', e)
+    } finally {
+      setYukleniyor(false)
+    }
+  }
+
+  useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili])
+
+  if (!yetkili) {
+    return (
+      <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>
+        <EmptyState
+          title="Bu sayfaya erişim yetkin yok"
+          aciklama="Teklif Onayları sayfası yalnızca yetkilendirilmiş kullanıcılara açıktır."
+          icon={<XCircle size={32} />}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 className="t-h1">Teklif Onayları</h1>
+        <Button variant="secondary" onClick={() => navigate('/teklifler')}>← Tekliflere dön</Button>
+      </div>
+
+      {/* Sekme barı */}
+      <div style={{
+        display: 'inline-flex',
+        background: 'var(--surface-subtle, #F4F6F8)',
+        borderRadius: 10, padding: 4, marginBottom: 16,
+      }}>
+        {SEKMELER.map(s => {
+          const aktif = sekme === s.id
+          return (
+            <button
+              key={s.id}
+              onClick={() => { setSekme(s.id); setSecili(null) }}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: aktif ? '#fff' : 'transparent',
+                color: aktif ? s.renk : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer',
+                font: aktif ? '700 13px/16px var(--font-sans)' : '500 13px/16px var(--font-sans)',
+                boxShadow: aktif ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >{s.label}</button>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) 1fr', gap: 16 }}>
+        {/* Liste */}
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {yukleniyor ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+          ) : liste.length === 0 ? (
+            <EmptyState
+              title={sekme === 'bekleyen' ? 'Bekleyen teklif onayı yok' : sekme === 'onayli' ? 'Onaylanmış teklif yok' : 'Reddedilmiş teklif yok'}
+              icon={<Clock size={24} />}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {liste.map(t => {
+                const to = t.teklifOnayi || {}
+                const seciliMi = secili?.id === t.id
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setSecili(t)}
+                    style={{
+                      textAlign: 'left', padding: '14px 16px',
+                      background: seciliMi ? 'var(--surface-subtle)' : 'transparent',
+                      border: 'none', borderBottom: '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      borderLeft: `3px solid ${seciliMi ? 'var(--accent, #1E5AA8)' : 'transparent'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t.teklifNo}</strong>
+                      <Badge tone="brand">{t.konu || '—'}</Badge>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
+                      {t.firmaAdi || '—'}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        {sekme === 'bekleyen' ? `Gönderen: ${to.gonderen_ad || '—'}` : fmtTarih(t.tarih)}
+                      </span>
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</strong>
+                    </div>
+                    {sekme === 'onayli' && to.onaylayan_ad && (
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                        ✓ {to.onaylayan_ad} · {fmtTarih(to.onay_tarih)}
+                      </div>
+                    )}
+                    {sekme === 'red' && to.red_nedeni && (
+                      <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>✕ {to.red_nedeni}</div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+
+        <div>
+          {secili ? (
+            <DetayPaneli
+              teklif={secili}
+              sekme={sekme}
+              kullanici={kullanici}
+              onTamamlandi={() => { setSecili(null); yukle() }}
+            />
+          ) : (
+            <Card>
+              <EmptyState
+                title="Bir teklif seç"
+                aciklama="Soldaki listeden bir teklif seçerek detaylarını görüntüle ve onay/red işlemi yap."
+                icon={<FileText size={24} />}
+              />
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
+  const [gerekce, setGerekce] = useState('')
+  const [redNedeni, setRedNedeni] = useState('')
+  const [redAcik, setRedAcik] = useState(false)
+  const [calisiyor, setCalisiyor] = useState(false)
+  const [hata, setHata] = useState(null)
+
+  const to = t.teklifOnayi || {}
+  const ustYetkili = kullanici?.teklifOnayUstYetkili === true || kullanici?.teklif_onay_ust_yetkili === true
+  const geriAlYetkili = ustYetkili || (to.onaylayan_id === kullanici?.id)
+
+  const onayla = async () => {
+    setHata(null)
+    if (!ustYetkili && !gerekce.trim()) { setHata('Onay için gerekçe gerekli.'); return }
+    setCalisiyor(true)
+    try {
+      await teklifOnayla(t.id, kullanici, gerekce.trim(), null)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Onay başarısız')
+    } finally { setCalisiyor(false) }
+  }
+
+  const reddet = async () => {
+    setHata(null)
+    if (!redNedeni.trim()) { setHata('Red nedeni gerekli.'); return }
+    setCalisiyor(true)
+    try {
+      await teklifReddet(t.id, kullanici, redNedeni.trim())
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Red başarısız')
+    } finally { setCalisiyor(false) }
+  }
+
+  const geriAl = async () => {
+    if (!confirm('Bu kararı geri almak istediğine emin misin?')) return
+    setCalisiyor(true)
+    try {
+      await teklifOnayGeriAl(t.id)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Geri alınamadı')
+    } finally { setCalisiyor(false) }
+  }
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <div>
+          <CardTitle>{t.teklifNo} · {t.konu || '—'}</CardTitle>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+            {t.firmaAdi} · {t.musteriYetkilisi || '—'}
+          </div>
+        </div>
+        <Badge tone={sekme === 'onayli' ? 'aktif' : sekme === 'red' ? 'kayip' : 'beklemede'}>
+          {sekme === 'onayli' ? 'Onaylı' : sekme === 'red' ? 'Reddedildi' : 'Bekliyor'}
+        </Badge>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+        <BilgiKart Icon={Calendar} etiket="Teklif Tarihi" deger={fmtTarih(t.tarih)} />
+        <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.hazirlayan || t.musteriTemsilcisi || '—'} />
+        <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(t.genelToplam, t.paraBirimi)} vurgu />
+        <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odemeSekli || t.odemeSecenegi || '—'} />
+        {(t.gecerlilikTarihi || t.teslimTarihi) && (
+          <BilgiKart Icon={Calendar} etiket={t.teslimTarihi ? 'Teslim' : 'Geçerlilik'} deger={fmtTarih(t.teslimTarihi || t.gecerlilikTarihi)} />
+        )}
+        {t.aciklama && <BilgiKart Icon={FileText} etiket="Açıklama" deger={t.aciklama} />}
+      </div>
+
+      <TeklifKalemTablosu satirlar={t.satirlar} paraBirimi={t.paraBirimi} />
+
+      {/* Gonderme bilgisi */}
+      {to.gonderen_ad && sekme === 'bekleyen' && (
+        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid #F59E0B', borderRadius: 10, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: '#92400E', fontWeight: 700, marginBottom: 4 }}>ONAYA GÖNDERİLDİ</div>
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>{to.gonderen_ad}</strong> · {fmtTarih(to.gonderme_tarih)}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'onayli' && (
+        <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid #10B981', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <CheckCircle2 size={16} style={{ color: '#10B981' }} />
+            <strong style={{ fontSize: 13, color: '#065F46' }}>Onaylı</strong>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            <strong>{to.onaylayan_ad}</strong> · {fmtTarih(to.onay_tarih)}
+          </div>
+          {to.onay_gerekcesi && (
+            <div style={{ marginTop: 10, padding: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid #F59E0B', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#92400E', fontWeight: 700, marginBottom: 4 }}>GEREKÇE</div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{to.onay_gerekcesi}</div>
+            </div>
+          )}
+          {geriAlYetkili && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(16,185,129,0.25)' }}>
+              <Button variant="secondary" size="sm" onClick={geriAl} disabled={calisiyor} iconLeft={<Clock size={12} strokeWidth={1.5} />}>
+                {calisiyor ? 'İşleniyor…' : 'Onayı Geri Al'}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {sekme === 'red' && (
+        <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid #DC2626', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <XCircle size={16} style={{ color: '#DC2626' }} />
+            <strong style={{ fontSize: 13, color: '#7F1D1D' }}>Reddedildi</strong>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            <strong>{to.onaylayan_ad}</strong> · {fmtTarih(to.onay_tarih)}
+          </div>
+          {to.red_nedeni && (
+            <div style={{ marginTop: 10, padding: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid #DC2626', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#7F1D1D', fontWeight: 700, marginBottom: 4 }}>RED NEDENİ</div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{to.red_nedeni}</div>
+            </div>
+          )}
+          {geriAlYetkili && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(220,38,38,0.25)' }}>
+              <Button variant="secondary" size="sm" onClick={geriAl} disabled={calisiyor}>Reddi Geri Al</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {sekme === 'bekleyen' && (
+        <>
+          {!redAcik ? (
+            <>
+              {!ustYetkili && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                    Onay Gerekçesi (zorunlu) *
+                  </label>
+                  <Textarea
+                    value={gerekce}
+                    onChange={e => setGerekce(e.target.value)}
+                    placeholder="Neden onaylıyorsun? (örn: Fiyat piyasa uygun, müşteri güvenilir)"
+                    rows={2}
+                  />
+                </div>
+              )}
+              {hata && (
+                <div style={{ padding: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid #DC2626', borderRadius: 8, color: '#7F1D1D', fontSize: 13, marginBottom: 12 }}>
+                  {hata}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  variant="primary"
+                  onClick={onayla}
+                  disabled={calisiyor}
+                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
+                  style={{ flex: 1 }}
+                >
+                  {calisiyor ? 'İşleniyor…' : 'Onayla'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setRedAcik(true)}
+                  disabled={calisiyor}
+                  iconLeft={<XCircle size={14} strokeWidth={1.5} />}
+                >
+                  Reddet
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                  Red Nedeni (zorunlu) *
+                </label>
+                <Textarea
+                  value={redNedeni}
+                  onChange={e => setRedNedeni(e.target.value)}
+                  placeholder="Neden reddediyorsun?"
+                  rows={3}
+                />
+              </div>
+              {hata && (
+                <div style={{ padding: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid #DC2626', borderRadius: 8, color: '#7F1D1D', fontSize: 13, marginBottom: 12 }}>
+                  {hata}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" onClick={() => { setRedAcik(false); setRedNedeni(''); setHata(null) }} disabled={calisiyor}>
+                  Vazgeç
+                </Button>
+                <Button variant="danger" onClick={reddet} disabled={calisiyor} iconLeft={<XCircle size={14} strokeWidth={1.5} />} style={{ flex: 1 }}>
+                  {calisiyor ? 'İşleniyor…' : 'Reddet'}
+                </Button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </Card>
+  )
+}
+
+function BilgiKart({ Icon, etiket, deger, vurgu }) {
+  return (
+    <div style={{ padding: '10px 12px', background: 'var(--surface-sunken)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <Icon size={14} style={{ color: 'var(--text-tertiary)', marginTop: 2, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ font: '600 10px/13px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>
+          {etiket}
+        </div>
+        <div style={{ font: vurgu ? '700 15px/20px var(--font-sans)' : '500 13px/18px var(--font-sans)', color: vurgu ? 'var(--brand-primary)' : 'var(--text-primary)' }}>
+          {deger}
+        </div>
+      </div>
+    </div>
+  )
+}
