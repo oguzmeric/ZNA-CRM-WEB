@@ -1,0 +1,34 @@
+name: Görev Gecikme SMS
+
+# Her gün UTC 06:00 = Türkiye 09:00'da tetiklenir.
+# Manuel çalıştırma da mümkün (workflow_dispatch).
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Edge function tetikle (gorev-gecikme-sms)
+        run: |
+          echo "Görev gecikme SMS kontrolü tetikleniyor..."
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://hcrbwxeuscfibgmchdtt.supabase.co/functions/v1/gorev-gecikme-sms" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          CODE=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "HTTP Kod: $CODE"
+          echo "Yanıt: $BODY"
+
+          if [ "$CODE" -ne 200 ]; then
+            echo "✗ SMS kontrol başarısız (HTTP $CODE)"
+            exit 1
+          fi
+          echo "✓ SMS kontrol tamam"

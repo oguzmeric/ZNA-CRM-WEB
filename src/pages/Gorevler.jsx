@@ -16,6 +16,7 @@ import {
 import {
   gorevleriGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
 } from '../services/gorevService'
+import { gorevAtamaSMSGonderVeIsaretle } from '../services/smsService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
@@ -421,6 +422,11 @@ function Gorevler() {
       toast.success('Görev güncellendi.')
       if (eski?.atanan !== form.atanan) {
         bildirimEkle(form.atanan, 'Görev Güncellendi', `"${form.baslik}" görevi size yeniden atandı.`, 'bilgi', '/gorevler')
+        // Yeni atanana SMS (kısa, kurumsal). Sessiz — hata olursa toast'a çevirmiyoruz.
+        gorevAtamaSMSGonderVeIsaretle({
+          gorevId: duzenleId, atananId: form.atanan,
+          gorevBaslik: form.baslik, sonTarih: form.sonTarih, oncelik: form.oncelik,
+        }).catch(() => {})
       }
     } else {
       const { servisTalebiOlustur, ...gorevAlanlari } = form
@@ -431,6 +437,11 @@ function Gorevler() {
         toast.success('Görev eklendi.')
         const oncelik = oncelikler.find(o => o.id === form.oncelik)
         bildirimEkle(form.atanan, 'Yeni Görev Atandı', `"${form.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}. Son tarih: ${form.sonTarih}`, 'gorev', '/gorevler')
+        // SMS gönder — atanan kişinin telefonu varsa
+        gorevAtamaSMSGonderVeIsaretle({
+          gorevId: eklenen.id, atananId: form.atanan,
+          gorevBaslik: form.baslik, sonTarih: form.sonTarih, oncelik: oncelik?.isim,
+        }).catch(() => {})
 
         // Servis talebi de istendiyse oluştur ve oraya yönlendir
         if (servisTalebiOlustur && form.musteriId) {
