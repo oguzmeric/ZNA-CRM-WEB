@@ -136,6 +136,7 @@ function GorusmeDetay() {
       durum: gorusme.durum,
       muhatapAd: gorusme.muhatapAd || '',
       gorusen: gorusme.gorusen || '',
+      irtibatSekli: gorusme.irtibatSekli || '',
     })
     setManuelKonuAc(manuelMi); setDuzenleAcik(true)
   }
@@ -151,6 +152,7 @@ function GorusmeDetay() {
       durum: duzenleForm.durum,
       muhatapAd: (duzenleForm.muhatapAd || '').trim(),
       gorusen: duzenleForm.gorusen || '',
+      irtibatSekli: duzenleForm.irtibatSekli || null,
     })
     setDuzenleAcik(false)
   }
@@ -384,6 +386,18 @@ function GorusmeDetay() {
                 <Label>Durum</Label>
                 <CustomSelect value={duzenleForm.durum} onChange={e => setDuzenleForm({ ...duzenleForm, durum: e.target.value })}>
                   {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
+                </CustomSelect>
+              </div>
+              <div>
+                <Label>İrtibat şekli</Label>
+                <CustomSelect
+                  value={duzenleForm.irtibatSekli || ''}
+                  onChange={e => setDuzenleForm({ ...duzenleForm, irtibatSekli: e.target.value })}
+                >
+                  <option value="">— Seçiniz —</option>
+                  {Object.entries(IRTIBAT).map(([id, i]) => (
+                    <option key={id} value={id}>{i.isim}</option>
+                  ))}
                 </CustomSelect>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
