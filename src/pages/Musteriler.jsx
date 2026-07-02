@@ -116,8 +116,8 @@ function Musteriler() {
   }
 
   const kaydet = async () => {
-    if (!form.ad || !form.soyad || !form.telefon || !form.firma) {
-      toast.error('Ad, soyad, firma ve telefon zorunludur.')
+    if (!form.ad || !form.firma) {
+      toast.error('Ad ve firma zorunludur.')
       return
     }
     if (!form.kod) { toast.error('Müşteri kodu zorunludur.'); return }
@@ -337,7 +337,7 @@ function Musteriler() {
               <Input value={form.ad} onChange={e => setForm({ ...form, ad: e.target.value })} placeholder="Ahmet" />
             </div>
             <div>
-              <Label required>Yetkili Soyadı</Label>
+              <Label>Yetkili Soyadı</Label>
               <Input value={form.soyad} onChange={e => setForm({ ...form, soyad: e.target.value })} placeholder="Yılmaz" />
             </div>
             <div>
@@ -345,7 +345,7 @@ function Musteriler() {
               <Input value={form.unvan} onChange={e => setForm({ ...form, unvan: e.target.value })} placeholder="Satın Alma Müdürü" />
             </div>
             <div>
-              <Label required>Telefon</Label>
+              <Label>Telefon</Label>
               <Input value={form.telefon} onChange={e => setForm({ ...form, telefon: e.target.value })} placeholder="0532 000 00 00" />
             </div>
             <div>
