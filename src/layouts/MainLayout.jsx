@@ -221,6 +221,9 @@ function MainLayout({ children }) {
   const [servisAcik, setServisAcik] = useState(
     location.pathname.startsWith('/servis') || location.pathname.startsWith('/memnuniyet')
   )
+  const [onaylarAcik, setOnaylarAcik] = useState(
+    location.pathname.startsWith('/siparis-onaylari') || location.pathname.startsWith('/teklif-onaylari')
+  )
   const [durumMenuAcik, setDurumMenuAcik] = useState(false)
   const [bildirimPanelAcik, setBildirimPanelAcik] = useState(false)
   const [temaPaneliAcik, setTemaPaneliAcik] = useState(false)
@@ -311,6 +314,7 @@ function MainLayout({ children }) {
     if (id === 'musteriler') return musteriAcik
     if (id === 'raporlar') return raporlarAcik
     if (id === 'servis') return servisAcik
+    if (id === 'onaylar') return onaylarAcik
     return false
   }
 
@@ -320,6 +324,7 @@ function MainLayout({ children }) {
     if (id === 'musteriler') setMusteriAcik(!musteriAcik)
     if (id === 'raporlar') setRaporlarAcik(!raporlarAcik)
     if (id === 'servis') setServisAcik(!servisAcik)
+    if (id === 'onaylar') setOnaylarAcik(!onaylarAcik)
   }
 
   const sayfaBasligi = () => {
