@@ -113,81 +113,81 @@ export default function TeklifOnaylari() {
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) 1fr', gap: 16 }}>
-        {/* Liste */}
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
-          {yukleniyor ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
-          ) : liste.length === 0 ? (
-            <EmptyState
-              title={sekme === 'bekleyen' ? 'Bekleyen teklif onayı yok' : sekme === 'onayli' ? 'Onaylanmış teklif yok' : 'Reddedilmiş teklif yok'}
-              icon={<Clock size={24} />}
-            />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {liste.map(t => {
-                const to = t.teklifOnayi || {}
-                const seciliMi = secili?.id === t.id
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setSecili(t)}
-                    style={{
-                      textAlign: 'left', padding: '14px 16px',
-                      background: seciliMi ? 'var(--surface-subtle)' : 'transparent',
-                      border: 'none', borderBottom: '1px solid var(--border-subtle)',
-                      cursor: 'pointer',
-                      borderLeft: `3px solid ${seciliMi ? 'var(--accent, #1E5AA8)' : 'transparent'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t.teklifNo}</strong>
-                      <Badge tone="brand">{t.konu || '—'}</Badge>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                      <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
-                      {t.firmaAdi || '—'}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        {sekme === 'bekleyen' ? `Gönderen: ${to.gonderen_ad || '—'}` : fmtTarih(t.tarih)}
-                      </span>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(gerçekToplam(t), t.paraBirimi)}</strong>
-                    </div>
-                    {sekme === 'onayli' && to.onaylayan_ad && (
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                        ✓ {to.onaylayan_ad} · {fmtTarih(to.onay_tarih)}
-                      </div>
-                    )}
-                    {sekme === 'red' && to.red_nedeni && (
-                      <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>✕ {to.red_nedeni}</div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </Card>
-
-        <div>
-          {secili ? (
-            <DetayPaneli
-              teklif={secili}
-              sekme={sekme}
-              kullanici={kullanici}
-              onTamamlandi={() => { setSecili(null); yukle() }}
-            />
-          ) : (
-            <Card>
-              <EmptyState
-                title="Bir teklif seç"
-                aciklama="Soldaki listeden bir teklif seçerek detaylarını görüntüle ve onay/red işlemi yap."
-                icon={<FileText size={24} />}
-              />
-            </Card>
-          )}
+      {/* Seçili detay üstte tam genişlik */}
+      {secili && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="secondary" size="sm" onClick={() => setSecili(null)}>× Kapat</Button>
+          </div>
+          <DetayPaneli
+            teklif={secili}
+            sekme={sekme}
+            kullanici={kullanici}
+            onTamamlandi={() => { setSecili(null); yukle() }}
+          />
         </div>
-      </div>
+      )}
+
+      {/* Liste — tam genişlik tablo */}
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        {yukleniyor ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : liste.length === 0 ? (
+          <EmptyState
+            title={sekme === 'bekleyen' ? 'Bekleyen teklif onayı yok' : sekme === 'onayli' ? 'Onaylanmış teklif yok' : 'Reddedilmiş teklif yok'}
+            icon={<Clock size={24} />}
+          />
+        ) : (
+          <div style={{ overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead style={{ background: 'var(--surface-sunken)' }}>
+                <tr>
+                  <th style={thStyle}>Teklif No</th>
+                  <th style={thStyle}>Firma</th>
+                  <th style={thStyle}>Konu</th>
+                  <th style={thStyle}>Hazırlayan</th>
+                  <th style={thStyle}>{sekme === 'bekleyen' ? 'Gönderme' : sekme === 'onayli' ? 'Onay Tarihi' : 'Red Tarihi'}</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Tutar</th>
+                  <th style={{ ...thStyle, textAlign: 'center', width: 100 }}>&nbsp;</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liste.map(t => {
+                  const to = t.teklifOnayi || {}
+                  const tarihGoster = sekme === 'bekleyen'
+                    ? fmtTarih(to.gonderme_tarih || t.tarih)
+                    : fmtTarih(to.onay_tarih || t.tarih)
+                  return (
+                    <tr
+                      key={t.id}
+                      onClick={() => setSecili(t)}
+                      style={{ cursor: 'pointer', borderTop: '1px solid var(--border-subtle)', transition: 'background 100ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={tdStyle}>
+                        <strong style={{ color: 'var(--text-primary)' }}>{t.teklifNo}</strong>
+                      </td>
+                      <td style={tdStyle}>{t.firmaAdi || '—'}</td>
+                      <td style={tdStyle}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{t.konu || '—'}</span>
+                      </td>
+                      <td style={tdStyle}>{sekme === 'bekleyen' ? (to.gonderen_ad || '—') : (to.onaylayan_ad || t.hazirlayan || '—')}</td>
+                      <td style={{ ...tdStyle, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{tarihGoster}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                        {fmtPara(gerçekToplam(t), t.paraBirimi)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <Button variant="secondary" size="sm">İncele →</Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
@@ -345,13 +345,12 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
                   {hata}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
                 <Button
                   variant="primary"
                   onClick={onayla}
                   disabled={calisiyor}
                   iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
-                  style={{ flex: 1 }}
                 >
                   {calisiyor ? 'İşleniyor…' : 'Onayla'}
                 </Button>
@@ -398,6 +397,19 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
     </Card>
   )
 }
+
+const thStyle = {
+  padding: '10px 12px',
+  textAlign: 'left',
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: 0.4,
+  color: 'var(--text-tertiary)',
+  fontWeight: 700,
+  whiteSpace: 'nowrap',
+  borderBottom: '1px solid var(--border-default)',
+}
+const tdStyle = { padding: '10px 12px', verticalAlign: 'middle' }
 
 function BilgiKart({ Icon, etiket, deger, vurgu }) {
   return (
