@@ -71,7 +71,7 @@ export default function DuyuruBanner({ kullaniciId }) {
             className="duyuru-akis"
             style={{
               position: 'absolute', whiteSpace: 'nowrap',
-              animation: 'duyuruAk 30s linear infinite',
+              animation: 'duyuruAk 15s linear infinite',
               font: '500 13px/20px var(--font-sans)',
             }}
           >
