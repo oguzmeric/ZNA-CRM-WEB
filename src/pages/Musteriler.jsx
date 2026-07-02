@@ -31,7 +31,7 @@ const durumlar = [
 
 const bosForm = {
   ad: '', soyad: '', firma: '', unvan: '', telefon: '', email: '',
-  sehir: '', adres: '', vergiNo: '', notlar: '', durum: 'aktif', kod: '',
+  sehir: '', adres: '', vergiNo: '', vergiDairesi: '', notlar: '', durum: 'aktif', kod: '',
 }
 
 
@@ -89,7 +89,7 @@ function Musteriler() {
     setForm({
       ad: m.ad, soyad: m.soyad, firma: m.firma, unvan: m.unvan || '',
       telefon: m.telefon, email: m.email || '', sehir: m.sehir || '',
-      adres: m.adres || '', vergiNo: m.vergiNo || '', notlar: m.notlar || '',
+      adres: m.adres || '', vergiNo: m.vergiNo || '', vergiDairesi: m.vergiDairesi || '', notlar: m.notlar || '',
       durum: m.durum, kod: m.kod,
     })
     setKodModu('manuel'); setDuzenleId(m.id); setGoster(true)
@@ -359,6 +359,10 @@ function Musteriler() {
             <div>
               <Label>Vergi No</Label>
               <Input value={form.vergiNo} onChange={e => setForm({ ...form, vergiNo: e.target.value })} placeholder="1234567890" />
+            </div>
+            <div>
+              <Label>Vergi Dairesi</Label>
+              <Input value={form.vergiDairesi} onChange={e => setForm({ ...form, vergiDairesi: e.target.value })} placeholder="Kadıköy Vergi Dairesi" />
             </div>
             <div>
               <Label>Durum</Label>

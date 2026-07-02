@@ -106,6 +106,12 @@ body {
   background: var(--success);
 }
 
+/* Sidebar rozeti nabız — bildirim odaklı hafif atım */
+@keyframes nabizYansin {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  50%      { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+
 /* Shimmer loading */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }

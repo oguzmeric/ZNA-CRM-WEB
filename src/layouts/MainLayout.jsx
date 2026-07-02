@@ -191,6 +191,11 @@ function MainLayout({ children }) {
   const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
   const musteriTalepOkunmamis  = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
   const servisTalebiOkunmamis  = personelTalepOkunmamis + musteriTalepOkunmamis
+  // Görev atama bildirimleri — Görevler menüsünde sayı rozeti göster
+  const gorevBildirimleri = (bildirimler || []).filter(b =>
+    !b.okundu && (b.tip === 'gorev' || /görev atandı/i.test(b.baslik || ''))
+  )
+  const gorevOkunmamis = gorevBildirimleri.length
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -242,6 +247,15 @@ function MainLayout({ children }) {
     oncekiSayfa.current = sayfaAdi
     logKaydet('sayfa_giris', { sayfa: sayfaAdi })
   }, [location.pathname, kullanici])
+
+  // Görevler sayfasına girildiğinde görev bildirimleri okundu işaretle
+  // (rozet düşsün) — kullanıcı gördü demektir.
+  useEffect(() => {
+    if (location.pathname.startsWith('/gorevler') && gorevBildirimleri.length > 0) {
+      gorevBildirimleri.forEach(b => bildirimOku?.(b.id))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, gorevBildirimleri.length])
 
   const handleCikis = async () => {
     if (kullanici) {
@@ -624,6 +638,21 @@ function MainLayout({ children }) {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {okunmamis}
+                  </span>
+                )}
+                {item.id === 'gorevler' && gorevOkunmamis > 0 && (
+                  <span
+                    title={`${gorevOkunmamis} yeni görev`}
+                    style={{
+                      minWidth: 18, height: 18, padding: '0 5px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'var(--danger)', color: '#fff',
+                      fontSize: 11, fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      animation: 'nabizYansin 1.6s ease-in-out infinite',
+                    }}
+                  >
+                    {gorevOkunmamis > 99 ? '99+' : gorevOkunmamis}
                   </span>
                 )}
               </button>
