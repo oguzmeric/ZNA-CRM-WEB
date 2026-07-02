@@ -35,51 +35,43 @@ export const okunmamisBildirimSayisi = async (kullaniciId) => {
   return count ?? 0
 }
 
-// Yeni bildirim ekle
+// Yeni bildirim ekle — RPC üzerinden (SECURITY DEFINER).
+// RLS WITH CHECK'in is_staff()+alt-sorgu kombinasyonuyla güvenilmez etkileşimini
+// bypass etmek için. Staff kontrolü RPC içinde yapılıyor.
 // payload: { aliciId, gonderenId?, baslik, mesaj?, tip?, link?, meta? }
 export const bildirimEkleDb = async (payload) => {
   if (!payload?.aliciId) return null
-  const { data, error } = await supabase
-    .from('bildirimler')
-    .insert(toSnake({
-      aliciId: payload.aliciId,
-      gonderenId: payload.gonderenId || null,
-      baslik: payload.baslik,
-      mesaj: payload.mesaj || '',
-      tip: payload.tip || 'bilgi',
-      link: payload.link || '',
-      meta: payload.meta || null,
-    }))
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('bildirim_ekle', {
+    p_alici_id: Number(payload.aliciId),
+    p_baslik: payload.baslik || '',
+    p_mesaj: payload.mesaj || '',
+    p_tip: payload.tip || 'bilgi',
+    p_link: payload.link || '',
+    p_meta: payload.meta || null,
+  })
   if (error) {
     console.error('[bildirimEkleDb] hata:', error.message)
     return null
   }
-  return toCamel(data)
+  return { id: data }
 }
 
-// Birden fazla alıcıya aynı bildirimi gönder (örn. @mention 2 kişi)
+// Birden fazla alıcıya aynı bildirimi gönder (örn. @mention 2 kişi) — RPC üzerinden
 export const cokluBildirimEkle = async (aliciIdList, baseBildirim) => {
   if (!aliciIdList?.length) return []
-  const rows = aliciIdList.map(id => toSnake({
-    aliciId: id,
-    gonderenId: baseBildirim.gonderenId || null,
-    baslik: baseBildirim.baslik,
-    mesaj: baseBildirim.mesaj || '',
-    tip: baseBildirim.tip || 'bilgi',
-    link: baseBildirim.link || '',
-    meta: baseBildirim.meta || null,
-  }))
-  const { data, error } = await supabase
-    .from('bildirimler')
-    .insert(rows)
-    .select()
+  const { data, error } = await supabase.rpc('bildirim_ekle_coklu', {
+    p_alici_idler: aliciIdList.map(Number),
+    p_baslik: baseBildirim.baslik || '',
+    p_mesaj: baseBildirim.mesaj || '',
+    p_tip: baseBildirim.tip || 'bilgi',
+    p_link: baseBildirim.link || '',
+    p_meta: baseBildirim.meta || null,
+  })
   if (error) {
     console.error('[cokluBildirimEkle] hata:', error.message)
     return []
   }
-  return arrayToCamel(data || [])
+  return (data || []).map(id => ({ id }))
 }
 
 // Bildirimi okundu olarak işaretle
