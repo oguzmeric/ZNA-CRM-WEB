@@ -81,6 +81,7 @@ export default function Teklifler() {
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
   const [gosterilecek, setGosterilecek] = useState(100)
+  const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
 
   useEffect(() => {
     Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satislariGetir()])
@@ -114,8 +115,11 @@ export default function Teklifler() {
   }
 
   const durumGuncelle = async (id, yeniDurum) => {
-    await teklifGuncelle(id, { onayDurumu: yeniDurum })
-    setTeklifler(prev => prev.map(t => t.id === id ? { ...t, onayDurumu: yeniDurum } : t))
+    // Kabul dışı durumlarda onay kuyruğundan (teklif_onayi + siparis_onayi) düşür.
+    const payload = { onayDurumu: yeniDurum }
+    if (yeniDurum !== 'kabul') { payload.teklifOnayi = null; payload.siparisOnayi = null }
+    await teklifGuncelle(id, payload)
+    setTeklifler(prev => prev.map(t => t.id === id ? { ...t, ...payload } : t))
   }
 
   const teklifSil = async (id) => {
@@ -145,9 +149,17 @@ export default function Teklifler() {
     navigate('/satislar/yeni')
   }
 
+  const siralayici = {
+    yeni:          (a, b) => new Date(b.tarih || b.olusturmaTarih || 0) - new Date(a.tarih || a.olusturmaTarih || 0),
+    eski:          (a, b) => new Date(a.tarih || a.olusturmaTarih || 0) - new Date(b.tarih || b.olusturmaTarih || 0),
+    tutar_yuksek:  (a, b) => Number(b.genelToplam || 0) - Number(a.genelToplam || 0),
+    tutar_dusuk:   (a, b) => Number(a.genelToplam || 0) - Number(b.genelToplam || 0),
+  }
+
   const filtreli = [...teklifler]
     .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
     .filter(t => trContains(`${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`, arama))
+    .sort(siralayici[siralama] || siralayici.yeni)
 
   const gorunenTeklifler = filtreli.slice(0, gosterilecek)
   const dahaFazlaVar = filtreli.length > gosterilecek
@@ -170,14 +182,24 @@ export default function Teklifler() {
         )}
       </div>
 
-      {/* Arama */}
+      {/* Arama + Sıralama */}
       {aktifSekme !== 'musteri_talepleri' && (
-        <div style={{ marginBottom: 16, maxWidth: 400 }}>
-          <SearchInput
-            value={arama}
-            onChange={e => setArama(e.target.value)}
-            placeholder="Teklif no, firma veya konu ara…"
-          />
+        <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, maxWidth: 400, minWidth: 240 }}>
+            <SearchInput
+              value={arama}
+              onChange={e => setArama(e.target.value)}
+              placeholder="Teklif no, firma veya konu ara…"
+            />
+          </div>
+          <div style={{ minWidth: 200 }}>
+            <CustomSelect value={siralama} onChange={e => setSiralama(e.target.value)}>
+              <option value="yeni">Tarih: Yeni → Eski</option>
+              <option value="eski">Tarih: Eski → Yeni</option>
+              <option value="tutar_yuksek">Tutar: Yüksek → Düşük</option>
+              <option value="tutar_dusuk">Tutar: Düşük → Yüksek</option>
+            </CustomSelect>
+          </div>
         </div>
       )}
 

@@ -407,6 +407,13 @@ function TeklifDetay() {
       gorusmeId: form.gorusmeId || null,
       musteriTalepId: form.musteriTalepId || null,
     }
+    // Onay durumu 'kabul' değilse teklif onayı + sipariş onayı akışından düşür.
+    // Kullanıcı kabul edilmiş bir teklifi 'takipte/revizyon/vazgecildi'ye çevirirse
+    // onay kuyruğunda kalması yanlış.
+    if (!yeni && form.onayDurumu !== 'kabul') {
+      kaydedilecek.teklifOnayi = null
+      kaydedilecek.siparisOnayi = null
+    }
     try {
       if (yeni) {
         // teklif_no DB trigger 'tr_teklif_no_uret' tarafindan otomatik uretilir

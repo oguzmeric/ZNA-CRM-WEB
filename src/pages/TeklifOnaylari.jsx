@@ -128,7 +128,8 @@ export default function TeklifOnaylari() {
         </div>
       )}
 
-      {/* Liste — tam genişlik tablo */}
+      {/* Liste — tam genişlik tablo (detay açıkken gizli) */}
+      {!secili && (
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {yukleniyor ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
@@ -188,6 +189,7 @@ export default function TeklifOnaylari() {
           </div>
         )}
       </Card>
+      )}
     </div>
   )
 }
@@ -345,15 +347,7 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
                   {hata}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
-                <Button
-                  variant="primary"
-                  onClick={onayla}
-                  disabled={calisiyor}
-                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
-                >
-                  {calisiyor ? 'İşleniyor…' : 'Onayla'}
-                </Button>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
                 <Button
                   variant="secondary"
                   onClick={() => setRedAcik(true)}
@@ -361,6 +355,14 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
                   iconLeft={<XCircle size={14} strokeWidth={1.5} />}
                 >
                   Reddet
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={onayla}
+                  disabled={calisiyor}
+                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
+                >
+                  {calisiyor ? 'İşleniyor…' : 'Onayla'}
                 </Button>
               </div>
             </>
