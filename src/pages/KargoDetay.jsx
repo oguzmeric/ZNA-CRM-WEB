@@ -10,6 +10,7 @@ import { useKargo } from '../context/KargoContext'
 import {
   Button, Input, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
 } from '../components/ui'
+import PttTakipKart from '../components/PttTakipKart'
 
 const KARGO_DURUM_TONE = {
   hazirlaniyor:    'beklemede',
@@ -259,6 +260,11 @@ export default function KargoDetay() {
             </>
           )}
         </div>
+
+        {/* PTT takip — sadece PTT firması + takip no dolu */}
+        {kargo.kargoFirmasi === 'ptt' && kargo.takipNo && !takipNoDuzenle && (
+          <PttTakipKart takipNo={kargo.takipNo} />
+        )}
 
         {/* Gönderen / Alıcı */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
