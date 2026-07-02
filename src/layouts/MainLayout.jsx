@@ -544,13 +544,18 @@ function MainLayout({ children }) {
               return (
                 <div key={entry.id} style={{
                   padding: entryIdx === 0 ? '2px 12px 6px' : '14px 12px 6px',
-                  font: '500 10px/14px var(--font-sans)',
-                  color: 'var(--text-on-dark-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  opacity: 0.6,
                 }}>
-                  {entry.baslik}
+                  <span style={{
+                    font: '600 10px/14px var(--font-sans)',
+                    color: 'var(--text-on-dark-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    borderBottom: '1px solid rgba(255,255,255,0.12)',
+                    paddingBottom: 4,
+                    display: 'inline-block',
+                  }}>
+                    {entry.baslik}
+                  </span>
                 </div>
               )
             }
