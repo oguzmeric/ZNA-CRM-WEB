@@ -6,11 +6,14 @@ import { toCamel, arrayToCamel } from '../lib/mapper'
 import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
 
 // Bekleyen teklif onayları (durum='bekliyor'). En yeni önce (id DESC).
+// Defansif: onay_durumu 'kabul' olmayan teklifler kuyrukta görünmemeli
+// (kullanıcı kabul→takipte'ye çevirmiş olabilir, JSONB kalıntısı takılmasın).
 export async function bekleyenTeklifOnaylariniGetir() {
   const { data, error } = await supabase
     .from('teklifler')
     .select('*')
     .eq('teklif_onayi->>durum', 'bekliyor')
+    .eq('onay_durumu', 'kabul')
     .order('id', { ascending: false })
   if (error) { console.error('[bekleyenTeklifOnaylari]', error.message); return [] }
   return arrayToCamel(data)
