@@ -317,17 +317,17 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+    <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
 
-      {/* ── Hoşgeldin ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="t-h1" style={{ marginBottom: 4 }}>{selamlama(kullanici?.ad)}</h1>
-          <p className="t-caption">
-            {bugun.toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+      {/* ── Hoşgeldin — kompakt tek satır ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <h1 className="t-h2" style={{ margin: 0 }}>{selamlama(kullanici?.ad)}</h1>
+          <span className="t-caption" style={{ color: 'var(--text-tertiary)' }}>
+            {bugun.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           <CurrencyBox code="USD" value={kurlar.USD ? `₺${kurlar.USD}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
           <CurrencyBox code="EUR" value={kurlar.EUR ? `₺${kurlar.EUR}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
         </div>
@@ -352,7 +352,7 @@ export default function Dashboard() {
               Görüntüle <ArrowRight size={14} strokeWidth={1.5} />
             </a>
           }
-          style={{ marginBottom: 20 }}
+          style={{ marginBottom: 10 }}
         >
           Toplam {gecikmisler.reduce((s, g) => s + (g.toplam || 0), 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ tahsil edilmeyi bekliyor.
         </Alert>
@@ -375,7 +375,7 @@ export default function Dashboard() {
               Görüntüle <ArrowRight size={14} strokeWidth={1.5} />
             </a>
           }
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 10 }}
         >
           Müşterilerden geri alınması gereken cihazlar var.
         </Alert>
@@ -392,7 +392,7 @@ export default function Dashboard() {
               Görüntüle <ArrowRight size={14} strokeWidth={1.5} />
             </a>
           }
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 10 }}
         >
           Önümüzdeki 3 gün içinde iade gelmeli.
         </Alert>
@@ -400,14 +400,17 @@ export default function Dashboard() {
 
       {/* ── Hızlı işlemler ── */}
       {hizliAksiyonlar.length > 0 && (
-        <section style={{ marginBottom: 20 }}>
-          <p className="t-label" style={{ marginBottom: 8 }}>HIZLI İŞLEMLER</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <section style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <p className="t-label" style={{ margin: 0 }}>HIZLI İŞLEMLER</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {hizliAksiyonlar.map(a => (
               <Button
                 key={a.isim}
                 variant="secondary"
-                iconLeft={<Plus size={14} strokeWidth={1.5} />}
+                size="sm"
+                iconLeft={<Plus size={13} strokeWidth={1.5} />}
                 onClick={() => navigate(a.yol)}
               >
                 {a.isim}
@@ -417,40 +420,42 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* ── Bugünün özeti ── */}
+      {/* ── Bugünün özeti — kompakt yatay şerit ── */}
       {bugunTileleri.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <p className="t-label" style={{ marginBottom: 8 }}>BUGÜNÜN ÖZETİ</p>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${bugunTileleri.length}, minmax(0, 1fr))`, gap: 12 }}>
-            {bugunTileleri.map((t, i) => (
-              <div
-                key={i}
-                style={{
-                  background: 'var(--surface-sunken)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '14px 16px',
-                }}
-              >
-                <div style={{
-                  font: '600 24px/1.2 var(--font-sans)',
+        <section style={{ marginBottom: 12 }}>
+          <p className="t-label" style={{ marginBottom: 6 }}>BUGÜNÜN ÖZETİ</p>
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 4,
+            padding: '6px 10px',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            alignItems: 'stretch',
+          }}>
+            {bugunTileleri.map((t, i, arr) => [
+              <div key={i} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  {t.label}
+                </span>
+                <span style={{
+                  font: '700 15px/20px var(--font-sans)',
                   color: t.tone === 'danger' ? 'var(--danger)' : 'var(--text-primary)',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   {t.d}
-                </div>
-                <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  {t.label}
-                </div>
-              </div>
-            ))}
+                </span>
+              </div>,
+              i < arr.length - 1 && (
+                <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
+              ),
+            ])}
           </div>
         </section>
       )}
 
       {/* ── KPI kartları ── */}
-      <section style={{ marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+      <section style={{ marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           {kpiKartlari.map((k, i) => (
             <KPICard key={i} label={k.label} value={k.value} icon={k.icon} footer={k.footer} />
           ))}
