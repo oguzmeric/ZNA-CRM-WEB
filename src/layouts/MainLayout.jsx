@@ -66,38 +66,38 @@ function SortableSatir({ id, children }) {
   )
 }
 
+// Grup hiyerarşisi — Salesforce'un "app tab" mantığından esinlenildi, dikey karşılığı.
+// Grup başlıkları uppercase + silik renkli render edilir, hiyerarşi net görünsün diye.
+const GRUPLAR = [
+  { id: 'gunluk',    baslik: 'Günlük' },
+  { id: 'satis',     baslik: 'Satış' },
+  { id: 'operasyon', baslik: 'Operasyon' },
+  { id: 'yonetim',   baslik: 'Yönetim' },
+]
+
 const menuItems = [
-  { id: 'dashboard', isim: 'Panel', Icon: LayoutDashboard, yol: '/dashboard', modul: null },
+  { id: 'dashboard', isim: 'Panel', Icon: LayoutDashboard, yol: '/dashboard', modul: null, grup: 'gunluk' },
   {
     id: 'musteriler',
     isim: 'Müşteriler',
     Icon: Users,
     modul: 'musteriler',
+    grup: 'gunluk',
     altMenu: [
       { id: 'musteri-liste', isim: 'Müşteri Listesi', yol: '/musteriler' },
       { id: 'firmalar', isim: 'Firmalar', yol: '/firmalar' },
     ],
   },
-  { id: 'gorevler', isim: 'Görevler', Icon: CheckSquare, yol: '/gorevler', modul: 'gorevler' },
-  { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler' },
-  { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null },
-  { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null },
-  {
-    id: 'stok',
-    isim: 'Stok',
-    Icon: Package,
-    modul: 'stok',
-    altMenu: [
-      { id: 'stok-kartlar', isim: 'Stok Kartları', yol: '/stok' },
-      { id: 'stok-hareketler', isim: 'Stok Hareketleri', yol: '/stok-hareketleri' },
-      { id: 'stok-opsiyon', isim: 'Stok Opsiyonları', yol: '/stok-opsiyon' },
-    ],
-  },
+  { id: 'gorevler', isim: 'Görevler', Icon: CheckSquare, yol: '/gorevler', modul: 'gorevler', grup: 'gunluk' },
+  { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler', grup: 'gunluk' },
+  { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null, grup: 'gunluk' },
+  { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null, grup: 'gunluk' },
   {
     id: 'satislar',
     isim: 'Satışlar',
     Icon: ReceiptText,
     modul: 'musteriler',
+    grup: 'satis',
     altMenu: [
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
@@ -108,17 +108,32 @@ const menuItems = [
     isim: 'Onaylar',
     Icon: BadgeCheck,
     modul: '_onay_yetkisi',
+    grup: 'satis',
     altMenu: [
       { id: 'teklif_onaylari',  isim: 'Teklif Onayı',  yol: '/teklif-onaylari' },
       { id: 'siparis_onaylari', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
     ],
   },
-  { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar' },
+  { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar', grup: 'satis' },
+  {
+    id: 'stok',
+    isim: 'Stok',
+    Icon: Package,
+    modul: 'stok',
+    grup: 'operasyon',
+    altMenu: [
+      { id: 'stok-kartlar', isim: 'Stok Kartları', yol: '/stok' },
+      { id: 'stok-hareketler', isim: 'Stok Hareketleri', yol: '/stok-hareketleri' },
+      { id: 'stok-opsiyon', isim: 'Stok Opsiyonları', yol: '/stok-opsiyon' },
+    ],
+  },
+  { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar', grup: 'operasyon' },
   {
     id: 'servis',
     isim: 'Servis',
     Icon: Wrench,
     modul: 'servis_talepleri',
+    grup: 'operasyon',
     altMenu: [
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
       { id: 'musteri_talepleri', isim: 'Müşteri Talepleri', yol: '/servis-talepleri?kaynak=musteri' },
@@ -126,24 +141,24 @@ const menuItems = [
       { id: 'memnuniyet',       isim: 'Müşteri Memnuniyeti', yol: '/memnuniyet' },
     ],
   },
-  { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null },
-  { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar' },
-  { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null },
+  { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
+  { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   {
     id: 'raporlar',
     isim: 'Raporlar',
     Icon: BarChart3,
     modul: 'raporlar',
+    grup: 'yonetim',
     altMenu: [
       { id: 'raporlar-liste', isim: 'Raporlar', yol: '/raporlar' },
       { id: 'rapor-merkezi',  isim: 'Rapor Merkezi', yol: '/rapor-merkezi' },
     ],
   },
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
-  { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi' },
-  { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi' },
-  { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi' },
-  { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi' },
+  { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
 ]
 
 const durumRenkleri = {
@@ -376,6 +391,21 @@ function MainLayout({ children }) {
 
   const profilFoto = localStorage.getItem(`profil_foto_${kullanici?.id}`)
 
+  // Grup başlıklarını menu listesine entrilaştır — item map'i içinde header vs item ayrımı yapılır.
+  // useMenuSiralama tarafından döndürülen siparişi bozmadan grup bazında sıralar.
+  const menuEntries = (() => {
+    const gruplu = GRUPLAR.map(g => ({
+      grup: g,
+      items: gorunenMenu.filter(m => (m.grup || 'gunluk') === g.id),
+    })).filter(g => g.items.length > 0)
+    const result = []
+    gruplu.forEach(g => {
+      result.push({ type: 'header', id: `__hdr_${g.grup.id}`, baslik: g.grup.baslik })
+      g.items.forEach(item => result.push({ type: 'item', id: item.id, data: item }))
+    })
+    return result
+  })()
+
   // ─────────────────────────── Render ───────────────────────────
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--surface-bg)' }}>
@@ -509,7 +539,22 @@ function MainLayout({ children }) {
         <nav aria-label="Ana menü" style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={dragSonu}>
           <SortableContext items={gorunenMenu.map(m => m.id)} strategy={verticalListSortingStrategy}>
-          {gorunenMenu.map(item => {
+          {menuEntries.map((entry, entryIdx) => {
+            if (entry.type === 'header') {
+              return (
+                <div key={entry.id} style={{
+                  padding: entryIdx === 0 ? '2px 12px 6px' : '14px 12px 6px',
+                  font: '500 10px/14px var(--font-sans)',
+                  color: 'var(--text-on-dark-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  opacity: 0.6,
+                }}>
+                  {entry.baslik}
+                </div>
+              )
+            }
+            const item = entry.data
             if (item.altMenu) {
               const altAktif = item.altMenu.some(a => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
               const acik = menuAcik(item.id)
