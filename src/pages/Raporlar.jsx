@@ -170,15 +170,13 @@ function Raporlar() {
     )
     const ortMs = toplamMs / tamamlananlar.length
     const ortSaat = ortMs / (1000 * 60 * 60)
-    const ortGun = ortMs / (1000 * 60 * 60 * 24)
     return {
       isim: k.ad.split(' ')[0], ad: k.ad,
       adet: tamamlananlar.length,
-      ortGun: Math.round(ortGun * 10) / 10,     // 1 ondalık
-      ortSaat: Math.round(ortSaat),
-      etiket: ortGun >= 1 ? `${(Math.round(ortGun * 10) / 10)} gün` : `${Math.round(ortSaat)} saat`,
+      ortSaat: Math.round(ortSaat * 10) / 10,   // 1 ondalık
+      etiket: `${(Math.round(ortSaat * 10) / 10)} saat`,
     }
-  }).filter(Boolean).sort((a, b) => a.ortGun - b.ortGun)
+  }).filter(Boolean).sort((a, b) => a.ortSaat - b.ortSaat)
 
   const stokCikisVerisi = () => {
     const m = {}
@@ -518,10 +516,10 @@ function Raporlar() {
                     <ResponsiveContainer width="100%" height={Math.max(180, personelTamamlamaSuresi.length * 44)}>
                       <BarChart layout="vertical" data={personelTamamlamaSuresi} margin={{ left: 10, right: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" horizontal={false} />
-                        <XAxis type="number" tick={chartAxisStyle} tickFormatter={v => `${v}g`} />
+                        <XAxis type="number" tick={chartAxisStyle} tickFormatter={v => `${v}s`} />
                         <YAxis type="category" dataKey="isim" tick={chartAxisStyle} width={100} />
-                        <Tooltip {...chartTooltipStyle} formatter={(val, _n, item) => [item?.payload?.etiket || `${val} gün`, 'Ortalama']} />
-                        <Bar dataKey="ortGun" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} name="Ortalama süre (gün)" />
+                        <Tooltip {...chartTooltipStyle} formatter={(val, _n, item) => [item?.payload?.etiket || `${val} saat`, 'Ortalama']} />
+                        <Bar dataKey="ortSaat" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} name="Ortalama süre (saat)" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
