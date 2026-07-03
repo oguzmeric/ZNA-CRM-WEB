@@ -107,22 +107,26 @@ function GorevDetay() {
       .filter(mid => mid?.toString() !== kullanici.id?.toString())
     const alanlar = new Set(mentionIdler.map(x => x?.toString()))
 
-    // Görevi açan kişiye bildirim — yorumu kendisi yazmıyorsa ve mention'da yoksa
-    // (olusturan_id kolonu yok; olusturanAd üzerinden kullanicilar tablosuyla eşleniyor)
+    // Görevi açan + atanan kişiye bildirim — yorumu kendisi yazmıyorsa ve mention'da yoksa.
+    // olusturan_id kolonu yok, olusturanAd üzerinden kullanicilar tablosuyla eşleniyor.
+    const paydaslar = []
     const olusturan = kullanicilar.find(k => k.ad === gorev.olusturanAd)
-    if (
-      olusturan?.id
-      && olusturan.id?.toString() !== kullanici.id?.toString()
-      && !alanlar.has(olusturan.id?.toString())
-    ) {
-      alanlar.add(olusturan.id?.toString())
+    if (olusturan?.id) paydaslar.push(olusturan.id)
+    if (gorev.atanan) paydaslar.push(gorev.atanan)
+
+    for (const pid of paydaslar) {
+      const idStr = pid?.toString()
+      if (!idStr) continue
+      if (idStr === kullanici.id?.toString()) continue      // yazan kendisi
+      if (alanlar.has(idStr)) continue                       // mention'da zaten var
+      alanlar.add(idStr)
       bildirimEkle(
-        olusturan.id,
+        pid,
         `${kullanici.ad} göreve yorum ekledi`,
         `"${gorev.baslik}": ${yeniYorum.slice(0, 80)}${yeniYorum.length > 80 ? '…' : ''}`,
         'gorev',
         `/gorevler/${gorev.id}`,
-      ).catch(e => console.warn('[bildirim] yorum→olusturan:', e?.message))
+      ).catch(e => console.warn('[bildirim] yorum→paydas:', e?.message))
     }
 
     for (const aliciId of mentionIdler) {
