@@ -1,6 +1,6 @@
-// Servis şampiyonası — ofis ekranında kiosk mod. Giriş gerektirmez.
-// Teknisyen bir servisi tamamlandı'ya çekince realtime tetiklenir + sayılar güncellenir.
-// Temmuz'dan itibaren tamamlanan servisleri sayar; Bugün / Bu Hafta / Bu Ay sekmeleri.
+// Servis performans paneli — ofis ekranında kiosk mod. Login yok.
+// Teknisyen bazlı: her satır bir teknisyenin dönem içi tamamlanmış servis sayısını gösterir.
+// Yarış/ödül vurgusu yok — düz performans dashboard'u.
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -13,8 +13,8 @@ const bugunBaslangic = () => {
 const haftaBaslangic = () => {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
-  const gun = d.getDay() // 0=Paz, 1=Pzt...
-  const fark = gun === 0 ? 6 : gun - 1 // Pazartesi baz
+  const gun = d.getDay()
+  const fark = gun === 0 ? 6 : gun - 1
   d.setDate(d.getDate() - fark)
   return d
 }
@@ -33,10 +33,18 @@ const SEKMELER = [
 
 const inisyaller = (ad) => (ad || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')
 
+const telFormat = (t) => {
+  if (!t) return null
+  const d = String(t).replace(/\D/g, '')
+  if (d.length === 11) return `${d.slice(0,4)} ${d.slice(4,7)} ${d.slice(7,9)} ${d.slice(9)}`
+  if (d.length === 10) return `0${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6,8)} ${d.slice(8)}`
+  return t
+}
+
 function useTicTac() {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
+    const t = setInterval(() => setNow(new Date()), 30000)
     return () => clearInterval(t)
   }, [])
   return now
@@ -44,16 +52,15 @@ function useTicTac() {
 
 export default function Skor() {
   const [sekme, setSekme] = useState('ay')
+  const [siralamaMap, setSiralamaMap] = useState({ bugun: [], hafta: [], ay: [] })
   const now = useTicTac()
 
-  const [siralamaMap, setSiralamaMap] = useState({ bugun: [], hafta: [], ay: [] })
   const yukle = async () => {
     const bugun = bugunBaslangic().toISOString().slice(0, 10)
     const hafta = haftaBaslangic().toISOString().slice(0, 10)
     const ay    = ayBaslangic().toISOString().slice(0, 10)
     const yarin = new Date(); yarin.setDate(yarin.getDate() + 1)
     const bitis = yarin.toISOString().slice(0, 10)
-    // Public RPC — anon key ile çağrılır, RLS bypass ama sadece agregat döner
     const [rBugun, rHafta, rAy] = await Promise.all([
       supabase.rpc('skor_liderlik', { baslangic: bugun, bitis }),
       supabase.rpc('skor_liderlik', { baslangic: hafta, bitis }),
@@ -63,6 +70,8 @@ export default function Skor() {
       id: r.kim,
       ad: r.kim,
       fotoUrl: r.foto_url || null,
+      unvan: r.unvan || 'Teknisyen',
+      telefon: r.telefon || null,
       sayi: Number(r.sayi || 0),
     }))
     setSiralamaMap({
@@ -74,7 +83,6 @@ export default function Skor() {
 
   useEffect(() => { yukle() }, [])
 
-  // Realtime — iki kaynak da dinlensin
   useEffect(() => {
     const k1 = supabase
       .channel('skor-servis-talep')
@@ -89,169 +97,134 @@ export default function Skor() {
 
   const aktif = SEKMELER.find(s => s.id === sekme)
   const sira = siralamaMap[sekme] || []
-
   const toplam = sira.reduce((s, x) => s + x.sayi, 0)
-  const zirve = sira[0]
-  const enUst = zirve?.sayi || 1
-  const podyum = [sira[1], sira[0], sira[2]].filter(Boolean)
-  const kalan = sira.slice(3, 13)
+  const enUst = sira[0]?.sayi || 1
 
   const saat = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-  const tarih = now.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const tarih = now.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #0B1220 0%, #0E1B33 100%)',
+      background: '#0B1220',
       color: '#E5E9F4',
-      fontFamily: 'var(--font-sans, system-ui)',
-      padding: '32px 40px 40px',
-      display: 'flex', flexDirection: 'column', gap: 28,
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      padding: '28px 40px 32px',
+      display: 'flex', flexDirection: 'column', gap: 22,
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: 0.5 }}>
-            🏆 <span style={{ background: 'linear-gradient(90deg,#FBBF24,#F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>ZNA Servis Şampiyonası</span>
+          <div style={{ fontSize: 13, color: '#7A8AA8', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600, marginBottom: 6 }}>
+            ZNA Teknoloji · Servis Ekibi
           </div>
-          <div style={{ fontSize: 14, color: '#9AA5C1', marginTop: 4, textTransform: 'capitalize' }}>{tarih}</div>
+          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: 0.2 }}>
+            Teknisyen Performans Paneli
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 42, fontWeight: 700, letterSpacing: 1, fontVariantNumeric: 'tabular-nums' }}>{saat}</div>
-          <div style={{ fontSize: 12, color: '#9AA5C1', marginTop: 2 }}>canlı yayın</div>
+          <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', color: '#E5E9F4' }}>{saat}</div>
+          <div style={{ fontSize: 13, color: '#7A8AA8', marginTop: 2, textTransform: 'capitalize' }}>{tarih}</div>
         </div>
       </div>
 
-      {/* Sekmeler */}
-      <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', borderRadius: 999, padding: 4, alignSelf: 'flex-start' }}>
-        {SEKMELER.map(s => {
-          const on = sekme === s.id
-          return (
-            <button
-              key={s.id}
-              onClick={() => setSekme(s.id)}
-              style={{
-                padding: '10px 22px',
-                borderRadius: 999,
-                background: on ? 'linear-gradient(135deg,#3B82F6,#2563EB)' : 'transparent',
-                border: 'none', cursor: 'pointer',
-                color: on ? '#fff' : '#9AA5C1',
-                fontSize: 15, fontWeight: on ? 700 : 500,
-                letterSpacing: 0.3,
-                boxShadow: on ? '0 6px 20px -6px rgba(59,130,246,0.6)' : 'none',
-                transition: 'all 180ms',
-              }}
-            >
-              {s.isim}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Podyum */}
-      {podyum.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, alignItems: 'end' }}>
-          {podyum.map((p, i) => {
-            // podyum sıra: [2., 1., 3.]
-            const rank = i === 0 ? 2 : i === 1 ? 1 : 3
-            const yukseklik = rank === 1 ? 320 : rank === 2 ? 260 : 220
-            const renk = rank === 1 ? '#FBBF24' : rank === 2 ? '#94A3B8' : '#B45309'
-            const emoji = rank === 1 ? '👑' : rank === 2 ? '🥈' : '🥉'
+      {/* Sekmeler + özet */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 3 }}>
+          {SEKMELER.map(s => {
+            const on = sekme === s.id
             return (
-              <div key={p.id} style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-                border: `1px solid ${renk}55`,
-                borderRadius: 20,
-                padding: '24px 20px',
-                minHeight: yukseklik,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-                position: 'relative',
-                boxShadow: rank === 1 ? `0 20px 60px -20px ${renk}88` : 'none',
-              }}>
-                <div style={{ position: 'absolute', top: -18, fontSize: 40 }}>{emoji}</div>
-                {p.fotoUrl ? (
-                  <img src={p.fotoUrl} alt={p.ad} style={{ width: rank === 1 ? 96 : 76, height: rank === 1 ? 96 : 76, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${renk}` }} />
-                ) : (
-                  <div style={{
-                    width: rank === 1 ? 96 : 76, height: rank === 1 ? 96 : 76,
-                    borderRadius: '50%',
-                    background: `${renk}22`, color: renk,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: rank === 1 ? 32 : 26, fontWeight: 700,
-                    border: `3px solid ${renk}`,
-                  }}>{inisyaller(p.ad)}</div>
-                )}
-                <div style={{ fontSize: rank === 1 ? 20 : 17, fontWeight: 700, textAlign: 'center', minHeight: 44 }}>{p.ad}</div>
-                <div style={{
-                  fontSize: rank === 1 ? 56 : 42,
-                  fontWeight: 800,
-                  color: renk,
-                  lineHeight: 1,
-                  fontVariantNumeric: 'tabular-nums',
-                  textShadow: rank === 1 ? `0 4px 24px ${renk}88` : 'none',
-                }}>{p.sayi}</div>
-                <div style={{ fontSize: 12, color: '#9AA5C1', letterSpacing: 0.5 }}>SERVİS</div>
-              </div>
+              <button
+                key={s.id}
+                onClick={() => setSekme(s.id)}
+                style={{
+                  padding: '10px 22px',
+                  borderRadius: 8,
+                  background: on ? '#1E3A5F' : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  color: on ? '#fff' : '#7A8AA8',
+                  fontSize: 14, fontWeight: on ? 600 : 500,
+                  transition: 'all 150ms',
+                }}
+              >
+                {s.isim}
+              </button>
             )
           })}
         </div>
-      ) : (
-        <div style={{ padding: 60, textAlign: 'center', color: '#9AA5C1', fontSize: 16 }}>
-          Bu dönemde henüz tamamlanan servis yok. İlk zafer sizin olsun 🚀
+        <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#7A8AA8' }}>
+          <div>
+            Toplam: <strong style={{ color: '#fff', fontSize: 20, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{toplam}</strong> servis
+          </div>
+          <div>
+            Teknisyen: <strong style={{ color: '#fff', fontSize: 20, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{sira.length}</strong>
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* Kalan sıralama */}
-      {kalan.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {kalan.map((p, i) => {
+      {/* Liste */}
+      {sira.length === 0 ? (
+        <div style={{ padding: 80, textAlign: 'center', color: '#7A8AA8', fontSize: 15, background: 'rgba(255,255,255,0.02)', borderRadius: 12 }}>
+          {aktif.isim} döneminde henüz tamamlanan servis kaydı yok.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sira.map((p, i) => {
             const yuzde = enUst > 0 ? (p.sayi / enUst) * 100 : 0
             return (
               <div key={p.id} style={{
-                display: 'grid', gridTemplateColumns: '52px 48px 1fr 100px', alignItems: 'center', gap: 14,
-                padding: '10px 16px',
-                background: 'rgba(255,255,255,0.04)',
+                display: 'grid',
+                gridTemplateColumns: '48px 64px 1fr 220px 120px',
+                alignItems: 'center', gap: 20,
+                padding: '14px 20px',
+                background: i === 0 ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.03)',
                 borderRadius: 12,
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: `1px solid ${i === 0 ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.05)'}`,
               }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#9AA5C1', fontVariantNumeric: 'tabular-nums' }}>#{i + 4}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: i === 0 ? '#60A5FA' : '#7A8AA8', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
+                  {i + 1}
+                </div>
                 {p.fotoUrl ? (
-                  <img src={p.fotoUrl} alt={p.ad} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img src={p.fotoUrl} alt={p.ad} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }} />
                 ) : (
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#E5E9F4' }}>
-                    {inisyaller(p.ad)}
-                  </div>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#E5E9F4',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, fontWeight: 600,
+                    border: '2px solid rgba(255,255,255,0.1)',
+                  }}>{inisyaller(p.ad)}</div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{p.ad}</div>
-                  <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, marginTop: 6, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${yuzde}%`, background: 'linear-gradient(90deg,#3B82F6,#60A5FA)', borderRadius: 999, transition: 'width 500ms' }} />
+                  <div style={{ fontSize: 18, fontWeight: 600, color: '#E5E9F4' }}>{p.ad}</div>
+                  <div style={{ fontSize: 13, color: '#7A8AA8', marginTop: 3 }}>{p.unvan}</div>
+                  <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 999, marginTop: 8, overflow: 'hidden', maxWidth: 400 }}>
+                    <div style={{ height: '100%', width: `${yuzde}%`, background: i === 0 ? '#3B82F6' : '#4B5B78', borderRadius: 999, transition: 'width 400ms' }} />
                   </div>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, textAlign: 'right', color: '#93C5FD', fontVariantNumeric: 'tabular-nums' }}>{p.sayi}</div>
+                <div style={{ fontSize: 13, color: '#7A8AA8', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.telefon ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ opacity: 0.6 }}>📞</span> {telFormat(p.telefon)}
+                    </div>
+                  ) : (
+                    <span style={{ opacity: 0.4 }}>—</span>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                    {p.sayi}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#7A8AA8', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>
+                    servis
+                  </div>
+                </div>
               </div>
             )
           })}
         </div>
       )}
-
-      {/* Alt band */}
-      <div style={{
-        marginTop: 'auto',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 20px',
-        background: 'rgba(59,130,246,0.08)',
-        border: '1px solid rgba(59,130,246,0.2)',
-        borderRadius: 14,
-      }}>
-        <div style={{ fontSize: 15, color: '#93C5FD' }}>
-          <strong style={{ color: '#fff', fontSize: 18, marginRight: 4, fontVariantNumeric: 'tabular-nums' }}>{toplam}</strong>
-          servis tamamlandı — {aktif.isim.toLowerCase()}
-        </div>
-        <div style={{ fontSize: 13, color: '#9AA5C1' }}>
-          {sira.length} teknisyen sahada · Temmuz {new Date().getFullYear()} kampanyası
-        </div>
-      </div>
     </div>
   )
 }
