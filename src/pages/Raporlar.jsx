@@ -155,6 +155,31 @@ function Raporlar() {
     }
   }).filter(k => k.toplam > 0)
 
+  // Ortalama tamamlama süresi (gün) — tamamlanmis + tamamlanma_tarihi dolu görevlerden.
+  // Süre = tamamlanma_tarihi - olusturma_tarih. NULL olanlar (legacy 11 görev) hariç.
+  const personelTamamlamaSuresi = kullanicilar.map(k => {
+    const tamamlananlar = gorevler.filter(g =>
+      g.atanan === k.id?.toString()
+      && g.durum === 'tamamlandi'
+      && g.tamamlanmaTarihi
+      && g.olusturmaTarih
+    )
+    if (tamamlananlar.length === 0) return null
+    const toplamMs = tamamlananlar.reduce((s, g) =>
+      s + (new Date(g.tamamlanmaTarihi) - new Date(g.olusturmaTarih)), 0
+    )
+    const ortMs = toplamMs / tamamlananlar.length
+    const ortSaat = ortMs / (1000 * 60 * 60)
+    const ortGun = ortMs / (1000 * 60 * 60 * 24)
+    return {
+      isim: k.ad.split(' ')[0], ad: k.ad,
+      adet: tamamlananlar.length,
+      ortGun: Math.round(ortGun * 10) / 10,     // 1 ondalık
+      ortSaat: Math.round(ortSaat),
+      etiket: ortGun >= 1 ? `${(Math.round(ortGun * 10) / 10)} gün` : `${Math.round(ortSaat)} saat`,
+    }
+  }).filter(Boolean).sort((a, b) => a.ortGun - b.ortGun)
+
   const stokCikisVerisi = () => {
     const m = {}
     stokHareketler.filter(h => h.tur === 'cikis').forEach(h => {
@@ -472,6 +497,58 @@ function Raporlar() {
               </ChartCard>
             )}
           </div>
+
+          {/* Ortalama tamamlama süresi — açılıştan tamamlanmaya kadar geçen gün */}
+          {seciliPersonel === 'hepsi' && (
+            <Card padding={0}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                <div>
+                  <p className="t-body-strong" style={{ margin: 0 }}>Ortalama Tamamlama Süresi</p>
+                  <p className="t-caption" style={{ marginTop: 2 }}>Görev açılışından tamamlanmasına kadar geçen ortalama süre</p>
+                </div>
+                <Badge tone="lead">{personelTamamlamaSuresi.length} personel</Badge>
+              </div>
+              {personelTamamlamaSuresi.length === 0 ? (
+                <div style={{ padding: 40 }}>
+                  <EmptyState title="Henüz veri yok" aciklama="Yeni tamamlanan görevler biriktikçe burada görünecek." />
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '20px 20px 12px' }}>
+                    <ResponsiveContainer width="100%" height={Math.max(180, personelTamamlamaSuresi.length * 44)}>
+                      <BarChart layout="vertical" data={personelTamamlamaSuresi} margin={{ left: 10, right: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" horizontal={false} />
+                        <XAxis type="number" tick={chartAxisStyle} tickFormatter={v => `${v}g`} />
+                        <YAxis type="category" dataKey="isim" tick={chartAxisStyle} width={100} />
+                        <Tooltip {...chartTooltipStyle} formatter={(val, _n, item) => [item?.payload?.etiket || `${val} gün`, 'Ortalama']} />
+                        <Bar dataKey="ortGun" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} name="Ortalama süre (gün)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border-default)' }}>
+                    {personelTamamlamaSuresi.map(p => (
+                      <div key={p.ad} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '10px 20px',
+                        borderBottom: '1px solid var(--border-default)',
+                      }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                          <Avatar name={p.ad} size="xs" />
+                          <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{p.ad}</span>
+                        </div>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+                          <span className="t-caption">{p.adet} tamamlanan</span>
+                          <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {p.etiket}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+          )}
 
           <Card padding={0}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
