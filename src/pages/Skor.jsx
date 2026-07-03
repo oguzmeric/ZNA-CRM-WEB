@@ -2,10 +2,8 @@
 // Teknisyen bir servisi tamamlandı'ya çekince realtime tetiklenir + sayılar güncellenir.
 // Temmuz'dan itibaren tamamlanan servisleri sayar; Bugün / Bu Hafta / Bu Ay sekmeleri.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-
-const BASLANGIC = new Date('2026-07-01T00:00:00Z')
 
 const bugunBaslangic = () => {
   const d = new Date()
@@ -46,65 +44,51 @@ function useTicTac() {
 
 export default function Skor() {
   const [sekme, setSekme] = useState('ay')
-  const [servisler, setServisler] = useState([])
-  const [kullanicilar, setKullanicilar] = useState([])
   const now = useTicTac()
 
+  const [siralamaMap, setSiralamaMap] = useState({ bugun: [], hafta: [], ay: [] })
   const yukle = async () => {
-    const baslangicISO = BASLANGIC.toISOString()
-    const [{ data: s }, { data: k }] = await Promise.all([
-      supabase
-        .from('servis_talepleri')
-        .select('id, atanan_kullanici_id, atanan_kullanici_ad, tamamlanma_tarihi, durum')
-        .eq('durum', 'tamamlandi')
-        .gte('tamamlanma_tarihi', baslangicISO),
-      supabase
-        .from('kullanicilar')
-        .select('id, ad, kullanici_adi, foto_url, rol'),
+    const bugun = bugunBaslangic().toISOString().slice(0, 10)
+    const hafta = haftaBaslangic().toISOString().slice(0, 10)
+    const ay    = ayBaslangic().toISOString().slice(0, 10)
+    const yarin = new Date(); yarin.setDate(yarin.getDate() + 1)
+    const bitis = yarin.toISOString().slice(0, 10)
+    // Public RPC — anon key ile çağrılır, RLS bypass ama sadece agregat döner
+    const [rBugun, rHafta, rAy] = await Promise.all([
+      supabase.rpc('skor_liderlik', { baslangic: bugun, bitis }),
+      supabase.rpc('skor_liderlik', { baslangic: hafta, bitis }),
+      supabase.rpc('skor_liderlik', { baslangic: ay,    bitis }),
     ])
-    setServisler(s || [])
-    setKullanicilar(k || [])
+    const donusum = (rows) => (rows || []).map(r => ({
+      id: r.kim,
+      ad: r.kim,
+      fotoUrl: r.foto_url || null,
+      sayi: Number(r.sayi || 0),
+    }))
+    setSiralamaMap({
+      bugun: donusum(rBugun.data),
+      hafta: donusum(rHafta.data),
+      ay:    donusum(rAy.data),
+    })
   }
 
   useEffect(() => { yukle() }, [])
 
-  // Realtime — bir servis update olduğunda yeniden yükle (basit ve doğru)
+  // Realtime — iki kaynak da dinlensin
   useEffect(() => {
-    const kanal = supabase
-      .channel('skor-servis')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'servis_talepleri' }, () => {
-        yukle()
-      })
+    const k1 = supabase
+      .channel('skor-servis-talep')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'servis_talepleri' }, () => yukle())
       .subscribe()
-    return () => { kanal?.unsubscribe?.() }
+    const k2 = supabase
+      .channel('skor-servis-rapor')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'servis_raporlari' }, () => yukle())
+      .subscribe()
+    return () => { k1?.unsubscribe?.(); k2?.unsubscribe?.() }
   }, [])
 
   const aktif = SEKMELER.find(s => s.id === sekme)
-  const baslangicTs = aktif.baslangic().getTime()
-
-  const sira = useMemo(() => {
-    // Sadece aktif sekme aralığındakiler
-    const filtreli = servisler.filter(s => {
-      const t = s.tamamlanma_tarihi ? new Date(s.tamamlanma_tarihi).getTime() : 0
-      return t >= baslangicTs
-    })
-    // Kullanıcıya göre grupla
-    const map = new Map()
-    for (const s of filtreli) {
-      const key = s.atanan_kullanici_id ?? s.atanan_kullanici_ad ?? '_bilinmiyor'
-      if (!map.has(key)) {
-        const k = kullanicilar.find(kk => kk.id === s.atanan_kullanici_id)
-        map.set(key, {
-          id: key,
-          ad: k?.ad || s.atanan_kullanici_ad || 'Atanmamış',
-          fotoUrl: k?.foto_url || null,
-          sayi: 0,
-        })
-      }
-      map.get(key).sayi += 1
-    }
-    return [...map.values()].sort((a, b) => b.sayi - a.sayi)
-  }, [servisler, kullanicilar, baslangicTs])
+  const sira = siralamaMap[sekme] || []
 
   const toplam = sira.reduce((s, x) => s + x.sayi, 0)
   const zirve = sira[0]
