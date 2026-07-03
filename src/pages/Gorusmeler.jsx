@@ -135,6 +135,27 @@ function Gorusmeler() {
 
   const firmaKisileri = secilenFirma ? musteriler.filter(m => m.firma === secilenFirma) : []
 
+  // Ek olarak: MusteriDetay'daki "ilgili kişiler" (musteri_kisiler) — seçili firma
+  // için de dahil olsun. Ana müşteri kaydı üzerinden ilişkilenmiş yardımcı kişiler.
+  const [firmaKisilerEklenti, setFirmaKisilerEklenti] = useState([])
+  useEffect(() => {
+    let iptal = false
+    ;(async () => {
+      if (!secilenFirma || firmaKisileri.length === 0) {
+        setFirmaKisilerEklenti([])
+        return
+      }
+      const idler = firmaKisileri.map(m => m.id).filter(Boolean)
+      if (idler.length === 0) { setFirmaKisilerEklenti([]); return }
+      const { data } = await supabase
+        .from('musteri_kisiler')
+        .select('id, musteri_id, ad, soyad, unvan, telefon, email')
+        .in('musteri_id', idler)
+      if (!iptal) setFirmaKisilerEklenti(arrayToCamel(data) || [])
+    })().catch(err => { if (!iptal) console.error('[firmaKisilerEklenti]', err) })
+    return () => { iptal = true }
+  }, [secilenFirma, musteriler])
+
   // Konu önerileri: varsayılan + geçmişte kullanılan tüm konular (deduped)
   const konuOnerileri = useMemo(() => {
     const gecmis = [...new Set((gorusmeler || []).map(g => g.konu).filter(Boolean))]
@@ -143,9 +164,11 @@ function Gorusmeler() {
     return [...varsayilanKonular, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
   }, [gorusmeler])
 
-  // Muhatap önerileri: seçili firmanın kişileri + o firmada geçmişte yazılmış muhatap adları
+  // Muhatap önerileri: seçili firmanın ana kişileri + musteri_kisiler eklentileri +
+  // o firmada geçmişte yazılmış muhatap adları
   const muhatapOnerileri = useMemo(() => {
     const kisiler = firmaKisileri.map(m => `${m.ad} ${m.soyad}`.trim()).filter(Boolean)
+    const eklentiAdlari = firmaKisilerEklenti.map(m => `${m.ad || ''} ${m.soyad || ''}`.trim()).filter(Boolean)
     const gecmis = secilenFirma
       ? [...new Set((gorusmeler || [])
           .filter(g => g.firmaAdi === secilenFirma)
@@ -153,9 +176,11 @@ function Gorusmeler() {
           .filter(Boolean))]
       : []
     const set = new Set(kisiler)
+    const eklenti = eklentiAdlari.filter(m => !set.has(m))
+    eklenti.forEach(m => set.add(m))
     const eklenen = gecmis.filter(m => !set.has(m))
-    return [...kisiler, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
-  }, [firmaKisileri, gorusmeler, secilenFirma])
+    return [...kisiler, ...eklenti, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
+  }, [firmaKisileri, firmaKisilerEklenti, gorusmeler, secilenFirma])
 
   // Seçili firmanın lokasyonları — firma adıyla eşleşen tüm musteri kayıtlarının lokasyonları (deduped)
   const firmaLokasyonlari = (() => {
@@ -485,10 +510,11 @@ function Gorusmeler() {
                 value={form.muhatapAd}
                 onChange={v => {
                   const eslesen = firmaKisileri.find(m => `${m.ad} ${m.soyad}`.trim() === v)
+                  const eklentiEslesen = !eslesen && firmaKisilerEklenti.find(m => `${m.ad || ''} ${m.soyad || ''}`.trim() === v)
                   setForm({
                     ...form,
                     muhatapAd: v,
-                    muhatapId: eslesen ? eslesen.id : '',
+                    muhatapId: eslesen ? eslesen.id : (eklentiEslesen ? eklentiEslesen.musteriId : ''),
                   })
                 }}
                 options={muhatapOnerileri}
