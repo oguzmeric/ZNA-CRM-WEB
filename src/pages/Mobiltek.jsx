@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff } from 'lucide-react'
 import { Card, Button, Badge, EmptyState } from '../components/ui'
 import { araclariGetir, kameralariGetir } from '../services/mobiltekService'
+import MobiltekHarita from '../components/MobiltekHarita'
 
 const kucukTarih = (iso) => {
   if (!iso) return '—'
@@ -117,21 +118,13 @@ export default function Mobiltek() {
 
         {/* Sağ — harita placeholder + araç detay */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Card padding={0} style={{ position: 'relative', minHeight: 340, overflow: 'hidden' }}>
-            <div style={{
-              position: 'absolute', inset: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'repeating-linear-gradient(45deg, var(--surface-sunken), var(--surface-sunken) 10px, var(--surface-card) 10px, var(--surface-card) 20px)',
-              color: 'var(--text-tertiary)',
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <MapPin size={40} strokeWidth={1.25} />
-                <p style={{ marginTop: 8, font: '500 14px/20px var(--font-sans)' }}>Harita — Mapbox entegrasyonu bekleniyor</p>
-                <p style={{ marginTop: 4, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-                  Kredensiyeller gelince aktif olacak
-                </p>
-              </div>
-            </div>
+          <Card padding={0} style={{ position: 'relative', minHeight: 440, overflow: 'hidden', padding: 0 }}>
+            <MobiltekHarita
+              araclar={araclar}
+              kameralar={kameralar}
+              seciliArac={seciliArac}
+              onAracSec={aracSec}
+            />
           </Card>
 
           {seciliArac && (
