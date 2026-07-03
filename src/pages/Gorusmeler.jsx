@@ -480,7 +480,7 @@ function Gorusmeler() {
               </CustomSelect>
             </div>
             <div>
-              <Label>Muhatap kişi</Label>
+              <Label>İlgili kişi</Label>
               <ComboBox
                 value={form.muhatapAd}
                 onChange={v => {
