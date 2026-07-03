@@ -105,6 +105,26 @@ function GorevDetay() {
     // (kendine mention yapsa bile filtreleme: mention === yazar atlanır)
     const mentionIdler = parseMentions(yeniYorum, kullanicilar)
       .filter(mid => mid?.toString() !== kullanici.id?.toString())
+    const alanlar = new Set(mentionIdler.map(x => x?.toString()))
+
+    // Görevi açan kişiye bildirim — yorumu kendisi yazmıyorsa ve mention'da yoksa
+    // (olusturan_id kolonu yok; olusturanAd üzerinden kullanicilar tablosuyla eşleniyor)
+    const olusturan = kullanicilar.find(k => k.ad === gorev.olusturanAd)
+    if (
+      olusturan?.id
+      && olusturan.id?.toString() !== kullanici.id?.toString()
+      && !alanlar.has(olusturan.id?.toString())
+    ) {
+      alanlar.add(olusturan.id?.toString())
+      bildirimEkle(
+        olusturan.id,
+        `${kullanici.ad} göreve yorum ekledi`,
+        `"${gorev.baslik}": ${yeniYorum.slice(0, 80)}${yeniYorum.length > 80 ? '…' : ''}`,
+        'gorev',
+        `/gorevler/${gorev.id}`,
+      ).catch(e => console.warn('[bildirim] yorum→olusturan:', e?.message))
+    }
+
     for (const aliciId of mentionIdler) {
       bildirimEkle(
         aliciId,
