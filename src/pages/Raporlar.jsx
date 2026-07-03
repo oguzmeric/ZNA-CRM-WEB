@@ -158,12 +158,13 @@ function Raporlar() {
   // Ortalama tamamlama süresi (gün) — tamamlanmis + tamamlanma_tarihi dolu görevlerden.
   // Süre = tamamlanma_tarihi - olusturma_tarih. NULL olanlar (legacy 11 görev) hariç.
   const personelTamamlamaSuresi = kullanicilar.map(k => {
-    const tamamlananlar = gorevler.filter(g =>
-      g.atanan === k.id?.toString()
-      && g.durum === 'tamamlandi'
-      && g.tamamlanmaTarihi
-      && g.olusturmaTarih
-    )
+    const kidStr = k.id?.toString()
+    const tamamlananlar = gorevler.filter(g => {
+      if (g.durum !== 'tamamlandi' || !g.tamamlanmaTarihi || !g.olusturmaTarih) return false
+      // atanan (text) veya atanan_id (bigint) hangisi doluysa
+      const gAtanan = g.atanan?.toString() ?? g.atananId?.toString()
+      return gAtanan === kidStr
+    })
     if (tamamlananlar.length === 0) return null
     const toplamMs = tamamlananlar.reduce((s, g) =>
       s + (new Date(g.tamamlanmaTarihi) - new Date(g.olusturmaTarih)), 0
