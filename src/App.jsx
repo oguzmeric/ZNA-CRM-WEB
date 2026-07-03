@@ -65,6 +65,7 @@ const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const ServisFormuYazdir = lazy(() => import('./pages/ServisFormuYazdir'))
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
+const Skor = lazy(() => import('./pages/Skor'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
@@ -138,6 +139,17 @@ function App() {
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
           <Route path="/design-system" element={<DesignSystemPage />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+
+  // Public leaderboard — ofis TV'sinde kiosk mod; login yok.
+  if (location.pathname === '/skor') {
+    return (
+      <Suspense fallback={<SayfaYukleniyor />}>
+        <Routes>
+          <Route path="/skor" element={<Skor />} />
         </Routes>
       </Suspense>
     )
