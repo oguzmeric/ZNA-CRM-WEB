@@ -142,6 +142,7 @@ const menuItems = [
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
+  { id: 'mobiltek', isim: 'Mobiltek', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'operasyon' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   {
     id: 'raporlar',

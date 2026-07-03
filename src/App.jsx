@@ -66,6 +66,7 @@ const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const ServisFormuYazdir = lazy(() => import('./pages/ServisFormuYazdir'))
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
 const Skor = lazy(() => import('./pages/Skor'))
+const Mobiltek = lazy(() => import('./pages/Mobiltek'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
@@ -297,6 +298,7 @@ function App() {
           <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
           <Route path="/sla-ayarlari" element={<YonetimGuard><SlaAyarlari /></YonetimGuard>} />
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
+          <Route path="/mobiltek" element={<Mobiltek />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
