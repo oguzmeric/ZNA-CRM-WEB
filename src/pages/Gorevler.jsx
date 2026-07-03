@@ -1034,6 +1034,7 @@ function Gorevler() {
                         ? <Clock size={14} strokeWidth={1.8} style={{ color: 'var(--warning)' }} />
                         : <Circle size={14} strokeWidth={1.8} style={{ color: 'var(--info)' }} />
                     const kolonTone = g.durum === 'tamamlandi' ? 'aktif' : g.durum === 'devam' ? 'beklemede' : 'lead'
+                    const kolonDot = g.durum === 'tamamlandi' ? 'var(--success)' : g.durum === 'devam' ? 'var(--warning)' : 'var(--info)'
 
                     return (
                       <tr
@@ -1076,12 +1077,13 @@ function Gorevler() {
                           </div>
                         </td>
                         <td style={tdStyle}>
-                          <Badge tone={kolonTone}>{kolon?.isim}</Badge>
-                          {gecikti && (
-                            <span style={{ marginLeft: 6 }}>
-                              <Badge tone="kayip" icon={<AlertCircle size={11} strokeWidth={1.5} />}>Gecikti</Badge>
-                            </span>
-                          )}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: kolonDot, flexShrink: 0 }} />
+                            {kolon?.isim}
+                            {gecikti && (
+                              <span style={{ color: 'var(--danger)', font: '500 12px/16px var(--font-sans)' }}>· Gecikti</span>
+                            )}
+                          </span>
                         </td>
                         <td style={{ ...tdStyle, color: 'var(--text-secondary)', textTransform: 'uppercase', font: '500 12px/16px var(--font-sans)' }}>
                           {g.olusturanAd || '—'}
