@@ -40,10 +40,7 @@ serve(async (req) => {
 
   const { data: gorevler, error } = await sb
     .from('gorevler')
-    .select(`
-      id, baslik, atanan, son_tarih, durum, gecikme_sms_gonderildi,
-      kullanicilar:atanan (id, ad, cep_telefon)
-    `)
+    .select('id, baslik, atanan, atanan_id, son_tarih, durum, gecikme_sms_gonderildi')
     .lte('son_tarih', dunISO)
     .not('durum', 'in', '(tamamlandi,iptal)')
     .eq('gecikme_sms_gonderildi', false)
@@ -55,10 +52,27 @@ serve(async (req) => {
     })
   }
 
+  // Atanan id'lerini topla — atanan (text) veya atanan_id (bigint) hangisi doluysa
+  const idler = [...new Set(
+    (gorevler ?? [])
+      .map(g => Number(g.atanan_id ?? g.atanan))
+      .filter(n => Number.isFinite(n) && n > 0)
+  )]
+
+  const kulHarita = new Map<number, { id: number, ad: string, cep_telefon: string | null }>()
+  if (idler.length > 0) {
+    const { data: kullar } = await sb
+      .from('kullanicilar')
+      .select('id, ad, cep_telefon')
+      .in('id', idler)
+    for (const k of kullar ?? []) kulHarita.set(k.id, k as any)
+  }
+
   const rapor = { toplam: gorevler?.length ?? 0, gonderilen: 0, telefonYok: 0, hata: 0 }
 
   for (const g of gorevler ?? []) {
-    const kul = (g as any).kullanicilar as { id: number, ad: string, cep_telefon: string | null } | null
+    const atananId = Number((g as any).atanan_id ?? g.atanan)
+    const kul = Number.isFinite(atananId) ? kulHarita.get(atananId) : null
     if (!kul?.cep_telefon) {
       rapor.telefonYok++
       // Yine de flag'i işaretle ki her cron'da tekrar denemesin — telefon eklenince yeni görevden gider
