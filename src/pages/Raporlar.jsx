@@ -754,16 +754,7 @@ function MesaiRaporTab() {
     const donem = `${tarihGoster(baslangic + 'T00:00:00')} — ${tarihGoster(bitis + 'T00:00:00')}`
     const veri = tabloVeri()
 
-    // İstatistikler
-    const toplamDk = kayitlar.reduce((t, k) => t + (k.sure_dakika ?? 0), 0)
-    const kapaliKayit = kayitlar.filter(k => k.sure_dakika != null)
-    const ortalamaDk = kapaliKayit.length ? Math.round(toplamDk / kapaliKayit.length) : 0
-    const ofisDisiSayi = kayitlar.filter(k => (k.not_ ?? '').toLowerCase().includes('ofis dışı')).length
     const aktifKayit = kayitlar.filter(k => !k.cikis_zamani).length
-    const sureBicim = dk => {
-      const s = Math.floor(dk / 60), d = dk % 60
-      return s > 0 ? `${s}s ${d}d` : `${d} dk`
-    }
 
     // Logo'yu data URI'ye dönüştür (blob URL sayfası kendi origin'inden asset çekemez)
     let logoDataUri = ''
@@ -816,28 +807,6 @@ function MesaiRaporTab() {
           font-size: 16px; font-weight: 700; color: #1e5aa8; letter-spacing: -0.2px;
         }
         .rapor-tipi .kucuk { font-size: 10px; color: #64748b; margin-top: 2px; }
-
-        /* — Özet kart şeridi — */
-        .ozet {
-          display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-          margin-bottom: 18px;
-        }
-        .kart {
-          background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-          padding: 10px 12px;
-        }
-        .kart .etiket {
-          font-size: 9px; color: #64748b; text-transform: uppercase;
-          letter-spacing: 0.5px; font-weight: 700; margin: 0;
-        }
-        .kart .deger {
-          font-size: 20px; font-weight: 700; color: #0f172a; margin: 4px 0 0;
-          letter-spacing: -0.4px;
-        }
-        .kart.uyari { background: #fef3c7; border-color: #fbbf24; }
-        .kart.uyari .deger { color: #b45309; }
-        .kart.iyi { background: #ecfdf5; border-color: #10b981; }
-        .kart.iyi .deger { color: #047857; }
 
         /* — Meta şerit — */
         .meta {
@@ -897,28 +866,10 @@ function MesaiRaporTab() {
         </div>
       </div>
 
-      <div class="ozet">
-        <div class="kart">
-          <p class="etiket">Toplam Kayıt</p>
-          <p class="deger">${kayitlar.length}</p>
-        </div>
-        <div class="kart">
-          <p class="etiket">Toplam Süre</p>
-          <p class="deger">${toplamDk ? sureBicim(toplamDk) : '—'}</p>
-        </div>
-        <div class="kart iyi">
-          <p class="etiket">Ortalama Süre</p>
-          <p class="deger">${ortalamaDk ? sureBicim(ortalamaDk) : '—'}</p>
-        </div>
-        <div class="kart ${ofisDisiSayi > 0 ? 'uyari' : ''}">
-          <p class="etiket">Ofis Dışı Giriş</p>
-          <p class="deger">${ofisDisiSayi}</p>
-        </div>
-      </div>
-
       <div class="meta">
         <div><span class="label">Personel:</span> <span class="val">${secili ? secili.ad : 'Tüm personel'}</span></div>
-        <div><span class="label">Aktif mesai:</span> <span class="val">${aktifKayit}</span></div>
+        <div><span class="label">Kayıt:</span> <span class="val">${kayitlar.length}</span></div>
+        ${aktifKayit ? `<div><span class="label">Aktif mesai:</span> <span class="val">${aktifKayit}</span></div>` : ''}
         <div><span class="label">Rapor tarihi:</span> <span class="val">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>
       </div>
 
