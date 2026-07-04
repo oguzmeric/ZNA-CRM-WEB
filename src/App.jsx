@@ -75,12 +75,12 @@ const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const YeniZimmet = lazy(() => import('./pages/YeniZimmet'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 
-// Yönetim grubu erişim guard'ı — sadece Ali ve Oğuz.
+// Yönetim grubu erişim guard'ı — Ali, Oğuz, Ferdi.
 // URL'yi elle yazmayı engeller; sidebar'daki gizleme ile paralel.
 function YonetimGuard({ children }) {
   const { kullanici } = useAuth()
   const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
-  const izinli = /\b(oğuz|oguz|ali)\b/i.test(ad)
+  const izinli = /\b(oğuz|oguz|ali|ferdi)\b/i.test(ad)
   if (!izinli) return <Navigate to="/dashboard" replace />
   return children
 }
