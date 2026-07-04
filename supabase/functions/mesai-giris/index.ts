@@ -48,11 +48,17 @@ Deno.serve(async (req) => {
     }
 
     const { data: ofis } = await svc
-      .from('ofis_konumu').select('lat, lng, tolerans_metre').limit(1).single()
+      .from('ofis_konumu').select('lat, lng, tolerans_metre, sert_limit_metre').limit(1).single()
     const mesafe = (ofis?.lat && ofis?.lng)
       ? haversineMetre(Number(ofis.lat), Number(ofis.lng), lat, lng)
       : null
     const tolerans = ofis?.tolerans_metre ?? 150
+    const sertLimit = ofis?.sert_limit_metre ?? 400
+
+    // Sert eşik — mesai kesinlikle açılmaz
+    if (mesafe !== null && mesafe > sertLimit) {
+      return jsonYanit({ ok: false, hata: 'cok_uzak', mesafe_m: mesafe, sert_limit: sertLimit })
+    }
 
     const { data: acik } = await svc
       .from('mesai_kayitlari').select('id, giris_zamani')
