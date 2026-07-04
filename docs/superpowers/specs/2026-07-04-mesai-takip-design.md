@@ -118,16 +118,19 @@ Sayaç canlı (setInterval, dakika bazında).
 
 1. **Buton** → `expo-camera` barkod okuyucu (mevcut komponent yeniden kullanılır).
 2. QR okunur → prefix kontrol `ZNA-MESAI:v1:`. Değilse: "Bu QR mesai kodu değil."
-3. `expo-location` — foreground GPS, 5sn timeout, izin yoksa devam et (backend not düşer).
+3. `expo-location` — foreground GPS **zorunlu**. İzin reddedilirse veya alınamıyorsa mesai başlatılamaz:
+   - Alert: "Mesai başlatmak için konum izni zorunlu. Ayarlar > Uygulama izinleri > Konum'dan aç ve tekrar dene."
+   - "Tekrar Dene" ve "İptal" butonları.
 4. Edge fn `mesai-giris` çağrılır:
    ```json
-   { "qr_payload": "ZNA-MESAI:v1:abc:xyz", "lat": 41.05, "lng": 29.02, "konum_izni_verildi": true }
+   { "qr_payload": "ZNA-MESAI:v1:abc:xyz", "lat": 41.05, "lng": 29.02 }
    ```
 5. Backend cevabı:
    - `{ ok: true, mesai_id, mesafe_m }` → haptic success + toast "Mesaiye başladın 🟢"
    - `{ ok: true, uyari: "ofis_disi", mesafe_m: 320 }` → alert: "Ofis konumundan ~320m uzaktasın. Yine de başlayayım mı?" Onay → tekrar çağrı `{ zorla: true }` ile.
    - `{ ok: false, hata: "zaten_acik", acik_kayit_baslangic }` → confirm: "Zaten 07:32'den beri mesaidesin. Kapatıp yenisini açayım mı?" → onay → `mesai-cikis` sonra tekrar `mesai-giris`.
    - `{ ok: false, hata: "gecersiz_qr" }` → "QR geçersiz — ofis QR'ını okuttuğundan emin ol."
+   - `{ ok: false, hata: "konum_yok" }` → (backend defence) "Konum bilgisi olmadan giriş yapılamaz."
 
 ### 5.3 Çıkış akışı
 
@@ -175,18 +178,18 @@ Deno, mevcut `mobiltek-proxy` yapısıyla aynı klasör paterni.
 
 ### 7.1 `mesai-giris`
 
-**Input:** `{ qr_payload: string, lat?: number, lng?: number, konum_izni_verildi: boolean, zorla?: boolean }`
+**Input:** `{ qr_payload: string, lat: number, lng: number, zorla?: boolean }`
 
 **Akış:**
 1. JWT'den `kullanici_id` çıkar.
-2. `MESAI_QR_SECRET` ile QR HMAC doğrula. Geçersizse → `{ ok:false, hata:'gecersiz_qr' }`.
-3. `ofis_konumu` çek, Haversine ile `mesafe_m` hesapla (lat/lng varsa; yoksa null).
-4. Açık kayıt var mı? Varsa `zorla=false` → `{ ok:false, hata:'zaten_acik', acik_kayit_baslangic }`. `zorla=true` → önce kapat (not: "Yeni giriş için otomatik kapatıldı"), devam et.
-5. Mesafe > tolerans VE `zorla=false` → `{ ok:false, uyari:'ofis_disi', mesafe_m }` (ön uyarı).
-6. Insert `mesai_kayitlari`, gerekiyorsa `not` ayarla:
-   - `konum_izni_verildi=false` → "GPS reddedildi"
+2. `lat`/`lng` yoksa → `{ ok:false, hata:'konum_yok' }` (backend defence — mobil zaten engelleyecek ama emin olalım).
+3. `MESAI_QR_SECRET` ile QR HMAC doğrula. Geçersizse → `{ ok:false, hata:'gecersiz_qr' }`.
+4. `ofis_konumu` çek, Haversine ile `mesafe_m` hesapla.
+5. Açık kayıt var mı? Varsa `zorla=false` → `{ ok:false, hata:'zaten_acik', acik_kayit_baslangic }`. `zorla=true` → önce kapat (not: "Yeni giriş için otomatik kapatıldı"), devam et.
+6. Mesafe > tolerans VE `zorla=false` → `{ ok:false, uyari:'ofis_disi', mesafe_m }` (ön uyarı).
+7. Insert `mesai_kayitlari`, gerekiyorsa `not` ayarla:
    - `mesafe_m > tolerans` → "Ofis dışı: {mesafe_m}m"
-7. Return `{ ok:true, mesai_id, mesafe_m }`.
+8. Return `{ ok:true, mesai_id, mesafe_m }`.
 
 **RLS bypass:** service_role ile insert (RLS insert yasak).
 
