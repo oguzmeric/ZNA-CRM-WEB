@@ -796,129 +796,108 @@ function MesaiRaporTab() {
 
     const satirlar = veri.map((r, i) => `
       <tr>
-        <td class="num">${i + 1}</td>
+        <td class="znapdf-num">${i + 1}</td>
         <td>${r.Tarih}</td>
-        <td><b>${r.Personel}</b>${r.Unvan ? `<br><span class="dim">${r.Unvan}</span>` : ''}</td>
+        <td><b>${r.Personel}</b>${r.Unvan ? `<br><span class="znapdf-dim">${r.Unvan}</span>` : ''}</td>
         <td>${r.Giris}</td>
-        <td class="${r.Cikis === 'devam' ? 'aktif' : ''}">${r.Cikis}</td>
+        <td class="${r.Cikis === 'devam' ? 'znapdf-aktif' : ''}">${r.Cikis}</td>
         <td><b>${r.Sure}</b></td>
         <td>${r.MesafeM !== '' && r.MesafeM != null ? r.MesafeM + ' m' : '—'}</td>
-        <td class="not">${(r.Not || '').replace(/</g, '&lt;')}</td>
+        <td class="znapdf-not">${(r.Not || '').replace(/</g, '&lt;')}</td>
       </tr>`).join('')
 
-    const html = `<!doctype html><html lang="tr"><head>
-      <meta charset="utf-8">
-      <title>ZNA · Mesai Raporu · ${donem}</title>
+    // NOT: Tüm CSS .znapdf-root altında scope'lu — sayfaya sızmayı engeller.
+    const html = `
       <style>
-        @page { size: A4 landscape; margin: 12mm; }
-        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        body {
+        .znapdf-root, .znapdf-root * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .znapdf-root {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-          color: #0f172a; margin: 0; padding: 24px; font-size: 11px; line-height: 1.5;
+          color: #0f172a; padding: 24px; font-size: 11px; line-height: 1.5; background: #fff;
         }
-
-        /* — Header — */
-        .header {
+        .znapdf-root .znapdf-header {
           display: flex; justify-content: space-between; align-items: center;
           padding-bottom: 16px; border-bottom: 3px solid #1e5aa8; margin-bottom: 18px;
         }
-        .brand { display: flex; align-items: center; gap: 12px; }
-        .logo { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; }
-        .brand-text h1 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
-        .brand-text p { margin: 2px 0 0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; }
-        .rapor-tipi {
-          text-align: right;
-        }
-        .rapor-tipi .buyuk {
-          font-size: 16px; font-weight: 700; color: #1e5aa8; letter-spacing: -0.2px;
-        }
-        .rapor-tipi .kucuk { font-size: 10px; color: #64748b; margin-top: 2px; }
-
-        /* — Meta şerit — */
-        .meta {
+        .znapdf-root .znapdf-brand { display: flex; align-items: center; gap: 12px; }
+        .znapdf-root .znapdf-logo { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; }
+        .znapdf-root .znapdf-brand-text h1 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+        .znapdf-root .znapdf-brand-text p { margin: 2px 0 0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; }
+        .znapdf-root .znapdf-tip { text-align: right; }
+        .znapdf-root .znapdf-tip .znapdf-buyuk { font-size: 16px; font-weight: 700; color: #1e5aa8; letter-spacing: -0.2px; }
+        .znapdf-root .znapdf-tip .znapdf-kucuk { font-size: 10px; color: #64748b; margin-top: 2px; }
+        .znapdf-root .znapdf-meta {
           display: flex; gap: 24px; padding: 10px 14px; background: #eff6ff;
           border-left: 3px solid #1e5aa8; border-radius: 4px; margin-bottom: 14px;
           font-size: 11px;
         }
-        .meta > div { display: flex; gap: 6px; align-items: baseline; }
-        .meta .label { color: #64748b; }
-        .meta .val { color: #0f172a; font-weight: 600; }
-
-        /* — Tablo — */
-        table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-        thead th {
+        .znapdf-root .znapdf-meta > div { display: flex; gap: 6px; align-items: baseline; }
+        .znapdf-root .znapdf-meta .znapdf-label { color: #64748b; }
+        .znapdf-root .znapdf-meta .znapdf-val { color: #0f172a; font-weight: 600; }
+        .znapdf-root .znapdf-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        .znapdf-root .znapdf-tbl thead th {
           background: #1e5aa8; color: #fff; text-align: left;
           padding: 8px 6px; font-weight: 600; font-size: 10px;
           text-transform: uppercase; letter-spacing: 0.4px;
         }
-        thead th:first-child { border-top-left-radius: 6px; }
-        thead th:last-child { border-top-right-radius: 6px; }
-        tbody td {
+        .znapdf-root .znapdf-tbl thead th:first-child { border-top-left-radius: 6px; }
+        .znapdf-root .znapdf-tbl thead th:last-child { border-top-right-radius: 6px; }
+        .znapdf-root .znapdf-tbl tbody td {
           padding: 7px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top;
         }
-        tbody tr:nth-child(even) td { background: #f8fafc; }
-        .num { color: #94a3b8; font-size: 9px; font-weight: 600; }
-        .dim { color: #64748b; font-size: 9px; }
-        .aktif { color: #10b981; font-weight: 700; }
-        .not { color: #64748b; font-size: 9.5px; max-width: 220px; }
-        .bos { text-align: center; padding: 40px !important; color: #94a3b8; font-style: italic; }
-
-        /* — Footer — */
-        footer {
+        .znapdf-root .znapdf-tbl tbody tr:nth-child(even) td { background: #f8fafc; }
+        .znapdf-root .znapdf-num { color: #94a3b8; font-size: 9px; font-weight: 600; }
+        .znapdf-root .znapdf-dim { color: #64748b; font-size: 9px; }
+        .znapdf-root .znapdf-aktif { color: #10b981; font-weight: 700; }
+        .znapdf-root .znapdf-not { color: #64748b; font-size: 9.5px; max-width: 220px; }
+        .znapdf-root .znapdf-bos { text-align: center; padding: 40px !important; color: #94a3b8; font-style: italic; }
+        .znapdf-root .znapdf-footer {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0;
           display: flex; justify-content: space-between; align-items: center;
           font-size: 9px; color: #94a3b8;
         }
-        footer .sag { text-align: right; }
-
-        @media print {
-          body { padding: 0; }
-          thead { display: table-header-group; }
-          tr { page-break-inside: avoid; }
-        }
       </style>
-    </head><body>
-      <div class="header">
-        <div class="brand">
-          ${logoDataUri ? `<img src="${logoDataUri}" class="logo" alt="ZNA">` : ''}
-          <div class="brand-text">
-            <h1>ZNA Teknoloji</h1>
-            <p>Mesai Takip Sistemi</p>
+      <div class="znapdf-root">
+        <div class="znapdf-header">
+          <div class="znapdf-brand">
+            ${logoDataUri ? `<img src="${logoDataUri}" class="znapdf-logo" alt="ZNA">` : ''}
+            <div class="znapdf-brand-text">
+              <h1>ZNA Teknoloji</h1>
+              <p>Mesai Takip Sistemi</p>
+            </div>
+          </div>
+          <div class="znapdf-tip">
+            <div class="znapdf-buyuk">Mesai Raporu</div>
+            <div class="znapdf-kucuk">${donem}</div>
           </div>
         </div>
-        <div class="rapor-tipi">
-          <div class="buyuk">Mesai Raporu</div>
-          <div class="kucuk">${donem}</div>
+
+        <div class="znapdf-meta">
+          <div><span class="znapdf-label">Personel:</span> <span class="znapdf-val">${secili ? secili.ad : 'Tüm personel'}</span></div>
+          <div><span class="znapdf-label">Kayıt:</span> <span class="znapdf-val">${kayitlar.length}</span></div>
+          ${aktifKayit ? `<div><span class="znapdf-label">Aktif mesai:</span> <span class="znapdf-val">${aktifKayit}</span></div>` : ''}
+          <div><span class="znapdf-label">Rapor tarihi:</span> <span class="znapdf-val">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+        </div>
+
+        <table class="znapdf-tbl">
+          <thead><tr>
+            <th style="width:32px">#</th>
+            <th>Tarih</th>
+            <th>Personel</th>
+            <th>Giriş</th>
+            <th>Çıkış</th>
+            <th>Süre</th>
+            <th>Mesafe</th>
+            <th>Not</th>
+          </tr></thead>
+          <tbody>${satirlar || '<tr><td colspan="8" class="znapdf-bos">Bu dönemde kayıt bulunamadı.</td></tr>'}</tbody>
+        </table>
+
+        <div class="znapdf-footer">
+          <div>ZNA Teknoloji · Mesai Takip · Otomatik oluşturuldu</div>
+          <div>talep.znateknoloji.com</div>
         </div>
       </div>
-
-      <div class="meta">
-        <div><span class="label">Personel:</span> <span class="val">${secili ? secili.ad : 'Tüm personel'}</span></div>
-        <div><span class="label">Kayıt:</span> <span class="val">${kayitlar.length}</span></div>
-        ${aktifKayit ? `<div><span class="label">Aktif mesai:</span> <span class="val">${aktifKayit}</span></div>` : ''}
-        <div><span class="label">Rapor tarihi:</span> <span class="val">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-      </div>
-
-      <table>
-        <thead><tr>
-          <th style="width:32px">#</th>
-          <th>Tarih</th>
-          <th>Personel</th>
-          <th>Giriş</th>
-          <th>Çıkış</th>
-          <th>Süre</th>
-          <th>Mesafe</th>
-          <th>Not</th>
-        </tr></thead>
-        <tbody>${satirlar || '<tr><td colspan="8" class="bos">Bu dönemde kayıt bulunamadı.</td></tr>'}</tbody>
-      </table>
-
-      <footer>
-        <div>ZNA Teknoloji · Mesai Takip · Otomatik oluşturuldu</div>
-        <div class="sag">talep.znateknoloji.com</div>
-      </footer>
-
-    </body></html>`
+    `
 
     // HTML'i off-screen render edip html2pdf ile PDF blob al, sonra konum seçici ile kaydet.
     const html2pdf = (await import('html2pdf.js')).default
