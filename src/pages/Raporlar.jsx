@@ -749,68 +749,205 @@ function MesaiRaporTab() {
     XLSX.writeFile(wb, `${dosyaAdi()}.xlsx`)
   }
 
-  const pdfIndir = () => {
-    // Tarayıcının kendi yazdırma penceresini kullan — sistem fontu, Türkçe sorunsuz.
+  const pdfIndir = async () => {
     const secili = personelListe.find(p => String(p.id) === String(seciliPersonelId))
     const donem = `${tarihGoster(baslangic + 'T00:00:00')} — ${tarihGoster(bitis + 'T00:00:00')}`
     const veri = tabloVeri()
-    const satirlar = veri.map(r => `
+
+    // İstatistikler
+    const toplamDk = kayitlar.reduce((t, k) => t + (k.sure_dakika ?? 0), 0)
+    const kapaliKayit = kayitlar.filter(k => k.sure_dakika != null)
+    const ortalamaDk = kapaliKayit.length ? Math.round(toplamDk / kapaliKayit.length) : 0
+    const ofisDisiSayi = kayitlar.filter(k => (k.not_ ?? '').toLowerCase().includes('ofis dışı')).length
+    const aktifKayit = kayitlar.filter(k => !k.cikis_zamani).length
+    const sureBicim = dk => {
+      const s = Math.floor(dk / 60), d = dk % 60
+      return s > 0 ? `${s}s ${d}d` : `${d} dk`
+    }
+
+    // Logo'yu data URI'ye dönüştür (blob URL sayfası kendi origin'inden asset çekemez)
+    let logoDataUri = ''
+    try {
+      const r = await fetch('/logo.jpeg')
+      const b = await r.blob()
+      logoDataUri = await new Promise(res => {
+        const fr = new FileReader()
+        fr.onloadend = () => res(fr.result)
+        fr.readAsDataURL(b)
+      })
+    } catch {}
+
+    const satirlar = veri.map((r, i) => `
       <tr>
+        <td class="num">${i + 1}</td>
         <td>${r.Tarih}</td>
         <td><b>${r.Personel}</b>${r.Unvan ? `<br><span class="dim">${r.Unvan}</span>` : ''}</td>
         <td>${r.Giris}</td>
         <td class="${r.Cikis === 'devam' ? 'aktif' : ''}">${r.Cikis}</td>
-        <td>${r.Sure}</td>
+        <td><b>${r.Sure}</b></td>
         <td>${r.MesafeM !== '' && r.MesafeM != null ? r.MesafeM + ' m' : '—'}</td>
         <td class="not">${(r.Not || '').replace(/</g, '&lt;')}</td>
       </tr>`).join('')
 
     const html = `<!doctype html><html lang="tr"><head>
       <meta charset="utf-8">
-      <title>Mesai Raporu · ${donem}</title>
+      <title>ZNA · Mesai Raporu · ${donem}</title>
       <style>
-        @page { size: A4 landscape; margin: 14mm; }
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; }
-        header { border-bottom: 2px solid #1e5aa8; padding-bottom: 12px; margin-bottom: 20px; }
-        h1 { margin: 0 0 6px; font-size: 20px; color: #1e5aa8; }
-        .meta { display: flex; gap: 20px; font-size: 12px; color: #475569; }
-        .meta b { color: #0f172a; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        thead th { background: #1e5aa8; color: #fff; text-align: left; padding: 8px 6px; font-weight: 600; }
-        tbody td { padding: 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        @page { size: A4 landscape; margin: 12mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+          color: #0f172a; margin: 0; padding: 24px; font-size: 11px; line-height: 1.5;
+        }
+
+        /* — Header — */
+        .header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding-bottom: 16px; border-bottom: 3px solid #1e5aa8; margin-bottom: 18px;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .logo { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; }
+        .brand-text h1 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+        .brand-text p { margin: 2px 0 0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; }
+        .rapor-tipi {
+          text-align: right;
+        }
+        .rapor-tipi .buyuk {
+          font-size: 16px; font-weight: 700; color: #1e5aa8; letter-spacing: -0.2px;
+        }
+        .rapor-tipi .kucuk { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+        /* — Özet kart şeridi — */
+        .ozet {
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+          margin-bottom: 18px;
+        }
+        .kart {
+          background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+          padding: 10px 12px;
+        }
+        .kart .etiket {
+          font-size: 9px; color: #64748b; text-transform: uppercase;
+          letter-spacing: 0.5px; font-weight: 700; margin: 0;
+        }
+        .kart .deger {
+          font-size: 20px; font-weight: 700; color: #0f172a; margin: 4px 0 0;
+          letter-spacing: -0.4px;
+        }
+        .kart.uyari { background: #fef3c7; border-color: #fbbf24; }
+        .kart.uyari .deger { color: #b45309; }
+        .kart.iyi { background: #ecfdf5; border-color: #10b981; }
+        .kart.iyi .deger { color: #047857; }
+
+        /* — Meta şerit — */
+        .meta {
+          display: flex; gap: 24px; padding: 10px 14px; background: #eff6ff;
+          border-left: 3px solid #1e5aa8; border-radius: 4px; margin-bottom: 14px;
+          font-size: 11px;
+        }
+        .meta > div { display: flex; gap: 6px; align-items: baseline; }
+        .meta .label { color: #64748b; }
+        .meta .val { color: #0f172a; font-weight: 600; }
+
+        /* — Tablo — */
+        table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        thead th {
+          background: #1e5aa8; color: #fff; text-align: left;
+          padding: 8px 6px; font-weight: 600; font-size: 10px;
+          text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        thead th:first-child { border-top-left-radius: 6px; }
+        thead th:last-child { border-top-right-radius: 6px; }
+        tbody td {
+          padding: 7px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top;
+        }
         tbody tr:nth-child(even) td { background: #f8fafc; }
-        .dim { color: #64748b; font-size: 10px; }
+        .num { color: #94a3b8; font-size: 9px; font-weight: 600; }
+        .dim { color: #64748b; font-size: 9px; }
         .aktif { color: #10b981; font-weight: 700; }
-        .not { color: #64748b; font-size: 10px; max-width: 240px; }
-        footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center; }
-        @media print { body { padding: 0; } }
+        .not { color: #64748b; font-size: 9.5px; max-width: 220px; }
+        .bos { text-align: center; padding: 40px !important; color: #94a3b8; font-style: italic; }
+
+        /* — Footer — */
+        footer {
+          margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0;
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 9px; color: #94a3b8;
+        }
+        footer .sag { text-align: right; }
+
+        @media print {
+          body { padding: 0; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+        }
       </style>
     </head><body>
-      <header>
-        <h1>ZNA Teknoloji · Mesai Raporu</h1>
-        <div class="meta">
-          <div>Dönem: <b>${donem}</b></div>
-          <div>Personel: <b>${secili ? secili.ad : 'Tüm personel'}</b></div>
-          <div>Kayıt: <b>${veri.length}</b></div>
+      <div class="header">
+        <div class="brand">
+          ${logoDataUri ? `<img src="${logoDataUri}" class="logo" alt="ZNA">` : ''}
+          <div class="brand-text">
+            <h1>ZNA Teknoloji</h1>
+            <p>Mesai Takip Sistemi</p>
+          </div>
         </div>
-      </header>
+        <div class="rapor-tipi">
+          <div class="buyuk">Mesai Raporu</div>
+          <div class="kucuk">${donem}</div>
+        </div>
+      </div>
+
+      <div class="ozet">
+        <div class="kart">
+          <p class="etiket">Toplam Kayıt</p>
+          <p class="deger">${kayitlar.length}</p>
+        </div>
+        <div class="kart">
+          <p class="etiket">Toplam Süre</p>
+          <p class="deger">${toplamDk ? sureBicim(toplamDk) : '—'}</p>
+        </div>
+        <div class="kart iyi">
+          <p class="etiket">Ortalama Süre</p>
+          <p class="deger">${ortalamaDk ? sureBicim(ortalamaDk) : '—'}</p>
+        </div>
+        <div class="kart ${ofisDisiSayi > 0 ? 'uyari' : ''}">
+          <p class="etiket">Ofis Dışı Giriş</p>
+          <p class="deger">${ofisDisiSayi}</p>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div><span class="label">Personel:</span> <span class="val">${secili ? secili.ad : 'Tüm personel'}</span></div>
+        <div><span class="label">Aktif mesai:</span> <span class="val">${aktifKayit}</span></div>
+        <div><span class="label">Rapor tarihi:</span> <span class="val">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+      </div>
+
       <table>
         <thead><tr>
-          <th>Tarih</th><th>Personel</th><th>Giriş</th><th>Çıkış</th><th>Süre</th><th>Mesafe</th><th>Not</th>
+          <th style="width:32px">#</th>
+          <th>Tarih</th>
+          <th>Personel</th>
+          <th>Giriş</th>
+          <th>Çıkış</th>
+          <th>Süre</th>
+          <th>Mesafe</th>
+          <th>Not</th>
         </tr></thead>
-        <tbody>${satirlar || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">Kayıt yok</td></tr>'}</tbody>
+        <tbody>${satirlar || '<tr><td colspan="8" class="bos">Bu dönemde kayıt bulunamadı.</td></tr>'}</tbody>
       </table>
-      <footer>${new Date().toLocaleString('tr-TR')} · talep.znateknoloji.com</footer>
-      <script>window.onload = () => setTimeout(() => window.print(), 200)</script>
+
+      <footer>
+        <div>ZNA Teknoloji · Mesai Takip · Otomatik oluşturuldu</div>
+        <div class="sag">talep.znateknoloji.com</div>
+      </footer>
+
+      <script>window.onload = () => setTimeout(() => window.print(), 300)</script>
     </body></html>`
 
-    // Blob URL → UTF-8 encoding garanti, document.write bug'ı yok
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const w = window.open(url, '_blank', 'width=1200,height=800')
     if (!w) { alert('Pop-up engellendi. Tarayıcı ayarlarından bu site için izin ver.'); URL.revokeObjectURL(url); return }
-    // 60sn sonra bellek serbest bırak
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   }
 
