@@ -5,6 +5,8 @@ import {
 } from 'recharts'
 import { X as XIcon, AlertTriangle, Package } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import { Clock, Download } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { teklifleriGetir } from '../services/teklifService'
@@ -47,7 +49,8 @@ function ChartCard({ title, children, height = 240 }) {
 }
 
 function Raporlar() {
-  const { kullanicilar } = useAuth()
+  const { kullanicilar, kullanici: benKullanici } = useAuth()
+  const yonetimGorur = /\b(oğuz|oguz|ali)\b/i.test(benKullanici?.ad ?? '')
   const [aktifSekme, setAktifSekme] = useState('teklifler')
   const [seciliPersonel, setSeciliPersonel] = useState('hepsi')
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -81,6 +84,7 @@ function Raporlar() {
     { id: 'gorusmeler', isim: 'Görüşmeler' },
     { id: 'gorevler',   isim: 'Görevler' },
     { id: 'stok',       isim: 'Stok' },
+    ...(yonetimGorur ? [{ id: 'mesai', isim: 'Mesai' }] : []),
   ]
 
   const filtreliTeklifler = seciliPersonel === 'hepsi' ? teklifler : teklifler.filter(t => t.hazirlayan === seciliPersonel)
@@ -656,7 +660,144 @@ function Raporlar() {
           )}
         </div>
       )}
+
+      {aktifSekme === 'mesai' && <MesaiRaporTab />}
     </div>
+  )
+}
+
+// —— Mesai raporu sekmesi ——————————————————————————————
+function MesaiRaporTab() {
+  const [baslangic, setBaslangic] = useState(() => {
+    const d = new Date()
+    const gun = d.getDay() || 7
+    d.setDate(d.getDate() - gun + 1)
+    d.setHours(0, 0, 0, 0)
+    return d.toISOString().slice(0, 10)
+  })
+  const [bitis, setBitis] = useState(() => new Date().toISOString().slice(0, 10))
+  const [personelListe, setPersonelListe] = useState([])
+  const [seciliPersonelIds, setSeciliPersonelIds] = useState([])
+  const [kayitlar, setKayitlar] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(false)
+
+  useEffect(() => {
+    supabase.from('kullanicilar')
+      .select('id, ad, unvan')
+      .contains('moduller', ['mesai_takip'])
+      .order('ad')
+      .then(({ data }) => setPersonelListe(data ?? []))
+  }, [])
+
+  useEffect(() => {
+    setYukleniyor(true)
+    let q = supabase.from('mesai_kayitlari')
+      .select('id, kullanici_id, giris_zamani, cikis_zamani, sure_dakika, giris_mesafe_m, not_, kullanicilar(ad, unvan)')
+      .gte('giris_zamani', baslangic + 'T00:00:00')
+      .lte('giris_zamani', bitis + 'T23:59:59')
+      .order('giris_zamani', { ascending: false })
+    if (seciliPersonelIds.length > 0) q = q.in('kullanici_id', seciliPersonelIds)
+    q.then(({ data }) => { setKayitlar(data ?? []); setYukleniyor(false) })
+  }, [baslangic, bitis, seciliPersonelIds])
+
+  const sureGoster = dk => {
+    if (dk == null) return 'devam'
+    const s = String(Math.floor(dk / 60)).padStart(2, '0')
+    const m = String(dk % 60).padStart(2, '0')
+    return `${s}:${m}`
+  }
+  const saatGoster = iso => iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'
+  const tarihGoster = iso => new Date(iso).toLocaleDateString('tr-TR')
+
+  const csvIndir = () => {
+    const satirlar = [
+      ['Tarih', 'Personel', 'Giriş', 'Çıkış', 'Süre', 'Mesafe (m)', 'Not'].join(';'),
+      ...kayitlar.map(k => [
+        tarihGoster(k.giris_zamani),
+        `"${k.kullanicilar?.ad ?? ''}"`,
+        saatGoster(k.giris_zamani),
+        k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam',
+        sureGoster(k.sure_dakika),
+        k.giris_mesafe_m ?? '',
+        `"${(k.not_ ?? '').replace(/"/g, "'")}"`,
+      ].join(';')),
+    ].join('\n')
+    const blob = new Blob(['﻿' + satirlar], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `mesai-${baslangic}-${bitis}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'end', marginBottom: 16, flexWrap: 'wrap' }}>
+        <div>
+          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Başlangıç</label>
+          <input type="date" value={baslangic} onChange={e => setBaslangic(e.target.value)}
+            style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+        </div>
+        <div>
+          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Bitiş</label>
+          <input type="date" value={bitis} onChange={e => setBitis(e.target.value)}
+            style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Personel (boş = hepsi)</label>
+          <select multiple value={seciliPersonelIds}
+            onChange={e => setSeciliPersonelIds(Array.from(e.target.selectedOptions).map(o => o.value))}
+            style={{ display: 'block', marginTop: 4, width: '100%', minHeight: 70, padding: 6, borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }}>
+            {personelListe.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
+          </select>
+        </div>
+        <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={csvIndir} disabled={kayitlar.length === 0}>
+          CSV
+        </Button>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+          <thead>
+            <tr>
+              {['Tarih', 'Personel', 'Giriş', 'Çıkış', 'Süre', 'Mesafe', 'Not'].map(h =>
+                <th key={h} style={{ textAlign: 'left', padding: '10px 8px', borderBottom: '2px solid var(--border-default)', font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{h}</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {yukleniyor && <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</td></tr>}
+            {!yukleniyor && kayitlar.length === 0 && (
+              <tr><td colSpan={7} style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)' }}>Bu dönemde kayıt yok.</td></tr>
+            )}
+            {kayitlar.map(k => {
+              const aktif = !k.cikis_zamani
+              const ofisDisi = (k.not_ ?? '').toLowerCase().includes('ofis dışı')
+              return (
+                <tr key={k.id} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-secondary)', fontSize: 13 }}>{tarihGoster(k.giris_zamani)}</td>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}>
+                    {k.kullanicilar?.ad}
+                    {k.kullanicilar?.unvan && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8, fontSize: 11 }}>· {k.kullanicilar.unvan}</span>}
+                  </td>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>{saatGoster(k.giris_zamani)}</td>
+                  <td style={{ padding: '10px 8px', color: aktif ? 'var(--success)' : 'var(--text-primary)', fontSize: 13, fontWeight: aktif ? 600 : 400 }}>
+                    {aktif ? 'devam' : saatGoster(k.cikis_zamani)}
+                  </td>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>{sureGoster(k.sure_dakika)}</td>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                    {k.giris_mesafe_m != null ? `${k.giris_mesafe_m} m` : '—'}
+                  </td>
+                  <td style={{ padding: '10px 8px', fontSize: 11 }}>
+                    {ofisDisi ? <span style={{ color: 'var(--warning)', fontWeight: 600 }}>⚠ {k.not_}</span> : <span style={{ color: 'var(--text-tertiary)' }}>{k.not_ ?? ''}</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   )
 }
 
