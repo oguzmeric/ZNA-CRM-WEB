@@ -749,25 +749,66 @@ function MesaiRaporTab() {
     XLSX.writeFile(wb, `${dosyaAdi()}.xlsx`)
   }
 
-  const pdfIndir = async () => {
-    const { default: jsPDF } = await import('jspdf')
-    const { default: autoTable } = await import('jspdf-autotable')
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-    doc.setFontSize(14); doc.text('ZNA Teknoloji · Mesai Raporu', 40, 40)
-    doc.setFontSize(10); doc.setTextColor(100)
-    doc.text(`Dönem: ${tarihGoster(baslangic + 'T00:00:00')} — ${tarihGoster(bitis + 'T00:00:00')}`, 40, 58)
+  const pdfIndir = () => {
+    // Tarayıcının kendi yazdırma penceresini kullan — sistem fontu, Türkçe sorunsuz.
     const secili = personelListe.find(p => String(p.id) === String(seciliPersonelId))
-    doc.text(`Personel: ${secili ? secili.ad : 'Tüm personel'}`, 40, 72)
-    autoTable(doc, {
-      startY: 90,
-      head: [['Tarih', 'Personel', 'Ünvan', 'Giriş', 'Çıkış', 'Süre', 'Mesafe (m)', 'Not']],
-      body: tabloVeri().map(r => [r.Tarih, r.Personel, r.Unvan, r.Giris, r.Cikis, r.Sure, String(r.MesafeM ?? ''), r.Not]),
-      styles: { fontSize: 9, cellPadding: 4 },
-      headStyles: { fillColor: [30, 90, 168], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      margin: { left: 40, right: 40 },
-    })
-    doc.save(`${dosyaAdi()}.pdf`)
+    const donem = `${tarihGoster(baslangic + 'T00:00:00')} — ${tarihGoster(bitis + 'T00:00:00')}`
+    const veri = tabloVeri()
+    const satirlar = veri.map(r => `
+      <tr>
+        <td>${r.Tarih}</td>
+        <td><b>${r.Personel}</b>${r.Unvan ? `<br><span class="dim">${r.Unvan}</span>` : ''}</td>
+        <td>${r.Giris}</td>
+        <td class="${r.Cikis === 'devam' ? 'aktif' : ''}">${r.Cikis}</td>
+        <td>${r.Sure}</td>
+        <td>${r.MesafeM !== '' && r.MesafeM != null ? r.MesafeM + ' m' : '—'}</td>
+        <td class="not">${(r.Not || '').replace(/</g, '&lt;')}</td>
+      </tr>`).join('')
+
+    const html = `<!doctype html><html lang="tr"><head>
+      <meta charset="utf-8">
+      <title>Mesai Raporu · ${donem}</title>
+      <style>
+        @page { size: A4 landscape; margin: 14mm; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; }
+        header { border-bottom: 2px solid #1e5aa8; padding-bottom: 12px; margin-bottom: 20px; }
+        h1 { margin: 0 0 6px; font-size: 20px; color: #1e5aa8; }
+        .meta { display: flex; gap: 20px; font-size: 12px; color: #475569; }
+        .meta b { color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        thead th { background: #1e5aa8; color: #fff; text-align: left; padding: 8px 6px; font-weight: 600; }
+        tbody td { padding: 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
+        .dim { color: #64748b; font-size: 10px; }
+        .aktif { color: #10b981; font-weight: 700; }
+        .not { color: #64748b; font-size: 10px; max-width: 240px; }
+        footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head><body>
+      <header>
+        <h1>ZNA Teknoloji · Mesai Raporu</h1>
+        <div class="meta">
+          <div>Dönem: <b>${donem}</b></div>
+          <div>Personel: <b>${secili ? secili.ad : 'Tüm personel'}</b></div>
+          <div>Kayıt: <b>${veri.length}</b></div>
+        </div>
+      </header>
+      <table>
+        <thead><tr>
+          <th>Tarih</th><th>Personel</th><th>Giriş</th><th>Çıkış</th><th>Süre</th><th>Mesafe</th><th>Not</th>
+        </tr></thead>
+        <tbody>${satirlar || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">Kayıt yok</td></tr>'}</tbody>
+      </table>
+      <footer>${new Date().toLocaleString('tr-TR')} · talep.znateknoloji.com</footer>
+      <script>window.onload = () => setTimeout(() => window.print(), 200)</script>
+    </body></html>`
+
+    const w = window.open('', '_blank', 'width=1200,height=800')
+    if (!w) { alert('Pop-up engellendi. Tarayıcı ayarlarından bu site için izin ver.'); return }
+    w.document.write(html)
+    w.document.close()
   }
 
   return (
