@@ -85,6 +85,7 @@ function Raporlar() {
     { id: 'gorevler',   isim: 'Görevler' },
     { id: 'stok',       isim: 'Stok' },
     ...(yonetimGorur ? [{ id: 'mesai', isim: 'Mesai' }] : []),
+    ...(yonetimGorur ? [{ id: 'arac_foto', isim: 'Araç Foto' }] : []),
   ]
 
   const filtreliTeklifler = seciliPersonel === 'hepsi' ? teklifler : teklifler.filter(t => t.hazirlayan === seciliPersonel)
@@ -662,6 +663,7 @@ function Raporlar() {
       )}
 
       {aktifSekme === 'mesai' && <MesaiRaporTab />}
+      {aktifSekme === 'arac_foto' && <AracFotoRaporTab />}
     </div>
   )
 }
@@ -1031,6 +1033,192 @@ function MesaiRaporTab() {
         </table>
       </div>
     </Card>
+  )
+}
+
+// —— Araç Foto raporu sekmesi ——————————————————————————————
+const ARAC_BOLGELERI = [
+  { id: 'on', ad: 'Ön' },
+  { id: 'arka', ad: 'Arka' },
+  { id: 'sol', ad: 'Sol Yan' },
+  { id: 'sag', ad: 'Sağ Yan' },
+  { id: 'kokpit', ad: 'Ön Konsol' },
+  { id: 'ic', ad: 'Araç İçi' },
+]
+
+function AracFotoRaporTab() {
+  const [tarih, setTarih] = useState(() => new Date().toISOString().slice(0, 10))
+  const [aracFiltresi, setAracFiltresi] = useState('')
+  const [teknisyenFiltresi, setTeknisyenFiltresi] = useState('')
+  const [zamanFiltresi, setZamanFiltresi] = useState('')  // '' = ikisi de
+  const [araclar, setAraclar] = useState([])
+  const [teknisyenler, setTeknisyenler] = useState([])
+  const [kayitlar, setKayitlar] = useState([])
+  const [imzaMap, setImzaMap] = useState({})
+  const [yukleniyor, setYukleniyor] = useState(false)
+  const [buyukFoto, setBuyukFoto] = useState(null)   // { url, meta }
+
+  useEffect(() => {
+    supabase.from('sirket_araclari').select('id, plaka').eq('aktif', true).order('plaka')
+      .then(({ data }) => setAraclar(data ?? []))
+    supabase.from('kullanicilar').select('id, ad').contains('moduller', ['arac_foto_takip']).order('ad')
+      .then(({ data }) => setTeknisyenler(data ?? []))
+  }, [])
+
+  useEffect(() => {
+    setYukleniyor(true)
+    let q = supabase.from('arac_foto_kayitlari')
+      .select('id, arac_id, zaman, bolge, foto_url, cekim_zamani, teknisyen_id, sirket_araclari(plaka,marka,model), kullanicilar(ad)')
+      .eq('tarih', tarih)
+      .order('cekim_zamani', { ascending: false })
+    if (aracFiltresi) q = q.eq('arac_id', aracFiltresi)
+    if (teknisyenFiltresi) q = q.eq('teknisyen_id', teknisyenFiltresi)
+    if (zamanFiltresi) q = q.eq('zaman', zamanFiltresi)
+    q.then(async ({ data }) => {
+      setKayitlar(data ?? [])
+      // Signed URL topla
+      const imzalar = {}
+      await Promise.all((data ?? []).filter(k => k.foto_url).map(async k => {
+        const { data: s } = await supabase.storage.from('arac-fotolari').createSignedUrl(k.foto_url, 3600)
+        if (s?.signedUrl) imzalar[k.foto_url] = s.signedUrl
+      }))
+      setImzaMap(imzalar)
+      setYukleniyor(false)
+    })
+  }, [tarih, aracFiltresi, teknisyenFiltresi, zamanFiltresi])
+
+  // Grup: arac_id → zaman → bolge
+  const gruplu = kayitlar.reduce((h, k) => {
+    if (!h[k.arac_id]) h[k.arac_id] = { arac: k.sirket_araclari, plaka: k.sirket_araclari?.plaka ?? '?', sabah: {}, aksam: {} }
+    if (k.zaman === 'sabah') h[k.arac_id].sabah[k.bolge] = k
+    if (k.zaman === 'aksam') h[k.arac_id].aksam[k.bolge] = k
+    return h
+  }, {})
+  const araGruplar = Object.entries(gruplu).sort(([, a], [, b]) => (a.plaka || '').localeCompare(b.plaka || ''))
+
+  return (
+    <div>
+      {/* Filtreler */}
+      <Card style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Tarih</label>
+            <input type="date" value={tarih} onChange={e => setTarih(e.target.value)}
+              style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ minWidth: 200 }}>
+            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Araç</label>
+            <CustomSelect value={aracFiltresi} onChange={e => setAracFiltresi(e.target.value)}>
+              <option value="">Tüm araçlar</option>
+              {araclar.map(a => <option key={a.id} value={a.id}>{a.plaka}</option>)}
+            </CustomSelect>
+          </div>
+          <div style={{ minWidth: 200 }}>
+            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Teknisyen</label>
+            <CustomSelect value={teknisyenFiltresi} onChange={e => setTeknisyenFiltresi(e.target.value)}>
+              <option value="">Tüm teknisyenler</option>
+              {teknisyenler.map(t => <option key={t.id} value={t.id}>{t.ad}</option>)}
+            </CustomSelect>
+          </div>
+          <div style={{ minWidth: 140 }}>
+            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Zaman</label>
+            <CustomSelect value={zamanFiltresi} onChange={e => setZamanFiltresi(e.target.value)}>
+              <option value="">Sabah + Akşam</option>
+              <option value="sabah">Sabah</option>
+              <option value="aksam">Akşam</option>
+            </CustomSelect>
+          </div>
+        </div>
+      </Card>
+
+      {/* İçerik */}
+      {yukleniyor ? (
+        <Card>
+          <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 20 }}>Yükleniyor…</p>
+        </Card>
+      ) : araGruplar.length === 0 ? (
+        <Card>
+          <EmptyState icon={<Package size={22} />} title="Kayıt yok" aciklama="Bu tarihte foto kaydı bulunamadı." />
+        </Card>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {araGruplar.map(([aracId, g]) => (
+            <Card key={aracId}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <span style={{ font: '800 18px/24px var(--font-sans)', letterSpacing: 0.5, color: 'var(--text-primary)' }}>{g.plaka}</span>
+                {g.arac?.marka && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>· {g.arac.marka} {g.arac.model}</span>}
+              </div>
+
+              {(['sabah', 'aksam']).map(zaman => {
+                if (zamanFiltresi && zamanFiltresi !== zaman) return null
+                const zamanKayit = g[zaman]
+                const dolu = Object.keys(zamanKayit).length
+                return (
+                  <div key={zaman} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Badge tone={zaman === 'sabah' ? 'bilgi' : 'nötr'}>{zaman === 'sabah' ? 'Sabah' : 'Akşam'}</Badge>
+                      <span style={{ font: '500 12px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{dolu} / {ARAC_BOLGELERI.length} bölge</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+                      {ARAC_BOLGELERI.map(b => {
+                        const k = zamanKayit[b.id]
+                        const url = k?.foto_url ? imzaMap[k.foto_url] : null
+                        return (
+                          <div key={b.id}
+                            onClick={() => url && setBuyukFoto({ url, meta: { ...k, bolgeAd: b.ad, plaka: g.plaka, zaman } })}
+                            style={{
+                              aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden',
+                              backgroundColor: 'var(--surface-sunken)',
+                              border: '1px solid var(--border-default)',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              cursor: url ? 'pointer' : 'default', position: 'relative',
+                            }}>
+                            {url ? (
+                              <>
+                                <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={b.ad} />
+                                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: '#fff', font: '600 10px/14px var(--font-sans)' }}>
+                                  {b.ad}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ font: '400 22px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                                <span style={{ font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{b.ad}</span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Büyük foto modal */}
+      {buyukFoto && (
+        <div onClick={() => setBuyukFoto(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <img src={buyukFoto.url} style={{ maxWidth: '90vw', maxHeight: '80vh', borderRadius: 12 }} alt="" />
+            <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: 10, color: '#fff', font: '500 13px/18px var(--font-sans)', textAlign: 'center' }}>
+              <b>{buyukFoto.meta.plaka}</b> · {buyukFoto.meta.bolgeAd} · {buyukFoto.meta.zaman === 'sabah' ? 'Sabah' : 'Akşam'}
+              <br />
+              <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                {buyukFoto.meta.kullanicilar?.ad ?? '—'} · {new Date(buyukFoto.meta.cekim_zamani).toLocaleString('tr-TR')}
+              </span>
+            </div>
+            <button onClick={() => setBuyukFoto(null)}
+              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}>
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
