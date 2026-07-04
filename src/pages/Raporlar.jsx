@@ -805,10 +805,13 @@ function MesaiRaporTab() {
       <script>window.onload = () => setTimeout(() => window.print(), 200)</script>
     </body></html>`
 
-    const w = window.open('', '_blank', 'width=1200,height=800')
-    if (!w) { alert('Pop-up engellendi. Tarayıcı ayarlarından bu site için izin ver.'); return }
-    w.document.write(html)
-    w.document.close()
+    // Blob URL → UTF-8 encoding garanti, document.write bug'ı yok
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const w = window.open(url, '_blank', 'width=1200,height=800')
+    if (!w) { alert('Pop-up engellendi. Tarayıcı ayarlarından bu site için izin ver.'); URL.revokeObjectURL(url); return }
+    // 60sn sonra bellek serbest bırak
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
   }
 
   return (
