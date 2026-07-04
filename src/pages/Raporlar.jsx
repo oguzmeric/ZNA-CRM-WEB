@@ -50,7 +50,7 @@ function ChartCard({ title, children, height = 240 }) {
 
 function Raporlar() {
   const { kullanicilar, kullanici: benKullanici } = useAuth()
-  const yonetimGorur = /\b(oğuz|oguz|ali)\b/i.test(benKullanici?.ad ?? '')
+  const yonetimGorur = /\b(oğuz|oguz|ali|ferdi)\b/i.test(benKullanici?.ad ?? '')
   const [aktifSekme, setAktifSekme] = useState('teklifler')
   const [seciliPersonel, setSeciliPersonel] = useState('hepsi')
   const [yukleniyor, setYukleniyor] = useState(true)

@@ -302,7 +302,7 @@ function MainLayout({ children }) {
   // sadece Ali ve Oğuz'a açık — admin rolü olsa bile başka biri göremez.
   // İsim eşleşmesi TR karakter ve büyük/küçük harf duyarsız.
   const _adLc = (kullanici?.ad || '').toLocaleLowerCase('tr')
-  const yonetimErisimi = /\b(oğuz|oguz|ali)\b/i.test(_adLc)
+  const yonetimErisimi = /\b(oğuz|oguz|ali|ferdi)\b/i.test(_adLc)
   const oguzMu = /\b(oğuz|oguz)\b/i.test(_adLc)
 
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
