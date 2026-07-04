@@ -6,7 +6,7 @@ import {
 import { X as XIcon, AlertTriangle, Package } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Clock, Download } from 'lucide-react'
+import { Clock, Download, FileSpreadsheet, FileText } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { teklifleriGetir } from '../services/teklifService'
@@ -667,17 +667,27 @@ function Raporlar() {
 }
 
 // —— Mesai raporu sekmesi ——————————————————————————————
+const isoBugun = () => new Date().toISOString().slice(0, 10)
+const isoNGunOnce = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
+const isoHaftaBasi = () => {
+  const d = new Date(); const gun = d.getDay() || 7
+  d.setDate(d.getDate() - gun + 1); return d.toISOString().slice(0, 10)
+}
+const isoAyBasi = () => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10) }
+
+const HAZIR_ARALIKLAR = [
+  { id: 'bugun',  isim: 'Bugün',    baslangic: isoBugun,       bitis: isoBugun },
+  { id: 'hafta',  isim: 'Bu Hafta', baslangic: isoHaftaBasi,   bitis: isoBugun },
+  { id: 'ay',     isim: 'Bu Ay',    baslangic: isoAyBasi,      bitis: isoBugun },
+  { id: '30gun',  isim: 'Son 30 Gün', baslangic: () => isoNGunOnce(30), bitis: isoBugun },
+]
+
 function MesaiRaporTab() {
-  const [baslangic, setBaslangic] = useState(() => {
-    const d = new Date()
-    const gun = d.getDay() || 7
-    d.setDate(d.getDate() - gun + 1)
-    d.setHours(0, 0, 0, 0)
-    return d.toISOString().slice(0, 10)
-  })
-  const [bitis, setBitis] = useState(() => new Date().toISOString().slice(0, 10))
+  const [aralik, setAralik] = useState('hafta')
+  const [baslangic, setBaslangic] = useState(isoHaftaBasi)
+  const [bitis, setBitis] = useState(isoBugun)
   const [personelListe, setPersonelListe] = useState([])
-  const [seciliPersonelIds, setSeciliPersonelIds] = useState([])
+  const [seciliPersonelId, setSeciliPersonelId] = useState('')  // '' = tümü
   const [kayitlar, setKayitlar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(false)
 
@@ -689,6 +699,14 @@ function MesaiRaporTab() {
       .then(({ data }) => setPersonelListe(data ?? []))
   }, [])
 
+  const aralikSec = (id) => {
+    const a = HAZIR_ARALIKLAR.find(x => x.id === id)
+    if (!a) { setAralik('ozel'); return }
+    setAralik(id)
+    setBaslangic(a.baslangic())
+    setBitis(a.bitis())
+  }
+
   useEffect(() => {
     setYukleniyor(true)
     let q = supabase.from('mesai_kayitlari')
@@ -696,9 +714,9 @@ function MesaiRaporTab() {
       .gte('giris_zamani', baslangic + 'T00:00:00')
       .lte('giris_zamani', bitis + 'T23:59:59')
       .order('giris_zamani', { ascending: false })
-    if (seciliPersonelIds.length > 0) q = q.in('kullanici_id', seciliPersonelIds)
+    if (seciliPersonelId) q = q.eq('kullanici_id', seciliPersonelId)
     q.then(({ data }) => { setKayitlar(data ?? []); setYukleniyor(false) })
-  }, [baslangic, bitis, seciliPersonelIds])
+  }, [baslangic, bitis, seciliPersonelId])
 
   const sureGoster = dk => {
     if (dk == null) return 'devam'
@@ -709,51 +727,117 @@ function MesaiRaporTab() {
   const saatGoster = iso => iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'
   const tarihGoster = iso => new Date(iso).toLocaleDateString('tr-TR')
 
-  const csvIndir = () => {
-    const satirlar = [
-      ['Tarih', 'Personel', 'Giriş', 'Çıkış', 'Süre', 'Mesafe (m)', 'Not'].join(';'),
-      ...kayitlar.map(k => [
-        tarihGoster(k.giris_zamani),
-        `"${k.kullanicilar?.ad ?? ''}"`,
-        saatGoster(k.giris_zamani),
-        k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam',
-        sureGoster(k.sure_dakika),
-        k.giris_mesafe_m ?? '',
-        `"${(k.not_ ?? '').replace(/"/g, "'")}"`,
-      ].join(';')),
-    ].join('\n')
-    const blob = new Blob(['﻿' + satirlar], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `mesai-${baslangic}-${bitis}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  const dosyaAdi = () => `mesai-${baslangic}_${bitis}`
+  const tabloVeri = () => kayitlar.map(k => ({
+    Tarih: tarihGoster(k.giris_zamani),
+    Personel: k.kullanicilar?.ad ?? '',
+    Unvan: k.kullanicilar?.unvan ?? '',
+    Giris: saatGoster(k.giris_zamani),
+    Cikis: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam',
+    Sure: sureGoster(k.sure_dakika),
+    MesafeM: k.giris_mesafe_m ?? '',
+    Not: k.not_ ?? '',
+  }))
+
+  const excelIndir = async () => {
+    const XLSX = await import('xlsx')
+    const veri = tabloVeri()
+    const ws = XLSX.utils.json_to_sheet(veri)
+    ws['!cols'] = [ { wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 40 } ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Mesai')
+    XLSX.writeFile(wb, `${dosyaAdi()}.xlsx`)
+  }
+
+  const pdfIndir = async () => {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+    doc.setFontSize(14); doc.text('ZNA Teknoloji · Mesai Raporu', 40, 40)
+    doc.setFontSize(10); doc.setTextColor(100)
+    doc.text(`Dönem: ${tarihGoster(baslangic + 'T00:00:00')} — ${tarihGoster(bitis + 'T00:00:00')}`, 40, 58)
+    const secili = personelListe.find(p => String(p.id) === String(seciliPersonelId))
+    doc.text(`Personel: ${secili ? secili.ad : 'Tüm personel'}`, 40, 72)
+    autoTable(doc, {
+      startY: 90,
+      head: [['Tarih', 'Personel', 'Ünvan', 'Giriş', 'Çıkış', 'Süre', 'Mesafe (m)', 'Not']],
+      body: tabloVeri().map(r => [r.Tarih, r.Personel, r.Unvan, r.Giris, r.Cikis, r.Sure, String(r.MesafeM ?? ''), r.Not]),
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [30, 90, 168], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 40, right: 40 },
+    })
+    doc.save(`${dosyaAdi()}.pdf`)
   }
 
   return (
     <Card>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'end', marginBottom: 16, flexWrap: 'wrap' }}>
-        <div>
-          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Başlangıç</label>
-          <input type="date" value={baslangic} onChange={e => setBaslangic(e.target.value)}
-            style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+      {/* Üst şerit: aralık chip'leri + personel + export butonları */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {HAZIR_ARALIKLAR.map(a => (
+            <button
+              key={a.id}
+              onClick={() => aralikSec(a.id)}
+              style={{
+                padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                border: '1px solid ' + (aralik === a.id ? 'var(--brand-primary)' : 'var(--border-default)'),
+                background: aralik === a.id ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+                color: aralik === a.id ? '#fff' : 'var(--text-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              {a.isim}
+            </button>
+          ))}
+          <button
+            onClick={() => setAralik('ozel')}
+            style={{
+              padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+              border: '1px solid ' + (aralik === 'ozel' ? 'var(--brand-primary)' : 'var(--border-default)'),
+              background: aralik === 'ozel' ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+              color: aralik === 'ozel' ? '#fff' : 'var(--text-primary)',
+              cursor: 'pointer',
+            }}
+          >
+            Özel
+          </button>
         </div>
-        <div>
-          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Bitiş</label>
-          <input type="date" value={bitis} onChange={e => setBitis(e.target.value)}
-            style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+
+        <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+          {aralik === 'ozel' && (
+            <>
+              <div>
+                <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Başlangıç</label>
+                <input type="date" value={baslangic} onChange={e => setBaslangic(e.target.value)}
+                  style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Bitiş</label>
+                <input type="date" value={bitis} onChange={e => setBitis(e.target.value)}
+                  style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+              </div>
+            </>
+          )}
+          <div style={{ minWidth: 220 }}>
+            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Personel</label>
+            <CustomSelect value={seciliPersonelId} onChange={e => setSeciliPersonelId(e.target.value)}>
+              <option value="">Tüm personel</option>
+              {personelListe.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
+            </CustomSelect>
+          </div>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" size="sm" iconLeft={<FileSpreadsheet size={14} strokeWidth={1.5} />}
+              onClick={excelIndir} disabled={kayitlar.length === 0}>
+              Excel
+            </Button>
+            <Button variant="secondary" size="sm" iconLeft={<FileText size={14} strokeWidth={1.5} />}
+              onClick={pdfIndir} disabled={kayitlar.length === 0}>
+              PDF
+            </Button>
+          </div>
         </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Personel (boş = hepsi)</label>
-          <select multiple value={seciliPersonelIds}
-            onChange={e => setSeciliPersonelIds(Array.from(e.target.selectedOptions).map(o => o.value))}
-            style={{ display: 'block', marginTop: 4, width: '100%', minHeight: 70, padding: 6, borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }}>
-            {personelListe.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
-          </select>
-        </div>
-        <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={csvIndir} disabled={kayitlar.length === 0}>
-          CSV
-        </Button>
       </div>
 
       <div style={{ overflowX: 'auto' }}>
