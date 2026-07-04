@@ -1046,11 +1046,26 @@ const ARAC_BOLGELERI = [
   { id: 'ic', ad: 'Araç İçi' },
 ]
 
+// TR saat dilimine göre 'YYYY-MM-DD'
+const bugunTR = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' }).format(new Date())
+const NgunOnceTR = (n) => {
+  const d = new Date(); d.setDate(d.getDate() - n)
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' }).format(d)
+}
+
+const ARALIKLAR = [
+  { id: 'bugun',  isim: 'Bugün',       baslangic: bugunTR,       bitis: bugunTR },
+  { id: '7gun',   isim: 'Son 7 Gün',   baslangic: () => NgunOnceTR(6),  bitis: bugunTR },
+  { id: '30gun',  isim: 'Son 30 Gün',  baslangic: () => NgunOnceTR(29), bitis: bugunTR },
+]
+
 function AracFotoRaporTab() {
-  const [tarih, setTarih] = useState(() => new Date().toISOString().slice(0, 10))
+  const [aralik, setAralik] = useState('bugun')
+  const [baslangic, setBaslangic] = useState(bugunTR)
+  const [bitis, setBitis] = useState(bugunTR)
   const [aracFiltresi, setAracFiltresi] = useState('')
   const [teknisyenFiltresi, setTeknisyenFiltresi] = useState('')
-  const [zamanFiltresi, setZamanFiltresi] = useState('')  // '' = ikisi de
+  const [zamanFiltresi, setZamanFiltresi] = useState('')
   const [araclar, setAraclar] = useState([])
   const [teknisyenler, setTeknisyenler] = useState([])
   const [kayitlar, setKayitlar] = useState([])
@@ -1065,18 +1080,25 @@ function AracFotoRaporTab() {
       .then(({ data }) => setTeknisyenler(data ?? []))
   }, [])
 
+  const aralikSec = (id) => {
+    const a = ARALIKLAR.find(x => x.id === id)
+    if (!a) { setAralik('ozel'); return }
+    setAralik(id); setBaslangic(a.baslangic()); setBitis(a.bitis())
+  }
+
   useEffect(() => {
     setYukleniyor(true)
     let q = supabase.from('arac_foto_kayitlari')
-      .select('id, arac_id, zaman, bolge, foto_url, cekim_zamani, teknisyen_id, sirket_araclari(plaka,marka,model), kullanicilar(ad)')
-      .eq('tarih', tarih)
+      .select('id, arac_id, tarih, zaman, bolge, foto_url, cekim_zamani, teknisyen_id, sirket_araclari(plaka,marka,model), kullanicilar(ad)')
+      .gte('tarih', baslangic)
+      .lte('tarih', bitis)
+      .order('tarih', { ascending: false })
       .order('cekim_zamani', { ascending: false })
     if (aracFiltresi) q = q.eq('arac_id', aracFiltresi)
     if (teknisyenFiltresi) q = q.eq('teknisyen_id', teknisyenFiltresi)
     if (zamanFiltresi) q = q.eq('zaman', zamanFiltresi)
     q.then(async ({ data }) => {
       setKayitlar(data ?? [])
-      // Signed URL topla
       const imzalar = {}
       await Promise.all((data ?? []).filter(k => k.foto_url).map(async k => {
         const { data: s } = await supabase.storage.from('arac-fotolari').createSignedUrl(k.foto_url, 3600)
@@ -1085,35 +1107,71 @@ function AracFotoRaporTab() {
       setImzaMap(imzalar)
       setYukleniyor(false)
     })
-  }, [tarih, aracFiltresi, teknisyenFiltresi, zamanFiltresi])
+  }, [baslangic, bitis, aracFiltresi, teknisyenFiltresi, zamanFiltresi])
 
-  // Grup: arac_id → zaman → bolge
+  // Grup: tarih → arac_id → zaman → bolge (yeni → eski)
   const gruplu = kayitlar.reduce((h, k) => {
-    if (!h[k.arac_id]) h[k.arac_id] = { arac: k.sirket_araclari, plaka: k.sirket_araclari?.plaka ?? '?', sabah: {}, aksam: {} }
-    if (k.zaman === 'sabah') h[k.arac_id].sabah[k.bolge] = k
-    if (k.zaman === 'aksam') h[k.arac_id].aksam[k.bolge] = k
+    if (!h[k.tarih]) h[k.tarih] = {}
+    if (!h[k.tarih][k.arac_id]) h[k.tarih][k.arac_id] = { arac: k.sirket_araclari, plaka: k.sirket_araclari?.plaka ?? '?', sabah: {}, aksam: {} }
+    if (k.zaman === 'sabah') h[k.tarih][k.arac_id].sabah[k.bolge] = k
+    if (k.zaman === 'aksam') h[k.tarih][k.arac_id].aksam[k.bolge] = k
     return h
   }, {})
-  const araGruplar = Object.entries(gruplu).sort(([, a], [, b]) => (a.plaka || '').localeCompare(b.plaka || ''))
+  const tarihGruplari = Object.entries(gruplu).sort(([a], [b]) => b.localeCompare(a))
+  const tarihGoster = iso => new Date(iso + 'T12:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' })
 
   return (
     <div>
       {/* Filtreler */}
       <Card style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {ARALIKLAR.map(a => (
+            <button key={a.id} onClick={() => aralikSec(a.id)}
+              style={{
+                padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                border: '1px solid ' + (aralik === a.id ? 'var(--brand-primary)' : 'var(--border-default)'),
+                background: aralik === a.id ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+                color: aralik === a.id ? '#fff' : 'var(--text-primary)',
+                cursor: 'pointer',
+              }}>
+              {a.isim}
+            </button>
+          ))}
+          <button onClick={() => setAralik('ozel')}
+            style={{
+              padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+              border: '1px solid ' + (aralik === 'ozel' ? 'var(--brand-primary)' : 'var(--border-default)'),
+              background: aralik === 'ozel' ? 'var(--brand-primary)' : 'var(--surface-sunken)',
+              color: aralik === 'ozel' ? '#fff' : 'var(--text-primary)',
+              cursor: 'pointer',
+            }}>
+            Özel
+          </button>
+        </div>
+
         <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
-          <div>
-            <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Tarih</label>
-            <input type="date" value={tarih} onChange={e => setTarih(e.target.value)}
-              style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
-          </div>
-          <div style={{ minWidth: 200 }}>
+          {aralik === 'ozel' && (
+            <>
+              <div>
+                <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Başlangıç</label>
+                <input type="date" value={baslangic} onChange={e => setBaslangic(e.target.value)}
+                  style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Bitiş</label>
+                <input type="date" value={bitis} onChange={e => setBitis(e.target.value)}
+                  style={{ display: 'block', marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-primary)' }} />
+              </div>
+            </>
+          )}
+          <div style={{ minWidth: 180 }}>
             <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Araç</label>
             <CustomSelect value={aracFiltresi} onChange={e => setAracFiltresi(e.target.value)}>
               <option value="">Tüm araçlar</option>
               {araclar.map(a => <option key={a.id} value={a.id}>{a.plaka}</option>)}
             </CustomSelect>
           </div>
-          <div style={{ minWidth: 200 }}>
+          <div style={{ minWidth: 180 }}>
             <label style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Teknisyen</label>
             <CustomSelect value={teknisyenFiltresi} onChange={e => setTeknisyenFiltresi(e.target.value)}>
               <option value="">Tüm teknisyenler</option>
@@ -1136,65 +1194,81 @@ function AracFotoRaporTab() {
         <Card>
           <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 20 }}>Yükleniyor…</p>
         </Card>
-      ) : araGruplar.length === 0 ? (
+      ) : tarihGruplari.length === 0 ? (
         <Card>
-          <EmptyState icon={<Package size={22} />} title="Kayıt yok" aciklama="Bu tarihte foto kaydı bulunamadı." />
+          <EmptyState icon={<Package size={22} />} title="Kayıt yok" aciklama="Bu dönemde foto kaydı bulunamadı." />
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {araGruplar.map(([aracId, g]) => (
-            <Card key={aracId}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <span style={{ font: '800 18px/24px var(--font-sans)', letterSpacing: 0.5, color: 'var(--text-primary)' }}>{g.plaka}</span>
-                {g.arac?.marka && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>· {g.arac.marka} {g.arac.model}</span>}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {tarihGruplari.map(([tarih, aracMap]) => {
+            const aracList = Object.entries(aracMap).sort(([, a], [, b]) => (a.plaka || '').localeCompare(b.plaka || ''))
+            return (
+              <div key={tarih}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingLeft: 4 }}>
+                  <div style={{ width: 4, height: 22, backgroundColor: 'var(--brand-primary)', borderRadius: 2 }} />
+                  <span style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', textTransform: 'capitalize' }}>{tarihGoster(tarih)}</span>
+                  <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>· {aracList.length} araç</span>
+                </div>
 
-              {(['sabah', 'aksam']).map(zaman => {
-                if (zamanFiltresi && zamanFiltresi !== zaman) return null
-                const zamanKayit = g[zaman]
-                const dolu = Object.keys(zamanKayit).length
-                return (
-                  <div key={zaman} style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <Badge tone={zaman === 'sabah' ? 'bilgi' : 'nötr'}>{zaman === 'sabah' ? 'Sabah' : 'Akşam'}</Badge>
-                      <span style={{ font: '500 12px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{dolu} / {ARAC_BOLGELERI.length} bölge</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
-                      {ARAC_BOLGELERI.map(b => {
-                        const k = zamanKayit[b.id]
-                        const url = k?.foto_url ? imzaMap[k.foto_url] : null
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {aracList.map(([aracId, g]) => (
+                    <Card key={aracId}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                        <span style={{ font: '800 18px/24px var(--font-sans)', letterSpacing: 0.5, color: 'var(--text-primary)' }}>{g.plaka}</span>
+                        {g.arac?.marka && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>· {g.arac.marka} {g.arac.model}</span>}
+                      </div>
+
+                      {(['sabah', 'aksam']).map(zaman => {
+                        if (zamanFiltresi && zamanFiltresi !== zaman) return null
+                        const zamanKayit = g[zaman]
+                        const dolu = Object.keys(zamanKayit).length
+                        if (dolu === 0 && zamanFiltresi) return null
                         return (
-                          <div key={b.id}
-                            onClick={() => url && setBuyukFoto({ url, meta: { ...k, bolgeAd: b.ad, plaka: g.plaka, zaman } })}
-                            style={{
-                              aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden',
-                              backgroundColor: 'var(--surface-sunken)',
-                              border: '1px solid var(--border-default)',
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                              cursor: url ? 'pointer' : 'default', position: 'relative',
-                            }}>
-                            {url ? (
-                              <>
-                                <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={b.ad} />
-                                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: '#fff', font: '600 10px/14px var(--font-sans)' }}>
-                                  {b.ad}
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <span style={{ font: '400 22px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
-                                <span style={{ font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{b.ad}</span>
-                              </>
-                            )}
+                          <div key={zaman} style={{ marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <Badge tone={zaman === 'sabah' ? 'bilgi' : 'nötr'}>{zaman === 'sabah' ? 'Sabah' : 'Akşam'}</Badge>
+                              <span style={{ font: '500 12px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{dolu} / {ARAC_BOLGELERI.length} bölge</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+                              {ARAC_BOLGELERI.map(b => {
+                                const k = zamanKayit[b.id]
+                                const url = k?.foto_url ? imzaMap[k.foto_url] : null
+                                return (
+                                  <div key={b.id}
+                                    onClick={() => url && setBuyukFoto({ url, meta: { ...k, bolgeAd: b.ad, plaka: g.plaka, zaman } })}
+                                    style={{
+                                      aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden',
+                                      backgroundColor: 'var(--surface-sunken)',
+                                      border: '1px solid var(--border-default)',
+                                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                      cursor: url ? 'pointer' : 'default', position: 'relative',
+                                    }}>
+                                    {url ? (
+                                      <>
+                                        <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={b.ad} />
+                                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: '#fff', font: '600 10px/14px var(--font-sans)' }}>
+                                          {b.ad}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span style={{ font: '400 22px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                                        <span style={{ font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{b.ad}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
                         )
                       })}
-                    </div>
-                  </div>
-                )
-              })}
-            </Card>
-          ))}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
