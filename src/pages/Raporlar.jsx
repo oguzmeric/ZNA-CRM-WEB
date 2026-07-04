@@ -739,6 +739,30 @@ function MesaiRaporTab() {
     Not: k.not_ ?? '',
   }))
 
+  // Blob'u konum seçici ile kaydet, olmazsa normal indirmeye düş
+  const kaydet = async (blob, adi, mime, aciklama) => {
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: adi,
+          types: [{ description: aciklama, accept: { [mime]: ['.' + adi.split('.').pop()] } }],
+        })
+        const w = await handle.createWritable()
+        await w.write(blob)
+        await w.close()
+        return
+      } catch (e) {
+        if (e?.name === 'AbortError') return   // kullanıcı iptal etti
+      }
+    }
+    // Fallback
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = adi
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
   const excelIndir = async () => {
     const XLSX = await import('xlsx')
     const veri = tabloVeri()
@@ -746,7 +770,9 @@ function MesaiRaporTab() {
     ws['!cols'] = [ { wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 40 } ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Mesai')
-    XLSX.writeFile(wb, `${dosyaAdi()}.xlsx`)
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    await kaydet(blob, `${dosyaAdi()}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel dosyası')
   }
 
   const pdfIndir = async () => {
@@ -892,14 +918,26 @@ function MesaiRaporTab() {
         <div class="sag">talep.znateknoloji.com</div>
       </footer>
 
-      <script>window.onload = () => setTimeout(() => window.print(), 300)</script>
     </body></html>`
 
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const w = window.open(url, '_blank', 'width=1200,height=800')
-    if (!w) { alert('Pop-up engellendi. Tarayıcı ayarlarından bu site için izin ver.'); URL.revokeObjectURL(url); return }
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    // HTML'i off-screen render edip html2pdf ile PDF blob al, sonra konum seçici ile kaydet.
+    const html2pdf = (await import('html2pdf.js')).default
+    const kap = document.createElement('div')
+    kap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;background:#fff;'
+    kap.innerHTML = html
+    document.body.appendChild(kap)
+    try {
+      const pdfBlob = await html2pdf().set({
+        margin: [8, 8, 8, 8],
+        filename: `${dosyaAdi()}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#fff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      }).from(kap).outputPdf('blob')
+      await kaydet(pdfBlob, `${dosyaAdi()}.pdf`, 'application/pdf', 'PDF dosyası')
+    } finally {
+      document.body.removeChild(kap)
+    }
   }
 
   return (
