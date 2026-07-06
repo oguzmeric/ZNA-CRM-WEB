@@ -93,9 +93,9 @@ export default function Skor() {
 
   useEffect(() => { yukle() }, [])
 
-  // Her 10 dakikada bir tazele (kiosk uzun süre açık kalır, Realtime bağlantısı düşerse buradan yeniden çeker)
+  // Her 5 dakikada bir tazele (kiosk uzun süre açık kalır, Realtime bağlantısı düşerse buradan yeniden çeker)
   useEffect(() => {
-    const t = setInterval(() => yukle(), 10 * 60 * 1000)
+    const t = setInterval(() => yukle(), 5 * 60 * 1000)
     return () => clearInterval(t)
   }, [])
 
