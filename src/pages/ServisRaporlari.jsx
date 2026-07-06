@@ -89,8 +89,16 @@ export default function ServisRaporlari() {
     setYeniCekiliyor(true)
     try {
       const { data, error } = await supabase.functions.invoke('esn-liste-senkron', { body: { limit: 100 } })
-      if (error || !data?.ok) {
-        alert('Çekilemedi: ' + (data?.hata ?? error?.message ?? 'bilinmiyor'))
+      // Supabase JS 4xx/5xx yanıtta error.context.json() gerçek hatayı barındırıyor
+      let hata = null
+      if (error) {
+        try { const ctx = await error.context?.json(); hata = ctx?.hata || ctx?.error } catch {}
+        hata = hata || error.message
+      } else if (!data?.ok) {
+        hata = data?.hata || 'bilinmiyor'
+      }
+      if (hata) {
+        alert('Çekilemedi: ' + hata)
         return
       }
       if (data.yeni === 0) {
