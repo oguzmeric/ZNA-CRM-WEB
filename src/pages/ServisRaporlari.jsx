@@ -83,6 +83,32 @@ export default function ServisRaporlari() {
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
   const [esnGuncelleniyor, setEsnGuncelleniyor] = useState(false)
+  const [yeniCekiliyor, setYeniCekiliyor] = useState(false)
+
+  const yeniKayitlariCek = async () => {
+    setYeniCekiliyor(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('esn-liste-senkron', { body: { limit: 100 } })
+      if (error || !data?.ok) {
+        alert('Çekilemedi: ' + (data?.hata ?? error?.message ?? 'bilinmiyor'))
+        return
+      }
+      if (data.yeni === 0) {
+        alert('Yeni kayıt yok. (Taranan: ' + data.taranan + ')')
+      } else {
+        // Yeni fişler için arka planda detay senkronu tetikle
+        const fisNolar = data.fisNolar || []
+        for (const fisNo of fisNolar) {
+          supabase.functions.invoke('esn-detay-senkron', { body: { fisno: fisNo } }).catch(() => {})
+        }
+        alert(`${data.yeni} yeni kayıt eklendi. Detaylar arka planda çekiliyor.`)
+        // Listeyi yenile
+        setSayfa(1)
+      }
+    } finally {
+      setYeniCekiliyor(false)
+    }
+  }
 
   const esnGuncelle = async (rapor) => {
     if (!rapor?.fisNo) return
@@ -373,15 +399,27 @@ export default function ServisRaporlari() {
             <span className="tabular-nums">{toplam.toLocaleString('tr-TR')}</span> kayıt
           </span>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          iconLeft={<Printer size={13} strokeWidth={1.5} />}
-          onClick={listePdfYazdir}
-          disabled={toplam === 0}
-        >
-          Liste PDF ({toplam.toLocaleString('tr-TR')})
-        </Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconLeft={<RefreshCw size={13} strokeWidth={1.5} className={yeniCekiliyor ? 'sk-dondur' : ''} />}
+            onClick={yeniKayitlariCek}
+            disabled={yeniCekiliyor}
+            title="esnweb'den son 100 fişi kontrol edip DB'de olmayanları ekler"
+          >
+            {yeniCekiliyor ? 'Çekiliyor…' : 'Yeni Kayıtları Çek'}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            iconLeft={<Printer size={13} strokeWidth={1.5} />}
+            onClick={listePdfYazdir}
+            disabled={toplam === 0}
+          >
+            Liste PDF ({toplam.toLocaleString('tr-TR')})
+          </Button>
+        </div>
       </div>
 
       {/* Filters — kompakt tek şerit */}
