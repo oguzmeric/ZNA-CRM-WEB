@@ -33,20 +33,19 @@ function Login() {
     setOnayMesaji('')
     if (yukleniyor) return
 
-    // Turnstile doğrulaması — token yoksa engel
-    if (!turnstileToken) {
-      setHata('Lütfen "Robot değilim" doğrulamasını tamamlayın.')
-      return
-    }
     setYukleniyor(true)
     try {
-      const { data: dogrulama, error: dogrulamaHata } = await supabase.functions.invoke('turnstile-dogrula', {
-        body: { token: turnstileToken },
-      })
-      if (dogrulamaHata || !dogrulama?.ok) {
-        setHata('Robot doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.')
-        setYukleniyor(false)
-        return
+      // Turnstile opsiyonel: token varsa doğrula, yoksa brute-force kilidi ile
+      // devam et. Widget CDN sorunu yüzünden kullanıcıyı hapsetmiyoruz.
+      if (turnstileToken) {
+        const { data: dogrulama, error: dogrulamaHata } = await supabase.functions.invoke('turnstile-dogrula', {
+          body: { token: turnstileToken },
+        })
+        if (dogrulamaHata || !dogrulama?.ok) {
+          setHata('Robot doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.')
+          setYukleniyor(false)
+          return
+        }
       }
 
       const basarili = await girisYap(kullaniciAdi, sifre)
@@ -211,7 +210,7 @@ function Login() {
 
               <TurnstileWidget onToken={turnstileToken_yakala} />
 
-              <button type="submit" className="submit-btn" disabled={yukleniyor || !turnstileToken}>
+              <button type="submit" className="submit-btn" disabled={yukleniyor}>
                 {yukleniyor ? 'Giriş yapılıyor…' : (
                   <>
                     Giriş Yap
