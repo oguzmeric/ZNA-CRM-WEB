@@ -75,9 +75,17 @@ Deno.serve(async (req) => {
       }),
     })
     if (!esnR.ok) return json({ ok: false, hata: `esn ${esnR.status}` }, 502)
-    let liste: any = await esnR.json()
-    if (typeof liste === 'string') liste = JSON.parse(liste)  // esnweb bazen double-encode ediyor
-    if (!Array.isArray(liste)) return json({ ok: false, hata: 'liste_geçersiz' }, 502)
+    const raw = await esnR.text()
+    let liste: any
+    try {
+      liste = JSON.parse(raw)
+      if (typeof liste === 'string') liste = JSON.parse(liste)  // esnweb bazen double-encode ediyor
+    } catch (e) {
+      return json({ ok: false, hata: 'json_parse: ' + String((e as any).message), rawPreview: raw.slice(0, 300) }, 502)
+    }
+    if (!Array.isArray(liste)) {
+      return json({ ok: false, hata: 'liste_geçersiz', responseType: typeof liste, keys: liste && typeof liste === 'object' ? Object.keys(liste).slice(0, 10) : undefined, rawPreview: raw.slice(0, 300) }, 502)
+    }
 
     const fisNolar = liste.map((r) => String(r.AFIS)).filter(Boolean)
     if (!fisNolar.length) return json({ ok: true, yeni: 0, taranan: 0 })
