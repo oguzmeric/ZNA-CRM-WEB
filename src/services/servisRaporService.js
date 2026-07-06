@@ -73,6 +73,7 @@ export const servisRaporlariSayfa = async ({
   let q = supabase
     .from('servis_raporlari')
     .select('*', { count: 'exact' })
+    .or('silindi.eq.false,silindi.is.null')
     .order('bil_tarih', { ascending: false, nullsFirst: false })
 
   if (firma) q = q.eq('firma_adi', firma)

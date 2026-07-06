@@ -170,12 +170,31 @@ Deno.serve(async (req) => {
       if (eu) return json({ ok: false, hata: `db_update ${fis_no}: ` + eu.message }, 500)
     }
 
+    // Silme algılama: esnweb'in son 100'ünde min-max fis_no aralığında olup
+    // esnweb listesinde artık olmayan DB fişleri → silindi = true
+    const esnFisNums = fisNolar.map((f) => parseInt(f, 10)).filter((n) => !isNaN(n))
+    const maxEsn = Math.max(...esnFisNums)
+    const minEsn = Math.min(...esnFisNums)
+    const esnFisSet = new Set(esnFisNums)
+    // DB'de aralıkta olan fişleri getir (fis_no text — JS filtrele)
+    const { data: dbAralik } = await svc
+      .from('servis_raporlari').select('fis_no,silindi')
+      .in('fis_no', Array.from({ length: maxEsn - minEsn + 1 }, (_, i) => String(minEsn + i)))
+    const silinecekler = (dbAralik ?? [])
+      .filter((r) => !r.silindi && !esnFisSet.has(parseInt(r.fis_no, 10)))
+      .map((r) => r.fis_no)
+    if (silinecekler.length) {
+      const { error: es } = await svc
+        .from('servis_raporlari').update({ silindi: true }).in('fis_no', silinecekler)
+      if (es) return json({ ok: false, hata: 'db_silme: ' + es.message }, 500)
+    }
+
     return json({
       ok: true,
       yeni: yeniler.length,
       guncellenen: guncellenecekler.length,
+      silinen: silinecekler.length,
       taranan: fisNolar.length,
-      // Yeni + güncellenen fişler için detay senkron çağrılabilir
       fisNolar: [...yeniler.map((r) => r.fis_no), ...guncellenecekler.map((r) => r.fis_no)],
     })
   } catch (e) {
