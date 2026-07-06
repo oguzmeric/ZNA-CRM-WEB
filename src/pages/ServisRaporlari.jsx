@@ -690,11 +690,11 @@ export default function ServisRaporlari() {
                 icerik={seciliRapor.bildiren}
               />
             )}
-            {seciliRapor.bildirilenArizaAriza && (
+            {seciliRapor.bildirilenAriza && (
               <DetayAlan
                 icon={<AlertTriangle size={14} strokeWidth={1.5} />}
                 baslik="Bildirilen sorun"
-                icerik={seciliRapor.bildirilenArizaAriza}
+                icerik={seciliRapor.bildirilenAriza}
               />
             )}
 
