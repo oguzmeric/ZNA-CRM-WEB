@@ -45,6 +45,8 @@ export default function Mobiltek() {
     }
   }
 
+  const [sonGuncelleme, setSonGuncelleme] = useState(null)
+
   const yukle = async () => {
     setYukleniyor(true)
     const r = await araclariGetir()
@@ -52,10 +54,17 @@ export default function Mobiltek() {
       const ham = r.veri?.vehicles || []
       setAraclar(ham.map(normalizeArac))
       setMock(r.mock)
+      setSonGuncelleme(new Date())
     }
     setYukleniyor(false)
   }
-  useEffect(() => { yukle() }, [])
+
+  // İlk yükleme + 30 sn'de bir otomatik polling (canlı takip)
+  useEffect(() => {
+    yukle()
+    const t = setInterval(yukle, 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   const aracSec = async (a) => {
     setSeciliArac(a)
@@ -71,7 +80,12 @@ export default function Mobiltek() {
         <div>
           <h1 className="t-h1" style={{ margin: 0 }}>Mobiltek Araç Takip</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            {araclar.length} araç · {mock ? 'MOCK modu — kredensiyel bekleniyor' : 'canlı'}
+            {araclar.length} araç · {mock ? 'MOCK modu — kredensiyel bekleniyor' : 'canlı takip (30 sn)'}
+            {sonGuncelleme && (
+              <span style={{ marginLeft: 8, opacity: 0.6 }}>
+                · son güncelleme {sonGuncelleme.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
