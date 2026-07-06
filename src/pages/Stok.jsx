@@ -760,9 +760,25 @@ function Stok() {
               </span>
             </label>
 
+            {/* Düzenleme modunda seri_takipli checkbox — off ise Toplu S/N gizli */}
+            {duzenleId && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: form.seriTakipli ? 16 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.seriTakipli}
+                    onChange={(e) => setForm({ ...form, seriTakipli: e.target.checked, topluSN: e.target.checked ? form.topluSN : '' })}
+                    style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
+                  />
+                  <Tag size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+                  <span className="t-body-strong">Bu donanım S/N takipli (kamera, NVR, cihaz…)</span>
+                </label>
+              </div>
+            )}
+
             {/* Toplu S/N ekle — düzenleme modunda seri_takipli ürünler için */}
             {duzenleId && form.seriTakipli && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+              <div style={{ marginTop: 4 }}>
                 <Label>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Tag size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
