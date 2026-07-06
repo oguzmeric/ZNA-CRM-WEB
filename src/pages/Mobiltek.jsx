@@ -21,11 +21,36 @@ export default function Mobiltek() {
   const [kameralar, setKameralar] = useState([])
   const [webviewUrl, setWebviewUrl] = useState(null)
 
+  // .NET Date format "/Date(1783358792000+0300)/" → ISO string
+  const parseNetDate = (s) => {
+    if (!s) return null
+    const m = String(s).match(/\/Date\((\d+)/)
+    if (m) return new Date(parseInt(m[1], 10)).toISOString()
+    return s
+  }
+
+  // Mobiltek response → düz mock formatına çevir
+  const normalizeArac = (v) => {
+    const loc = v['last-location'] || {}
+    return {
+      ...v,
+      plateNo: v.label || v.plateNo || null,
+      gpsSpeed: loc.speed ?? v.gpsSpeed ?? 0,
+      gpsTime: parseNetDate(loc.logdatetime ?? v.gpsTime),
+      lat: loc.latitude ?? v.lat ?? null,
+      lng: loc.longitude ?? v.lng ?? null,
+      direction: loc.dir ?? v.direction ?? 0,
+      ignition: loc.ignition ?? v.ignition ?? false,
+      address: loc.address ?? null,
+    }
+  }
+
   const yukle = async () => {
     setYukleniyor(true)
     const r = await araclariGetir()
     if (r) {
-      setAraclar(r.veri?.vehicles || [])
+      const ham = r.veri?.vehicles || []
+      setAraclar(ham.map(normalizeArac))
       setMock(r.mock)
     }
     setYukleniyor(false)
