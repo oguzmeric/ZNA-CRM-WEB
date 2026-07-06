@@ -33,6 +33,8 @@ function raporToTalep(r) {
     cozumAciklamasi: r.sonuc || '',       // Yapılan İşlemler
     teslimAlanAd: r.teslimAlan || '',     // esnweb: pdaseri
     musteriImza: r._imzaUrl || null,      // Signed URL — modal butonundan doldurulur
+    personelImza: r._personelImza || null, // Teknisyenin kullanicilar.imza kaydı
+    teknisyen: r.teknisyen,
     servisTipi: r.servisTipi,
     yukumluluk: r.yukumluluk,
     servisYeri: r.servisYeri,
@@ -649,6 +651,14 @@ export default function ServisRaporlari() {
                 if (rapor?.imzaUrl) {
                   const { data } = await supabase.storage.from('imzalar').createSignedUrl(rapor.imzaUrl, 3600)
                   if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
+                }
+                if (rapor?.teknisyen) {
+                  const { data: k } = await supabase
+                    .from('kullanicilar')
+                    .select('imza')
+                    .ilike('ad', rapor.teknisyen.trim())
+                    .maybeSingle()
+                  if (k?.imza) rapor = { ...rapor, _personelImza: k.imza }
                 }
                 setFormRapor(rapor); setSeciliRapor(null)
               }}

@@ -411,8 +411,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
               <td style={{ ...cellStyle, width: '33.3%', verticalAlign: 'top' }}>
                 <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>{cfg.firmaAdi.split(' SANAYİ')[0]}</div>
                 <div style={{ fontSize: 8, color: '#666' }}>{talep.teknisyen || '—'}</div>
-                {talep.musteriImza
-                  ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 90, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
+                {talep.personelImza
+                  ? <img src={talep.personelImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 90, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
                   : <div style={{ height: 50 }} />}
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
                   TEKNİK İNCELEME / İMZA
