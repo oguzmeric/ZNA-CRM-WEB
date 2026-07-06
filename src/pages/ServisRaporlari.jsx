@@ -28,7 +28,7 @@ function raporToTalep(r) {
     tarih: r.gidTarih || r.bilTarih,
     kunyeNumarasi: r.sisNo || '',
     servisNo: r.fisNo,
-    aciklama: r.bildirilen || '',        // Arıza Açıklaması
+    aciklama: r.bildirilenAriza || '',        // Arıza Açıklaması
     cozumAciklamasi: r.sonuc || '',       // Yapılan İşlemler
   }
 }
@@ -294,7 +294,7 @@ export default function ServisRaporlari() {
     ${satir('Bildirim Tarihi', formatTarih(r.bilTarih))}
     ${satir('Gidiş Tarihi', formatTarih(r.gidTarih))}
     ${(r.bildiren && r.bildiren.trim() && r.bildiren !== '.') ? satir('Bildiren', r.bildiren) : ''}
-    ${r.bildirilen ? satir('Bildirilen Sorun', r.bildirilen) : ''}
+    ${r.bildirilenAriza ? satir('Bildirilen Sorun', r.bildirilenAriza) : ''}
   </table>
 
   ${r.sonuc ? `<div class="sonuc"><h3>✓ Sonuç</h3><p>${esc(r.sonuc)}</p></div>` : ''}
@@ -690,11 +690,11 @@ export default function ServisRaporlari() {
                 icerik={seciliRapor.bildiren}
               />
             )}
-            {seciliRapor.bildirilen && (
+            {seciliRapor.bildirilenArizaAriza && (
               <DetayAlan
                 icon={<AlertTriangle size={14} strokeWidth={1.5} />}
                 baslik="Bildirilen sorun"
-                icerik={seciliRapor.bildirilen}
+                icerik={seciliRapor.bildirilenArizaAriza}
               />
             )}
 
