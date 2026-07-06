@@ -12,7 +12,8 @@ do $$
 declare
   tbl text;
   savunmasiz text[] := array[
-    'aktivite_log', 'demo_cihazlari', 'demo_cihazlari_durum',
+    'aktivite_log', 'demo_cihazlari',
+    -- demo_cihazlari_durum: VIEW → RLS almaz, base tablodan devralır
     'demo_zimmet_kayitlari', 'firmalar', 'mobiltek_token_cache',
     'musteri_davetleri', 'servis_kalem_kullanimi', 'tahsilatlar'
   ];
