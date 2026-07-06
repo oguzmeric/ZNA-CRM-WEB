@@ -70,7 +70,7 @@ export default function Teklifler() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { confirm } = useConfirm()
-  const { teklifHatirlatmasi } = useHatirlatma()
+  const { teklifHatirlatmasi, hatirlatmaSil } = useHatirlatma()
 
   const [teklifler, setTeklifler] = useState([])
   const [musteriTalepleri, setMusteriTalepleri] = useState([])
@@ -131,6 +131,8 @@ export default function Teklifler() {
     if (!onay) return
     await dbTeklifSil(id)
     setTeklifler(prev => prev.filter(t => t.id !== id))
+    // Bu teklife bağlı hatırlatmayı da sil — silinmiş tekliften bildirim gelmesin
+    hatirlatmaSil(id).catch(() => {})
     toast.success('Teklif silindi.')
   }
 

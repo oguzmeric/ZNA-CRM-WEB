@@ -8,6 +8,7 @@ import {
   hatirlatmaSilDB,
 } from '../services/hatirlatmaService'
 import { lisanslariGetir } from '../services/lisansService'
+import { teklifleriGetir } from '../services/teklifService'
 
 // Demo bitişi <= bu kadar gün ise hatırlatma çıkar
 const LISANS_UYARI_GUN = 3
@@ -31,7 +32,17 @@ export function HatirlatmaProvider({ children }) {
   const kontrolEdildiRef = useRef(false)
 
   useEffect(() => {
-    Promise.all([hatirlatmalariGetir(), lisanslariGetir().catch(() => [])]).then(([liste, lisanslar]) => {
+    Promise.all([
+      hatirlatmalariGetir(),
+      lisanslariGetir().catch(() => []),
+      teklifleriGetir().catch(() => []),
+    ]).then(async ([listeHam, lisanslar, teklifler]) => {
+      // Silinmiş tekliflere ait teklif hatırlatmalarını at ve DB'den temizle
+      const mevcutTeklifIds = new Set(teklifler.map(t => t.id))
+      const orphan = listeHam.filter(h => h.tip === 'teklif' && h.teklifId && !mevcutTeklifIds.has(h.teklifId))
+      const liste = listeHam.filter(h => !orphan.includes(h))
+      // Silinen teklif hatırlatmalarını arka planda DB'den sil (best-effort)
+      orphan.forEach(h => { hatirlatmaSilDB(h.id).catch(() => {}) })
       setHatirlatmalar(liste)
       if (kontrolEdildiRef.current) return
       kontrolEdildiRef.current = true
