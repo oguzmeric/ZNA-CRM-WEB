@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
       }),
     })
     if (!esnR.ok) return json({ ok: false, hata: `esn ${esnR.status}` }, 502)
-    const liste = await esnR.json()
+    let liste: any = await esnR.json()
+    if (typeof liste === 'string') liste = JSON.parse(liste)  // esnweb bazen double-encode ediyor
     if (!Array.isArray(liste)) return json({ ok: false, hata: 'liste_geçersiz' }, 502)
 
     const fisNolar = liste.map((r) => String(r.AFIS)).filter(Boolean)
