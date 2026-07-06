@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   Wrench, Download, ChevronLeft, ChevronRight,
-  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer,
+  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer, RefreshCw,
 } from 'lucide-react'
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
@@ -73,6 +73,27 @@ export default function ServisRaporlari() {
   const [seciliRapor, setSeciliRapor] = useState(null)
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
+  const [esnGuncelleniyor, setEsnGuncelleniyor] = useState(false)
+
+  const esnGuncelle = async (rapor) => {
+    if (!rapor?.fisNo) return
+    setEsnGuncelleniyor(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('esn-detay-senkron', { body: { fisno: rapor.fisNo } })
+      if (error || !data?.ok) {
+        alert('Güncellenemedi: ' + (data?.hata ?? error?.message ?? 'bilinmiyor'))
+        return
+      }
+      // Kaydı yeniden çek
+      const { data: yeni } = await supabase.from('servis_raporlari').select('*').eq('fis_no', rapor.fisNo).maybeSingle()
+      if (yeni) {
+        const { toCamel } = await import('../lib/mapper')
+        setSeciliRapor(toCamel(yeni))
+      }
+    } finally {
+      setEsnGuncelleniyor(false)
+    }
+  }
 
   // Filtre dropdown'ları için unique listeler — bir kez çekilir (sayfa yaşamı boyunca)
   const [firmalar, setFirmalar] = useState([])
@@ -604,6 +625,15 @@ export default function ServisRaporlari() {
         footer={
           <>
             <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
+            <Button
+              variant="secondary"
+              iconLeft={<RefreshCw size={14} strokeWidth={1.5} className={esnGuncelleniyor ? 'sk-dondur' : ''} />}
+              onClick={() => esnGuncelle(seciliRapor)}
+              disabled={esnGuncelleniyor}
+              title="esnweb.com'dan bu fişi yeniden çek"
+            >
+              {esnGuncelleniyor ? 'Güncelleniyor…' : 'esnweb güncelle'}
+            </Button>
             <Button
               variant="secondary"
               iconLeft={<FileText size={14} strokeWidth={1.5} />}
