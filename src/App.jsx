@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
 const KomutPaleti = lazy(() => import('./components/KomutPaleti'))
+import IdleUyariModal from './components/IdleUyariModal'
 
 // Eager — kritik ilk-paint için (login + Dashboard)
 import Login from './pages/Login'
@@ -244,6 +245,7 @@ function App() {
             <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
           </Suspense>
         )}
+        <IdleUyariModal />
       </>
     )
   }
@@ -307,6 +309,7 @@ function App() {
       </Suspense>
     </MainLayout>
     <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
+    <IdleUyariModal />
     </>
   )
 }
