@@ -90,15 +90,21 @@ export default function ServisRaporlari() {
     try {
       const { data, error } = await supabase.functions.invoke('esn-liste-senkron', { body: { limit: 100 } })
       // Supabase JS 4xx/5xx yanıtta error.context.json() gerçek hatayı barındırıyor
-      let hata = null
+      let hata = null, ekstra = ''
       if (error) {
-        try { const ctx = await error.context?.json(); hata = ctx?.hata || ctx?.error } catch {}
+        try {
+          const ctx = await error.context?.json()
+          hata = ctx?.hata || ctx?.error
+          if (ctx?.responseType || ctx?.keys || ctx?.rawPreview) {
+            ekstra = '\n\ntür: ' + ctx.responseType + '\nkeys: ' + JSON.stringify(ctx.keys) + '\nresponse: ' + ctx.rawPreview
+          }
+        } catch {}
         hata = hata || error.message
       } else if (!data?.ok) {
         hata = data?.hata || 'bilinmiyor'
       }
       if (hata) {
-        alert('Çekilemedi: ' + hata)
+        alert('Çekilemedi: ' + hata + ekstra)
         return
       }
       if (data.yeni === 0) {
