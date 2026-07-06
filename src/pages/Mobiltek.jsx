@@ -67,7 +67,7 @@ export default function Mobiltek() {
   // İlk yükleme + 30 sn'de bir otomatik polling (canlı takip + yakınlık tarama)
   useEffect(() => {
     yukle()
-    const t = setInterval(yukle, 30_000)
+    const t = setInterval(yukle, 60_000)
     return () => clearInterval(t)
   }, [])
 
