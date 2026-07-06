@@ -31,6 +31,13 @@ function raporToTalep(r) {
     servisNo: r.fisNo,
     aciklama: r.bildirilenAriza || '',        // Arıza Açıklaması
     cozumAciklamasi: r.sonuc || '',       // Yapılan İşlemler
+    teslimAlanAd: r.teslimAlan || '',     // esnweb: pdaseri
+    musteriImza: r._imzaUrl || null,      // Signed URL — modal butonundan doldurulur
+    servisTipi: r.servisTipi,
+    yukumluluk: r.yukumluluk,
+    servisYeri: r.servisYeri,
+    varisSaati: r.varisSaati,
+    ayrilisSaati: r.ayrilisSaati,
   }
 }
 
@@ -637,7 +644,14 @@ export default function ServisRaporlari() {
             <Button
               variant="secondary"
               iconLeft={<FileText size={14} strokeWidth={1.5} />}
-              onClick={() => { setFormRapor(seciliRapor); setSeciliRapor(null) }}
+              onClick={async () => {
+                let rapor = seciliRapor
+                if (rapor?.imzaUrl) {
+                  const { data } = await supabase.storage.from('imzalar').createSignedUrl(rapor.imzaUrl, 3600)
+                  if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
+                }
+                setFormRapor(rapor); setSeciliRapor(null)
+              }}
             >
               Servis Formu
             </Button>
