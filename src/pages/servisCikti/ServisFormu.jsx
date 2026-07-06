@@ -116,11 +116,19 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
     email: talep.email || '—',
   }
 
-  const servisTipi = (talep.servisTipi || '').toLowerCase()
+  // TR karakter normalize — "arıza" → "ariza" (checkbox eşleşmesi için)
+  const trNorm = (s) => String(s || '').toLowerCase()
+    .replace(/ı/g, 'i').replace(/İ/g, 'i')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'u')
+    .replace(/ş/g, 's').replace(/Ş/g, 's')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'c')
+  const servisTipi = trNorm(talep.servisTipi)
   const tipKutu = (key) => (servisTipi.includes(key) ? KUTU_DOLU : KUTU_BOS)
-  const yukum = (talep.yukumluluk || '').toLowerCase()
+  const yukum = trNorm(talep.yukumluluk)
   const yukumKutu = (key) => (yukum.includes(key) ? KUTU_DOLU : KUTU_BOS)
-  const yer = (talep.servisYeri || '').toLowerCase()
+  const yer = trNorm(talep.servisYeri)
   const yerKutu = (key) => (yer.includes(key) ? KUTU_DOLU : KUTU_BOS)
 
   const ariza = talep.aciklama || ''
