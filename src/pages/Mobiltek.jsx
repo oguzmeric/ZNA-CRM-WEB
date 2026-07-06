@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff } from 'lucide-react'
 import { Card, Button, Badge, EmptyState } from '../components/ui'
-import { araclariGetir, kameralariGetir } from '../services/mobiltekService'
+import { araclariGetir, kameralariGetir, yakinlikTara, aktifYakinliklarGetir } from '../services/mobiltekService'
 import MobiltekHarita from '../components/MobiltekHarita'
 
 const kucukTarih = (iso) => {
@@ -46,6 +46,7 @@ export default function Mobiltek() {
   }
 
   const [sonGuncelleme, setSonGuncelleme] = useState(null)
+  const [yakinliklar, setYakinliklar] = useState([])
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -57,9 +58,12 @@ export default function Mobiltek() {
       setSonGuncelleme(new Date())
     }
     setYukleniyor(false)
+    // Yakınlık tara (sessiz) + aktif listeyi çek
+    yakinlikTara().catch(() => {})
+    aktifYakinliklarGetir().then(setYakinliklar).catch(() => {})
   }
 
-  // İlk yükleme + 30 sn'de bir otomatik polling (canlı takip)
+  // İlk yükleme + 30 sn'de bir otomatik polling (canlı takip + yakınlık tarama)
   useEffect(() => {
     yukle()
     const t = setInterval(yukle, 30_000)
@@ -95,6 +99,44 @@ export default function Mobiltek() {
           </Button>
         </div>
       </div>
+
+      {/* Yakınlık uyarıları */}
+      {yakinliklar.length > 0 && (
+        <Card style={{ marginBottom: 16, padding: 14, borderLeft: '4px solid ' + (yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#f59e0b') }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 20 }}>🕵️</span>
+            <strong style={{ font: '600 14px/18px var(--font-sans)' }}>
+              {yakinliklar.filter(y => y.alarm_verildi).length > 0
+                ? `${yakinliklar.filter(y => y.alarm_verildi).length} aktif alarm`
+                : `${yakinliklar.length} yakınlık izleniyor`}
+            </strong>
+          </div>
+          <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+            {yakinliklar.map(y => {
+              const dk = Math.max(0, Math.round((new Date() - new Date(y.ilk_zaman)) / 60000))
+              const alarm = y.alarm_verildi
+              return (
+                <div key={y.id} style={{
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: alarm ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.06)',
+                  color: 'var(--text-primary)',
+                }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600 }}>{y.arac1_plaka}</span>
+                    <span style={{ opacity: 0.6 }}>+</span>
+                    <span style={{ fontWeight: 600 }}>{y.arac2_plaka}</span>
+                    <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                      {alarm ? '🚨 ' : ''}{dk} dk · {y.son_mesafe_m}m
+                    </span>
+                  </div>
+                  {y.son_adres && <div style={{ opacity: 0.7, marginTop: 2 }}>{y.son_adres}</div>}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, minHeight: 600 }}>
         {/* Sol — araç listesi */}

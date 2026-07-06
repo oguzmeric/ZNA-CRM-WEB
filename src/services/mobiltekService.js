@@ -18,6 +18,20 @@ const cagir = async (yol, params = {}) => {
 }
 
 export const araclariGetir       = () => cagir('vehicles')
+export const yakinlikTara        = async () => {
+  const { data, error } = await supabase.functions.invoke('arac-yakinlik-tara')
+  if (error) { console.warn('[yakinlik]', error.message); return null }
+  return data
+}
+export const aktifYakinliklarGetir = async () => {
+  const { data, error } = await supabase
+    .from('arac_yakinlik_kayitlari')
+    .select('id, arac1_plaka, arac2_plaka, ilk_zaman, son_zaman, son_mesafe_m, son_adres, alarm_verildi, alarm_zamani')
+    .eq('cozuldu', false)
+    .order('ilk_zaman')
+  if (error) { console.warn('[yakinlik-liste]', error.message); return [] }
+  return data ?? []
+}
 export const kameralariGetir     = (aracId) => cagir(`cameras/${aracId}`)
 export const konumLoglariGetir   = (aracId, tarihBaslangic, tarihBitis) =>
   cagir(`vehicles/location-logs/${aracId}`, { start: tarihBaslangic, end: tarihBitis })
