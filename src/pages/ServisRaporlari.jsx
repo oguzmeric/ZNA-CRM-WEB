@@ -107,16 +107,17 @@ export default function ServisRaporlari() {
         alert('Çekilemedi: ' + hata + ekstra)
         return
       }
-      if (data.yeni === 0) {
-        alert('Yeni kayıt yok. (Taranan: ' + data.taranan + ')')
+      const yeni = data.yeni || 0
+      const guncellenen = data.guncellenen || 0
+      if (yeni === 0 && guncellenen === 0) {
+        alert('Değişiklik yok. (Taranan: ' + data.taranan + ')')
       } else {
-        // Yeni fişler için arka planda detay senkronu tetikle
+        // Yeni + güncellenen fişler için arka planda detay senkronu tetikle
         const fisNolar = data.fisNolar || []
         for (const fisNo of fisNolar) {
           supabase.functions.invoke('esn-detay-senkron', { body: { fisno: fisNo } }).catch(() => {})
         }
-        alert(`${data.yeni} yeni kayıt eklendi. Detaylar arka planda çekiliyor.`)
-        // Listeyi yenile
+        alert(`${yeni} yeni + ${guncellenen} güncelleme. Detaylar arka planda çekiliyor.`)
         setSayfa(1)
       }
     } finally {
