@@ -27,6 +27,22 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
     } catch (e) { console.warn('[kullaniciGirisKontrol] email cozumle hata:', e?.message) }
     if (!email) email = kullaniciAdiToEmail(girdi)
   }
+
+  // Brute-force kilit kontrolü — 15 dk'da 5+ başarısız → 15 dk kilit
+  try {
+    const { data: kilitSn } = await supabase.rpc('giris_kilit_saniye', { p_email: email })
+    if (typeof kilitSn === 'number' && kilitSn > 0) {
+      const dk = Math.ceil(kilitSn / 60)
+      const e = new Error(`Çok fazla başarısız deneme. Hesap ${dk} dakika kilitli. Şifrenizi hatırlayamıyorsanız "Şifremi Unuttum" ile sıfırlayabilirsiniz.`)
+      e.kod = 'KILITLI'
+      e.kalanSaniye = kilitSn
+      throw e
+    }
+  } catch (e) {
+    if (e.kod === 'KILITLI') throw e
+    console.warn('[kullaniciGirisKontrol] kilit kontrolü hata:', e?.message)
+  }
+
   let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password: sifre,
@@ -39,6 +55,13 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
       if (!retry.error && retry.data?.user) { authData = retry.data; authError = null }
     }
   }
+
+  // Deneme kaydı (başarılı/başarısız)
+  const basarili = !!(authData?.user && !authError)
+  try {
+    await supabase.rpc('giris_denemesi_kaydet', { p_email: email, p_basarili: basarili })
+  } catch (e) { console.warn('[kullaniciGirisKontrol] deneme kaydı hata:', e?.message) }
+
   if (authError || !authData?.user) return null
 
   const { data: profil, error: profilError } = await supabase

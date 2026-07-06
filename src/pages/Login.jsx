@@ -40,6 +40,8 @@ function Login() {
       // Onay bekliyor / reddedildi → kırmızı "hata" değil, ayrı bilgi görünümü
       if (err?.kod === 'ONAY_BEKLIYOR' || err?.kod === 'REDDEDILDI') {
         setOnayMesaji(err.message)
+      } else if (err?.kod === 'KILITLI') {
+        setHata(err.message)
       } else {
         setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
       }
