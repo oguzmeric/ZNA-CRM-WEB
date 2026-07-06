@@ -53,9 +53,19 @@ function useTicTac() {
 export default function Skor() {
   const [sekme, setSekme] = useState('ay')
   const [siralamaMap, setSiralamaMap] = useState({ bugun: [], hafta: [], ay: [] })
+  const [tazeleniyor, setTazeleniyor] = useState(false)
+  const [sonTazeleme, setSonTazeleme] = useState(null)
   const now = useTicTac()
 
   const yukle = async () => {
+    setTazeleniyor(true)
+    try { await yukleIcerik() } finally {
+      setTazeleniyor(false)
+      setSonTazeleme(new Date())
+    }
+  }
+
+  const yukleIcerik = async () => {
     const bugun = bugunBaslangic().toISOString().slice(0, 10)
     const hafta = haftaBaslangic().toISOString().slice(0, 10)
     const ay    = ayBaslangic().toISOString().slice(0, 10)
@@ -158,14 +168,37 @@ export default function Skor() {
             )
           })}
         </div>
-        <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#7A8AA8' }}>
+        <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#7A8AA8', alignItems: 'center' }}>
           <div>
             Toplam: <strong style={{ color: '#fff', fontSize: 20, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{toplam}</strong> servis
           </div>
           <div>
             Teknisyen: <strong style={{ color: '#fff', fontSize: 20, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{sira.length}</strong>
           </div>
+          <button
+            onClick={yukle}
+            disabled={tazeleniyor}
+            title={sonTazeleme ? `Son güncelleme: ${sonTazeleme.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Sayfayı güncelle'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 16px', borderRadius: 10,
+              background: tazeleniyor ? 'rgba(255,255,255,0.06)' : 'rgba(59,130,246,0.15)',
+              border: '1px solid ' + (tazeleniyor ? 'rgba(255,255,255,0.08)' : 'rgba(59,130,246,0.35)'),
+              color: '#93c5fd', fontSize: 14, fontWeight: 600,
+              cursor: tazeleniyor ? 'default' : 'pointer',
+              opacity: tazeleniyor ? 0.6 : 1,
+              transition: 'all 150ms',
+            }}
+          >
+            <span style={{
+              display: 'inline-block',
+              transformOrigin: '50% 50%',
+              animation: tazeleniyor ? 'sk-dondur 1s linear infinite' : 'none',
+            }}>↻</span>
+            <span>{tazeleniyor ? 'Güncelleniyor…' : 'Güncelle'}</span>
+          </button>
         </div>
+        <style>{`@keyframes sk-dondur { to { transform: rotate(360deg) } }`}</style>
       </div>
 
       {/* Liste */}
