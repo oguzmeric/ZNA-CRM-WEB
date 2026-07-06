@@ -298,9 +298,10 @@ function Stok() {
       ilkStok: '',
       gorselUrl: u.gorselUrl || '',
       katalogdaGoster: u.katalogdaGoster !== false,
-      model: '',
-      seriTakipli: false,
+      model: u.model || '',
+      seriTakipli: !!u.seriTakipli,  // DB'den gerçek değeri al
       seriKalemleri: [],
+      topluSN: '',
     })
     setKodModu('manuel')
     setDuzenleId(u.id)
