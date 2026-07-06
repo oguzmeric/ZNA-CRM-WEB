@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import {
   Wrench, Download, ChevronLeft, ChevronRight,
   Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer,
@@ -698,6 +699,30 @@ export default function ServisRaporlari() {
               />
             )}
 
+            {/* esnweb ek alanları */}
+            {(seciliRapor.servisTipi || seciliRapor.yukumluluk || seciliRapor.servisYeri || seciliRapor.statuEsn) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+                {seciliRapor.servisTipi && <DetayAlan baslik="Servis Tipi" icerik={seciliRapor.servisTipi} />}
+                {seciliRapor.yukumluluk && <DetayAlan baslik="Yükümlülük" icerik={seciliRapor.yukumluluk} />}
+                {seciliRapor.servisYeri && <DetayAlan baslik="Servis Yeri" icerik={seciliRapor.servisYeri} />}
+                {seciliRapor.statuEsn && <DetayAlan baslik="Statü" icerik={seciliRapor.statuEsn} />}
+              </div>
+            )}
+            {(seciliRapor.evrakNo || seciliRapor.teslimAlan) && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {seciliRapor.evrakNo && <DetayAlan baslik="Evrak No" icerik={seciliRapor.evrakNo} />}
+                {seciliRapor.teslimAlan && <DetayAlan baslik="Teslim Alan" icerik={seciliRapor.teslimAlan} />}
+              </div>
+            )}
+            {seciliRapor.varisSaati && (
+              <DetayAlan
+                icon={<Calendar size={14} strokeWidth={1.5} />}
+                baslik="Varış saati"
+                icerik={new Date(seciliRapor.varisSaati).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })}
+              />
+            )}
+            {seciliRapor.imzaUrl && <ImzaGorseli yol={seciliRapor.imzaUrl} />}
+
             {/* Sonuç — en önemli */}
             {seciliRapor.sonuc && (
               <div style={{
@@ -778,6 +803,27 @@ export default function ServisRaporlari() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ImzaGorseli({ yol }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!yol) return
+    supabase.storage.from('imzalar').createSignedUrl(yol, 3600).then(({ data }) => {
+      if (data?.signedUrl) setUrl(data.signedUrl)
+    })
+  }, [yol])
+  if (!url) return null
+  return (
+    <div>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+        <span className="t-label">Müşteri İmzası</span>
+      </div>
+      <div style={{ padding: 12, background: '#fff', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'center' }}>
+        <img src={url} alt="İmza" style={{ maxHeight: 140, maxWidth: '100%' }} />
+      </div>
     </div>
   )
 }
