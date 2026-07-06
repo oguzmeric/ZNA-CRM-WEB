@@ -653,12 +653,17 @@ export default function ServisRaporlari() {
                   if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
                 }
                 if (rapor?.teknisyen) {
-                  const { data: k } = await supabase
+                  // TR: PostgreSQL ilike İ↔i eşleştiremiyor + esnweb bazen orta ismi düşürüyor (MUHAMMET NAYMAN vs Muhammet Emin Nayman)
+                  const { data: kullanicilar } = await supabase
                     .from('kullanicilar')
-                    .select('imza')
-                    .ilike('ad', rapor.teknisyen.trim())
-                    .maybeSingle()
-                  if (k?.imza) rapor = { ...rapor, _personelImza: k.imza }
+                    .select('ad, imza')
+                    .not('imza', 'is', null)
+                  const hedefTokens = trNormalize(rapor.teknisyen).split(/\s+/).filter(Boolean)
+                  const bulunan = (kullanicilar || []).find(k => {
+                    const adTokens = trNormalize(k.ad || '').split(/\s+/).filter(Boolean)
+                    return hedefTokens.length > 0 && hedefTokens.every(t => adTokens.includes(t))
+                  })
+                  if (bulunan?.imza) rapor = { ...rapor, _personelImza: bulunan.imza }
                 }
                 setFormRapor(rapor); setSeciliRapor(null)
               }}
