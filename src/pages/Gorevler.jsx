@@ -41,7 +41,7 @@ const kolonlar = [
 ]
 
 const bosForm = {
-  baslik: '', aciklama: '', atanan: '', oncelik: 'orta',
+  baslik: '', aciklama: '', atanan: '', oncelik: 'orta', durum: 'bekliyor',
   baslamaTarih: '', bitisTarih: '', sonTarih: '',
   musteriId: '', musteriAdi: '', firmaAdi: '',
   lokasyonId: '',
@@ -441,7 +441,7 @@ function Gorevler() {
       }
     } else {
       const { servisTalebiOlustur, ...gorevAlanlari } = form
-      const yeniGorev = { ...gorevAlanlari, durum: 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
+      const yeniGorev = { ...gorevAlanlari, durum: gorevAlanlari.durum || 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
       const eklenen = await gorevEkle(yeniGorev)
       if (eklenen) {
         setGorevler(prev => [eklenen, ...prev])
@@ -504,6 +504,7 @@ function Gorevler() {
     }
     setForm({
       baslik: g.baslik, aciklama: g.aciklama || '', atanan: g.atanan, oncelik: g.oncelik,
+      durum: g.durum || 'bekliyor',
       sonTarih: g.sonTarih,
       baslamaTarih: dtLocal(g.baslamaTarih),
       // bitisTarih önceliği: yeni bitis_tarih varsa onu, yoksa legacy son_tarih'i 23:59'a taşı
@@ -720,6 +721,12 @@ function Gorevler() {
               <Label>Öncelik</Label>
               <CustomSelect value={form.oncelik} onChange={e => setForm({ ...form, oncelik: e.target.value })}>
                 {oncelikler.map(o => <option key={o.id} value={o.id}>{o.isim}</option>)}
+              </CustomSelect>
+            </div>
+            <div>
+              <Label>Durum</Label>
+              <CustomSelect value={form.durum || 'bekliyor'} onChange={e => setForm({ ...form, durum: e.target.value })}>
+                {kolonlar.map(k => <option key={k.id} value={k.id}>{k.isim}</option>)}
               </CustomSelect>
             </div>
             <div>
