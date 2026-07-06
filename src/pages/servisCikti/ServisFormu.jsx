@@ -52,6 +52,25 @@ function tarihFmt(s) {
 const KUTU_BOS = '☐'
 const KUTU_DOLU = '☒'
 
+// Unicode karakter bazı font/tarayıcılarda net render etmiyor.
+// HTML kutu — her yerde net gözükür (browser + print + PDF).
+function Kutu({ dolu }) {
+  return (
+    <span style={{
+      display: 'inline-block',
+      width: 10, height: 10,
+      border: '1.2px solid #000',
+      textAlign: 'center',
+      lineHeight: '8px',
+      verticalAlign: 'middle',
+      marginRight: 3,
+      fontSize: 10,
+      fontWeight: 700,
+      color: '#000',
+    }}>{dolu ? '✓' : ''}</span>
+  )
+}
+
 export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
   const cfg = SIRKET_BILGI[sirket] || SIRKET_BILGI.zna
 
@@ -125,11 +144,11 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
     .replace(/ö/g, 'o').replace(/Ö/g, 'o')
     .replace(/ç/g, 'c').replace(/Ç/g, 'c')
   const servisTipi = trNorm(talep.servisTipi)
-  const tipKutu = (key) => (servisTipi.includes(key) ? KUTU_DOLU : KUTU_BOS)
+  const tipKutu = (key) => <Kutu dolu={servisTipi.includes(key)} />
   const yukum = trNorm(talep.yukumluluk)
-  const yukumKutu = (key) => (yukum.includes(key) ? KUTU_DOLU : KUTU_BOS)
+  const yukumKutu = (key) => <Kutu dolu={yukum.includes(key)} />
   const yer = trNorm(talep.servisYeri)
-  const yerKutu = (key) => (yer.includes(key) ? KUTU_DOLU : KUTU_BOS)
+  const yerKutu = (key) => <Kutu dolu={yer.includes(key)} />
 
   const ariza = talep.aciklama || ''
   const yapilan = talep.cozumAciklamasi || ''
