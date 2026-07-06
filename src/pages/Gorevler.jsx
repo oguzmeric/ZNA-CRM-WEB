@@ -851,18 +851,29 @@ function Gorevler() {
 
         const filtreVar = Object.values(kolonFiltre).some(Boolean)
 
+        // ISO timestamp'ı TR saat dilimine göre biçimle (UTC → Europe/Istanbul)
         const fmtTarih = (iso) => {
           if (!iso) return ''
-          const s = String(iso).slice(0, 10)
-          const [y, m, d] = s.split('-')
-          if (!y) return s
-          const hh = String(iso).slice(11, 16)
-          return `${d}.${m}.${y}${hh ? ' ' + hh : ''}`
+          const str = String(iso)
+          const saatVar = str.includes('T') || str.includes(' ')
+          const d = new Date(str)
+          if (isNaN(d.getTime())) return str.slice(0, 10)
+          if (saatVar) {
+            return new Intl.DateTimeFormat('tr-TR', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+              timeZone: 'Europe/Istanbul',
+            }).format(d)
+          }
+          return new Intl.DateTimeFormat('tr-TR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            timeZone: 'Europe/Istanbul',
+          }).format(d)
         }
 
         const thStyle = {
           textAlign: 'left',
-          padding: '10px 12px',
+          padding: '10px 8px',
           font: '600 11px/14px var(--font-sans)',
           color: 'var(--text-secondary)',
           textTransform: 'uppercase',
@@ -873,7 +884,7 @@ function Gorevler() {
           position: 'sticky', top: 0, zIndex: 1,
         }
         const tdStyle = {
-          padding: '10px 12px',
+          padding: '10px 8px',
           font: '400 13px/18px var(--font-sans)',
           color: 'var(--text-primary)',
           borderBottom: '1px solid var(--border-default)',
@@ -896,7 +907,7 @@ function Gorevler() {
             {/* Üst durum şeridi: + Yeni · Açık · Beklemede · Kapalı · Geçmiş · Tümü */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
-              padding: '10px 12px',
+              padding: '10px 8px',
               borderBottom: '1px solid var(--border-default)',
               background: 'var(--surface-card)',
             }}>
@@ -1096,14 +1107,14 @@ function Gorevler() {
                             </span>
                           ) : '—'}
                         </td>
-                        <td style={{ ...tdStyle, maxWidth: 480, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.baslik}>
+                        <td style={{ ...tdStyle, maxWidth: 320, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.baslik}>
                           {g.baslik}
                         </td>
                         <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
                           {fmtTarih(g.olusturmaTarih)}
                         </td>
                         <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: gecikti ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                          {fmtTarih(g.sonTarih)}
+                          {fmtTarih(g.bitisTarih || g.sonTarih)}
                         </td>
                         <td style={tdStyle}>
                           {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
