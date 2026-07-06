@@ -76,15 +76,26 @@ Deno.serve(async (req) => {
     })
     if (!esnR.ok) return json({ ok: false, hata: `esn ${esnR.status}` }, 502)
     const raw = await esnR.text()
-    let liste: any
-    try {
-      liste = JSON.parse(raw)
-      if (typeof liste === 'string') liste = JSON.parse(liste)  // esnweb bazen double-encode ediyor
-    } catch (e) {
-      return json({ ok: false, hata: 'json_parse: ' + String((e as any).message), rawPreview: raw.slice(0, 300) }, 502)
+
+    // esnweb response defensive parsing:
+    //   1) raw JSON array
+    //   2) double-encoded (string containing JSON array)
+    //   3) ASP.NET wrapper {d: [...]} veya benzeri
+    const tryParse = (v: unknown): unknown => {
+      if (typeof v !== 'string') return v
+      try { return JSON.parse(v) } catch { return v }
+    }
+    let liste: any = tryParse(raw)
+    liste = tryParse(liste)  // double-encoded
+    if (!Array.isArray(liste) && liste && typeof liste === 'object') {
+      for (const key of ['d', 'data', 'Data', 'result', 'Result', 'items', 'Items', 'rows', 'Rows']) {
+        if (Array.isArray(liste[key])) { liste = liste[key]; break }
+        const un = tryParse(liste[key])
+        if (Array.isArray(un)) { liste = un; break }
+      }
     }
     if (!Array.isArray(liste)) {
-      return json({ ok: false, hata: 'liste_geçersiz', responseType: typeof liste, keys: liste && typeof liste === 'object' ? Object.keys(liste).slice(0, 10) : undefined, rawPreview: raw.slice(0, 300) }, 502)
+      return json({ ok: false, hata: 'liste_geçersiz', rawPreview: raw.slice(0, 400) }, 502)
     }
 
     const fisNolar = liste.map((r) => String(r.AFIS)).filter(Boolean)
