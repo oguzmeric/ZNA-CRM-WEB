@@ -2,8 +2,8 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
 
-// Liste kolonları — notlar/dosyalar/takip_notu detay ekranında lazım
-const GORUSME_LISTE_KOLONLARI = 'id, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, hazirlayan, olusturma_tarih, gorusen, muhatap_id, muhatap_ad, olusturan_id, musteri_id, irtibat_sekli, lokasyon_id'
+// Liste kolonları — takip_notu listede kolon olarak görünüyor; notlar/dosyalar sadece detayda
+const GORUSME_LISTE_KOLONLARI = 'id, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, hazirlayan, olusturma_tarih, gorusen, takip_notu, muhatap_id, muhatap_ad, olusturan_id, musteri_id, irtibat_sekli, lokasyon_id'
 
 export const gorusmeleriGetir = () => cached('gorusmeler:list', async () => {
   const hepsi = []
