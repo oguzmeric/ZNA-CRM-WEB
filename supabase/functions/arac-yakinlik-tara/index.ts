@@ -11,8 +11,8 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const YAKINLIK_ESIK_M = 150
-const ALARM_ESIK_DK = 15
+const YAKINLIK_ESIK_M = 500
+const ALARM_ESIK_DK = 20
 const COZULDU_ESIK_DK = 5  // 5 dk aktivite yoksa çift çözüldü sayılır
 const MOBILTEK_BASE = 'https://api.mobiltek.com.tr/v1'
 const MOBILTEK_TOKEN_URL = 'https://api.mobiltek.com.tr/auth/realms/mobiltek/protocol/openid-connect/token'
