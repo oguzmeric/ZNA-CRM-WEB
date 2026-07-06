@@ -123,6 +123,10 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+/* Genel dönme (refresh vb.) */
+@keyframes sk-dondur { to { transform: rotate(360deg) } }
+.sk-dondur { animation: sk-dondur 1s linear infinite; transform-origin: 50% 50%; }
+
 /* ── Focus-visible ring (klavye erişilebilirliği) ─────── */
 :focus-visible {
   outline: none;
