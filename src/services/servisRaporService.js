@@ -1,6 +1,10 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
+// Liste kolonları — masraflar/statu_esn/adres_kodu/sistem_marka/model/imza_url/esn_senkron
+// gibi detay-only alanlar hariç. Detay çekiminde ('.select(*)') tam kayıt gelir.
+const RAPOR_LISTE_KOLONLARI = 'id, fis_no, takip_kodu, musteri_id, firma_adi, cari_kodu, lokasyon, sistem_no, ariza_kodu, bildirilen_ariza, sonuc, teknisyen, bildiren, bil_tarih, gid_tarih, olusturma_tarih, servis_tipi, yukumluluk, servis_yeri, silindi'
+
 export const servisRaporlariniGetir = async () => {
   const hepsi = []
   const sayfa = 1000
@@ -8,7 +12,7 @@ export const servisRaporlariniGetir = async () => {
   while (true) {
     const { data, error } = await supabase
       .from('servis_raporlari')
-      .select('*')
+      .select(RAPOR_LISTE_KOLONLARI)
       .order('bil_tarih', { ascending: false, nullsFirst: false })
       .range(off, off + sayfa - 1)
     if (error) { console.error('servisRaporlariniGetir hata:', error.message); throw error }
@@ -26,11 +30,11 @@ export const servisRaporGetir = async (id) => {
   return toCamel(data)
 }
 
-// Belirli müşterinin tüm raporları
+// Belirli müşterinin tüm raporları — liste görünümü, kısaltılmış kolon set
 export const musteriRaporlariniGetir = async (musteriId) => {
   const { data, error } = await supabase
     .from('servis_raporlari')
-    .select('*')
+    .select(RAPOR_LISTE_KOLONLARI)
     .eq('musteri_id', musteriId)
     .order('bil_tarih', { ascending: false, nullsFirst: false })
   if (error) { console.error(error.message); return [] }

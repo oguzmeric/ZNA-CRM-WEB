@@ -3,9 +3,12 @@ import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { pagedFetch } from '../lib/pagedFetch'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
+// Liste kolonları — aciklama listede lazım değil (3762 ürün × free text = büyük)
+const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet'
+
 export const stokUrunleriniGetir = () => cached('stokUrunler:list', async () => {
   const data = await pagedFetch((off, size) =>
-    supabase.from('stok_urunler').select('*').order('stok_adi').range(off, off + size - 1)
+    supabase.from('stok_urunler').select(STOK_URUN_LISTE_KOLONLARI).order('stok_adi').range(off, off + size - 1)
   )
   return arrayToCamel(data)
 })

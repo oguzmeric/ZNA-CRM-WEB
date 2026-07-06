@@ -2,12 +2,15 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
 
+// Liste kolonları — notlar/dosyalar/takip_notu detay ekranında lazım
+const GORUSME_LISTE_KOLONLARI = 'id, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, hazirlayan, olusturma_tarih, gorusen, muhatap_id, muhatap_ad, olusturan_id, musteri_id, irtibat_sekli, lokasyon_id'
+
 export const gorusmeleriGetir = () => cached('gorusmeler:list', async () => {
   const hepsi = []
   const sayfa = 1000
   let off = 0
   while (true) {
-    const { data, error } = await supabase.from('gorusmeler').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
+    const { data, error } = await supabase.from('gorusmeler').select(GORUSME_LISTE_KOLONLARI).order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
     // Error olunca break yerine throw — partial data cache'e yazılıp 60sn
     // boyunca kullanıcıya eksik liste gösterilmesini önler.
     if (error) { console.error('gorusmeleriGetir hata:', error.message); throw error }
