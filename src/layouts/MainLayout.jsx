@@ -9,6 +9,7 @@ import {
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car,
+  FileCheck, Fuel,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -161,6 +162,10 @@ const menuItems = [
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'arac_yonetimi', isim: 'Araç Yönetimi', Icon: Car, yol: '/arac-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'filo_bakim', isim: 'Araç Bakımları', Icon: Wrench, yol: '/filo/bakim', modul: 'arac_takip', grup: 'yonetim' },
+  { id: 'filo_belgeler', isim: 'Araç Belgeleri', Icon: FileCheck, yol: '/filo/belgeler', modul: 'arac_takip', grup: 'yonetim' },
+  { id: 'filo_yakit', isim: 'Yakıt Fişleri', Icon: Fuel, yol: '/filo/yakit', modul: 'arac_takip', grup: 'yonetim' },
+  { id: 'filo_surucu', isim: 'Sürücüler', Icon: UserCog, yol: '/filo/surucu', modul: 'arac_takip', grup: 'yonetim' },
 ]
 
 const durumRenkleri = {

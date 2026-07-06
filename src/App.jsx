@@ -69,6 +69,7 @@ const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
 const Skor = lazy(() => import('./pages/Skor'))
 const Mobiltek = lazy(() => import('./pages/Mobiltek'))
 const AracYonetimi = lazy(() => import('./pages/AracYonetimi'))
+const FiloYonetimi = lazy(() => import('./pages/FiloYonetimi'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
@@ -303,6 +304,10 @@ function App() {
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
           <Route path="/mobiltek" element={<Mobiltek />} />
           <Route path="/arac-yonetimi" element={<YonetimGuard><AracYonetimi /></YonetimGuard>} />
+          <Route path="/filo/bakim" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
+          <Route path="/filo/belgeler" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
+          <Route path="/filo/yakit" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
+          <Route path="/filo/surucu" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
