@@ -20,6 +20,16 @@ function parseTarihTR(s: string | null): string | null {
   return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`
 }
 
+// esnweb teknisyen alanı 15 karakter limitli — bazı isimler kesiliyor.
+// Buradaki map ile kesik ismi tam adına çeviriyoruz.
+const TEKNISYEN_MAP: Record<string, string> = {
+  'MEHMET AKİF ERE': 'MEHMET AKİF EREL',
+}
+function normTeknisyen(t: string | null): string | null {
+  if (!t) return t
+  return TEKNISYEN_MAP[t.trim()] ?? t
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   try {
@@ -122,7 +132,7 @@ Deno.serve(async (req) => {
         sonuc: r.NETICE ?? null,
         bildirilen_ariza: r.BARIZ ?? null,
         takip_kodu: r.XISLA ?? null,
-        teknisyen: r.TEKN ?? null,
+        teknisyen: normTeknisyen(r.TEKN ?? null),
         gid_tarih: parseTarihTR(r.GTARIH),
       }
       if (!mev) {
