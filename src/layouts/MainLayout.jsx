@@ -73,6 +73,7 @@ const GRUPLAR = [
   { id: 'gunluk',    baslik: 'Günlük' },
   { id: 'satis',     baslik: 'Satış' },
   { id: 'operasyon', baslik: 'Operasyon' },
+  { id: 'filo',      baslik: 'ZNA Filo Yönetimi' },
   { id: 'yonetim',   baslik: 'Yönetim' },
 ]
 
@@ -143,7 +144,7 @@ const menuItems = [
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
-  { id: 'mobiltek', isim: 'Mobiltek', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'operasyon' },
+  { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   {
     id: 'raporlar',
@@ -161,11 +162,11 @@ const menuItems = [
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
-  { id: 'arac_yonetimi', isim: 'Araç Yönetimi', Icon: Car, yol: '/arac-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
-  { id: 'filo_bakim', isim: 'Araç Bakımları', Icon: Wrench, yol: '/filo/bakim', modul: 'arac_takip', grup: 'yonetim' },
-  { id: 'filo_belgeler', isim: 'Araç Belgeleri', Icon: FileCheck, yol: '/filo/belgeler', modul: 'arac_takip', grup: 'yonetim' },
-  { id: 'filo_yakit', isim: 'Yakıt Fişleri', Icon: Fuel, yol: '/filo/yakit', modul: 'arac_takip', grup: 'yonetim' },
-  { id: 'filo_surucu', isim: 'Sürücüler', Icon: UserCog, yol: '/filo/surucu', modul: 'arac_takip', grup: 'yonetim' },
+  { id: 'arac_yonetimi', isim: 'Araçlar', Icon: Car, yol: '/arac-yonetimi', modul: 'kullanici_yonetimi', grup: 'filo' },
+  { id: 'filo_bakim', isim: 'Araç Bakımları', Icon: Wrench, yol: '/filo/bakim', modul: 'arac_takip', grup: 'filo' },
+  { id: 'filo_belgeler', isim: 'Araç Belgeleri', Icon: FileCheck, yol: '/filo/belgeler', modul: 'arac_takip', grup: 'filo' },
+  { id: 'filo_yakit', isim: 'Yakıt Fişleri', Icon: Fuel, yol: '/filo/yakit', modul: 'arac_takip', grup: 'filo' },
+  { id: 'filo_surucu', isim: 'Sürücüler', Icon: UserCog, yol: '/filo/surucu', modul: 'arac_takip', grup: 'filo' },
 ]
 
 const durumRenkleri = {
@@ -313,7 +314,7 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
-    if (m.grup === 'yonetim') return yonetimErisimi
+    if (m.grup === 'yonetim' || m.grup === 'filo') return yonetimErisimi
     return m.modul === null
       || kullanici?.rol === 'admin'
       || (m.modul === '_siparis_onay_yetkilisi' && kullanici?.siparisOnayYetkilisi)
