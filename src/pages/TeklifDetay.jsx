@@ -234,9 +234,23 @@ function TeklifDetay() {
     }
   }, [form?.paraBirimi, kurlar])
 
-  if (!veriYuklendi || !form) {
+  if (!veriYuklendi) {
     return <SkeletonDetay />
   }
+  if (!yeni && !mevcutTeklif) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', maxWidth: 480, margin: '80px auto' }}>
+        <h2 style={{ font: '700 20px/28px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+          Teklif bulunamadı
+        </h2>
+        <p className="t-caption" style={{ marginTop: 8, marginBottom: 24 }}>
+          #{id} numaralı teklif silinmiş veya erişilemiyor. Hatırlatma bildiriminden geldiyseniz teklif artık mevcut değil.
+        </p>
+        <Button variant="primary" onClick={() => navigate('/teklifler')}>Tekliflere Dön</Button>
+      </div>
+    )
+  }
+  if (!form) return <SkeletonDetay />
 
   const handleMusteriSec = (musteriId) => {
     // "+ Yeni Müşteri..." seçildiyse modal aç, seçimi değiştirme
