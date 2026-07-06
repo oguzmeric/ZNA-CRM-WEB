@@ -47,6 +47,7 @@ export default function Mobiltek() {
 
   const [sonGuncelleme, setSonGuncelleme] = useState(null)
   const [yakinliklar, setYakinliklar] = useState([])
+  const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste'
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -94,11 +95,49 @@ export default function Mobiltek() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {mock && <Badge tone="beklemede">MOCK</Badge>}
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+            {[
+              { id: 'harita', label: 'Harita', ikon: <MapPin size={13} strokeWidth={1.75} /> },
+              { id: 'liste', label: 'Liste', ikon: <Truck size={13} strokeWidth={1.75} /> },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setGorunum(t.id)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px',
+                  background: gorunum === t.id ? 'var(--brand-primary-soft)' : 'transparent',
+                  color: gorunum === t.id ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  border: 'none', cursor: 'pointer',
+                  font: '500 12px/16px var(--font-sans)',
+                }}
+              >
+                {t.ikon} {t.label}
+              </button>
+            ))}
+          </div>
           <Button variant="secondary" iconLeft={<RefreshCw size={14} strokeWidth={1.5} />} onClick={yukle}>
             Yenile
           </Button>
         </div>
       </div>
+
+      {/* Özet stat kartları */}
+      {araclar.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+          {[
+            { etiket: 'Araç Sayısı', deger: araclar.length, renk: '#3b82f6' },
+            { etiket: 'Aktif (kontak açık)', deger: araclar.filter(a => a.ignition).length, renk: '#10b981' },
+            { etiket: 'Ortalama Hız', deger: araclar.length ? Math.round(araclar.reduce((s, a) => s + Number(a.gpsSpeed || 0), 0) / araclar.length) + ' km/s' : '—', renk: '#f59e0b' },
+            { etiket: 'Yakınlık İzleme', deger: yakinliklar.length, renk: yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#64748b' },
+          ].map(k => (
+            <Card key={k.etiket} style={{ padding: 12, textAlign: 'center' }}>
+              <div style={{ font: '700 20px/24px var(--font-sans)', color: k.renk }}>{k.deger}</div>
+              <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>{k.etiket}</div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Yakınlık uyarıları */}
       {yakinliklar.length > 0 && (
@@ -138,6 +177,65 @@ export default function Mobiltek() {
         </Card>
       )}
 
+      {/* LİSTE GÖRÜNÜMÜ */}
+      {gorunum === 'liste' && (
+        <Card padding={0} style={{ overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12px/16px var(--font-sans)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+                  {['Etiket', 'Tarih-Saat', 'Adres', 'Hız', 'Yön', 'Durum'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', font: '600 11px/14px var(--font-sans)', letterSpacing: 0.3, textTransform: 'uppercase' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {araclar.map(a => {
+                  const kontak = a.ignition === '1' || a.ignition === true || a.engineStatus === 'on'
+                  const hiz = Number(a.gpsSpeed || 0)
+                  return (
+                    <tr
+                      key={a.id}
+                      onClick={() => aracSec(a)}
+                      style={{ borderBottom: '1px solid var(--border-default)', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '10px 12px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 4, background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)', font: '600 12px/16px var(--font-sans)' }}>
+                          {a.plateNo || `#${a.id}`}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                        {a.gpsTime ? new Date(a.gpsTime).toLocaleString('tr-TR') : '—'}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: 380 }}>
+                        {a.address || '—'}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{hiz} km/s</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-tertiary)' }}>{a.direction ?? 0}°</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '3px 8px', borderRadius: 4,
+                          background: kontak ? 'rgba(16,185,129,0.14)' : 'rgba(148,163,184,0.14)',
+                          color: kontak ? 'var(--success)' : 'var(--text-tertiary)',
+                          font: '600 11px/14px var(--font-sans)',
+                        }}>
+                          {kontak ? <><Zap size={11} strokeWidth={2} /> Açık</> : <><ZapOff size={11} strokeWidth={2} /> Kapalı</>}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* HARİTA GÖRÜNÜMÜ (split — sol araç listesi + sağ harita) */}
+      {gorunum === 'harita' && (
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, minHeight: 600 }}>
         {/* Sol — araç listesi */}
         <Card padding={0} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -257,6 +355,7 @@ export default function Mobiltek() {
           )}
         </div>
       </div>
+      )}
 
       {/* Canlı yayın modalı */}
       {webviewUrl && (
