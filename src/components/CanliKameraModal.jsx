@@ -36,13 +36,8 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     })
     setLogId(yeniLog)
 
-    // Önce olası açık stream'leri kapat (Kanal 1 ve 2 sırayla, race yaşamasın)
-    for (const k of [1, 2]) {
-      await canliKameraDurdur(arac.id, k).catch(() => null)
-    }
-    // 3 sn bekleme — Mobiltek device state reset olsun
-    await new Promise(r => setTimeout(r, 3000))
-
+    // Doğrudan başlat — Mobiltek destek: motor kapalıyken 1-2 dk, açıkken 15-20 sn.
+    // Pre-emptive stop çağrıları device'ı "not online" durumuna sokuyor.
     const cevap = await canliKameraBaslat(arac.id, secilenKanal)
     // yukleniyor state'i video 'canplay' event'inde kapatılıyor (aşağıda)
 
