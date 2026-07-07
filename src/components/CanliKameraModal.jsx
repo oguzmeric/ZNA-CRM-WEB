@@ -36,6 +36,14 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     })
     setLogId(yeniLog)
 
+    // Önce olası açık stream'i kapat (Mobiltek "Device busy" hatasını önler)
+    // Tüm kanallar için stop (2-3sn eşzamanlı)
+    await Promise.all([1, 2, 3, 4].map(k =>
+      canliKameraDurdur(arac.id, k).catch(() => null)
+    ))
+    // Kısa bekleme — Mobiltek stream'i kapatsın
+    await new Promise(r => setTimeout(r, 1500))
+
     const cevap = await canliKameraBaslat(arac.id, secilenKanal)
     setYukleniyor(false)
 
@@ -45,8 +53,14 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     }
 
     // Mobiltek v2 response yapısı:
-    // { code:1000, description:"Success", camera:{ streamingUrls:{ rtmp, flv, hls? } } }
-    const su = cevap.veri?.camera?.streamingUrls || cevap.veri?.streamingUrls || null
+    // { code:1000, description:"Success", camera:{ resultCode:"100", streamingUrls:{ rtmp, flv, hls } } }
+    // resultCode 100=OK, 302=Device busy, diğerleri hata
+    const cam = cevap.veri?.camera
+    if (cam && cam.resultCode && cam.resultCode !== '100') {
+      setHata(`Kamera hatası: ${cam.resultMsg || cam.resultCode}. Aracın kamerası kapalı olabilir ya da başka biri izliyor olabilir.`)
+      return
+    }
+    const su = cam?.streamingUrls || cevap.veri?.streamingUrls || null
     let url = su?.hls        // öncelik: HLS (native)
       || su?.flv               // sonra: FLV (flv.js)
       || cevap.veri?.url
