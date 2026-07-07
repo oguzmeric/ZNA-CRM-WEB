@@ -47,7 +47,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     // Mobiltek v2 response yapısı:
     // { code:1000, description:"Success", camera:{ streamingUrls:{ rtmp, flv, hls? } } }
     const su = cevap.veri?.camera?.streamingUrls || cevap.veri?.streamingUrls || null
-    const url = su?.hls        // öncelik: HLS (native)
+    let url = su?.hls        // öncelik: HLS (native)
       || su?.flv               // sonra: FLV (flv.js)
       || cevap.veri?.url
       || cevap.veri?.urlCamera
@@ -57,6 +57,9 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
       return
     }
+    // Mobiltek HTTP stream'ini Vercel HTTPS proxy üzerinden geçir
+    // (mixed content + CSP sorununu çözer)
+    url = url.replace(/^http:\/\/84\.51\.5\.140:8881\//, '/mobiltek-stream/')
     setStreamUrl(url)
   }
 
