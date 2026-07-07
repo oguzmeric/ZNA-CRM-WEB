@@ -290,6 +290,24 @@ export default function Mobiltek() {
                         <span>{kucukTarih(a.gpsTime)}</span>
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSeciliArac(a)
+                        setCanliKameraAcik(true)
+                      }}
+                      title="Canlı Kamera İzle"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 34, height: 34, borderRadius: 8,
+                        background: 'var(--brand-primary)',
+                        color: '#fff',
+                        border: 'none', cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Video size={16} strokeWidth={1.75} />
+                    </button>
                   </div>
                 )
               })}
