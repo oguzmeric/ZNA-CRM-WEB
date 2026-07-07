@@ -23,9 +23,16 @@ const oncelikler = [
 ]
 
 const durumlar = [
-  { id: 'bekliyor',   isim: 'Bekliyor',     tone: 'pasif' },
+  { id: 'bekliyor',   isim: 'Açık',         tone: 'pasif' },
   { id: 'devam',      isim: 'Devam Ediyor', tone: 'lead' },
   { id: 'tamamlandi', isim: 'Tamamlandı',   tone: 'aktif' },
+]
+
+const DEVAM_SEBEPLERI = [
+  { id: 'hava_muhalefeti',    isim: 'Hava Muhalefeti',    ikon: '🌧️' },
+  { id: 'program_yogunlugu',  isim: 'Program Yoğunluğu',  ikon: '📅' },
+  { id: 'tamir_ariza',        isim: 'Tamir / Arıza',      ikon: '🔧' },
+  { id: 'uretici_tedarik',    isim: 'Üretici / Tedarik',  ikon: '📦' },
 ]
 
 function GorevDetay() {
@@ -43,6 +50,7 @@ function GorevDetay() {
   const [yeniYorum, setYeniYorum] = useState('')
   const [duzenleYorumId, setDuzenleYorumId] = useState(null)
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
+  const [devamSebepModal, setDevamSebepModal] = useState(false)
 
   useEffect(() => {
     gorevGetir(id)
@@ -73,8 +81,15 @@ function GorevDetay() {
 
   const durumGuncelle = async (yeniDurum) => {
     const eskiDurum = gorev.durum
-    await gorevGuncelle(gorev.id, { durum: yeniDurum })
-    setGorev(prev => ({ ...prev, durum: yeniDurum }))
+    // Devam'a geçerken sebep seçim modalını aç (opsiyonel)
+    if (yeniDurum === 'devam' && eskiDurum !== 'devam') {
+      setDevamSebepModal(true)
+    }
+    // Durum devam değilse mevcut sebep temizlenir
+    const guncelleme = { durum: yeniDurum }
+    if (yeniDurum !== 'devam') guncelleme.devamSebep = null
+    await gorevGuncelle(gorev.id, guncelleme)
+    setGorev(prev => ({ ...prev, ...guncelleme }))
     toast.success('Durum güncellendi.')
     // Atanan kişi mevcut kullanıcıdan farklıysa ona bildirim — kendi durumunu kendisi değiştirirken bildirim atmayalım
     if (eskiDurum !== yeniDurum && gorev.atanan && gorev.atanan?.toString() !== kullanici?.id?.toString()) {
@@ -397,7 +412,121 @@ function GorevDetay() {
           value={gorev.durum}
           onChange={durumGuncelle}
         />
+        {/* Devam durumunda sebep gösterimi + değiştir */}
+        {gorev.durum === 'devam' && (
+          <div style={{
+            marginTop: 12, padding: 10, background: 'var(--surface-sunken)',
+            borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 10, flexWrap: 'wrap',
+          }}>
+            {gorev.devamSebep ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>
+                  {DEVAM_SEBEPLERI.find(s => s.id === gorev.devamSebep)?.ikon}
+                </span>
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  Sebep: {DEVAM_SEBEPLERI.find(s => s.id === gorev.devamSebep)?.isim || gorev.devamSebep}
+                </span>
+              </div>
+            ) : (
+              <span className="t-caption" style={{ fontStyle: 'italic' }}>Devam sebebi belirtilmemiş</span>
+            )}
+            <button
+              onClick={() => setDevamSebepModal(true)}
+              style={{
+                background: 'transparent', border: '1px solid var(--border-default)',
+                color: 'var(--brand-primary)', padding: '6px 12px', borderRadius: 6,
+                font: '500 12px/16px var(--font-sans)', cursor: 'pointer',
+              }}
+            >
+              {gorev.devamSebep ? 'Değiştir' : 'Sebep Seç'}
+            </button>
+          </div>
+        )}
       </Card>
+
+      {/* Devam sebep seçim modalı */}
+      {devamSebepModal && (
+        <div
+          onClick={() => setDevamSebepModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: 20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 12, maxWidth: 420, width: '100%',
+              padding: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h3 style={{ margin: 0, marginBottom: 4, font: '600 16px/22px var(--font-sans)' }}>
+              Devam Ediyor — Sebep
+            </h3>
+            <p className="t-caption" style={{ marginBottom: 16 }}>
+              Seçim zorunlu değil, atlamak için "Belirtme" butonuna basabilirsin.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {DEVAM_SEBEPLERI.map(s => {
+                const secili = gorev.devamSebep === s.id
+                return (
+                  <button
+                    key={s.id}
+                    onClick={async () => {
+                      await gorevGuncelle(gorev.id, { devamSebep: s.id })
+                      setGorev(prev => ({ ...prev, devamSebep: s.id }))
+                      setDevamSebepModal(false)
+                      toast.success(`Sebep: ${s.isim}`)
+                    }}
+                    style={{
+                      padding: '14px 10px', border: secili ? '2px solid var(--brand-primary)' : '1px solid var(--border-default)',
+                      borderRadius: 10, background: secili ? 'var(--brand-primary-soft)' : 'var(--surface)',
+                      cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{s.ikon}</span>
+                    <span style={{ font: '600 13px/16px var(--font-sans)', color: 'var(--text-primary)', textAlign: 'center' }}>
+                      {s.isim}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+              {gorev.devamSebep && (
+                <button
+                  onClick={async () => {
+                    await gorevGuncelle(gorev.id, { devamSebep: null })
+                    setGorev(prev => ({ ...prev, devamSebep: null }))
+                    setDevamSebepModal(false)
+                    toast.success('Sebep kaldırıldı.')
+                  }}
+                  style={{
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: 8,
+                    font: '500 13px/18px var(--font-sans)', cursor: 'pointer',
+                  }}
+                >
+                  Sebebi Kaldır
+                </button>
+              )}
+              <button
+                onClick={() => setDevamSebepModal(false)}
+                style={{
+                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)', padding: '8px 14px', borderRadius: 8,
+                  font: '500 13px/18px var(--font-sans)', cursor: 'pointer',
+                }}
+              >
+                Belirtme
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Yorumlar */}
       <Card>

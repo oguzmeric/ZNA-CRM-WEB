@@ -35,7 +35,7 @@ const oncelikler = [
 ]
 
 const kolonlar = [
-  { id: 'bekliyor',   isim: 'Bekliyor',     renk: 'var(--info)'   },
+  { id: 'bekliyor',   isim: 'Açık',         renk: 'var(--info)'   },
   { id: 'devam',      isim: 'Devam Ediyor', renk: 'var(--warning)' },
   { id: 'tamamlandi', isim: 'Tamamlandı',   renk: 'var(--success)' },
 ]
