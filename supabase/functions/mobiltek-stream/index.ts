@@ -10,7 +10,11 @@
 
 const MOBILTEK_HOST = 'http://84.51.5.140:8881'
 const MOBILTEK_HOST_ESCAPED = 'http://84\\.51\\.5\\.140:8881'
-const PROXY_PREFIX = '/functions/v1/mobiltek-stream'
+// Supabase edge fn'de url.pathname = '/mobiltek-stream/...' (Supabase /functions/v1/ prefix'ini strip ediyor)
+// Client-side rewrite ise /functions/v1/mobiltek-stream/ path'ini kullanıyor.
+// İkisine de destek ver.
+const PROXY_PREFIX_FULL = '/functions/v1/mobiltek-stream'
+const PROXY_PREFIX_SHORT = '/mobiltek-stream'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +28,9 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url)
   let sub = url.pathname
-  if (sub.startsWith(PROXY_PREFIX)) sub = sub.slice(PROXY_PREFIX.length)
+  // İki farklı prefix formatını da destekle
+  if (sub.startsWith(PROXY_PREFIX_FULL)) sub = sub.slice(PROXY_PREFIX_FULL.length)
+  else if (sub.startsWith(PROXY_PREFIX_SHORT)) sub = sub.slice(PROXY_PREFIX_SHORT.length)
   if (sub.startsWith('/')) sub = sub.slice(1)
 
   if (!sub) {
@@ -69,12 +75,14 @@ Deno.serve(async (req) => {
     // m3u8 body içinde mutlak URL'leri proxy path'ine rewrite et
     if (isM3u8 && upstream.ok) {
       const text = await upstream.text()
+      console.log(`[mobiltek-stream] m3u8 raw (${text.length}b):`, text.slice(0, 500))
       const rewritten = text
         // Mutlak URL'ler: http://84.51.5.140:8881/xxx → /functions/v1/mobiltek-stream/xxx
-        .replace(new RegExp(`${MOBILTEK_HOST_ESCAPED}/`, 'g'), `${PROXY_PREFIX}/`)
+        .replace(new RegExp(`${MOBILTEK_HOST_ESCAPED}/`, 'g'), `${PROXY_PREFIX_FULL}/`)
         // Absolute path'ler (nadir ama olası): /1/xxx → /functions/v1/mobiltek-stream/1/xxx
         // (satır başı veya yeni satırdan sonra / ile başlayanlar, http değil)
-        .replace(/(^|\n)\/([^\/])/g, (_, p1, p2) => `${p1}${PROXY_PREFIX}/${p2}`)
+        .replace(/(^|\n)\/([^\/])/g, (_, p1, p2) => `${p1}${PROXY_PREFIX_FULL}/${p2}`)
+      console.log(`[mobiltek-stream] m3u8 rewritten (${rewritten.length}b):`, rewritten.slice(0, 500))
       return new Response(rewritten, { status: upstream.status, headers: passHeaders })
     }
 
