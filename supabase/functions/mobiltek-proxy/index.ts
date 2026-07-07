@@ -15,6 +15,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 const MOBILTEK_BASE = 'https://api.mobiltek.com.tr/v1'
+const MOBILTEK_BASE_V2 = 'https://api.mobiltek.com.tr/v2'
 const MOBILTEK_TOKEN_URL = 'https://api.mobiltek.com.tr/auth/realms/mobiltek/protocol/openid-connect/token'
 
 const CLIENT_ID     = Deno.env.get('MOBILTEK_CLIENT_ID') ?? ''
@@ -101,6 +102,16 @@ function yolToEndpoint(yol: string, params: Record<string, any> = {}): string {
 
   if (yol === 'vehicles') return `${MOBILTEK_BASE}/vehicles/${query}`
   if (yol === 'cameras') return `${MOBILTEK_BASE}/cameras${query}`
+  // Canlı kamera stream (v2): cameras-live/{aracId} → v2/cameras/{aracId}?channel=N
+  if (yol.startsWith('cameras-live/')) {
+    const aracId = yol.split('/')[1]
+    return `${MOBILTEK_BASE_V2}/cameras/${aracId}${query}`
+  }
+  // Canlı kamera durdur (v2): cameras-live-stop/{aracId} → v2/cameras/{aracId}/live/stop?channel=N
+  if (yol.startsWith('cameras-live-stop/')) {
+    const aracId = yol.split('/')[1]
+    return `${MOBILTEK_BASE_V2}/cameras/${aracId}/live/stop${query}`
+  }
   if (yol.startsWith('cameras/')) return `${MOBILTEK_BASE}/${yol}${query}`
   if (yol.startsWith('vehicles/')) return `${MOBILTEK_BASE}/${yol}${query}`
   if (yol === 'live-map') return `${MOBILTEK_BASE}/mapi/live-tracking-map-v2${query}`
@@ -201,7 +212,10 @@ serve(async (req) => {
     try {
       const access = await getirToken(sb)
       const url = yolToEndpoint(yol, params)
+      // POST kullanılan yollar (canlı kamera durdurma)
+      const httpMethod = yol.startsWith('cameras-live-stop/') ? 'POST' : 'GET'
       const res = await fetch(url, {
+        method: httpMethod,
         headers: { Authorization: `Bearer ${access}` },
       })
       httpKod = res.status

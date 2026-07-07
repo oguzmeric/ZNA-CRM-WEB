@@ -33,6 +33,34 @@ export const aktifYakinliklarGetir = async () => {
   return data ?? []
 }
 export const kameralariGetir     = (aracId) => cagir(`cameras/${aracId}`)
+
+// Canlı stream URL al (v2)
+export const canliKameraBaslat   = (aracId, kanal = 1) => cagir(`cameras-live/${aracId}`, { channel: kanal })
+// Canlı stream durdur (v2)
+export const canliKameraDurdur   = (aracId, kanal = 1) => cagir(`cameras-live-stop/${aracId}`, { channel: kanal })
+
+// İzleme log tut (Supabase DB'ye kayıt)
+export const izlemeLogBaslat = async ({ aracId, aracPlaka, kanal, kullaniciId }) => {
+  const { data, error } = await supabase.from('kamera_izleme_log').insert({
+    kullanici_id: kullaniciId,
+    arac_id: String(aracId),
+    arac_plaka: aracPlaka ?? null,
+    kanal,
+  }).select('id').single()
+  if (error) { console.warn('izlemeLogBaslat:', error.message); return null }
+  return data.id
+}
+
+export const izlemeLogBitir = async (logId) => {
+  if (!logId) return
+  const bitis = new Date().toISOString()
+  // Süreyi trigger yerine burada hesaplayalım (basit)
+  const { data: mevcut } = await supabase.from('kamera_izleme_log').select('baslangic').eq('id', logId).single()
+  const sure = mevcut?.baslangic
+    ? Math.max(0, Math.round((new Date(bitis) - new Date(mevcut.baslangic)) / 1000))
+    : null
+  await supabase.from('kamera_izleme_log').update({ bitis, sure_saniye: sure }).eq('id', logId)
+}
 export const konumLoglariGetir   = (aracId, tarihBaslangic, tarihBitis) =>
   cagir(`vehicles/location-logs/${aracId}`, { start: tarihBaslangic, end: tarihBitis })
 export const canliTakipHarita    = () => cagir('live-map')

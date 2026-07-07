@@ -6,6 +6,7 @@ import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff } from 'lucide-reac
 import { Card, Button, Badge, EmptyState } from '../components/ui'
 import { araclariGetir, kameralariGetir, yakinlikTara, aktifYakinliklarGetir } from '../services/mobiltekService'
 import MobiltekHarita from '../components/MobiltekHarita'
+import CanliKameraModal from '../components/CanliKameraModal'
 
 const kucukTarih = (iso) => {
   if (!iso) return '—'
@@ -20,6 +21,7 @@ export default function Mobiltek() {
   const [seciliArac, setSeciliArac] = useState(null)
   const [kameralar, setKameralar] = useState([])
   const [webviewUrl, setWebviewUrl] = useState(null)
+  const [canliKameraAcik, setCanliKameraAcik] = useState(false)
 
   // .NET Date format "/Date(1783358792000+0300)/" → ISO string
   const parseNetDate = (s) => {
@@ -315,6 +317,14 @@ export default function Mobiltek() {
                     {kameralar.length} kamera
                   </p>
                 </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  iconLeft={<Video size={14} strokeWidth={1.5} />}
+                  onClick={() => setCanliKameraAcik(true)}
+                >
+                  Canlı İzle (v2)
+                </Button>
               </div>
 
               {kameralar.length === 0 ? (
@@ -394,6 +404,12 @@ export default function Mobiltek() {
           </div>
         </div>
       )}
+
+      <CanliKameraModal
+        acik={canliKameraAcik}
+        kapat={() => setCanliKameraAcik(false)}
+        arac={seciliArac}
+      />
     </div>
   )
 }
