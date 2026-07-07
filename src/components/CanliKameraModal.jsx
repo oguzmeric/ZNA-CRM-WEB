@@ -8,7 +8,7 @@ import { X, Video, RefreshCw, AlertTriangle } from 'lucide-react'
 import { canliKameraBaslat, canliKameraDurdur, izlemeLogBaslat, izlemeLogBitir } from '../services/mobiltekService'
 import { useAuth } from '../context/AuthContext'
 
-const KANAL_SEC = [1, 2, 3, 4]
+const KANAL_SEC = [1, 2]
 
 export default function CanliKameraModal({ acik, kapat, arac }) {
   const { kullanici } = useAuth()
@@ -45,9 +45,10 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     await new Promise(r => setTimeout(r, 1500))
 
     const cevap = await canliKameraBaslat(arac.id, secilenKanal)
-    setYukleniyor(false)
+    // yukleniyor state'i video 'canplay' event'inde kapatılıyor (aşağıda)
 
     if (!cevap) {
+      setYukleniyor(false)
       setHata('Kamera başlatılamadı — kredensiyel/ağ sorunu olabilir.')
       return
     }
@@ -57,6 +58,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     // resultCode 100=OK, 302=Device busy, diğerleri hata
     const cam = cevap.veri?.camera
     if (cam && cam.resultCode && cam.resultCode !== '100') {
+      setYukleniyor(false)
       setHata(`Kamera hatası: ${cam.resultMsg || cam.resultCode}. Aracın kamerası kapalı olabilir ya da başka biri izliyor olabilir.`)
       return
     }
@@ -68,6 +70,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       || null
     // RTMP tarayıcıda çalışmaz — atlanır
     if (!url) {
+      setYukleniyor(false)
       setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
       return
     }
@@ -91,7 +94,14 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     const isHls = streamUrl.includes('.m3u8')
     const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl')
 
+    // Video oynayınca yukleniyor state'ini kapat
+    const onCanPlay = () => setYukleniyor(false)
+    video.addEventListener('canplay', onCanPlay)
+    video.addEventListener('playing', onCanPlay)
+
     const cleanup = () => {
+      video.removeEventListener('canplay', onCanPlay)
+      video.removeEventListener('playing', onCanPlay)
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
       if (flvRef.current) { flvRef.current.destroy(); flvRef.current = null }
     }
@@ -100,8 +110,26 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       import('hls.js').then(({ default: Hls }) => {
         if (!Hls.isSupported()) { setHata('Tarayıcı HLS desteklemiyor.'); return }
         cleanup()
-        const hls = new Hls()
+        // Mobiltek stream warm-up ~60-90sn sürüyor. hls.js retry parametrelerini
+        // agresif tut — manifest 404'lerini 90sn boyunca yeniden dene.
+        const hls = new Hls({
+          manifestLoadingMaxRetry: 30,
+          manifestLoadingRetryDelay: 3000,
+          manifestLoadingMaxRetryTimeout: 90000,
+          levelLoadingMaxRetry: 30,
+          levelLoadingRetryDelay: 3000,
+          fragLoadingMaxRetry: 15,
+          fragLoadingRetryDelay: 2000,
+        })
         hlsRef.current = hls
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            console.warn('[hls] fatal error:', data.type, data.details)
+            // Recoverable durumlar için yeniden dene
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
+            else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError()
+          }
+        })
         hls.loadSource(streamUrl)
         hls.attachMedia(video)
       }).catch(() => { video.src = streamUrl })
@@ -186,7 +214,11 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
           {yukleniyor && (
             <div style={centerText}>
               <RefreshCw size={32} className="spin" />
-              <div style={{ marginTop: 8, fontSize: 13 }}>Stream başlatılıyor…</div>
+              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>Yayın başlatılıyor…</div>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>
+                Mobiltek araç bağlantısı kurulurken <strong>1-2 dakika</strong> sürebilir.
+                Lütfen sayfayı kapatmayın.
+              </div>
             </div>
           )}
           {hata && (
