@@ -183,10 +183,34 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
         )
         playerRef.current = player
         playerTipiRef.current = 'mpegts'
+        let fetchDenemesi = 0
         player.on(mpegts.Events.ERROR, (t, d, info) => {
           console.warn('[mpegts] error:', t, d, info)
-          // Network → 5sn sonra unload+load, max 20 kez
-          if (t === mpegts.ErrorTypes.NETWORK_ERROR || t === mpegts.ErrorTypes.MEDIA_ERROR) {
+          // 404 → Mobiltek DVR henüz yayın yapmıyor. cameras-live'i tekrar çağır
+          // (DVR'i nudge et). Max 15 deneme = ~2 dakika toplam.
+          const is404 = info?.code === 404 || (info?.msg || '').includes('404')
+          if (is404 && fetchDenemesi < 15) {
+            fetchDenemesi++
+            console.log(`[mpegts] 404 → cameras-live tekrar (deneme ${fetchDenemesi}/15)`)
+            setTimeout(async () => {
+              if (iptal || playerRef.current !== player) return
+              // Fresh URL al — Mobiltek DVR bu sırada uyanabilir
+              const yenidenCevap = await canliKameraBaslat(arac.id, secilenKanal)
+              const yeniCam = yenidenCevap?.veri?.camera
+              if (yeniCam?.resultCode === '100') {
+                const yeniFlv = yeniCam.streamingUrls?.flv
+                if (yeniFlv) {
+                  const yeniProxyUrl = proxyle(yeniFlv)
+                  try {
+                    player.unload()
+                    // URL parametresini update et
+                    player._mediaDataSource.url = yeniProxyUrl
+                    player.load()
+                  } catch (e) { console.warn('[mpegts] URL refresh fail:', e?.message) }
+                }
+              }
+            }, 8000)
+          } else if (t === mpegts.ErrorTypes.NETWORK_ERROR || t === mpegts.ErrorTypes.MEDIA_ERROR) {
             setTimeout(() => {
               if (playerRef.current === player) {
                 try { player.unload(); player.load() } catch {}
