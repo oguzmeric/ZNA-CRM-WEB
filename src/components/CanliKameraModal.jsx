@@ -1,7 +1,14 @@
-// Canlı kamera izleme modalı.
-// Kullanım: seçili aracın kanal(lar)ını Mobiltek v2/cameras/{id}?channel=N ile çeker,
-// dönen stream URL'sini <video> ile oynatır.
-// Modal kapanınca /live/stop çağırır ve izleme log'unu kapatır.
+// Canlı kamera izleme modalı — Mobiltek MDVR.
+//
+// Transport: HTTP-FLV via mpegts.js (Chinese CMSV6/JC MDVR ekosisteminin standardı).
+// Neden HLS değil: MDVR ilk keyframe göndermeden m3u8 boş dönüyor, hls.js pes ediyor.
+// mpegts.js chunked HTTP fetch açık tutar; DVR frame göndermeye başlayınca anında oynatır.
+//
+// Akış:
+//   1. cameras-live (v2) → streamingUrls (rtmp, flv, hls)
+//   2. FLV URL'i tercih et → Supabase edge fn proxy path'ine çevir (HTTPS/CSP güvenli)
+//   3. mpegts.js Player → <video>
+//   4. Kapat/kanal değişimi → live/stop + player.destroy
 
 import { useEffect, useRef, useState } from 'react'
 import { X, Video, RefreshCw, AlertTriangle } from 'lucide-react'
@@ -9,26 +16,68 @@ import { canliKameraBaslat, canliKameraDurdur, izlemeLogBaslat, izlemeLogBitir }
 import { useAuth } from '../context/AuthContext'
 
 const KANAL_SEC = [1, 2]
+const BUSY_BEKLEME_SN = 90
+const WARM_UP_MAKS_MS = 120000 // 2 dk
+
+// Mobiltek HTTP URL'ini Supabase edge fn HTTPS proxy path'ine çevir
+const proxyle = (url) => {
+  if (!url) return url
+  const m = url.match(/^http:\/\/84\.51\.5\.140:8881\/(.+)$/)
+  if (!m) return url
+  const base = import.meta.env.VITE_SUPABASE_URL || 'https://hcrbwxeuscfibgmchdtt.supabase.co'
+  return `${base}/functions/v1/mobiltek-stream/${m[1]}`
+}
 
 export default function CanliKameraModal({ acik, kapat, arac }) {
   const { kullanici } = useAuth()
   const [kanal, setKanal] = useState(1)
   const [streamUrl, setStreamUrl] = useState(null)
+  const [streamTipi, setStreamTipi] = useState(null) // 'flv' | 'hls' | 'mp4'
   const [yukleniyor, setYukleniyor] = useState(false)
-  const [busyBekleme, setBusyBekleme] = useState(0) // 90→0 countdown (sn)
+  const [busyBekleme, setBusyBekleme] = useState(0)
   const [hata, setHata] = useState(null)
   const [logId, setLogId] = useState(null)
+
   const videoRef = useRef(null)
-  const hlsRef = useRef(null)
-  const flvRef = useRef(null)
+  const playerRef = useRef(null) // mpegts.js Player veya hls.js instance
+  const playerTipiRef = useRef(null) // 'mpegts' | 'hls' | 'native'
+  const busyIntervalRef = useRef(null)
+  const warmUpTimerRef = useRef(null)
+  const suanKiKanalRef = useRef(1)
+
+  const temizle = () => {
+    if (busyIntervalRef.current) { clearInterval(busyIntervalRef.current); busyIntervalRef.current = null }
+    if (warmUpTimerRef.current) { clearTimeout(warmUpTimerRef.current); warmUpTimerRef.current = null }
+    if (playerRef.current) {
+      try {
+        if (playerTipiRef.current === 'mpegts') {
+          playerRef.current.pause()
+          playerRef.current.unload()
+          playerRef.current.detachMediaElement()
+          playerRef.current.destroy()
+        } else if (playerTipiRef.current === 'hls') {
+          playerRef.current.destroy()
+        }
+      } catch (e) { console.warn('[canli-kamera] player destroy hata:', e?.message) }
+      playerRef.current = null
+      playerTipiRef.current = null
+    }
+    if (videoRef.current) {
+      try { videoRef.current.pause(); videoRef.current.removeAttribute('src'); videoRef.current.load() } catch {}
+    }
+  }
 
   const baslat = async (secilenKanal) => {
     if (!arac?.id) return
+    suanKiKanalRef.current = secilenKanal
     setYukleniyor(true)
+    setBusyBekleme(0)
     setHata(null)
     setStreamUrl(null)
+    setStreamTipi(null)
+    temizle()
 
-    // Log başlat
+    // İzleme log
     const yeniLog = await izlemeLogBaslat({
       aracId: arac.id,
       aracPlaka: arac.plateNo || arac.label,
@@ -37,164 +86,207 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     })
     setLogId(yeniLog)
 
-    // Doğrudan başlat — Mobiltek destek: motor kapalıyken 1-2 dk, açıkken 15-20 sn.
-    // Pre-emptive stop çağrıları device'ı "not online" durumuna sokuyor.
     const cevap = await canliKameraBaslat(arac.id, secilenKanal)
-    // yukleniyor state'i video 'canplay' event'inde kapatılıyor (aşağıda)
-
     if (!cevap) {
       setYukleniyor(false)
       setHata('Kamera başlatılamadı — kredensiyel/ağ sorunu olabilir.')
       return
     }
 
-    // Mobiltek v2 response yapısı:
-    // { code:1000, description:"Success", camera:{ resultCode:"100", streamingUrls:{ rtmp, flv, hls } } }
-    // resultCode 100=OK, 302=Device busy, diğerleri hata
     const cam = cevap.veri?.camera
-    if (cam && cam.resultCode && cam.resultCode !== '100') {
-      // Device busy → Mobiltek'in 1-2 dk auto-timeout'unu bekle, otomatik yeniden dene
+    if (cam?.resultCode && cam.resultCode !== '100') {
+      // 302 Device busy → 90 sn countdown + auto-retry
       if (cam.resultCode === '302' || (cam.resultMsg || '').toLowerCase().includes('busy')) {
-        setHata(null)
-        setYukleniyor(true)
-        // 90 sn countdown + auto-retry
-        setBusyBekleme(90)
+        setBusyBekleme(BUSY_BEKLEME_SN)
         const t0 = Date.now()
-        const it = setInterval(() => {
-          const gecen = Math.floor((Date.now() - t0) / 1000)
-          const kalan = Math.max(0, 90 - gecen)
+        busyIntervalRef.current = setInterval(() => {
+          const kalan = Math.max(0, BUSY_BEKLEME_SN - Math.floor((Date.now() - t0) / 1000))
           setBusyBekleme(kalan)
           if (kalan === 0) {
-            clearInterval(it)
-            if (arac?.id) baslat(secilenKanal)
+            clearInterval(busyIntervalRef.current)
+            busyIntervalRef.current = null
+            if (arac?.id) baslat(suanKiKanalRef.current)
           }
         }, 1000)
         return
       }
       setYukleniyor(false)
-      setHata(`Kamera hatası: ${cam.resultMsg || cam.resultCode}. Aracın kamerası kapalı olabilir ya da başka biri izliyor olabilir.`)
+      setHata(`Kamera hatası: ${cam.resultMsg || cam.resultCode}. Motor kapalıysa açın, kamera arızalıysa Mobiltek destek çağırın.`)
       return
     }
-    const su = cam?.streamingUrls || cevap.veri?.streamingUrls || null
-    let url = su?.hls        // öncelik: HLS (native)
-      || su?.flv               // sonra: FLV (flv.js)
-      || cevap.veri?.url
-      || cevap.veri?.urlCamera
-      || null
-    // RTMP tarayıcıda çalışmaz — atlanır
-    if (!url) {
+
+    const su = cam?.streamingUrls || cevap.veri?.streamingUrls || {}
+    // Öncelik: FLV (mpegts.js — warm-up dostu) > HLS (yalnız Safari) > mp4
+    const flvUrl = su.flv ? proxyle(su.flv) : null
+    const hlsUrl = su.hls ? proxyle(su.hls) : null
+
+    if (flvUrl) {
+      setStreamUrl(flvUrl)
+      setStreamTipi('flv')
+    } else if (hlsUrl) {
+      setStreamUrl(hlsUrl)
+      setStreamTipi('hls')
+    } else {
       setYukleniyor(false)
-      setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
-      return
+      setHata('Kullanılabilir stream URL yok. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
     }
-    // Mobiltek HTTP stream'ini Supabase edge fn (path-based) HTTPS proxy'le
-    // http://84.51.5.140:8881/1/xxx/hls.m3u8 → https://[supabase]/functions/v1/mobiltek-stream/1/xxx/hls.m3u8
-    // Path-based olduğu için m3u8 içindeki göreceli segment URL'leri
-    // (chunk1.ts vb.) hls.js tarafından otomatik olarak aynı base'e çözümlenir.
-    const m = url.match(/^http:\/\/84\.51\.5\.140:8881\/(.+)$/)
-    if (m) {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hcrbwxeuscfibgmchdtt.supabase.co'
-      url = `${supabaseUrl}/functions/v1/mobiltek-stream/${m[1]}`
-    }
-    setStreamUrl(url)
   }
 
-  // Kanal değiştiğinde restart
+  // Player başlat (streamUrl + streamTipi değişince)
+  useEffect(() => {
+    if (!streamUrl || !streamTipi || !videoRef.current) return
+    const video = videoRef.current
+    let iptal = false
+
+    const onLoadedData = () => setYukleniyor(false)
+    const onPlaying = () => setYukleniyor(false)
+    const onWaiting = () => {/* buffering — kullanıcıyı bilgilendirmiyoruz */}
+    video.addEventListener('loadeddata', onLoadedData)
+    video.addEventListener('playing', onPlaying)
+    video.addEventListener('waiting', onWaiting)
+
+    // 2 dk içinde ilk frame gelmezse hata göster
+    warmUpTimerRef.current = setTimeout(() => {
+      if (video.readyState < 2) {
+        setYukleniyor(false)
+        setHata('Yayın 2 dakikada başlamadı. Motor kapalıysa açın veya birazdan tekrar deneyin.')
+      }
+    }, WARM_UP_MAKS_MS)
+
+    if (streamTipi === 'flv') {
+      import('mpegts.js').then(({ default: mpegts }) => {
+        if (iptal) return
+        if (!mpegts.getFeatureList().mseLivePlayback) {
+          setHata('Tarayıcı canlı FLV desteklemiyor. Chrome/Edge deneyin.')
+          return
+        }
+        const player = mpegts.createPlayer(
+          {
+            type: 'flv',
+            url: streamUrl,
+            isLive: true,
+            hasVideo: true,
+            hasAudio: false,
+            cors: true,
+          },
+          {
+            enableWorker: false,
+            enableStashBuffer: false,     // canlıda buffer yok, minimum latency
+            stashInitialSize: 128,
+            liveBufferLatencyChasing: true,
+            liveBufferLatencyChasingOnPaused: false,
+            liveBufferLatencyMaxDelay: 4,
+            liveBufferLatencyMinRemain: 1,
+            autoCleanupSourceBuffer: true,
+            reuseRedirectedURL: true,
+          },
+        )
+        playerRef.current = player
+        playerTipiRef.current = 'mpegts'
+        player.on(mpegts.Events.ERROR, (t, d, info) => {
+          console.warn('[mpegts] error:', t, d, info)
+          // Network → 5sn sonra unload+load, max 20 kez
+          if (t === mpegts.ErrorTypes.NETWORK_ERROR || t === mpegts.ErrorTypes.MEDIA_ERROR) {
+            setTimeout(() => {
+              if (playerRef.current === player) {
+                try { player.unload(); player.load() } catch {}
+              }
+            }, 5000)
+          }
+        })
+        player.attachMediaElement(video)
+        player.load()
+        player.play().catch(e => console.warn('[mpegts] autoplay engel:', e?.message))
+      }).catch(e => {
+        console.error('[mpegts] import fail:', e)
+        setHata('Video oynatıcı yüklenemedi.')
+      })
+    } else if (streamTipi === 'hls') {
+      // Safari native
+      const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl')
+      if (canNativeHls) {
+        video.src = streamUrl
+        playerTipiRef.current = 'native'
+        video.play().catch(e => console.warn('[hls-native] autoplay engel:', e?.message))
+      } else {
+        import('hls.js').then(({ default: Hls }) => {
+          if (iptal || !Hls.isSupported()) { setHata('Tarayıcı HLS desteklemiyor.'); return }
+          const hls = new Hls({
+            liveDurationInfinity: true,
+            lowLatencyMode: false,
+            backBufferLength: 30,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 10,
+            manifestLoadingMaxRetry: 15,
+            manifestLoadingRetryDelay: 2000,
+            manifestLoadingMaxRetryTimeout: 120000,
+            levelLoadingMaxRetry: 15,
+            levelLoadingRetryDelay: 2000,
+            fragLoadingMaxRetry: 15,
+            fragLoadingRetryDelay: 1500,
+          })
+          playerRef.current = hls
+          playerTipiRef.current = 'hls'
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) {
+              console.warn('[hls] fatal:', data.type, data.details)
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                setTimeout(() => { try { hls.startLoad() } catch {} }, 3000)
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                try { hls.recoverMediaError() } catch {}
+              }
+            }
+            // levelEmptyError → warm-up sırasında normal, loadSource re-arm
+            if (data.details === 'levelEmptyError' || data.details === 'manifestParsingError') {
+              setTimeout(() => { try { hls.loadSource(streamUrl); hls.startLoad() } catch {} }, 3000)
+            }
+          })
+          hls.loadSource(streamUrl)
+          hls.attachMedia(video)
+        }).catch(e => {
+          console.error('[hls] import fail:', e)
+          setHata('Video oynatıcı yüklenemedi.')
+        })
+      }
+    } else {
+      video.src = streamUrl
+      playerTipiRef.current = 'native'
+    }
+
+    return () => {
+      iptal = true
+      video.removeEventListener('loadeddata', onLoadedData)
+      video.removeEventListener('playing', onPlaying)
+      video.removeEventListener('waiting', onWaiting)
+      if (warmUpTimerRef.current) { clearTimeout(warmUpTimerRef.current); warmUpTimerRef.current = null }
+    }
+  }, [streamUrl, streamTipi])
+
+  // Modal aç/arac değiş/kanal değiş → başlat
   useEffect(() => {
     if (acik && arac) baslat(kanal)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acik, arac?.id, kanal])
 
-  // Stream tipini algıla ve uygun player'ı başlat
-  useEffect(() => {
-    if (!streamUrl || !videoRef.current) return
-    const video = videoRef.current
-    const isFlv = streamUrl.includes('.flv') || streamUrl.startsWith('http') && !streamUrl.includes('.m3u8') && !streamUrl.endsWith('.mp4')
-    const isHls = streamUrl.includes('.m3u8')
-    const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl')
-
-    // Video oynayınca yukleniyor state'ini kapat
-    const onCanPlay = () => setYukleniyor(false)
-    video.addEventListener('canplay', onCanPlay)
-    video.addEventListener('playing', onCanPlay)
-
-    const cleanup = () => {
-      video.removeEventListener('canplay', onCanPlay)
-      video.removeEventListener('playing', onCanPlay)
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
-      if (flvRef.current) { flvRef.current.destroy(); flvRef.current = null }
-    }
-
-    if (isHls && !canNativeHls) {
-      import('hls.js').then(({ default: Hls }) => {
-        if (!Hls.isSupported()) { setHata('Tarayıcı HLS desteklemiyor.'); return }
-        cleanup()
-        // Mobiltek stream warm-up ~60-90sn sürüyor. hls.js retry parametrelerini
-        // agresif tut — manifest 404'lerini 90sn boyunca yeniden dene.
-        const hls = new Hls({
-          manifestLoadingMaxRetry: 30,
-          manifestLoadingRetryDelay: 3000,
-          manifestLoadingMaxRetryTimeout: 90000,
-          levelLoadingMaxRetry: 30,
-          levelLoadingRetryDelay: 3000,
-          fragLoadingMaxRetry: 15,
-          fragLoadingRetryDelay: 2000,
-        })
-        hlsRef.current = hls
-        hls.on(Hls.Events.ERROR, (_, data) => {
-          if (data.fatal) {
-            console.warn('[hls] fatal error:', data.type, data.details)
-            // Recoverable durumlar için yeniden dene
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
-            else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError()
-          }
-        })
-        hls.loadSource(streamUrl)
-        hls.attachMedia(video)
-      }).catch(() => { video.src = streamUrl })
-    } else if (streamUrl.startsWith('http') && !streamUrl.endsWith('.mp4') && !isHls) {
-      // FLV over HTTP — Mobiltek stream'i için
-      import('flv.js').then(({ default: flvjs }) => {
-        if (!flvjs.isSupported()) { setHata('Tarayıcı FLV desteklemiyor. Chrome/Edge deneyin.'); return }
-        cleanup()
-        const player = flvjs.createPlayer({
-          type: 'flv',
-          url: streamUrl,
-          isLive: true,
-          cors: true,
-        })
-        flvRef.current = player
-        player.attachMediaElement(video)
-        player.load()
-        player.play().catch((e) => {
-          console.warn('FLV play() blocked, autoplay policy:', e?.message)
-        })
-      }).catch((e) => {
-        console.error('flv.js import fail:', e)
-        video.src = streamUrl
-      })
-    } else {
-      video.src = streamUrl
-    }
-    return cleanup
-  }, [streamUrl])
-
-  // Kapanışta stream durdur + log kapat
   const kapatEt = async () => {
-    if (arac?.id) canliKameraDurdur(arac.id, kanal).catch(() => {})
+    if (arac?.id) canliKameraDurdur(arac.id, suanKiKanalRef.current).catch(() => {})
     if (logId) izlemeLogBitir(logId).catch(() => {})
+    temizle()
     setStreamUrl(null)
+    setStreamTipi(null)
     setLogId(null)
+    setYukleniyor(false)
+    setBusyBekleme(0)
+    setHata(null)
     kapat?.()
   }
 
-  // Component unmount'ta cleanup
+  // Component unmount cleanup
   useEffect(() => {
     return () => {
-      if (arac?.id && streamUrl) canliKameraDurdur(arac.id, kanal).catch(() => {})
+      if (arac?.id && streamUrl) canliKameraDurdur(arac.id, suanKiKanalRef.current).catch(() => {})
       if (logId) izlemeLogBitir(logId).catch(() => {})
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
-      if (flvRef.current) { flvRef.current.destroy(); flvRef.current = null }
+      temizle()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -211,7 +303,9 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
               <div style={{ fontWeight: 700, fontSize: 15 }}>
                 {arac?.plateNo || arac?.label || 'Araç'} — Canlı Kamera
               </div>
-              <div style={{ fontSize: 11, color: '#6b7a93' }}>Kanal {kanal}</div>
+              <div style={{ fontSize: 11, color: '#6b7a93' }}>
+                Kanal {kanal}{streamTipi ? ` · ${streamTipi.toUpperCase()}` : ''}
+              </div>
             </div>
           </div>
           <button onClick={kapatEt} style={btnClose}><X size={20} /></button>
@@ -221,7 +315,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
           {KANAL_SEC.map(k => (
             <button
               key={k}
-              onClick={() => setKanal(k)}
+              onClick={() => { if (k !== kanal) setKanal(k) }}
               style={{ ...kanalBtn, ...(k === kanal ? kanalBtnAktif : {}) }}
             >
               Kanal {k}
@@ -230,6 +324,19 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
         </div>
 
         <div style={videoWrap}>
+          {/* Video her zaman render — mpegts.js attachMediaElement öncesi hazır olsun */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            controls
+            muted
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', background: '#000',
+              display: (yukleniyor || hata) ? 'none' : 'block',
+            }}
+          />
+
           {yukleniyor && (
             <div style={centerText}>
               <RefreshCw size={32} className="spin" />
@@ -243,7 +350,6 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
                   </div>
                   <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 340, textAlign: 'center', lineHeight: 1.5 }}>
                     Önceki yayın hâlâ aktif — Mobiltek cihazı serbest bırakınca otomatik başlatılacak.
-                    Sayfayı kapatmayın.
                   </div>
                 </>
               ) : (
@@ -251,32 +357,22 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
                   <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>Yayın başlatılıyor…</div>
                   <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>
                     Motor açıkken 15-20 sn, motor kapalıyken <strong>1-2 dakika</strong> sürebilir.
-                    Lütfen sayfayı kapatmayın.
                   </div>
                 </>
               )}
             </div>
           )}
+
           {hata && (
             <div style={centerText}>
               <AlertTriangle size={32} color="#dc2626" />
-              <div style={{ marginTop: 8, fontSize: 13, color: '#dc2626', maxWidth: 400, textAlign: 'center' }}>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#fca5a5', maxWidth: 400, textAlign: 'center', lineHeight: 1.5 }}>
                 {hata}
               </div>
-              <button onClick={() => baslat(kanal)} style={{ ...kanalBtn, marginTop: 12 }}>
+              <button onClick={() => baslat(kanal)} style={{ ...kanalBtn, marginTop: 12, background: '#1e5aa8', color: '#fff', border: 'none' }}>
                 Yeniden Dene
               </button>
             </div>
-          )}
-          {!yukleniyor && !hata && streamUrl && (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              controls
-              muted
-              style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-            />
           )}
         </div>
       </div>
@@ -294,4 +390,4 @@ const kanalRow = { display: 'flex', gap: 8, padding: '12px 18px', borderBottom: 
 const kanalBtn = { padding: '8px 14px', borderRadius: 8, border: '1px solid #dee3ec', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#3b4960' }
 const kanalBtnAktif = { background: '#1e5aa8', color: '#fff', borderColor: '#1e5aa8' }
 const videoWrap = { flex: 1, minHeight: 420, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }
-const centerText = { display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff' }
+const centerText = { display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff', position: 'absolute', inset: 0, justifyContent: 'center' }
