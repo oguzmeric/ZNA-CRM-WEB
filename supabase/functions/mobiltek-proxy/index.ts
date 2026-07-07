@@ -221,9 +221,16 @@ serve(async (req) => {
       httpKod = res.status
       if (!res.ok) {
         const t = await res.text()
+        console.error(`[mobiltek-proxy] ${yol} → ${url} → ${res.status}:`, t.slice(0, 500))
         throw new Error(`Mobiltek ${res.status}: ${t.slice(0, 300)}`)
       }
-      veri = await res.json()
+      const rawText = await res.text()
+      console.log(`[mobiltek-proxy] ${yol} → ${url} → 200, body preview:`, rawText.slice(0, 300))
+      try {
+        veri = JSON.parse(rawText)
+      } catch {
+        veri = { raw: rawText }
+      }
     } catch (e: any) {
       if (e.message === 'MOBILTEK_CREDENTIALS_MISSING') {
         veri = mockCevap(yol)
