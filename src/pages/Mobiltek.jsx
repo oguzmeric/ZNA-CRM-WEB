@@ -193,8 +193,11 @@ export default function Mobiltek() {
               </thead>
               <tbody>
                 {araclar.map(a => {
-                  const kontak = a.ignition === '1' || a.ignition === true || a.engineStatus === 'on'
                   const hiz = Number(a.gpsSpeed || 0)
+                  // Mobiltek 'ignition' bazen yanlış rapor ediyor — birden fazla sinyale bak
+                  const kontak = a.ignition === '1' || a.ignition === true || a.ignition === 1
+                    || a.engineStatus === 'on'
+                    || hiz > 0
                   return (
                     <tr
                       key={a.id}
@@ -251,7 +254,11 @@ export default function Mobiltek() {
             <div style={{ overflowY: 'auto' }}>
               {araclar.map(a => {
                 const aktif = seciliArac?.id === a.id
-                const kontak = a.ignition === '1' || a.engineStatus === 'on'
+                // Mobiltek 'ignition' bazen yanlış rapor ediyor (aracın çalışırken bile false döndürebiliyor).
+                // Bu yüzden birden fazla sinyale bakıyoruz: ignition, engineStatus veya hız > 0
+                const kontak = a.ignition === '1' || a.ignition === true || a.ignition === 1
+                  || a.engineStatus === 'on'
+                  || Number(a.gpsSpeed || 0) > 0
                 return (
                   <div
                     key={a.id}
