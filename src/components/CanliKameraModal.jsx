@@ -15,6 +15,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
   const [kanal, setKanal] = useState(1)
   const [streamUrl, setStreamUrl] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(false)
+  const [busyBekleme, setBusyBekleme] = useState(0) // 90→0 countdown (sn)
   const [hata, setHata] = useState(null)
   const [logId, setLogId] = useState(null)
   const videoRef = useRef(null)
@@ -52,6 +53,24 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     // resultCode 100=OK, 302=Device busy, diğerleri hata
     const cam = cevap.veri?.camera
     if (cam && cam.resultCode && cam.resultCode !== '100') {
+      // Device busy → Mobiltek'in 1-2 dk auto-timeout'unu bekle, otomatik yeniden dene
+      if (cam.resultCode === '302' || (cam.resultMsg || '').toLowerCase().includes('busy')) {
+        setHata(null)
+        setYukleniyor(true)
+        // 90 sn countdown + auto-retry
+        setBusyBekleme(90)
+        const t0 = Date.now()
+        const it = setInterval(() => {
+          const gecen = Math.floor((Date.now() - t0) / 1000)
+          const kalan = Math.max(0, 90 - gecen)
+          setBusyBekleme(kalan)
+          if (kalan === 0) {
+            clearInterval(it)
+            if (arac?.id) baslat(secilenKanal)
+          }
+        }, 1000)
+        return
+      }
       setYukleniyor(false)
       setHata(`Kamera hatası: ${cam.resultMsg || cam.resultCode}. Aracın kamerası kapalı olabilir ya da başka biri izliyor olabilir.`)
       return
@@ -214,11 +233,28 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
           {yukleniyor && (
             <div style={centerText}>
               <RefreshCw size={32} className="spin" />
-              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>Yayın başlatılıyor…</div>
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>
-                Mobiltek araç bağlantısı kurulurken <strong>1-2 dakika</strong> sürebilir.
-                Lütfen sayfayı kapatmayın.
-              </div>
+              {busyBekleme > 0 ? (
+                <>
+                  <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>
+                    Cihaz meşgul — otomatik yeniden deneme
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 32, fontWeight: 800, color: '#fbbf24' }}>
+                    {busyBekleme}s
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 340, textAlign: 'center', lineHeight: 1.5 }}>
+                    Önceki yayın hâlâ aktif — Mobiltek cihazı serbest bırakınca otomatik başlatılacak.
+                    Sayfayı kapatmayın.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>Yayın başlatılıyor…</div>
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75, maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>
+                    Motor açıkken 15-20 sn, motor kapalıyken <strong>1-2 dakika</strong> sürebilir.
+                    Lütfen sayfayı kapatmayın.
+                  </div>
+                </>
+              )}
             </div>
           )}
           {hata && (
