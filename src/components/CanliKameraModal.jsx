@@ -19,6 +19,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
   const [logId, setLogId] = useState(null)
   const videoRef = useRef(null)
   const hlsRef = useRef(null)
+  const flvRef = useRef(null)
 
   const baslat = async (secilenKanal) => {
     if (!arac?.id) return
@@ -43,15 +44,17 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       return
     }
 
-    // Mobiltek v2 response — URL'yi bulmaya çalış
-    const url = cevap.veri?.url
+    // Mobiltek v2 response yapısı:
+    // { code:1000, description:"Success", camera:{ streamingUrls:{ rtmp, flv, hls? } } }
+    const su = cevap.veri?.camera?.streamingUrls || cevap.veri?.streamingUrls || null
+    const url = su?.hls        // öncelik: HLS (native)
+      || su?.flv               // sonra: FLV (flv.js)
+      || cevap.veri?.url
       || cevap.veri?.urlCamera
-      || cevap.veri?.streamUrl
-      || cevap.veri?.data?.url
-      || (Array.isArray(cevap.veri?.cameras) ? cevap.veri.cameras[0]?.urlCamera : null)
-
+      || null
+    // RTMP tarayıcıda çalışmaz — atlanır
     if (!url) {
-      setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 200))
+      setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
       return
     }
     setStreamUrl(url)
@@ -63,32 +66,53 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acik, arac?.id, kanal])
 
-  // HLS.js dinamik yükle (sadece m3u8 için)
+  // Stream tipini algıla ve uygun player'ı başlat
   useEffect(() => {
     if (!streamUrl || !videoRef.current) return
     const video = videoRef.current
+    const isFlv = streamUrl.includes('.flv') || streamUrl.startsWith('http') && !streamUrl.includes('.m3u8') && !streamUrl.endsWith('.mp4')
     const isHls = streamUrl.includes('.m3u8')
-    const canNative = video.canPlayType('application/vnd.apple.mpegurl')
+    const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl')
 
-    if (isHls && !canNative) {
-      // HLS.js dinamik import
+    const cleanup = () => {
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
+      if (flvRef.current) { flvRef.current.destroy(); flvRef.current = null }
+    }
+
+    if (isHls && !canNativeHls) {
       import('hls.js').then(({ default: Hls }) => {
         if (!Hls.isSupported()) { setHata('Tarayıcı HLS desteklemiyor.'); return }
-        if (hlsRef.current) hlsRef.current.destroy()
+        cleanup()
         const hls = new Hls()
         hlsRef.current = hls
         hls.loadSource(streamUrl)
         hls.attachMedia(video)
-      }).catch(() => {
-        // hls.js yoksa native dene
+      }).catch(() => { video.src = streamUrl })
+    } else if (streamUrl.startsWith('http') && !streamUrl.endsWith('.mp4') && !isHls) {
+      // FLV over HTTP — Mobiltek stream'i için
+      import('flv.js').then(({ default: flvjs }) => {
+        if (!flvjs.isSupported()) { setHata('Tarayıcı FLV desteklemiyor. Chrome/Edge deneyin.'); return }
+        cleanup()
+        const player = flvjs.createPlayer({
+          type: 'flv',
+          url: streamUrl,
+          isLive: true,
+          cors: true,
+        })
+        flvRef.current = player
+        player.attachMediaElement(video)
+        player.load()
+        player.play().catch((e) => {
+          console.warn('FLV play() blocked, autoplay policy:', e?.message)
+        })
+      }).catch((e) => {
+        console.error('flv.js import fail:', e)
         video.src = streamUrl
       })
     } else {
       video.src = streamUrl
     }
-    return () => {
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
-    }
+    return cleanup
   }, [streamUrl])
 
   // Kapanışta stream durdur + log kapat
@@ -106,6 +130,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       if (arac?.id && streamUrl) canliKameraDurdur(arac.id, kanal).catch(() => {})
       if (logId) izlemeLogBitir(logId).catch(() => {})
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null }
+      if (flvRef.current) { flvRef.current.destroy(); flvRef.current = null }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
