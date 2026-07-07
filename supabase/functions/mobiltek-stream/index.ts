@@ -1,51 +1,40 @@
-// Mobiltek HTTP stream'i HTTPS proxy'lemek için basit edge fn.
-// Kullanım: /functions/v1/mobiltek-stream?url=<encoded_http_url>
-// Yalnızca api.mobiltek.com.tr ve 84.51.5.140 host'lara izin verir.
+// Mobiltek 84.51.5.140:8881 HTTP stream'i için HTTPS path-based proxy.
+// /functions/v1/mobiltek-stream/{PATH} → http://84.51.5.140:8881/{PATH}
+// Böylece m3u8 içindeki göreceli segment URL'leri (chunk1.ts) hls.js için
+// aynı base path altında kalır ve otomatik çözümlenir.
 
-const ALLOWED_HOSTS = new Set(['api.mobiltek.com.tr', '84.51.5.140'])
+const MOBILTEK_HOST = 'http://84.51.5.140:8881'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, range',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Expose-Headers': 'content-length, content-range',
+  'Access-Control-Expose-Headers': 'content-length, content-range, content-type',
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   const url = new URL(req.url)
-  const target = url.searchParams.get('url')
-  if (!target) {
-    return new Response(JSON.stringify({ hata: 'url param gerekli' }), {
+  const prefix = '/functions/v1/mobiltek-stream'
+  let sub = url.pathname
+  if (sub.startsWith(prefix)) sub = sub.slice(prefix.length)
+  if (sub.startsWith('/')) sub = sub.slice(1)
+
+  if (!sub) {
+    return new Response(JSON.stringify({ hata: 'path gerekli, örn: /1/860.../hls.m3u8' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  let targetUrl: URL
-  try {
-    targetUrl = new URL(target)
-  } catch {
-    return new Response(JSON.stringify({ hata: 'geçersiz url' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  if (!ALLOWED_HOSTS.has(targetUrl.hostname)) {
-    return new Response(JSON.stringify({ hata: 'izinsiz host: ' + targetUrl.hostname }), {
-      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
+  const targetUrl = `${MOBILTEK_HOST}/${sub}${url.search}`
 
   try {
     const upstreamHeaders: Record<string, string> = {}
     const range = req.headers.get('range')
     if (range) upstreamHeaders['Range'] = range
 
-    const upstream = await fetch(targetUrl.toString(), {
-      method: 'GET',
-      headers: upstreamHeaders,
-    })
+    const upstream = await fetch(targetUrl, { method: 'GET', headers: upstreamHeaders })
 
     const passHeaders: Record<string, string> = { ...corsHeaders }
     const ct = upstream.headers.get('content-type')
@@ -55,28 +44,11 @@ Deno.serve(async (req) => {
     const cr = upstream.headers.get('content-range')
     if (cr) passHeaders['Content-Range'] = cr
 
-    // m3u8 içeriğinde absolute http:// URL'leri varsa proxy'ye çevir
-    if (ct && (ct.includes('mpegurl') || targetUrl.pathname.endsWith('.m3u8'))) {
-      const text = await upstream.text()
-      const proxied = text.replace(
-        /http:\/\/(?:84\.51\.5\.140|api\.mobiltek\.com\.tr)[^\s"'\n]*/g,
-        (match) => {
-          const fnUrl = `${url.origin}/functions/v1/mobiltek-stream?url=${encodeURIComponent(match)}`
-          return fnUrl
-        }
-      )
-      return new Response(proxied, {
-        status: upstream.status,
-        headers: { ...passHeaders, 'Content-Type': ct || 'application/vnd.apple.mpegurl' },
-      })
-    }
+    console.log(`[mobiltek-stream] ${sub} → ${upstream.status} ${ct || ''}`)
 
-    // Diğer içerikler (ts segments, mp4 vs.) — stream olarak pas
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: passHeaders,
-    })
+    return new Response(upstream.body, { status: upstream.status, headers: passHeaders })
   } catch (e: any) {
+    console.error(`[mobiltek-stream] fetch fail:`, e?.message)
     return new Response(JSON.stringify({ hata: e?.message || 'proxy hata' }), {
       status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
