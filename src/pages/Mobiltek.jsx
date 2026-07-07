@@ -22,6 +22,8 @@ export default function Mobiltek() {
   const [kameralar, setKameralar] = useState([])
   const [webviewUrl, setWebviewUrl] = useState(null)
   const [canliKameraAcik, setCanliKameraAcik] = useState(false)
+  // Her araç için kamera sayısı: { [aracId]: N }
+  const [kameraSayilari, setKameraSayilari] = useState({})
 
   // .NET Date format "/Date(1783358792000+0300)/" → ISO string
   const parseNetDate = (s) => {
@@ -78,8 +80,29 @@ export default function Mobiltek() {
     setKameralar([])
     setWebviewUrl(null)
     const r = await kameralariGetir(a.id)
-    if (r) setKameralar(r.veri?.cameras || [])
+    if (r) {
+      const cams = r.veri?.cameras || []
+      setKameralar(cams)
+      // Sayıyı map'e kaydet — liste rozeti için
+      setKameraSayilari(prev => ({ ...prev, [a.id]: cams.length }))
+    }
   }
+
+  // Tüm araçlar için kamera sayısını arka planda çek (paralel, sessiz)
+  useEffect(() => {
+    if (araclar.length === 0) return
+    araclar.forEach(async (a) => {
+      if (kameraSayilari[a.id] !== undefined) return
+      try {
+        const r = await kameralariGetir(a.id)
+        const n = r?.veri?.cameras?.length ?? 0
+        setKameraSayilari(prev => ({ ...prev, [a.id]: n }))
+      } catch {
+        setKameraSayilari(prev => ({ ...prev, [a.id]: 0 }))
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [araclar])
 
   return (
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
@@ -290,24 +313,44 @@ export default function Mobiltek() {
                         <span>{kucukTarih(a.gpsTime)}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSeciliArac(a)
-                        setCanliKameraAcik(true)
-                      }}
-                      title="Canlı Kamera İzle"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 34, height: 34, borderRadius: 8,
-                        background: 'var(--brand-primary)',
-                        color: '#fff',
-                        border: 'none', cursor: 'pointer',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Video size={16} strokeWidth={1.75} />
-                    </button>
+                    {(() => {
+                      const kSayi = kameraSayilari[a.id]
+                      const kamerali = kSayi === undefined ? null : kSayi > 0
+                      const disabled = kamerali === false
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (disabled) return
+                            setSeciliArac(a)
+                            setCanliKameraAcik(true)
+                          }}
+                          title={
+                            kSayi === undefined ? 'Kamera durumu kontrol ediliyor…' :
+                            disabled ? 'Bu araçta kamera algılanmıyor (Mobiltek: 0 kamera)' :
+                            `Canlı Kamera İzle (${kSayi} kamera)`
+                          }
+                          disabled={disabled}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            gap: 4,
+                            minWidth: 44, height: 34, borderRadius: 8,
+                            padding: '0 8px',
+                            background: disabled ? 'var(--surface-sunken)' : 'var(--brand-primary)',
+                            color: disabled ? 'var(--text-tertiary)' : '#fff',
+                            border: disabled ? '1px solid var(--border-default)' : 'none',
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            flexShrink: 0,
+                            opacity: kSayi === undefined ? 0.6 : 1,
+                          }}
+                        >
+                          <Video size={14} strokeWidth={1.75} />
+                          {kSayi !== undefined && (
+                            <span style={{ font: '600 11px/1 var(--font-sans)' }}>{kSayi}</span>
+                          )}
+                        </button>
+                      )
+                    })()}
                   </div>
                 )
               })}
