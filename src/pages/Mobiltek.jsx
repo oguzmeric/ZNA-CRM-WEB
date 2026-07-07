@@ -224,7 +224,7 @@ export default function Mobiltek() {
                           color: kontak ? 'var(--success)' : 'var(--text-tertiary)',
                           font: '600 11px/14px var(--font-sans)',
                         }}>
-                          {kontak ? <><Zap size={11} strokeWidth={2} /> Açık</> : <><ZapOff size={11} strokeWidth={2} /> Kapalı</>}
+                          {kontak ? <><Zap size={11} strokeWidth={2} /> Kontak açık</> : <><ZapOff size={11} strokeWidth={2} /> Kontak kapalı</>}
                         </span>
                       </td>
                     </tr>
@@ -288,6 +288,13 @@ export default function Mobiltek() {
                           <Gauge size={11} strokeWidth={1.5} /> {Number(a.gpsSpeed || 0)} km/s
                         </span>
                         <span>{kucukTarih(a.gpsTime)}</span>
+                      </div>
+                      <div style={{
+                        font: '600 11px/15px var(--font-sans)',
+                        color: kontak ? 'var(--success)' : 'var(--text-tertiary)',
+                        marginTop: 3,
+                      }}>
+                        {kontak ? 'Kontak açık' : 'Kontak kapalı'}
                       </div>
                     </div>
                     <button
