@@ -73,9 +73,12 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
       setHata('Stream URL alınamadı. API yanıtı: ' + JSON.stringify(cevap.veri).slice(0, 300))
       return
     }
-    // Mobiltek HTTP stream'ini Vercel HTTPS proxy üzerinden geçir
-    // (mixed content + CSP sorununu çözer)
-    url = url.replace(/^http:\/\/84\.51\.5\.140:8881\//, '/mobiltek-stream/')
+    // Mobiltek HTTP stream'ini Supabase edge fn üzerinden HTTPS proxy'le
+    // (mixed content + CSP + Vercel IP sorununu çözer)
+    if (url.startsWith('http://')) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hcrbwxeuscfibgmchdtt.supabase.co'
+      url = `${supabaseUrl}/functions/v1/mobiltek-stream?url=${encodeURIComponent(url)}`
+    }
     setStreamUrl(url)
   }
 
