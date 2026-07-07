@@ -36,13 +36,12 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
     })
     setLogId(yeniLog)
 
-    // Önce olası açık stream'i kapat (Mobiltek "Device busy" hatasını önler)
-    // Tüm kanallar için stop (2-3sn eşzamanlı)
-    await Promise.all([1, 2, 3, 4].map(k =>
-      canliKameraDurdur(arac.id, k).catch(() => null)
-    ))
-    // Kısa bekleme — Mobiltek stream'i kapatsın
-    await new Promise(r => setTimeout(r, 1500))
+    // Önce olası açık stream'leri kapat (Kanal 1 ve 2 sırayla, race yaşamasın)
+    for (const k of [1, 2]) {
+      await canliKameraDurdur(arac.id, k).catch(() => null)
+    }
+    // 3 sn bekleme — Mobiltek device state reset olsun
+    await new Promise(r => setTimeout(r, 3000))
 
     const cevap = await canliKameraBaslat(arac.id, secilenKanal)
     // yukleniyor state'i video 'canplay' event'inde kapatılıyor (aşağıda)
