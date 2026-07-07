@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare, FileText,
@@ -445,30 +446,40 @@ function GorevDetay() {
         )}
       </Card>
 
-      {/* Devam sebep seçim modalı */}
-      {devamSebepModal && (
+      {/* Devam sebep seçim modalı — Portal ile document.body'ye render */}
+      {devamSebepModal && createPortal(
         <div
           onClick={() => setDevamSebepModal(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 9999, padding: 20,
+            zIndex: 100000, padding: 20,
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'var(--surface)', borderRadius: 12, maxWidth: 420, width: '100%',
-              padding: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              background: '#ffffff',
+              color: '#0f172a',
+              borderRadius: 14, maxWidth: 460, width: '100%',
+              padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+              border: '1px solid #e2e8f0',
             }}
           >
-            <h3 style={{ margin: 0, marginBottom: 4, font: '600 16px/22px var(--font-sans)' }}>
+            <h3 style={{
+              margin: 0, marginBottom: 4, fontSize: 17, fontWeight: 700, color: '#0f172a',
+            }}>
               Devam Ediyor — Sebep
             </h3>
-            <p className="t-caption" style={{ marginBottom: 16 }}>
+            <p style={{
+              margin: 0, marginBottom: 18, fontSize: 12, color: '#64748b', lineHeight: 1.5,
+            }}>
               Seçim zorunlu değil, atlamak için "Belirtme" butonuna basabilirsin.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {DEVAM_SEBEPLERI.map(s => {
                 const secili = gorev.devamSebep === s.id
                 return (
@@ -481,21 +492,30 @@ function GorevDetay() {
                       toast.success(`Sebep: ${s.isim}`)
                     }}
                     style={{
-                      padding: '14px 10px', border: secili ? '2px solid var(--brand-primary)' : '1px solid var(--border-default)',
-                      borderRadius: 10, background: secili ? 'var(--brand-primary-soft)' : 'var(--surface)',
-                      cursor: 'pointer', display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', gap: 6,
+                      padding: '16px 10px',
+                      border: secili ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      background: secili ? '#eff6ff' : '#ffffff',
+                      color: '#0f172a',
+                      cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 8,
+                      transition: 'all 120ms',
                     }}
                   >
-                    <span style={{ fontSize: 24 }}>{s.ikon}</span>
-                    <span style={{ font: '600 13px/16px var(--font-sans)', color: 'var(--text-primary)', textAlign: 'center' }}>
+                    <span style={{ fontSize: 28, lineHeight: 1 }}>{s.ikon}</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 600, color: '#0f172a', textAlign: 'center', lineHeight: 1.3,
+                    }}>
                       {s.isim}
                     </span>
                   </button>
                 )
               })}
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+            <div style={{
+              display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end',
+            }}>
               {gorev.devamSebep && (
                 <button
                   onClick={async () => {
@@ -505,9 +525,9 @@ function GorevDetay() {
                     toast.success('Sebep kaldırıldı.')
                   }}
                   style={{
-                    background: 'transparent', border: '1px solid var(--border-default)',
-                    color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: 8,
-                    font: '500 13px/18px var(--font-sans)', cursor: 'pointer',
+                    background: '#ffffff', border: '1px solid #cbd5e1',
+                    color: '#64748b', padding: '9px 16px', borderRadius: 8,
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   Sebebi Kaldır
@@ -516,16 +536,17 @@ function GorevDetay() {
               <button
                 onClick={() => setDevamSebepModal(false)}
                 style={{
-                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
-                  color: 'var(--text-primary)', padding: '8px 14px', borderRadius: 8,
-                  font: '500 13px/18px var(--font-sans)', cursor: 'pointer',
+                  background: '#f1f5f9', border: '1px solid #cbd5e1',
+                  color: '#0f172a', padding: '9px 16px', borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >
                 Belirtme
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Yorumlar */}
