@@ -29,6 +29,9 @@ const GorusmeDetay = lazy(() => import('./pages/GorusmeDetay'))
 const Stok = lazy(() => import('./pages/Stok'))
 const StokHareketleri = lazy(() => import('./pages/StokHareketleri'))
 const StokOpsiyon = lazy(() => import('./pages/StokOpsiyon'))
+const StokKritik = lazy(() => import('./pages/StokKritik'))
+const StokSayim = lazy(() => import('./pages/StokSayim'))
+const DepoRaporlar = lazy(() => import('./pages/DepoRaporlar'))
 const ModelDetay = lazy(() => import('./pages/ModelDetay'))
 const SlaAyarlari = lazy(() => import('./pages/SlaAyarlari'))
 const Performans = lazy(() => import('./pages/Performans'))
@@ -277,6 +280,9 @@ function App() {
           <Route path="/stok/model/:stokKodu" element={<ModelDetay />} />
           <Route path="/stok-hareketleri" element={<StokHareketleri />} />
           <Route path="/stok-opsiyon" element={<StokOpsiyon />} />
+          <Route path="/stok-kritik" element={<StokKritik />} />
+          <Route path="/stok-sayim" element={<StokSayim />} />
+          <Route path="/depo-raporlar" element={<DepoRaporlar />} />
           <Route path="/trassir-lisanslar" element={<TrassirLisanslar />} />
           <Route path="/teklifler" element={<Teklifler />} />
           <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />

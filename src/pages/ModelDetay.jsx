@@ -12,6 +12,13 @@ import {
   snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
   SN_SILME_SEBEPLERI,
 } from '../services/stokService'
+import {
+  snArizaliIsaretle, snArizasiCoz, kalemArizaGecmisi,
+  rmaOlustur, rmaGeriDondu, kalemRMAGecmisi,
+  snRezerveEt, snRezerveBirak,
+  ARIZA_SEBEPLERI, RMA_SONUCLARI,
+} from '../services/depoService'
+import { AlertOctagon, Wrench, ShoppingCart, XCircle } from 'lucide-react'
 import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
 import { supabase } from '../lib/supabase'
@@ -51,6 +58,15 @@ const tarihFmt = (iso) => {
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// mini kare ikon buton stili — durum action'ları için
+const miniBtn = (color, aktif = false) => ({
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 28, height: 28, borderRadius: 6,
+  background: aktif ? color : 'var(--surface-sunken)',
+  border: `1px solid ${aktif ? color : 'var(--border-default)'}`,
+  color: aktif ? '#fff' : color, cursor: 'pointer',
+})
+
 const tarihKisa = (iso) => {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -77,6 +93,10 @@ function ModelDetay() {
   const [silinecekKalem, setSilinecekKalem] = useState(null)  // SN sil sebep modalı için
   const [silinenleriGoster, setSilinenleriGoster] = useState(false)
   const [gecmisModal, setGecmisModal] = useState(null)  // { seriNo, kayitlar }
+  const [arizaModal, setArizaModal] = useState(null)     // kalem — arızalı işaretle modalı
+  const [rmaModal, setRmaModal] = useState(null)          // kalem — RMA gönder modalı
+  const [rmaDonusModal, setRmaDonusModal] = useState(null) // kalem — RMA dönüş işle modalı
+  const [rezerveModal, setRezerveModal] = useState(null)  // kalem — rezerve teklif seç modalı
 
   useEffect(() => {
     Promise.all([
@@ -356,7 +376,12 @@ function ModelDetay() {
                     return (
                       <TR key={k.id} style={rowStil}>
                         <TD><CodeBadge>{k.seriNo || '—'}</CodeBadge></TD>
-                        <TD>{d ? <Badge tone={durumTone[d.id] || 'neutral'}>{d.isim}</Badge> : '—'}</TD>
+                        <TD>
+                          {d ? <Badge tone={durumTone[d.id] || 'neutral'}>{d.isim}</Badge> : '—'}
+                          {k.rezerveTeklifId && (
+                            <Badge tone="brand" style={{ marginLeft: 4 }} title="Bir teklife rezerve edilmiş">🔖 Rezerve</Badge>
+                          )}
+                        </TD>
                         <TD>
                           {teknisyen ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#a855f7', fontWeight: 500 }}>
@@ -396,20 +421,111 @@ function ModelDetay() {
                         <TD style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                             {!k.silindi && k.durum === 'depoda' && (
-                              <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
-                                onClick={() => setSeciliKalem(k)}>
-                                Teknisyene Ver
-                              </Button>
+                              <>
+                                <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
+                                  onClick={() => setSeciliKalem(k)}>
+                                  Teknisyene Ver
+                                </Button>
+                                <button
+                                  onClick={() => setArizaModal({ kalem: k, yeniDurum: 'arizali_depoda' })}
+                                  title="Arızalı olarak işaretle"
+                                  style={miniBtn('#f59e0b')}
+                                >
+                                  <AlertOctagon size={12} strokeWidth={1.5} />
+                                </button>
+                                {!k.rezerveTeklifId ? (
+                                  <button
+                                    onClick={() => setRezerveModal(k)}
+                                    title="Rezerve et (bir teklif için)"
+                                    style={miniBtn('#8b5cf6')}
+                                  >
+                                    <ShoppingCart size={12} strokeWidth={1.5} />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`${k.seriNo} rezervi kaldırılsın mı?`)) return
+                                      await snRezerveBirak(k.id); setYenile(y => y + 1)
+                                    }}
+                                    title="Rezervi kaldır"
+                                    style={miniBtn('#8b5cf6', true)}
+                                  >
+                                    <XCircle size={12} strokeWidth={1.5} />
+                                  </button>
+                                )}
+                              </>
                             )}
                             {!k.silindi && k.durum === 'teknisyende' && (
+                              <>
+                                <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
+                                  onClick={async () => {
+                                    if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
+                                    await snDepoyaCek(k.id)
+                                    setYenile(y => y + 1)
+                                  }}>
+                                  Depoya Çek
+                                </Button>
+                                <button
+                                  onClick={() => setArizaModal({ kalem: k, yeniDurum: 'arizada' })}
+                                  title="Teknisyende arızalandı"
+                                  style={miniBtn('#f59e0b')}
+                                >
+                                  <AlertOctagon size={12} strokeWidth={1.5} />
+                                </button>
+                              </>
+                            )}
+                            {!k.silindi && k.durum === 'arizali_depoda' && (
+                              <>
+                                <Button size="sm" variant="secondary" iconLeft={<Wrench size={12} strokeWidth={1.5} />}
+                                  onClick={() => setRmaModal(k)}>
+                                  Tamire Gönder
+                                </Button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`${k.seriNo} onarıldı olarak işaretlensin ve depoya alınsın mı?`)) return
+                                    // Açık arıza kaydını çöz
+                                    const list = await kalemArizaGecmisi(k.id)
+                                    const acik = list.find(x => !x.cozuldu_tarih)
+                                    if (acik) await snArizasiCoz(acik.id, { cozum_notu: 'Depoda onarıldı', yeniDurum: 'depoda' })
+                                    else await snDepoyaCek(k.id)
+                                    setYenile(y => y + 1)
+                                  }}
+                                  title="Onarıldı — Depoya al"
+                                  style={miniBtn('#10b981')}
+                                >
+                                  ✓
+                                </button>
+                              </>
+                            )}
+                            {!k.silindi && k.durum === 'arizada' && (
                               <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
                                 onClick={async () => {
-                                  if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
-                                  await snDepoyaCek(k.id)
+                                  if (!confirm(`${k.seriNo} depoya (arızalı depoda) alınsın mı?`)) return
+                                  await snArizaliIsaretle(k.id, { yeniDurum: 'arizali_depoda', sebep: 'diger', aciklama: 'Teknisyenden arızalı geri geldi' })
                                   setYenile(y => y + 1)
                                 }}>
-                                Depoya Çek
+                                Depoya Al (arızalı)
                               </Button>
+                            )}
+                            {!k.silindi && k.durum === 'tamirde' && (
+                              <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
+                                onClick={async () => {
+                                  const list = await kalemRMAGecmisi(k.id)
+                                  const acik = list.find(x => !x.geri_donus_tarih)
+                                  if (!acik) return alert('Açık RMA kaydı bulunamadı.')
+                                  setRmaDonusModal({ kalem: k, rma: acik })
+                                }}>
+                                RMA Dönüşü
+                              </Button>
+                            )}
+                            {!k.silindi && k.durum === 'sahada' && (
+                              <button
+                                onClick={() => setArizaModal({ kalem: k, yeniDurum: 'arizali_depoda' })}
+                                title="Müşteriden arızalı iade"
+                                style={miniBtn('#f59e0b')}
+                              >
+                                <AlertOctagon size={12} strokeWidth={1.5} />
+                              </button>
                             )}
                             {/* Geçmiş */}
                             <button
@@ -667,8 +783,297 @@ function ModelDetay() {
           onKapat={() => setGecmisModal(null)}
         />
       )}
+
+      {arizaModal && (
+        <ArizaModal
+          {...arizaModal}
+          personel={personelListe}
+          musteriMap={musteriMap}
+          onKapat={() => setArizaModal(null)}
+          onKaydet={async (payload) => {
+            await snArizaliIsaretle(arizaModal.kalem.id, { ...payload, yeniDurum: arizaModal.yeniDurum })
+            setArizaModal(null); setYenile(y => y + 1)
+          }}
+        />
+      )}
+
+      {rmaModal && (
+        <RMAModal
+          kalem={rmaModal}
+          onKapat={() => setRmaModal(null)}
+          onKaydet={async (payload) => {
+            await rmaOlustur(rmaModal.id, payload)
+            setRmaModal(null); setYenile(y => y + 1)
+          }}
+        />
+      )}
+
+      {rmaDonusModal && (
+        <RMADonusModal
+          kalem={rmaDonusModal.kalem}
+          rma={rmaDonusModal.rma}
+          onKapat={() => setRmaDonusModal(null)}
+          onKaydet={async (payload) => {
+            await rmaGeriDondu(rmaDonusModal.rma.id, payload)
+            setRmaDonusModal(null); setYenile(y => y + 1)
+          }}
+        />
+      )}
+
+      {rezerveModal && (
+        <RezerveModal
+          kalem={rezerveModal}
+          onKapat={() => setRezerveModal(null)}
+          onKaydet={async (teklifId) => {
+            await snRezerveEt(rezerveModal.id, teklifId)
+            setRezerveModal(null); setYenile(y => y + 1)
+          }}
+        />
+      )}
     </div>
   )
+}
+
+// ─────────────────────────────────────────────────────────────
+// ArizaModal — SN'i arızalı işaretle
+// ─────────────────────────────────────────────────────────────
+function ArizaModal({ kalem, yeniDurum, personel, musteriMap, onKapat, onKaydet }) {
+  const [sebep, setSebep] = useState('ariza_uretici')
+  const [aciklama, setAciklama] = useState('')
+  const [teknisyenId, setTeknisyenId] = useState(kalem.teknisyenId || '')
+  const [musteriId, setMusteriId] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const kaynakGoster = yeniDurum === 'arizali_depoda'
+  const musteriler = [...musteriMap.values()]
+  const kaydet = async () => {
+    setKaydediliyor(true)
+    try {
+      await onKaydet({
+        sebep, aciklama,
+        geldigi_teknisyen_id: teknisyenId ? Number(teknisyenId) : null,
+        geldigi_musteri_id: musteriId ? Number(musteriId) : null,
+      })
+    } finally { setKaydediliyor(false) }
+  }
+  return (
+    <ModalKutu onKapat={onKapat} baslik="Arızalı Olarak İşaretle" alt={`SN: ${kalem.seriNo}`}>
+      <FieldLabel>Sebep</FieldLabel>
+      <select value={sebep} onChange={e => setSebep(e.target.value)} style={selectStil}>
+        {ARIZA_SEBEPLERI.map(s => <option key={s.id} value={s.id}>{s.ad}</option>)}
+      </select>
+
+      <FieldLabel style={{ marginTop: 14 }}>Açıklama (isteğe bağlı)</FieldLabel>
+      <textarea rows={3} value={aciklama} onChange={e => setAciklama(e.target.value)}
+        placeholder="Belirti, hata mesajı vs."
+        style={{ ...selectStil, resize: 'vertical', fontFamily: 'inherit' }} />
+
+      {kaynakGoster && (
+        <>
+          <FieldLabel style={{ marginTop: 14 }}>Kimden geldi? (isteğe bağlı)</FieldLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <select value={teknisyenId} onChange={e => setTeknisyenId(e.target.value)} style={selectStil}>
+              <option value="">— Teknisyen seç —</option>
+              {personel.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
+            </select>
+            <select value={musteriId} onChange={e => setMusteriId(e.target.value)} style={selectStil}>
+              <option value="">— Müşteri seç —</option>
+              {musteriler.map(m => <option key={m.id} value={m.id}>{m.firmaAdi || m.firma_adi || m.ad || `#${m.id}`}</option>)}
+            </select>
+          </div>
+        </>
+      )}
+
+      <ModalAksiyonlar onKapat={onKapat}>
+        <Button variant="primary" size="sm" onClick={kaydet} disabled={kaydediliyor}>
+          {kaydediliyor ? 'Kaydediliyor…' : 'Arızalı İşaretle'}
+        </Button>
+      </ModalAksiyonlar>
+    </ModalKutu>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// RMAModal — tedarikçiye/servise gönder
+// ─────────────────────────────────────────────────────────────
+function RMAModal({ kalem, onKapat, onKaydet }) {
+  const [tedarikci, setTedarikci] = useState(kalem.marka || '')
+  const [kargoNo, setKargoNo] = useState('')
+  const [tahminiDonus, setTahminiDonus] = useState('')
+  const [notlar, setNotlar] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const kaydet = async () => {
+    if (!tedarikci.trim()) return alert('Tedarikçi adı zorunlu.')
+    setKaydediliyor(true)
+    try {
+      await onKaydet({
+        tedarikci_ad: tedarikci.trim(),
+        kargo_no: kargoNo.trim(),
+        tahmini_donus: tahminiDonus || null,
+        notlar: notlar.trim(),
+      })
+    } finally { setKaydediliyor(false) }
+  }
+  return (
+    <ModalKutu onKapat={onKapat} baslik="Tamire Gönder (RMA)" alt={`SN: ${kalem.seriNo} → durum: tamirde`}>
+      <FieldLabel>Tedarikçi / Servis Adı</FieldLabel>
+      <input value={tedarikci} onChange={e => setTedarikci(e.target.value)}
+        placeholder="Örn: Hikvision Türkiye" style={selectStil} />
+
+      <FieldLabel style={{ marginTop: 14 }}>Kargo Takip No (isteğe bağlı)</FieldLabel>
+      <input value={kargoNo} onChange={e => setKargoNo(e.target.value)}
+        placeholder="MNG 1234567890" style={selectStil} />
+
+      <FieldLabel style={{ marginTop: 14 }}>Tahmini Dönüş Tarihi (isteğe bağlı)</FieldLabel>
+      <input type="date" value={tahminiDonus} onChange={e => setTahminiDonus(e.target.value)} style={selectStil} />
+
+      <FieldLabel style={{ marginTop: 14 }}>Notlar</FieldLabel>
+      <textarea rows={2} value={notlar} onChange={e => setNotlar(e.target.value)}
+        style={{ ...selectStil, resize: 'vertical', fontFamily: 'inherit' }} />
+
+      <ModalAksiyonlar onKapat={onKapat}>
+        <Button variant="primary" size="sm" onClick={kaydet} disabled={kaydediliyor}>
+          {kaydediliyor ? 'Kaydediliyor…' : 'Gönderim Oluştur'}
+        </Button>
+      </ModalAksiyonlar>
+    </ModalKutu>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// RMADonusModal — servisten geri geldi
+// ─────────────────────────────────────────────────────────────
+function RMADonusModal({ kalem, rma, onKapat, onKaydet }) {
+  const [sonuc, setSonuc] = useState('onarildi')
+  const [notlar, setNotlar] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const kaydet = async () => {
+    setKaydediliyor(true)
+    try { await onKaydet({ sonuc, notlar }) }
+    finally { setKaydediliyor(false) }
+  }
+  return (
+    <ModalKutu onKapat={onKapat} baslik="RMA Dönüşü İşle" alt={`SN: ${kalem.seriNo} — ${rma.tedarikci_ad}`}>
+      <FieldLabel>Sonuç</FieldLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+        {RMA_SONUCLARI.map(s => (
+          <button key={s.id} onClick={() => setSonuc(s.id)}
+            style={{
+              padding: '10px 12px', borderRadius: 8,
+              background: sonuc === s.id ? s.renk : 'var(--surface-sunken)',
+              color: sonuc === s.id ? '#fff' : 'var(--text-primary)',
+              border: `1px solid ${sonuc === s.id ? s.renk : 'var(--border-default)'}`,
+              cursor: 'pointer', fontWeight: 600, fontSize: 13,
+            }}>{s.ad}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
+        Onarıldı/Değiştirildi → depoya alınır. Kabul edilmedi → hurda.
+      </div>
+
+      <FieldLabel style={{ marginTop: 14 }}>Notlar</FieldLabel>
+      <textarea rows={2} value={notlar} onChange={e => setNotlar(e.target.value)}
+        style={{ ...selectStil, resize: 'vertical', fontFamily: 'inherit' }} />
+
+      <ModalAksiyonlar onKapat={onKapat}>
+        <Button variant="primary" size="sm" onClick={kaydet} disabled={kaydediliyor}>
+          {kaydediliyor ? 'Kaydediliyor…' : 'İşle'}
+        </Button>
+      </ModalAksiyonlar>
+    </ModalKutu>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// RezerveModal — teklif seç ve rezerve et
+// ─────────────────────────────────────────────────────────────
+function RezerveModal({ kalem, onKapat, onKaydet }) {
+  const [teklifler, setTeklifler] = useState([])
+  const [seciliId, setSeciliId] = useState('')
+  const [arama, setArama] = useState('')
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  useEffect(() => {
+    supabase.from('teklifler')
+      .select('id, teklif_no, firma_adi, tarih, durum')
+      .in('durum', ['taslak', 'gonderildi', 'onaylandi', 'onaylandı', 'kabul'])
+      .order('tarih', { ascending: false }).limit(200)
+      .then(({ data }) => setTeklifler(data || []))
+      .finally(() => setYukleniyor(false))
+  }, [])
+  const filtrelenen = teklifler.filter(t => {
+    if (!arama.trim()) return true
+    const q = arama.toLowerCase()
+    return String(t.teklif_no || '').toLowerCase().includes(q) ||
+           String(t.firma_adi || '').toLowerCase().includes(q)
+  })
+  return (
+    <ModalKutu onKapat={onKapat} baslik="Bir Teklife Rezerve Et" alt={`SN: ${kalem.seriNo}`}>
+      <input value={arama} onChange={e => setArama(e.target.value)}
+        placeholder="Teklif no / firma ara" style={selectStil} autoFocus />
+      <div style={{ maxHeight: 340, overflow: 'auto', marginTop: 10, border: '1px solid var(--border-default)', borderRadius: 8 }}>
+        {yukleniyor ? (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : filtrelenen.length === 0 ? (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}>Uygun teklif bulunamadı.</div>
+        ) : filtrelenen.map(t => (
+          <button key={t.id} onClick={() => setSeciliId(t.id)}
+            style={{
+              display: 'flex', width: '100%', justifyContent: 'space-between',
+              padding: '10px 12px', borderBottom: '1px solid var(--border-default)',
+              background: seciliId === t.id ? 'rgba(139,92,246,0.12)' : 'transparent',
+              border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
+            }}>
+            <span><strong>{t.teklif_no}</strong> — {t.firma_adi}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{t.tarih} · {t.durum}</span>
+          </button>
+        ))}
+      </div>
+      <ModalAksiyonlar onKapat={onKapat}>
+        <Button variant="primary" size="sm" disabled={!seciliId || kaydediliyor}
+          onClick={async () => { setKaydediliyor(true); try { await onKaydet(seciliId) } finally { setKaydediliyor(false) } }}>
+          {kaydediliyor ? 'Rezerve ediliyor…' : 'Rezerve Et'}
+        </Button>
+      </ModalAksiyonlar>
+    </ModalKutu>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ortak: modal kutusu, form field, aksiyon
+// ─────────────────────────────────────────────────────────────
+function ModalKutu({ baslik, alt, children, onKapat }) {
+  return (
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 12, padding: 24, maxWidth: 520, width: '100%', maxHeight: '85vh', overflow: 'auto',
+        border: '1px solid var(--border-default)',
+      }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>{baslik}</h3>
+        {alt && <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16, fontFamily: 'monospace' }}>{alt}</div>}
+        {children}
+      </div>
+    </div>
+  )
+}
+function FieldLabel({ children, style }) {
+  return <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, ...style }}>{children}</label>
+}
+function ModalAksiyonlar({ onKapat, children }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+      <Button variant="secondary" size="sm" onClick={onKapat}>İptal</Button>
+      {children}
+    </div>
+  )
+}
+const selectStil = {
+  width: '100%', padding: '10px 12px', borderRadius: 8,
+  border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+  color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box',
 }
 
 function SnGecmisModal({ seriNo, kayitlar, onKapat }) {

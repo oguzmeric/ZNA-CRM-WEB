@@ -14,6 +14,7 @@ import {
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
 import FloatingZeynaButton from '../components/FloatingZeynaButton'
+import GlobalBarkodAra from '../components/GlobalBarkodAra'
 import { Avatar } from '../components/ui'
 import { useMenuSiralama } from '../hooks/useMenuSiralama'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -989,6 +990,7 @@ function MainLayout({ children }) {
       <ThemePaneli acik={temaPaneliAcik} kapat={() => setTemaPaneliAcik(false)} />
       <FloatingSohbetButton />
       <FloatingZeynaButton />
+      <GlobalBarkodAra />
     </div>
   )
 }

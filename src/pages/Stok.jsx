@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 import {
   Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList,
   ArrowLeftRight, Image as ImageIcon, AlertTriangle, X, Tag, Hash,
+  ClipboardCheck, BarChart3,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -97,11 +98,13 @@ function Stok() {
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       stokKalemOzetleriniGetir(),
+      tumSeriNumaralariniGetir(),
     ])
-      .then(([urunData, hareketData, kalemOzet]) => {
+      .then(([urunData, hareketData, kalemOzet, snMap]) => {
         setUrunler(urunData || [])
         setHareketler(hareketData || [])
         setKalemOzetleri(kalemOzet || new Map())
+        setGlobalSN(snMap || new Map())
       })
       .catch(err => console.error('[Stok yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -500,9 +503,19 @@ function Stok() {
     toast.success('Ürün silindi.')
   }
 
-  const gorunenUrunler = urunler.filter((u) =>
-    trContains(`${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''}`, arama)
-  )
+  // Arama: normal metin + SN eşleşmesi (SN girildiğinde ilgili ürünü göster)
+  const aramaSN = arama.trim().toLowerCase()
+  const snEslesenKod = aramaSN.length >= 3 ? globalSN.get(aramaSN) : null
+  const gorunenUrunler = urunler.filter((u) => {
+    if (snEslesenKod && u.stokKodu === snEslesenKod) return true
+    if (aramaSN && aramaSN.length >= 3) {
+      // Kısmi SN eşleşmesi de: globalSN içinde SN aramada geçenler var mı?
+      for (const [sn, kod] of globalSN) {
+        if (sn.includes(aramaSN) && u.stokKodu === kod) return true
+      }
+    }
+    return trContains(`${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''}`, arama)
+  })
 
   const toplamSayfa = Math.max(1, Math.ceil(gorunenUrunler.length / sayfaBoyutu))
   const aktifSayfa = Math.min(sayfa, toplamSayfa)
@@ -541,6 +554,9 @@ function Stok() {
           <input ref={dosyaRef} type="file" accept=".xlsx,.xls" onChange={excelOku} style={{ display: 'none' }} />
           <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>Opsiyonlar</Button>
           <Button variant="secondary" size="sm" iconLeft={<ArrowLeftRight size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-hareketleri')}>Hareketler</Button>
+          <Button variant="secondary" size="sm" iconLeft={<AlertTriangle size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-kritik')}>Kritik Seviye</Button>
+          <Button variant="secondary" size="sm" iconLeft={<ClipboardCheck size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-sayim')}>Sayım</Button>
+          <Button variant="secondary" size="sm" iconLeft={<BarChart3 size={13} strokeWidth={1.5} />} onClick={() => navigate('/depo-raporlar')}>Depo Raporları</Button>
           <Button variant="primary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.5} />} onClick={formAc}>Yeni ürün</Button>
         </div>
       </div>
@@ -578,8 +594,13 @@ function Stok() {
           <SearchInput
             value={arama}
             onChange={(e) => setArama(e.target.value)}
-            placeholder="Stok kodu, adı veya marka ara…"
+            placeholder="Stok kodu, adı, marka veya SN ara…"
           />
+          {snEslesenKod && (
+            <div style={{ fontSize: 11, color: 'var(--accent-primary)', marginTop: 4 }}>
+              🔎 SN eşleşti — {snEslesenKod}
+            </div>
+          )}
         </div>
       </div>
 
