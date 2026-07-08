@@ -965,17 +965,50 @@ function Stok() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                       <p className="t-label" style={{ color: 'var(--brand-primary)' }}>
-                        Seri numaraları (<span className="tabular-nums">{form.seriKalemleri.length}</span>)
+                        Seri numaraları (<span className="tabular-nums">{form.seriKalemleri.filter(k => k.seriNo?.trim()).length}</span>)
                       </p>
                       <Button
                         variant="secondary"
                         iconLeft={<Plus size={12} strokeWidth={1.5} />}
                         onClick={() => setForm({ ...form, seriKalemleri: [...form.seriKalemleri, { seriNo: '', barkod: '', notlar: '' }] })}
                       >
-                        Satır ekle
+                        Satır ekle (manuel)
                       </Button>
+                    </div>
+
+                    {/* Barkod tarayıcı için hızlı toplu ekle textarea */}
+                    <div style={{ marginBottom: 10, padding: 10, background: 'var(--surface-card)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--brand-primary)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--brand-primary)', marginBottom: 6 }}>
+                        <Tag size={12} strokeWidth={1.5} />
+                        📷 Barkod tarayıcı ile toplu ekle
+                      </label>
+                      <textarea
+                        placeholder={'Barkod tarayıcıyı buraya odakla ve peşpeşe okut.\nHer okutmadan sonra otomatik yeni satıra geçer.\nYa da Excel/Word\'den kopyala‑yapıştır.\n\nÖrn:\nJB3062404010491\nJB3062404010492\nJB3062404010493'}
+                        rows={5}
+                        autoFocus
+                        onChange={(e) => {
+                          const lines = e.target.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+                          if (lines.length === 0) return
+                          // Mevcut boş satır varsa oradan itibaren doldur, yeni satırlar da ekle
+                          const yeni = lines.map(sn => ({ seriNo: sn, barkod: '', notlar: '' }))
+                          // Eğer sadece 1 boş varsayılan varsa değiştir, değilse birleştir
+                          const mevcutDolu = form.seriKalemleri.filter(k => k.seriNo?.trim())
+                          setForm({ ...form, seriKalemleri: [...mevcutDolu, ...yeni] })
+                          e.target.value = ''  // temizle, yeniden okumaya hazır
+                        }}
+                        style={{
+                          width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-default)',
+                          background: 'var(--surface-sunken)', color: 'var(--text-primary)',
+                          font: '400 13px/18px var(--font-mono, monospace)',
+                          resize: 'vertical', minHeight: 100, boxSizing: 'border-box',
+                        }}
+                      />
+                      <p className="t-caption" style={{ marginTop: 6, color: 'var(--text-tertiary)' }}>
+                        Barkod cihazı Enter (\n) gönderir → her okutma otomatik yeni satır → listeye eklenir.
+                      </p>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 384, overflowY: 'auto' }}>
