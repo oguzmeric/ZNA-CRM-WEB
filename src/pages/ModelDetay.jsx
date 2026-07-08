@@ -851,7 +851,24 @@ function ArizaModal({ kalem, yeniDurum, personel, musteriMap, onKapat, onKaydet 
   const [musteriId, setMusteriId] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const kaynakGoster = yeniDurum === 'arizali_depoda'
-  const musteriler = [...musteriMap.values()]
+  const [musteriArama, setMusteriArama] = useState('')
+  const musterilerRaw = [...musteriMap.values()]
+    .filter(m => m.durum !== 'pasif' && m.durum !== 'silindi')
+    .sort((a, b) => (a.firma || `${a.ad || ''} ${a.soyad || ''}`).localeCompare(
+      b.firma || `${b.ad || ''} ${b.soyad || ''}`, 'tr'))
+  const musteriEtiket = (m) => {
+    const firma = (m.firma || '').trim()
+    const kisi = `${m.ad || ''} ${m.soyad || ''}`.trim()
+    if (firma && kisi) return `${firma} — ${kisi}`
+    return firma || kisi || `#${m.id}`
+  }
+  const musteriler = musteriArama.trim()
+    ? musterilerRaw.filter(m => {
+        const q = musteriArama.toLocaleLowerCase('tr')
+        return String(musteriEtiket(m)).toLocaleLowerCase('tr').includes(q)
+          || String(m.kod || '').toLocaleLowerCase('tr').includes(q)
+      }).slice(0, 200)
+    : musterilerRaw.slice(0, 200)
   const kaydet = async () => {
     setKaydediliyor(true)
     try {
@@ -877,16 +894,31 @@ function ArizaModal({ kalem, yeniDurum, personel, musteriMap, onKapat, onKaydet 
       {kaynakGoster && (
         <>
           <FieldLabel style={{ marginTop: 14 }}>Kimden geldi? (isteğe bağlı)</FieldLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
             <select value={teknisyenId} onChange={e => setTeknisyenId(e.target.value)} style={selectStil}>
               <option value="">— Teknisyen seç —</option>
               {personel.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
             </select>
-            <select value={musteriId} onChange={e => setMusteriId(e.target.value)} style={selectStil}>
-              <option value="">— Müşteri seç —</option>
-              {musteriler.map(m => <option key={m.id} value={m.id}>{m.firmaAdi || m.firma_adi || m.ad || `#${m.id}`}</option>)}
-            </select>
+            <input
+              value={musteriArama}
+              onChange={e => setMusteriArama(e.target.value)}
+              placeholder="Müşteri ara (firma / kişi / kod)…"
+              style={selectStil}
+            />
           </div>
+          <select value={musteriId} onChange={e => setMusteriId(e.target.value)} style={selectStil} size={Math.min(6, Math.max(1, musteriler.length))}>
+            <option value="">— Müşteri seç —</option>
+            {musteriler.map(m => (
+              <option key={m.id} value={m.id}>
+                {musteriEtiket(m)}{m.kod ? ` · ${m.kod}` : ''}
+              </option>
+            ))}
+          </select>
+          {musteriArama && (
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+              {musteriler.length} eşleşme
+            </div>
+          )}
         </>
       )}
 
@@ -1001,8 +1033,8 @@ function RezerveModal({ kalem, onKapat, onKaydet }) {
   const [kaydediliyor, setKaydediliyor] = useState(false)
   useEffect(() => {
     supabase.from('teklifler')
-      .select('id, teklif_no, firma_adi, tarih, durum')
-      .in('durum', ['taslak', 'gonderildi', 'onaylandi', 'onaylandı', 'kabul'])
+      .select('id, teklif_no, firma_adi, tarih, onay_durumu')
+      .in('onay_durumu', ['bekliyor', 'takipte', 'kabul'])
       .order('tarih', { ascending: false }).limit(200)
       .then(({ data }) => setTeklifler(data || []))
       .finally(() => setYukleniyor(false))
@@ -1031,7 +1063,7 @@ function RezerveModal({ kalem, onKapat, onKaydet }) {
               border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
             }}>
             <span><strong>{t.teklif_no}</strong> — {t.firma_adi}</span>
-            <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{t.tarih} · {t.durum}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{t.tarih} · {t.onay_durumu}</span>
           </button>
         ))}
       </div>
