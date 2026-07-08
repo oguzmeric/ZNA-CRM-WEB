@@ -1151,8 +1151,9 @@ function Stok() {
             <TBody>
               {sayfadakiUrunler.map((u) => {
                 const kalemOzet = kalemOzetleri.get(u.stokKodu)
-                // seri_takipli urunde gercek bakiye = depodaki seri kalem sayisi (stokBakiye eski aggregated, yaniltici)
-                const seriTakipli = !!u.seriTakipli || !!kalemOzet
+                // S/N badge — sadece DB'deki seri_takipli true ise göster. Kalem varlığı fallback DEĞİL.
+                // Kullanıcı checkbox'ı kapatabilsin diye.
+                const seriTakipli = !!u.seriTakipli
                 const bakiye = seriTakipli ? (kalemOzet?.depoda ?? 0) : stokBakiye(u.stokKodu)
                 const opsiyon = opsiyonluMiktar(u.stokKodu)
                 const bos = bakiye - opsiyon
