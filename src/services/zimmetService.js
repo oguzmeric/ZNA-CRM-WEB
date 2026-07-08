@@ -13,7 +13,7 @@ const kalemiEnvantereCevir = (k) => ({
   id: k.id,
   kullanici_id: k.teknisyen_id,
   kullanici: k.kullanici,
-  zimmet_zamani: k.guncellendi || k.olusturuldu,
+  zimmet_zamani: k.guncelleme_tarih || k.olusturma_tarih,
   durum: 'yolda',
   stok_kalemi: {
     id: k.id,
@@ -28,13 +28,13 @@ export async function teknisyenAktifEnvanter(kullaniciId) {
   const { data, error } = await supabase
     .from('stok_kalemleri')
     .select(`
-      id, seri_no, stok_kodu, teknisyen_id, durum, olusturuldu, guncellendi,
+      id, seri_no, stok_kodu, teknisyen_id, durum, olusturma_tarih, guncelleme_tarih,
       urun:stok_kodu (id, ad, marka, model)
     `)
     .eq('teknisyen_id', kullaniciId)
     .eq('durum', 'teknisyende')
     .eq('silindi', false)
-    .order('guncellendi', { ascending: false })
+    .order('guncelleme_tarih', { ascending: false })
   if (error) throw error
   return (data || []).map(kalemiEnvantereCevir)
 }
@@ -44,14 +44,14 @@ export async function tumTeknisyenEnvanter() {
   const { data, error } = await supabase
     .from('stok_kalemleri')
     .select(`
-      id, seri_no, stok_kodu, teknisyen_id, durum, olusturuldu, guncellendi,
+      id, seri_no, stok_kodu, teknisyen_id, durum, olusturma_tarih, guncelleme_tarih,
       kullanici:teknisyen_id (id, ad, foto_url, unvan),
       urun:stok_kodu (id, ad, marka, model)
     `)
     .eq('durum', 'teknisyende')
     .eq('silindi', false)
     .not('teknisyen_id', 'is', null)
-    .order('guncellendi', { ascending: false })
+    .order('guncelleme_tarih', { ascending: false })
   if (error) throw error
   return (data || []).map(kalemiEnvantereCevir)
 }
