@@ -83,6 +83,15 @@ function Stok() {
   const [urunSNSet, setUrunSNSet] = useState(new Set())  // bu üründeki SN'ler
   const [globalSN, setGlobalSN] = useState(new Map())  // seri_no.lower → stok_kodu
 
+  // Yeni ürün modunda da seriTakipli açılınca globalSN yükle (duplicate kontrolü için)
+  useEffect(() => {
+    if (form.seriTakipli && !duzenleId && globalSN.size === 0) {
+      tumSeriNumaralariniGetir()
+        .then(gmap => setGlobalSN(gmap || new Map()))
+        .catch(() => {})
+    }
+  }, [form.seriTakipli, duzenleId])
+
   useEffect(() => {
     Promise.all([
       stokUrunleriniGetir(),
@@ -993,17 +1002,36 @@ function Stok() {
                           // Enter gelmeden hiçbir şey yapma — barkod cihazı karakter karakter yazıyor
                           if (!val.includes('\n')) return
                           const parcalar = val.split(/\r?\n/)
-                          // Son parça tamamlanmamış olabilir (Enter'sız kalan), onu textarea'da bırak
                           const tamamlananlar = parcalar.slice(0, -1).map(s => s.trim()).filter(Boolean)
                           const yarim = parcalar[parcalar.length - 1] || ''
                           if (tamamlananlar.length === 0) {
                             e.target.value = yarim
                             return
                           }
-                          const yeni = tamamlananlar.map(sn => ({ seriNo: sn, barkod: '', notlar: '' }))
                           const mevcutDolu = form.seriKalemleri.filter(k => k.seriNo?.trim())
-                          setForm({ ...form, seriKalemleri: [...mevcutDolu, ...yeni] })
-                          e.target.value = yarim  // yarım kalan text kaydedilir, kaybolmaz
+                          // Session içi + global DB duplicate kontrolü
+                          const sessionSet = new Set(mevcutDolu.map(k => k.seriNo.trim().toLowerCase()))
+                          const yeni = []
+                          const dublikeSession = [], dublikeGlobal = []
+                          for (const sn of tamamlananlar) {
+                            const k = sn.toLowerCase()
+                            if (sessionSet.has(k)) { dublikeSession.push(sn); continue }
+                            const digerStok = globalSN.get(k)
+                            if (digerStok) { dublikeGlobal.push({ sn, stok: digerStok }); continue }
+                            sessionSet.add(k)
+                            yeni.push({ seriNo: sn, barkod: '', notlar: '' })
+                          }
+                          if (yeni.length > 0) {
+                            setForm({ ...form, seriKalemleri: [...mevcutDolu, ...yeni] })
+                          }
+                          if (dublikeSession.length > 0) {
+                            toast.error(`Zaten okutulmuş: ${dublikeSession.slice(0, 3).join(', ')}${dublikeSession.length > 3 ? ` (+${dublikeSession.length - 3})` : ''}`)
+                          }
+                          if (dublikeGlobal.length > 0) {
+                            const ilk = dublikeGlobal[0]
+                            toast.error(`Başka üründe kayıtlı: ${ilk.sn} → ${ilk.stok}`)
+                          }
+                          e.target.value = yarim
                         }}
                         style={{
                           width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)',
