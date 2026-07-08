@@ -3,14 +3,16 @@ if (typeof window !== 'undefined') window.__MODEL_DETAY_VERSION__ = 'sn-ekle-v3'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
-  ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus,
+  ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus, User, PackageOpen,
 } from 'lucide-react'
 import {
   modelKalemleriniGetir, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
+  snTeknisyeneVer, snDepoyaCek,
 } from '../services/stokService'
 import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
+import { supabase } from '../lib/supabase'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard,
   EmptyState, Alert, Table, THead, TBody, TR, TH, TD,
@@ -61,11 +63,14 @@ function ModelDetay() {
   const [urun, setUrun] = useState(null)
   const [hareketler, setHareketler] = useState([])
   const [musteriMap, setMusteriMap] = useState(new Map())
+  const [teknisyenMap, setTeknisyenMap] = useState(new Map())
+  const [personelListe, setPersonelListe] = useState([])
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
+  const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
 
   useEffect(() => {
     Promise.all([
@@ -73,14 +78,21 @@ function ModelDetay() {
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       musterileriGetir(),
+      supabase.from('kullanicilar').select('id, ad, unvan, rol').order('ad'),
     ])
-      .then(([k, u, h, m]) => {
+      .then(([k, u, h, m, kullR]) => {
         setKalemler(k || [])
         setUrun((u || []).find(x => x.stokKodu === stokKodu) || null)
         setHareketler((h || []).filter(x => x.stokKodu === stokKodu))
         const map = new Map()
         ;(m || []).forEach(x => map.set(x.id, x))
         setMusteriMap(map)
+        const kullanicilar = kullR?.data || []
+        const tmap = new Map()
+        kullanicilar.forEach(kul => tmap.set(kul.id, kul))
+        setTeknisyenMap(tmap)
+        // Personel: yönetim (Oğuz/Ali/Ferdi) hariç herkes teknisyen olabilir
+        setPersonelListe(kullanicilar.filter(k => !/\b(oğuz|oguz|ali|ferdi)\b/i.test(k.ad || '')))
       })
       .catch(err => console.error('[ModelDetay yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -318,32 +330,28 @@ function ModelDetay() {
                   <TR>
                     <TH>S/N</TH>
                     <TH>Durum</TH>
+                    <TH>Teknisyen / Müşteri</TH>
                     <TH>Marka / Model</TH>
                     <TH>Barkod</TH>
-                    <TH>Müşteri</TH>
                     <TH>Tarih</TH>
+                    <TH style={{ textAlign: 'right' }}>Eylem</TH>
                   </TR>
                 </THead>
                 <TBody>
                   {filtrelenmis.map(k => {
                     const d = durumBul(k.durum)
                     const musteri = k.musteriId ? musteriMap.get(k.musteriId) : null
+                    const teknisyen = k.teknisyenId ? teknisyenMap.get(k.teknisyenId) : null
                     return (
                       <TR key={k.id}>
                         <TD><CodeBadge>{k.seriNo || '—'}</CodeBadge></TD>
                         <TD>{d ? <Badge tone={durumTone[d.id] || 'neutral'}>{d.isim}</Badge> : '—'}</TD>
                         <TD>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {k.marka && <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{k.marka}</span>}
-                            {k.model && <span className="t-caption">{k.model}</span>}
-                            {!k.marka && !k.model && '—'}
-                          </div>
-                        </TD>
-                        <TD>
-                          {k.barkod ? <span className="t-mono">{k.barkod}</span> : '—'}
-                        </TD>
-                        <TD>
-                          {musteri ? (
+                          {teknisyen ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#a855f7', fontWeight: 500 }}>
+                              <User size={12} strokeWidth={1.5} /> {teknisyen.ad}
+                            </span>
+                          ) : musteri ? (
                             <button
                               onClick={() => navigate(`/musteriler/${musteri.id}`)}
                               style={{
@@ -358,11 +366,39 @@ function ModelDetay() {
                           ) : '—'}
                         </TD>
                         <TD>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {k.marka && <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{k.marka}</span>}
+                            {k.model && <span className="t-caption">{k.model}</span>}
+                            {!k.marka && !k.model && '—'}
+                          </div>
+                        </TD>
+                        <TD>
+                          {k.barkod ? <span className="t-mono">{k.barkod}</span> : '—'}
+                        </TD>
+                        <TD>
                           {k.durum === 'sahada' && k.takilmaTarihi ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)' }}>
                               <Calendar size={12} strokeWidth={1.5} /> {tarihFmt(k.takilmaTarihi)}
                             </span>
                           ) : '—'}
+                        </TD>
+                        <TD style={{ textAlign: 'right' }}>
+                          {k.durum === 'depoda' && (
+                            <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
+                              onClick={() => setSeciliKalem(k)}>
+                              Teknisyene Ver
+                            </Button>
+                          )}
+                          {k.durum === 'teknisyende' && (
+                            <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
+                              onClick={async () => {
+                                if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
+                                await snDepoyaCek(k.id)
+                                setYenile(y => y + 1)
+                              }}>
+                              Depoya Çek
+                            </Button>
+                          )}
                         </TD>
                       </TR>
                     )
@@ -510,6 +546,65 @@ function ModelDetay() {
         urun={urun}
         onEklendi={() => setYenile(y => y + 1)}
       />
+
+      {/* Teknisyene Ver Modalı */}
+      {seciliKalem && (
+        <TeknisyeneVerModal
+          kalem={seciliKalem}
+          personel={personelListe}
+          onKapat={() => setSeciliKalem(null)}
+          onKaydet={async (teknisyenId) => {
+            await snTeknisyeneVer(seciliKalem.id, teknisyenId)
+            setSeciliKalem(null)
+            setYenile(y => y + 1)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function TeknisyeneVerModal({ kalem, personel, onKapat, onKaydet }) {
+  const [teknisyenId, setTeknisyenId] = useState('')
+  const [yukleniyor, setYukleniyor] = useState(false)
+  return (
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 12, padding: 24, maxWidth: 460, width: '100%',
+        border: '1px solid var(--border-default)',
+      }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>Teknisyene Ver</h3>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+          S/N: <span className="t-mono">{kalem.seriNo}</span>
+        </div>
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600 }}>Kime</label>
+        <select
+          value={teknisyenId}
+          onChange={e => setTeknisyenId(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 8,
+            border: '1px solid var(--border-default)',
+            background: 'var(--surface-sunken)', color: 'var(--text-primary)', fontSize: 14,
+          }}
+        >
+          <option value="">— Teknisyen seç —</option>
+          {personel.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
+        </select>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+          <Button variant="secondary" size="sm" onClick={onKapat} disabled={yukleniyor}>İptal</Button>
+          <Button variant="primary" size="sm" disabled={!teknisyenId || yukleniyor}
+            onClick={async () => {
+              setYukleniyor(true)
+              try { await onKaydet(Number(teknisyenId)) } finally { setYukleniyor(false) }
+            }}>
+            {yukleniyor ? 'Kaydediliyor…' : 'Ver'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
