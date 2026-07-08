@@ -998,7 +998,7 @@ function EsnCekButonu() {
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ limit: 2000 }),
+        body: JSON.stringify({ limit: 100 }),
       })
       const data = await r.json()
       if (!data?.ok) { alert('Çekilemedi: ' + (data?.hata || r.status)); return }
