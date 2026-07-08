@@ -4,11 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
   ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus, User, PackageOpen,
+  Pencil, Trash2,
 } from 'lucide-react'
 import {
   modelKalemleriniGetir, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
-  snTeknisyeneVer, snDepoyaCek,
+  snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil,
 } from '../services/stokService'
 import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
@@ -71,6 +72,7 @@ function ModelDetay() {
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
   const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
+  const [duzenlenenKalem, setDuzenlenenKalem] = useState(null)  // SN düzenleme modalı için
 
   useEffect(() => {
     Promise.all([
@@ -383,22 +385,50 @@ function ModelDetay() {
                           ) : '—'}
                         </TD>
                         <TD style={{ textAlign: 'right' }}>
-                          {k.durum === 'depoda' && (
-                            <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
-                              onClick={() => setSeciliKalem(k)}>
-                              Teknisyene Ver
-                            </Button>
-                          )}
-                          {k.durum === 'teknisyende' && (
-                            <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
-                              onClick={async () => {
-                                if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
-                                await snDepoyaCek(k.id)
-                                setYenile(y => y + 1)
+                          <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                            {k.durum === 'depoda' && (
+                              <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
+                                onClick={() => setSeciliKalem(k)}>
+                                Teknisyene Ver
+                              </Button>
+                            )}
+                            {k.durum === 'teknisyende' && (
+                              <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
+                                onClick={async () => {
+                                  if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
+                                  await snDepoyaCek(k.id)
+                                  setYenile(y => y + 1)
+                                }}>
+                                Depoya Çek
+                              </Button>
+                            )}
+                            <button
+                              onClick={() => setDuzenlenenKalem(k)}
+                              title="SN'i düzenle"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: 28, height: 28, borderRadius: 6,
+                                background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                                color: 'var(--text-secondary)', cursor: 'pointer',
                               }}>
-                              Depoya Çek
-                            </Button>
-                          )}
+                              <Pencil size={12} strokeWidth={1.5} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`${k.seriNo || 'Bu SN'} silinsin mi? Geri alınamaz.`)) return
+                                await snSil(k.id)
+                                setYenile(y => y + 1)
+                              }}
+                              title="SN'i sil"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: 28, height: 28, borderRadius: 6,
+                                background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                                color: 'var(--danger)', cursor: 'pointer',
+                              }}>
+                              <Trash2 size={12} strokeWidth={1.5} />
+                            </button>
+                          </div>
                         </TD>
                       </TR>
                     )
@@ -560,6 +590,83 @@ function ModelDetay() {
           }}
         />
       )}
+
+      {/* SN Düzenle Modalı */}
+      {duzenlenenKalem && (
+        <SnDuzenleModal
+          kalem={duzenlenenKalem}
+          onKapat={() => setDuzenlenenKalem(null)}
+          onKaydet={async (guncel) => {
+            await snGuncelle(duzenlenenKalem.id, guncel)
+            setDuzenlenenKalem(null)
+            setYenile(y => y + 1)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function SnDuzenleModal({ kalem, onKapat, onKaydet }) {
+  const [form, setForm] = useState({
+    seriNo: kalem.seriNo || '',
+    marka: kalem.marka || '',
+    model: kalem.model || '',
+    barkod: kalem.barkod || '',
+  })
+  const [yukleniyor, setYukleniyor] = useState(false)
+  const alan = (isim, val, place) => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600 }}>{isim}</label>
+      <input
+        value={form[val]}
+        onChange={e => setForm({ ...form, [val]: e.target.value })}
+        placeholder={place}
+        style={{
+          width: '100%', padding: '10px 12px', borderRadius: 8,
+          border: '1px solid var(--border-default)',
+          background: 'var(--surface-sunken)', color: 'var(--text-primary)',
+          fontSize: 14, boxSizing: 'border-box',
+          fontFamily: val === 'seriNo' || val === 'barkod' ? 'monospace' : 'inherit',
+        }}
+      />
+    </div>
+  )
+  return (
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 12, padding: 24, maxWidth: 460, width: '100%',
+        border: '1px solid var(--border-default)',
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>SN Düzenle</h3>
+        {alan('Seri No', 'seriNo', 'S/N')}
+        {alan('Marka', 'marka', 'HIKVISION')}
+        {alan('Model', 'model', 'DS-2CD1027G0-LUF')}
+        {alan('Barkod', 'barkod', 'Opsiyonel')}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <Button variant="secondary" size="sm" onClick={onKapat} disabled={yukleniyor}>İptal</Button>
+          <Button variant="primary" size="sm" disabled={!form.seriNo.trim() || yukleniyor}
+            onClick={async () => {
+              setYukleniyor(true)
+              try {
+                await onKaydet({
+                  seriNo: form.seriNo.trim(),
+                  marka: form.marka.trim() || null,
+                  model: form.model.trim() || null,
+                  barkod: form.barkod.trim() || null,
+                })
+              } catch (e) {
+                alert('Güncelleme hatası: ' + (e?.message || e))
+              } finally { setYukleniyor(false) }
+            }}>
+            {yukleniyor ? 'Kaydediliyor…' : 'Kaydet'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

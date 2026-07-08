@@ -237,6 +237,26 @@ export const snDepoyaCek = async (id) => {
   return toCamel(data)
 }
 
+// Bir SN'i güncelle (seri_no, marka, model, barkod)
+export const snGuncelle = async (id, alanlar) => {
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update(toSnake(alanlar))
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) { console.error('snGuncelle:', error.message); throw error }
+  invalidatePrefix('stok')
+  return toCamel(data)
+}
+
+// Bir SN'i sil
+export const snSil = async (id) => {
+  const { error } = await supabase.from('stok_kalemleri').delete().eq('id', id)
+  if (error) { console.error('snSil:', error.message); throw error }
+  invalidatePrefix('stok')
+}
+
 // Birden fazla S/N kalemi toplu ekle
 export const stokKalemleriToplu = async (kalemler) => {
   if (!kalemler?.length) return []
