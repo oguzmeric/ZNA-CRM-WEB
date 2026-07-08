@@ -271,10 +271,23 @@ export const snGuncelle = async (id, alanlar) => {
   return toCamel(data)
 }
 
-// Bir SN'i sil
+// Bir SN'i sil — otomatik olarak cikis hareketi de eklenir (sayaç senkron)
 export const snSil = async (id) => {
+  // Önce silineni oku (hareket için)
+  const { data: kalem } = await supabase.from('stok_kalemleri').select('stok_kodu, seri_no, marka').eq('id', id).maybeSingle()
   const { error } = await supabase.from('stok_kalemleri').delete().eq('id', id)
   if (error) { console.error('snSil:', error.message); throw error }
+  // Cikis hareketi ekle (sessizce, hata olsa da devam)
+  if (kalem?.stok_kodu) {
+    await supabase.from('stok_hareketleri').insert({
+      stok_kodu: kalem.stok_kodu,
+      stok_adi: kalem.marka || null,
+      hareket_tipi: 'cikis',
+      miktar: 1,
+      aciklama: `SN silindi: ${kalem.seri_no || id}`,
+      tarih: new Date().toISOString().split('T')[0],
+    }).then(({ error: eH }) => { if (eH) console.warn('SN sil hareket:', eH.message) })
+  }
   invalidatePrefix('stok')
 }
 
