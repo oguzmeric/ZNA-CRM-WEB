@@ -5,6 +5,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+// TR = UTC+3, toISOString() UTC'ye çevirdiği için local midnight bir gün geri gidebiliyor.
+// Local date string üretmek için manuel format.
+const localTarih = (d) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const gg = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${gg}`
+}
 const bugunBaslangic = () => {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -66,15 +74,16 @@ export default function Skor() {
   }
 
   const yukleIcerik = async () => {
-    const bugun = bugunBaslangic().toISOString().slice(0, 10)
-    const hafta = haftaBaslangic().toISOString().slice(0, 10)
-    const ay    = ayBaslangic().toISOString().slice(0, 10)
-    const yarin = new Date(); yarin.setDate(yarin.getDate() + 1)
-    const bitis = yarin.toISOString().slice(0, 10)
+    const bugun = localTarih(bugunBaslangic())
+    const hafta = localTarih(haftaBaslangic())
+    const ay    = localTarih(ayBaslangic())
+    // "Bugün" için bitis = bugün (RPC between inclusive, tek gün alsın)
+    // Hafta/Ay için bitis yine bugün (bu satırlar dahil, ileri tarih anlamsız)
+    const bitisBugun = bugun
     const [rBugun, rHafta, rAy] = await Promise.all([
-      supabase.rpc('skor_liderlik', { baslangic: bugun, bitis }),
-      supabase.rpc('skor_liderlik', { baslangic: hafta, bitis }),
-      supabase.rpc('skor_liderlik', { baslangic: ay,    bitis }),
+      supabase.rpc('skor_liderlik', { baslangic: bugun, bitis: bitisBugun }),
+      supabase.rpc('skor_liderlik', { baslangic: hafta, bitis: bitisBugun }),
+      supabase.rpc('skor_liderlik', { baslangic: ay,    bitis: bitisBugun }),
     ])
     const donusum = (rows) => (rows || []).map(r => ({
       id: r.kim,
