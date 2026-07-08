@@ -453,6 +453,13 @@ function ModelDetay() {
                                     <XCircle size={12} strokeWidth={1.5} />
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => setRmaModal(k)}
+                                  title="Servise / tamire gönder"
+                                  style={miniBtn('#ec4899')}
+                                >
+                                  <Wrench size={12} strokeWidth={1.5} />
+                                </button>
                               </>
                             )}
                             {!k.silindi && k.durum === 'teknisyende' && (
