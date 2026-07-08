@@ -655,7 +655,7 @@ function EsnwebPanel() {
       oncesi.setDate(bugun.getDate() - Number(gunFiltresi))
       const alt = oncesi.toISOString().slice(0, 10)
       const { data, error } = await supabase.from('esn_teklifler')
-        .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul')
+        .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul, crm_teklif_id')
         .eq('silindi', false)
         .gte('tarih', alt)
         .order('tarih', { ascending: false })
@@ -718,6 +718,8 @@ function EsnwebPanel() {
         alert('İçe aktarma hatası: ' + error.message)
         return
       }
+      // esn_teklifler.crm_teklif_id set — aynı teklifi tekrar aktarmayı önle
+      await supabase.from('esn_teklifler').update({ crm_teklif_id: data.id }).eq('fisno', t.fisno)
       navigate(`/teklifler/${data.id}`)
     } catch (e) {
       alert('Hata: ' + (e?.message || e))
@@ -798,7 +800,10 @@ function EsnwebPanel() {
                     background: acik ? 'var(--surface-sunken)' : 'transparent',
                     transition: 'background 120ms',
                   }}>
-                    <div style={{ fontWeight: 600, color: 'var(--brand-primary)', fontSize: 13 }}>#{t.evrak_no || '—'}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--brand-primary)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      #{t.evrak_no || '—'}
+                      {t.crm_teklif_id && <Check size={12} strokeWidth={2} color="var(--success)" title="CRM'e aktarılmış" />}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                       {t.tarih ? new Date(t.tarih).toLocaleDateString('tr-TR') : '—'}
                     </div>
@@ -859,15 +864,26 @@ function EsnwebPanel() {
                             fontSize: 12, color: 'var(--text-secondary)',
                             background: 'var(--surface-sunken)', borderTop: '1px solid var(--border-default)',
                           }}>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              iconLeft={<Download size={12} strokeWidth={1.5} />}
-                              onClick={() => crmeAktar(t)}
-                              disabled={importEdiliyor === t.fisno}
-                            >
-                              {importEdiliyor === t.fisno ? 'İçe aktarılıyor…' : "CRM'e İçe Aktar"}
-                            </Button>
+                            {t.crm_teklif_id ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                iconLeft={<Check size={12} strokeWidth={1.5} />}
+                                onClick={() => navigate(`/teklifler/${t.crm_teklif_id}`)}
+                              >
+                                CRM'de Aç
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                iconLeft={<Download size={12} strokeWidth={1.5} />}
+                                onClick={() => crmeAktar(t)}
+                                disabled={importEdiliyor === t.fisno}
+                              >
+                                {importEdiliyor === t.fisno ? 'İçe aktarılıyor…' : "CRM'e İçe Aktar"}
+                              </Button>
+                            )}
                             <div style={{ display: 'flex', gap: 20 }}>
                               {t.dovkod === 'D' && <span>Kur: <strong style={{ color: 'var(--text-primary)' }}>{kalemler[t.fisno][0]?.kur?.toFixed(4) || '—'}</strong></span>}
                               <span>Genel Toplam: <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>{fmtDov(t.genel_toplam, t.dovkod)}</strong></span>
