@@ -11,6 +11,9 @@ const buAy = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
+const fmtTarihSaat = (t) => t
+  ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : '—'
 
 export default function DepoRaporlar() {
   const [personel, setPersonel] = useState([])
@@ -101,7 +104,7 @@ export default function DepoRaporlar() {
             <TBody>
               {rapor.hareketler.map(h => (
                 <TR key={h.id}>
-                  <TD>{fmtTarih(h.tarih)}</TD>
+                  <TD>{fmtTarihSaat(h.tarih)}</TD>
                   <TD><CodeBadge>{h.stok_kodu}</CodeBadge></TD>
                   <TD><Badge tone="neutral">{h.hareket_tipi}</Badge></TD>
                   <TD style={{ fontSize: 12 }}>{h.aciklama}</TD>

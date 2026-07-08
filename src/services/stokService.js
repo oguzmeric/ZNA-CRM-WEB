@@ -251,7 +251,7 @@ const hareketEkle = async ({ stokKodu, stokAdi, hareketTipi, miktar, aciklama })
     hareket_tipi: hareketTipi,
     miktar,
     aciklama,
-    tarih: new Date().toISOString().split('T')[0],
+    tarih: new Date().toISOString(),
     kullanici_id: kullaniciId,
   })
 }

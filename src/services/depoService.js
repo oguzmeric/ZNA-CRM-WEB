@@ -21,7 +21,7 @@ const hareket = async ({ stokKodu, stokAdi, tip, aciklama }) => {
     hareket_tipi: tip,
     miktar: 1,
     aciklama,
-    tarih: new Date().toISOString().split('T')[0],
+    tarih: new Date().toISOString(),
     kullanici_id: uid,
   })
 }
