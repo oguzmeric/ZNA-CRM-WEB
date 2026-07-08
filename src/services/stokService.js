@@ -150,6 +150,7 @@ export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async
     supabase
       .from('stok_kalemleri')
       .select('stok_kodu, marka, model, durum')
+      .eq('silindi', false)  // sadece aktif
       .range(off, off + size - 1)
   )
   const map = new Map()
@@ -210,6 +211,7 @@ export const modelKalemleriniGetir = async (stokKodu) => {
       .from('stok_kalemleri')
       .select('*')
       .eq('stok_kodu', stokKodu)
+      .eq('silindi', false)   // varsayılan: sadece aktif SN'ler
       .order('guncelleme_tarih', { ascending: false })
       .range(off, off + size - 1)
   )
@@ -232,7 +234,29 @@ export const stokKalemEkle = async (kalem) => {
   return toCamel(data)
 }
 
-// Bir SN'i teknisyene ver — durum='teknisyende', teknisyen_id set
+// Şu anki kullanıcı ID'sini al (audit hareketleri için)
+const oturumKullaniciId = async () => {
+  const { data: sess } = await supabase.auth.getUser()
+  if (!sess?.user?.id) return null
+  const { data: kul } = await supabase.from('kullanicilar').select('id').eq('auth_id', sess.user.id).maybeSingle()
+  return kul?.id || null
+}
+
+// Ortak hareket ekleyici — kullanici_id otomatik
+const hareketEkle = async ({ stokKodu, stokAdi, hareketTipi, miktar, aciklama }) => {
+  const kullaniciId = await oturumKullaniciId()
+  await supabase.from('stok_hareketleri').insert({
+    stok_kodu: stokKodu,
+    stok_adi: stokAdi || null,
+    hareket_tipi: hareketTipi,
+    miktar,
+    aciklama,
+    tarih: new Date().toISOString().split('T')[0],
+    kullanici_id: kullaniciId,
+  })
+}
+
+// Bir SN'i teknisyene ver — durum='teknisyende', teknisyen_id set + audit
 export const snTeknisyeneVer = async (id, teknisyenId) => {
   const { data, error } = await supabase
     .from('stok_kalemleri')
@@ -241,12 +265,27 @@ export const snTeknisyeneVer = async (id, teknisyenId) => {
     .select()
     .single()
   if (error) { console.error('snTeknisyeneVer:', error.message); throw error }
+  // Audit hareketi ekle
+  if (data) {
+    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', teknisyenId).maybeSingle()
+    await hareketEkle({
+      stokKodu: data.stok_kodu,
+      stokAdi: data.marka || data.model,
+      hareketTipi: 'transfer_cikis',
+      miktar: 1,
+      aciklama: `SN teknisyene verildi: ${data.seri_no} → ${teknisyen?.ad || '?'}`,
+    })
+  }
   invalidatePrefix('stok')
   return toCamel(data)
 }
 
-// SN'i depoya çek — durum='depoda', teknisyen_id trigger ile null olur
+// SN'i depoya çek — durum='depoda', teknisyen_id trigger ile null olur + audit
 export const snDepoyaCek = async (id) => {
+  // Önce mevcut teknisyen bilgisini al
+  const { data: onceki } = await supabase.from('stok_kalemleri')
+    .select('stok_kodu, seri_no, marka, model, teknisyen_id')
+    .eq('id', id).maybeSingle()
   const { data, error } = await supabase
     .from('stok_kalemleri')
     .update({ durum: 'depoda' })
@@ -254,6 +293,16 @@ export const snDepoyaCek = async (id) => {
     .select()
     .single()
   if (error) { console.error('snDepoyaCek:', error.message); throw error }
+  if (data && onceki?.teknisyen_id) {
+    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', onceki.teknisyen_id).maybeSingle()
+    await hareketEkle({
+      stokKodu: data.stok_kodu,
+      stokAdi: data.marka || data.model,
+      hareketTipi: 'transfer_giris',
+      miktar: 1,
+      aciklama: `SN depoya çekildi: ${data.seri_no} ← ${teknisyen?.ad || '?'}`,
+    })
+  }
   invalidatePrefix('stok')
   return toCamel(data)
 }
@@ -281,14 +330,23 @@ export const SN_SILME_SEBEPLERI = [
   { id: 'diger',         ad: 'Diğer',                        ikon: '📝' },
 ]
 
-// Bir SN'i sil — sebep zorunlu, hareket olarak loglanır (audit trail)
-// snSil(id, { sebep, not }) — sebep SN_SILME_SEBEPLERI id'sinden
+// Bir SN'i SOFT SİL — silindi=true, geri getirilebilir + audit trail
 export const snSil = async (id, sebepBilgi = {}) => {
   const { sebep = 'diger', not = '' } = sebepBilgi
   const sebepObj = SN_SILME_SEBEPLERI.find(s => s.id === sebep) || SN_SILME_SEBEPLERI[SN_SILME_SEBEPLERI.length - 1]
-  // Önce silineni oku
-  const { data: kalem } = await supabase.from('stok_kalemleri').select('stok_kodu, seri_no, marka').eq('id', id).maybeSingle()
-  const { error } = await supabase.from('stok_kalemleri').delete().eq('id', id)
+  const kullaniciId = await oturumKullaniciId()
+  // Soft delete: silindi flag'i set, seri_no ve barkod aktif değil (partial unique index sayesinde)
+  const { data: kalem, error } = await supabase.from('stok_kalemleri')
+    .update({
+      silindi: true,
+      silindi_zamani: new Date().toISOString(),
+      silinme_sebebi: sebepObj.id,
+      silinme_notu: not || null,
+      silen_kullanici_id: kullaniciId,
+    })
+    .eq('id', id)
+    .select()
+    .single()
   if (error) { console.error('snSil:', error.message); throw error }
   // Cikis hareketi ekle (audit)
   if (kalem?.stok_kodu) {
@@ -297,16 +355,59 @@ export const snSil = async (id, sebepBilgi = {}) => {
       `Sebep: ${sebepObj.ad}`,
       not ? `Not: ${not}` : null,
     ].filter(Boolean).join(' — ')
-    await supabase.from('stok_hareketleri').insert({
-      stok_kodu: kalem.stok_kodu,
-      stok_adi: kalem.marka || null,
-      hareket_tipi: 'cikis',
+    await hareketEkle({
+      stokKodu: kalem.stok_kodu,
+      stokAdi: kalem.marka,
+      hareketTipi: 'cikis',
       miktar: 1,
       aciklama,
-      tarih: new Date().toISOString().split('T')[0],
-    }).then(({ error: eH }) => { if (eH) console.warn('SN sil hareket:', eH.message) })
+    })
   }
   invalidatePrefix('stok')
+}
+
+// Silinen bir SN'i geri getir — silindi=false, aktif olur
+export const snGeriGetir = async (id) => {
+  const { data: kalem, error } = await supabase.from('stok_kalemleri')
+    .update({
+      silindi: false,
+      silindi_zamani: null,
+      silinme_sebebi: null,
+      silinme_notu: null,
+      silen_kullanici_id: null,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) { console.error('snGeriGetir:', error.message); throw new Error(stokHataMesaji(error)) }
+  if (kalem?.stok_kodu) {
+    await hareketEkle({
+      stokKodu: kalem.stok_kodu,
+      stokAdi: kalem.marka,
+      hareketTipi: 'giris',
+      miktar: 1,
+      aciklama: `SN geri getirildi (silme iptal): ${kalem.seri_no}`,
+    })
+  }
+  invalidatePrefix('stok')
+}
+
+// Silinen SN'leri de dahil et
+export const modelKalemleriniGetirTumu = async (stokKodu, silinenlerDahil = false) => {
+  let q = supabase.from('stok_kalemleri').select('*').eq('stok_kodu', stokKodu)
+  if (!silinenlerDahil) q = q.eq('silindi', false)
+  const data = await pagedFetch((off, size) => q.order('guncelleme_tarih', { ascending: false }).range(off, off + size - 1))
+  return arrayToCamel(data) ?? []
+}
+
+// Bir SN'in tam geçmişi — bu ürünün stok_hareketleri'nde seri_no geçen kayıtları
+export const snGecmisi = async (seriNo, stokKodu) => {
+  const { data } = await supabase.from('stok_hareketleri')
+    .select('*, kullanici:kullanici_id (ad)')
+    .eq('stok_kodu', stokKodu)
+    .ilike('aciklama', `%${seriNo}%`)
+    .order('olusturma_tarih', { ascending: false })
+  return arrayToCamel(data) ?? []
 }
 
 // Birden fazla S/N kalemi toplu ekle
