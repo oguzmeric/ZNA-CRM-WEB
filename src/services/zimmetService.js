@@ -24,15 +24,16 @@ const kalemiEnvantereCevir = (k) => ({
 })
 
 // Yardımcı: stok kodlarına göre stok_urunler bilgilerini toplu çek
+// Not: stok_urunler'da kolon adları stok_adi + marka (ad/model yok)
 async function urunlerToplu(stokKodlari) {
   const benzersiz = Array.from(new Set((stokKodlari || []).filter(Boolean)))
   if (!benzersiz.length) return new Map()
   const { data, error } = await supabase
     .from('stok_urunler')
-    .select('stok_kodu, ad, marka, model')
+    .select('stok_kodu, stok_adi, marka')
     .in('stok_kodu', benzersiz)
   if (error) { console.error('[zimmet] urunlerToplu:', error); return new Map() }
-  return new Map((data || []).map(u => [u.stok_kodu, u]))
+  return new Map((data || []).map(u => [u.stok_kodu, { ad: u.stok_adi, marka: u.marka, model: null }]))
 }
 
 // Yardımcı: kullanıcı id → kullanıcı bilgisi map'i
@@ -84,16 +85,19 @@ export async function tumTeknisyenEnvanter() {
   }))
 }
 
-// SN ile stok kalemi bul (zimmetlemek için)
+// SN ile stok kalemi bul (zimmetlemek için) — embed yok, iki adım
 export async function stokKalemiBulSN(seriNo) {
   const { data, error } = await supabase
     .from('stok_kalemleri')
-    .select('id, seri_no, stok_kodu, urun:stok_kodu (ad, marka, model)')
+    .select('id, seri_no, stok_kodu, durum, silindi, marka, model')
     .eq('seri_no', seriNo.trim())
+    .eq('silindi', false)
     .limit(1)
     .maybeSingle()
-  if (error) throw error
-  return data
+  if (error) { console.error('[zimmet] stokKalemiBulSN:', error); throw error }
+  if (!data) return null
+  const urunMap = await urunlerToplu([data.stok_kodu])
+  return { ...data, urun: urunMap.get(data.stok_kodu) || { ad: null, marka: data.marka, model: data.model } }
 }
 
 // Zimmet ekle
