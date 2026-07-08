@@ -14,11 +14,13 @@ export function SegmentedControl({ options = [], value, onChange, size = 'md', s
       role="tablist"
       style={{
         display: 'inline-flex',
+        flexWrap: 'wrap',
         padding: 2,
         background: 'var(--surface-sunken)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-sm)',
-        height: H + 4,
+        minHeight: H + 4,
+        maxWidth: '100%',
         ...style,
       }}
     >
