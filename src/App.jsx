@@ -70,6 +70,7 @@ const Skor = lazy(() => import('./pages/Skor'))
 const Mobiltek = lazy(() => import('./pages/Mobiltek'))
 const AracYonetimi = lazy(() => import('./pages/AracYonetimi'))
 const FiloYonetimi = lazy(() => import('./pages/FiloYonetimi'))
+const Zimmet = lazy(() => import('./pages/Zimmet'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
@@ -148,16 +149,7 @@ function App() {
     )
   }
 
-  // Public leaderboard — ofis TV'sinde kiosk mod; login yok.
-  if (location.pathname === '/skor') {
-    return (
-      <Suspense fallback={<SayfaYukleniyor />}>
-        <Routes>
-          <Route path="/skor" element={<Skor />} />
-        </Routes>
-      </Suspense>
-    )
-  }
+  // /skor artık login zorunlu — herkese açık değil (veri ifşası riskini kaldırmak için).
 
   // Public tokenli paylasim linki — auth gate'in ONUNDE, herkese acik.
   // Musteri SMS/mail'den gelen link uzerinden teklif veya servis raporunu goruntuler.
@@ -221,6 +213,17 @@ function App() {
           <Route path="/teklifler/:id/yazdir" element={<TeklifYazdir />} />
           <Route path="/satislar/:id/yazdir" element={<FaturaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+
+  // /skor — login zorunlu ama MainLayout olmadan fullscreen (kiosk-mimarisi ama auth'lu)
+  if (location.pathname === '/skor') {
+    return (
+      <Suspense fallback={<SayfaYukleniyor />}>
+        <Routes>
+          <Route path="/skor" element={<Skor />} />
         </Routes>
       </Suspense>
     )
@@ -308,6 +311,7 @@ function App() {
           <Route path="/filo/belgeler" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
           <Route path="/filo/yakit" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
           <Route path="/filo/surucu" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
+          <Route path="/zimmet" element={<Zimmet />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
