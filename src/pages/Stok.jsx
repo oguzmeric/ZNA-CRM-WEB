@@ -1016,6 +1016,49 @@ function Stok() {
                       <p className="t-caption" style={{ marginTop: 6, color: 'var(--text-tertiary)' }}>
                         Karakter karakter yazma sırasında beklenir; Enter geldiğinde tamamlanan satır listeye eklenir.
                       </p>
+
+                      {/* Okutulan barkodlar — direkt burada listelensin */}
+                      {form.seriKalemleri.filter(k => k.seriNo?.trim()).length > 0 && (
+                        <div style={{ marginTop: 12, borderTop: '1px solid var(--border-default)', paddingTop: 10 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            ✓ Okutulanlar ({form.seriKalemleri.filter(k => k.seriNo?.trim()).length})
+                          </div>
+                          <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {form.seriKalemleri.map((k, i) => {
+                              if (!k.seriNo?.trim()) return null
+                              return (
+                                <div key={i} style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  gap: 8, padding: '6px 10px',
+                                  background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid var(--border-default)',
+                                }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', minWidth: 24 }}>#{i + 1}</span>
+                                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{k.seriNo}</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    aria-label="Kaldır"
+                                    onClick={() => {
+                                      const yeni = form.seriKalemleri.filter((_, idx) => idx !== i)
+                                      setForm({ ...form, seriKalemleri: yeni.length > 0 ? yeni : [{ seriNo: '', barkod: '', notlar: '' }] })
+                                    }}
+                                    style={{
+                                      width: 22, height: 22, borderRadius: 4,
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      background: 'transparent', border: '1px solid var(--border-default)',
+                                      color: 'var(--danger)', cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                  >
+                                    <X size={12} strokeWidth={2} />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 384, overflowY: 'auto' }}>
