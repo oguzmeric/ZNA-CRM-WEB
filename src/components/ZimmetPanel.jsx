@@ -11,6 +11,12 @@ import {
   demirbasEkle, demirbasIade, demirbasFotoYukle,
 } from '../services/zimmetService'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+
+// Yönetim ayrımı: aynı YonetimGuard mantığı (isim regex).
+// Kullanicilar.rol kolonuna güvenmiyoruz — bu CRM'de yönetici kimliği isim
+// üzerinden belirleniyor.
+const isYonetim = (ad) => /\b(oğuz|oguz|ali|ferdi)\b/i.test(String(ad || '').toLocaleLowerCase('tr'))
 
 const DEMIRBAS_KATEGORI = [
   { id: 'laptop', ad: 'Laptop', ikon: '💻' },
@@ -37,9 +43,10 @@ const R = {
 }
 
 export default function ZimmetPanel({ onKapat }) {
+  const { kullanici } = useAuth()
+  const kullaniciId = kullanici?.id
+  const yonetim = isYonetim(kullanici?.ad)
   const [sekme, setSekme] = useState('envanter')
-  const [rol, setRol] = useState(null)
-  const [kullaniciId, setKullaniciId] = useState(null)
   const [kullanicilar, setKullanicilar] = useState([])
   const [envanterListe, setEnvanterListe] = useState([])
   const [demirbasListe, setDemirbasListe] = useState([])
@@ -48,14 +55,9 @@ export default function ZimmetPanel({ onKapat }) {
 
   useEffect(() => {
     (async () => {
-      const { data: sess } = await supabase.auth.getUser()
-      const uid = sess?.user?.id
-      setKullaniciId(uid)
-      if (!uid) return
-      const { data: kul } = await supabase.from('kullanicilar').select('id, rol').eq('id', uid).maybeSingle()
-      setRol(kul?.rol)
-      const { data: liste } = await supabase.from('kullanicilar').select('id, ad, unvan, rol').eq('rol', 'personel').order('ad')
-      setKullanicilar(liste || [])
+      // Demirbaş ekleme modalı için teknisyen listesi (adminler dahil olmasın)
+      const { data: liste } = await supabase.from('kullanicilar').select('id, ad, unvan').order('ad')
+      setKullanicilar((liste || []).filter(k => !isYonetim(k.ad)))
     })()
   }, [])
 
@@ -63,7 +65,7 @@ export default function ZimmetPanel({ onKapat }) {
     if (!kullaniciId) return
     setYukleniyor(true)
     try {
-      if (rol === 'admin') {
+      if (yonetim) {
         setEnvanterListe(await tumTeknisyenEnvanter())
         setDemirbasListe(await tumDemirbaslar())
       } else {
@@ -77,7 +79,7 @@ export default function ZimmetPanel({ onKapat }) {
     }
   }
 
-  useEffect(() => { yukle() }, [kullaniciId, rol])
+  useEffect(() => { yukle() }, [kullaniciId, yonetim])
 
   // Escape ile kapat
   useEffect(() => {
@@ -97,8 +99,8 @@ export default function ZimmetPanel({ onKapat }) {
     return Array.from(map.values()).sort((a, b) => (a.kullanici.ad || '').localeCompare(b.kullanici.ad || '', 'tr'))
   }
 
-  const envanterGruplu = rol === 'admin' ? teknisyeneGoreGrupla(envanterListe) : null
-  const demirbasGruplu = rol === 'admin' ? teknisyeneGoreGrupla(demirbasListe) : null
+  const envanterGruplu = yonetim ? teknisyeneGoreGrupla(envanterListe) : null
+  const demirbasGruplu = yonetim ? teknisyeneGoreGrupla(demirbasListe) : null
 
   const icerik = (
     <div style={{
@@ -116,7 +118,7 @@ export default function ZimmetPanel({ onKapat }) {
             </div>
             <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: R.metin }}>Zimmet & Envanter</h1>
             <div style={{ color: R.metin2, fontSize: 13, marginTop: 4 }}>
-              {rol === 'admin' ? 'Tüm teknisyenlerin aktif kayıtları' : 'Sizdeki aktif kayıtlar'}
+              {yonetim ? 'Tüm teknisyenlerin aktif kayıtları' : 'Sizdeki aktif kayıtlar'}
             </div>
           </div>
           <button onClick={onKapat} style={{
@@ -147,7 +149,7 @@ export default function ZimmetPanel({ onKapat }) {
             })}
           </div>
 
-          {sekme === 'demirbas' && rol === 'admin' && (
+          {sekme === 'demirbas' && yonetim && (
             <button onClick={() => setEkleModal(true)} style={{
               padding: '10px 18px', borderRadius: 10,
               background: R.mor, color: '#fff', border: 'none',
@@ -156,7 +158,7 @@ export default function ZimmetPanel({ onKapat }) {
           )}
         </div>
 
-        {sekme === 'envanter' && rol === 'admin' && (
+        {sekme === 'envanter' && yonetim && (
           <div style={{ padding: 12, marginBottom: 16, background: R.panel, border: `1px solid ${R.border}`, borderRadius: 10, fontSize: 13, color: R.metin2 }}>
             💡 Envanter kayıtları servise SN taradığında otomatik gelir. Buradan sadece izleme yapılır.
           </div>
@@ -166,9 +168,9 @@ export default function ZimmetPanel({ onKapat }) {
         {yukleniyor ? (
           <div style={{ padding: 60, textAlign: 'center', color: R.metin2 }}>Yükleniyor…</div>
         ) : sekme === 'envanter' ? (
-          <EnvanterListe rol={rol} liste={envanterListe} gruplu={envanterGruplu} />
+          <EnvanterListe yonetim={yonetim} liste={envanterListe} gruplu={envanterGruplu} />
         ) : (
-          <DemirbasListe rol={rol} liste={demirbasListe} gruplu={demirbasGruplu} onIade={async (id) => {
+          <DemirbasListe yonetim={yonetim} liste={demirbasListe} gruplu={demirbasGruplu} onIade={async (id) => {
             if (!confirm('Bu demirbaş iade edildi olarak işaretlensin mi?')) return
             await demirbasIade(id)
             yukle()
@@ -176,7 +178,7 @@ export default function ZimmetPanel({ onKapat }) {
         )}
       </div>
 
-      {ekleModal && rol === 'admin' && (
+      {ekleModal && yonetim && (
         <DemirbasEkleModal
           kullanicilar={kullanicilar}
           onKapat={() => setEkleModal(false)}
@@ -189,9 +191,9 @@ export default function ZimmetPanel({ onKapat }) {
   return createPortal(icerik, document.body)
 }
 
-function EnvanterListe({ rol, liste, gruplu }) {
+function EnvanterListe({ yonetim, liste, gruplu }) {
   if (!liste.length) return <BosMesaj>Aktif envanter yok.</BosMesaj>
-  if (rol === 'admin' && gruplu) {
+  if (yonetim && gruplu) {
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         {gruplu.map(g => (
@@ -220,7 +222,7 @@ function EnvanterSatir({ kayit }) {
   )
 }
 
-function DemirbasListe({ rol, liste, gruplu, onIade }) {
+function DemirbasListe({ yonetim, liste, gruplu, onIade }) {
   if (!liste.length) return <BosMesaj>Aktif demirbaş zimmeti yok.</BosMesaj>
   const kartlariYaz = (kayitlar) => kayitlar.map(d => {
     const kat = DEMIRBAS_KATEGORI.find(k => k.id === d.kategori)
@@ -236,7 +238,7 @@ function DemirbasListe({ rol, liste, gruplu, onIade }) {
           <div style={{ fontSize: 12, color: R.metin2 }}>{d.aciklama || '—'}</div>
           <div style={{ fontSize: 11, color: R.metin3, marginTop: 2 }}>Verildi: {new Date(d.verildi_tarih).toLocaleDateString('tr-TR')}</div>
         </div>
-        {rol === 'admin' && (
+        {yonetim && (
           <button onClick={() => onIade(d.id)} style={{
             padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
           }}>İade Al</button>
@@ -244,7 +246,7 @@ function DemirbasListe({ rol, liste, gruplu, onIade }) {
       </div>
     )
   })
-  if (rol === 'admin' && gruplu) {
+  if (yonetim && gruplu) {
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         {gruplu.map(g => (
