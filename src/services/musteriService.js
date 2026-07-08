@@ -2,6 +2,9 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
+// Liste için — notlar, vergi_no, vergi_dairesi, adres, ilgili_kisiler detay ekranında lazım
+const MUSTERI_LISTE_KOLONLARI = 'id, ad, soyad, firma, unvan, telefon, email, sehir, durum, kod, olusturma_tarih, temsilci_kullanici_id'
+
 export const musterileriGetir = () => cached('musteriler:list', async () => {
   // Supabase default 1000 limit — pagination ile tümünü çek
   const hepsi = []
@@ -10,7 +13,7 @@ export const musterileriGetir = () => cached('musteriler:list', async () => {
   while (true) {
     const { data, error } = await supabase
       .from('musteriler')
-      .select('*')
+      .select(MUSTERI_LISTE_KOLONLARI)
       .order('olusturma_tarih', { ascending: false })
       .range(offset, offset + sayfaBoyut - 1)
     if (error) { console.error('musterileriGetir hata:', error.message); throw error }

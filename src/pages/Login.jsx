@@ -2,10 +2,12 @@
 // sağ tarafta sade login form. Müşteri portalı kullanıcıları da burayı görür,
 // o yüzden iç metrik/veri yok.
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, Shield, Lock, Clock, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import TurnstileWidget from '../components/TurnstileWidget'
+import { supabase } from '../lib/supabase'
 
 function Login() {
   const [kullaniciAdi, setKullaniciAdi] = useState('')
@@ -14,9 +16,12 @@ function Login() {
   const [hata, setHata] = useState('')
   const [onayMesaji, setOnayMesaji] = useState('') // onay bekliyor / reddedildi — ayrı görünüm
   const [yukleniyor, setYukleniyor] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
   const { girisYap } = useAuth()
+
+  const turnstileToken_yakala = useCallback((t) => setTurnstileToken(t), [])
 
   const hedef = location.state?.from?.pathname
     ? location.state.from.pathname + (location.state.from.search || '')
@@ -27,8 +32,22 @@ function Login() {
     setHata('')
     setOnayMesaji('')
     if (yukleniyor) return
+
     setYukleniyor(true)
     try {
+      // Turnstile opsiyonel: token varsa doğrula, yoksa brute-force kilidi ile
+      // devam et. Widget CDN sorunu yüzünden kullanıcıyı hapsetmiyoruz.
+      if (turnstileToken) {
+        const { data: dogrulama, error: dogrulamaHata } = await supabase.functions.invoke('turnstile-dogrula', {
+          body: { token: turnstileToken },
+        })
+        if (dogrulamaHata || !dogrulama?.ok) {
+          setHata('Robot doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.')
+          setYukleniyor(false)
+          return
+        }
+      }
+
       const basarili = await girisYap(kullaniciAdi, sifre)
       if (basarili) {
         navigate(hedef, { replace: true })
@@ -40,6 +59,8 @@ function Login() {
       // Onay bekliyor / reddedildi → kırmızı "hata" değil, ayrı bilgi görünümü
       if (err?.kod === 'ONAY_BEKLIYOR' || err?.kod === 'REDDEDILDI') {
         setOnayMesaji(err.message)
+      } else if (err?.kod === 'KILITLI') {
+        setHata(err.message)
       } else {
         setHata('Giriş sırasında hata: ' + (err?.message || 'bilinmeyen'))
       }
@@ -186,6 +207,8 @@ function Login() {
                   </div>
                 </div>
               )}
+
+              <TurnstileWidget onToken={turnstileToken_yakala} />
 
               <button type="submit" className="submit-btn" disabled={yukleniyor}>
                 {yukleniyor ? 'Giriş yapılıyor…' : (

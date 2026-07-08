@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { IdleTimeoutProvider } from './context/IdleTimeoutContext'
 import { ChatProvider } from './context/ChatContext'
 import { BildirimProvider } from './context/BildirimContext'
 import { AktiviteProvider } from './context/AktiviteContext'
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <ThemeProvider>
       <AuthProvider>
+        <IdleTimeoutProvider>
         <ServisTalebiProvider>
           <KargoProvider>
             <ToastProvider>
@@ -41,6 +43,7 @@ createRoot(document.getElementById('root')).render(
             </ToastProvider>
           </KargoProvider>
         </ServisTalebiProvider>
+        </IdleTimeoutProvider>
       </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

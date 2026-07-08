@@ -15,6 +15,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 const MOBILTEK_BASE = 'https://api.mobiltek.com.tr/v1'
+const MOBILTEK_BASE_V2 = 'https://api.mobiltek.com.tr/v2'
 const MOBILTEK_TOKEN_URL = 'https://api.mobiltek.com.tr/auth/realms/mobiltek/protocol/openid-connect/token'
 
 const CLIENT_ID     = Deno.env.get('MOBILTEK_CLIENT_ID') ?? ''
@@ -101,6 +102,19 @@ function yolToEndpoint(yol: string, params: Record<string, any> = {}): string {
 
   if (yol === 'vehicles') return `${MOBILTEK_BASE}/vehicles/${query}`
   if (yol === 'cameras') return `${MOBILTEK_BASE}/cameras${query}`
+  // Canlı kamera stream (v2): cameras-live/{aracId} → v2/cameras/{aracId}?channel=N&OfflineFlag=true
+  // OfflineFlag=true: DVR offline modda olsa bile Mobiltek komutu göndersin
+  // (Mobiltek yanıtından: "OfflineFlag is null or false to not switch offline commands")
+  if (yol.startsWith('cameras-live/')) {
+    const aracId = yol.split('/')[1]
+    const q = query ? `${query}&OfflineFlag=true` : '?OfflineFlag=true'
+    return `${MOBILTEK_BASE_V2}/cameras/${aracId}${q}`
+  }
+  // Canlı kamera durdur (v2): cameras-live-stop/{aracId} → v2/cameras/{aracId}/live/stop?channel=N
+  if (yol.startsWith('cameras-live-stop/')) {
+    const aracId = yol.split('/')[1]
+    return `${MOBILTEK_BASE_V2}/cameras/${aracId}/live/stop${query}`
+  }
   if (yol.startsWith('cameras/')) return `${MOBILTEK_BASE}/${yol}${query}`
   if (yol.startsWith('vehicles/')) return `${MOBILTEK_BASE}/${yol}${query}`
   if (yol === 'live-map') return `${MOBILTEK_BASE}/mapi/live-tracking-map-v2${query}`
@@ -147,32 +161,38 @@ serve(async (req) => {
   // Auth kontrolü — JWT header'dan kullanıcı
   const authHeader = req.headers.get('Authorization') || ''
   const token = authHeader.replace(/^Bearer\s+/i, '')
-  const { data: userData } = await sb.auth.getUser(token)
+  console.log(`[mobiltek-proxy] REQ user-agent="${req.headers.get('user-agent')?.slice(0, 80) || 'none'}" auth-header-len=${authHeader.length}`)
+
+  const { data: userData, error: authErr } = await sb.auth.getUser(token)
   const authUserId = userData?.user?.id
   if (!authUserId) {
-    return new Response(JSON.stringify({ ok: false, hata: 'yetkisiz' }), {
+    console.warn(`[mobiltek-proxy] YETKI_YOK reason=auth authErr="${authErr?.message || 'no user'}"`)
+    return new Response(JSON.stringify({ ok: false, hata: 'yetkisiz', debug_auth_err: authErr?.message || 'no user' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   // Kullanıcı profili ve yetki kontrolü
-  const { data: profil } = await sb
+  const { data: profil, error: profilErr } = await sb
     .from('kullanicilar')
     .select('id, rol, moduller')
     .eq('auth_id', authUserId)
     .maybeSingle()
 
   if (!profil) {
-    return new Response(JSON.stringify({ ok: false, hata: 'profil yok' }), {
+    console.warn(`[mobiltek-proxy] PROFIL_YOK auth_id=${authUserId} profilErr="${profilErr?.message || 'none'}"`)
+    return new Response(JSON.stringify({ ok: false, hata: 'profil yok', debug_auth_id: authUserId }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
   const yetkili = profil.rol === 'admin' || (profil.moduller || []).includes('arac_takip')
   if (!yetkili) {
-    return new Response(JSON.stringify({ ok: false, hata: 'arac_takip modülü yok' }), {
+    console.warn(`[mobiltek-proxy] YETKI_YOK reason=modul kullanici=${profil.id} rol=${profil.rol} moduller=${JSON.stringify(profil.moduller)}`)
+    return new Response(JSON.stringify({ ok: false, hata: 'arac_takip modülü yok', debug_kullanici_id: profil.id }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
+  console.log(`[mobiltek-proxy] AUTH_OK kullanici=${profil.id} rol=${profil.rol}`)
 
   // Rate limit
   if (!rateLimit(profil.id)) {
@@ -201,15 +221,25 @@ serve(async (req) => {
     try {
       const access = await getirToken(sb)
       const url = yolToEndpoint(yol, params)
+      // POST kullanılan yollar (canlı kamera durdurma)
+      const httpMethod = yol.startsWith('cameras-live-stop/') ? 'POST' : 'GET'
       const res = await fetch(url, {
+        method: httpMethod,
         headers: { Authorization: `Bearer ${access}` },
       })
       httpKod = res.status
       if (!res.ok) {
         const t = await res.text()
+        console.error(`[mobiltek-proxy] ${yol} → ${url} → ${res.status}:`, t.slice(0, 500))
         throw new Error(`Mobiltek ${res.status}: ${t.slice(0, 300)}`)
       }
-      veri = await res.json()
+      const rawText = await res.text()
+      console.log(`[mobiltek-proxy] ${yol} → ${url} → 200, body preview:`, rawText.slice(0, 300))
+      try {
+        veri = JSON.parse(rawText)
+      } catch {
+        veri = { raw: rawText }
+      }
     } catch (e: any) {
       if (e.message === 'MOBILTEK_CREDENTIALS_MISSING') {
         veri = mockCevap(yol)

@@ -2,6 +2,7 @@
 // Araç konumlarını marker olarak yerleştirir; seçili aracın markerı vurgulanır.
 
 import { useEffect, useRef } from 'react'
+// useRef zaten yukarıda import edildi
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -46,6 +47,24 @@ function OrtalayiciKontrol({ merkez, zoom = 13 }) {
   return null
 }
 
+// Seçili araç yoksa tüm araçları içeren bounds'a otomatik zoom (bir kez)
+function HepsiniGosterKontrol({ araclar, aktif }) {
+  const map = useMap()
+  const yapildi = useRef(false)
+  useEffect(() => {
+    if (!aktif || yapildi.current) return
+    const noktalar = araclar.filter(a => a.lat && a.lng).map(a => [Number(a.lat), Number(a.lng)])
+    if (noktalar.length === 0) return
+    if (noktalar.length === 1) {
+      map.flyTo(noktalar[0], 13, { duration: 0.7 })
+    } else {
+      map.fitBounds(noktalar, { padding: [40, 40], maxZoom: 12 })
+    }
+    yapildi.current = true
+  }, [araclar, aktif, map])
+  return null
+}
+
 export default function MobiltekHarita({ araclar = [], kameralar = [], seciliArac, onAracSec }) {
   // Türkiye ortasını başlangıç yap
   const varsayilanMerkez = [39.0, 35.0]
@@ -67,6 +86,8 @@ export default function MobiltekHarita({ araclar = [], kameralar = [], seciliAra
       {seciliArac && seciliArac.lat && (
         <OrtalayiciKontrol merkez={[Number(seciliArac.lat), Number(seciliArac.lng)]} zoom={13} />
       )}
+      <HepsiniGosterKontrol araclar={araclar} aktif={!seciliArac} />
+
       {araclar.map(a => {
         if (!a.lat || !a.lng) return null
         const kontak = a.ignition === '1' || a.engineStatus === 'on'

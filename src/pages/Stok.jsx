@@ -37,6 +37,7 @@ const bosForm = {
   katalogdaGoster: true,
   seriTakipli: false,
   seriKalemleri: [],
+  topluSN: '',  // Düzenleme modunda toplu SN yapıştırma
 }
 
 const bosOpsiyonForm = {
@@ -297,9 +298,10 @@ function Stok() {
       ilkStok: '',
       gorselUrl: u.gorselUrl || '',
       katalogdaGoster: u.katalogdaGoster !== false,
-      model: '',
-      seriTakipli: false,
+      model: u.model || '',
+      seriTakipli: !!u.seriTakipli,  // DB'den gerçek değeri al
       seriKalemleri: [],
+      topluSN: '',
     })
     setKodModu('manuel')
     setDuzenleId(u.id)
@@ -318,11 +320,44 @@ function Stok() {
       return
     }
     if (duzenleId) {
-      const { ilkStok, ...updateForm } = form
+      const { ilkStok, topluSN, seriKalemleri, ...updateForm } = form
       const guncellendi = await stokUrunGuncelle(duzenleId, updateForm)
       if (guncellendi) {
         setUrunler(prev => prev.map(u => u.id === duzenleId ? guncellendi : u))
-        if (ilkStok !== '' && Number(ilkStok) >= 0) {
+
+        // Toplu S/N ekleme — seri_takipli ürünler için
+        if (form.seriTakipli && topluSN?.trim()) {
+          const snListesi = topluSN.split('\n').map(s => s.trim()).filter(Boolean)
+          if (snListesi.length > 0) {
+            try {
+              const hazir = snListesi.map(sn => ({
+                stokKodu: form.stokKodu,
+                seriNo: sn,
+                barkod: null,
+                marka: form.marka || null,
+                model: form.model || form.stokAdi,
+                durum: 'depoda',
+                notlar: null,
+              }))
+              await stokKalemleriToplu(hazir)
+              const yeniOzet = await stokKalemOzetleriniGetir()
+              setKalemOzetleri(yeniOzet)
+              // Hareket kaydı ekle (giriş)
+              await stokHareketEkle({
+                stokKodu: form.stokKodu,
+                stokAdi: form.stokAdi,
+                hareketTipi: 'giris',
+                miktar: snListesi.length,
+                aciklama: `S/N ile toplu giriş (${snListesi.length} adet)`,
+                tarih: new Date().toISOString().split('T')[0],
+              })
+              toast.success(`${snListesi.length} adet S/N kaydedildi.`)
+            } catch (e) {
+              toast.error('S/N kayıtlarında hata: ' + (e?.message ?? 'bilinmiyor'))
+            }
+          }
+        } else if (ilkStok !== '' && Number(ilkStok) >= 0) {
+          // Seri takipsiz — sadece sayaç düzeltmesi
           const mevcutBakiye = stokBakiye(form.stokKodu)
           const yeniMiktar = Number(ilkStok)
           const fark = yeniMiktar - mevcutBakiye
@@ -724,6 +759,62 @@ function Stok() {
                 Müşteri katalogunda göster
               </span>
             </label>
+
+            {/* Düzenleme modunda seri_takipli checkbox — off ise Toplu S/N gizli */}
+            {duzenleId && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: form.seriTakipli ? 16 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.seriTakipli}
+                    onChange={(e) => setForm({ ...form, seriTakipli: e.target.checked, topluSN: e.target.checked ? form.topluSN : '' })}
+                    style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
+                  />
+                  <Tag size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+                  <span className="t-body-strong">Bu donanım S/N takipli (kamera, NVR, cihaz…)</span>
+                </label>
+              </div>
+            )}
+
+            {/* Toplu S/N ekle — düzenleme modunda seri_takipli ürünler için */}
+            {duzenleId && form.seriTakipli && (
+              <div style={{ marginTop: 4 }}>
+                <Label>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Tag size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+                    Toplu S/N ekle
+                  </span>
+                  <span style={{ marginLeft: 6, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                    (her satıra 1 seri numarası)
+                  </span>
+                </Label>
+                <textarea
+                  value={form.topluSN}
+                  onChange={(e) => setForm({ ...form, topluSN: e.target.value })}
+                  placeholder={'Örn.\nDS2CD1027-000001\nDS2CD1027-000002\nDS2CD1027-000003'}
+                  rows={6}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-default)',
+                    background: 'var(--surface-card)',
+                    color: 'var(--text-primary)',
+                    font: '400 13px/18px var(--font-mono, monospace)',
+                    resize: 'vertical',
+                    minHeight: 120,
+                  }}
+                />
+                <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
+                  {(() => {
+                    const say = form.topluSN.split('\n').map(s => s.trim()).filter(Boolean).length
+                    return say > 0
+                      ? `→ ${say} adet yeni S/N eklenecek + ${say} birim stok girişi oluşturulacak.`
+                      : 'Excel veya listeden kopyala‑yapıştır: her satırda 1 S/N.'
+                  })()}
+                </p>
+              </div>
+            )}
 
             {/* S/N takipli */}
             {!duzenleId && (

@@ -26,6 +26,7 @@ const tumModuller = [
   { id: 'raporlar',          isim: 'Raporlar' },
   { id: 'servis_talepleri',  isim: 'Servis Talepleri' },
   { id: 'demolar',           isim: 'Demolar' },
+  { id: 'arac_takip',        isim: 'Araç Takip (Mobiltek)' },
 ]
 
 const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [], musteriId: null }

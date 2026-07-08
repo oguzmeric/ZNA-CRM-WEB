@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react'
 import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff } from 'lucide-react'
 import { Card, Button, Badge, EmptyState } from '../components/ui'
-import { araclariGetir, kameralariGetir } from '../services/mobiltekService'
+import { araclariGetir, kameralariGetir, yakinlikTara, aktifYakinliklarGetir } from '../services/mobiltekService'
 import MobiltekHarita from '../components/MobiltekHarita'
+import CanliKameraModal from '../components/CanliKameraModal'
 
 const kucukTarih = (iso) => {
   if (!iso) return '—'
@@ -20,24 +21,64 @@ export default function Mobiltek() {
   const [seciliArac, setSeciliArac] = useState(null)
   const [kameralar, setKameralar] = useState([])
   const [webviewUrl, setWebviewUrl] = useState(null)
+  const [canliKameraAcik, setCanliKameraAcik] = useState(false)
+
+  // .NET Date format "/Date(1783358792000+0300)/" → ISO string
+  const parseNetDate = (s) => {
+    if (!s) return null
+    const m = String(s).match(/\/Date\((\d+)/)
+    if (m) return new Date(parseInt(m[1], 10)).toISOString()
+    return s
+  }
+
+  // Mobiltek response → düz mock formatına çevir
+  const normalizeArac = (v) => {
+    const loc = v['last-location'] || {}
+    return {
+      ...v,
+      plateNo: v.label || v.plateNo || null,
+      gpsSpeed: loc.speed ?? v.gpsSpeed ?? 0,
+      gpsTime: parseNetDate(loc.logdatetime ?? v.gpsTime),
+      lat: loc.latitude ?? v.lat ?? null,
+      lng: loc.longitude ?? v.lng ?? null,
+      direction: loc.dir ?? v.direction ?? 0,
+      ignition: loc.ignition ?? v.ignition ?? false,
+      address: loc.address ?? null,
+    }
+  }
+
+  const [sonGuncelleme, setSonGuncelleme] = useState(null)
+  const [yakinliklar, setYakinliklar] = useState([])
+  const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste'
 
   const yukle = async () => {
     setYukleniyor(true)
     const r = await araclariGetir()
     if (r) {
-      setAraclar(r.veri?.vehicles || [])
+      const ham = r.veri?.vehicles || []
+      setAraclar(ham.map(normalizeArac))
       setMock(r.mock)
+      setSonGuncelleme(new Date())
     }
     setYukleniyor(false)
+    // Yakınlık tara (sessiz) + aktif listeyi çek
+    yakinlikTara().catch(() => {})
+    aktifYakinliklarGetir().then(setYakinliklar).catch(() => {})
   }
-  useEffect(() => { yukle() }, [])
+
+  // İlk yükleme + 30 sn'de bir otomatik polling (canlı takip + yakınlık tarama)
+  useEffect(() => {
+    yukle()
+    const t = setInterval(yukle, 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   const aracSec = async (a) => {
     setSeciliArac(a)
     setKameralar([])
     setWebviewUrl(null)
-    const r = await kameralariGetir(a.id)
-    if (r) setKameralar(r.veri?.cameras || [])
+    // Not: Mobiltek v1 /cameras/{id} endpoint'i gerçekte yok — 500 dönüyor.
+    // Kamera adedi gösterimini kaldırdık. Kamerayı açmak için doğrudan v2 kullanılır.
   }
 
   return (
@@ -46,17 +87,160 @@ export default function Mobiltek() {
         <div>
           <h1 className="t-h1" style={{ margin: 0 }}>Mobiltek Araç Takip</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            {araclar.length} araç · {mock ? 'MOCK modu — kredensiyel bekleniyor' : 'canlı'}
+            {araclar.length} araç · {mock ? 'MOCK modu — kredensiyel bekleniyor' : 'canlı takip (30 sn)'}
+            {sonGuncelleme && (
+              <span style={{ marginLeft: 8, opacity: 0.6 }}>
+                · son güncelleme {sonGuncelleme.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {mock && <Badge tone="beklemede">MOCK</Badge>}
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+            {[
+              { id: 'harita', label: 'Harita', ikon: <MapPin size={13} strokeWidth={1.75} /> },
+              { id: 'liste', label: 'Liste', ikon: <Truck size={13} strokeWidth={1.75} /> },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setGorunum(t.id)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px',
+                  background: gorunum === t.id ? 'var(--brand-primary-soft)' : 'transparent',
+                  color: gorunum === t.id ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  border: 'none', cursor: 'pointer',
+                  font: '500 12px/16px var(--font-sans)',
+                }}
+              >
+                {t.ikon} {t.label}
+              </button>
+            ))}
+          </div>
           <Button variant="secondary" iconLeft={<RefreshCw size={14} strokeWidth={1.5} />} onClick={yukle}>
             Yenile
           </Button>
         </div>
       </div>
 
+      {/* Özet stat kartları */}
+      {araclar.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+          {[
+            { etiket: 'Araç Sayısı', deger: araclar.length, renk: '#3b82f6' },
+            { etiket: 'Aktif (kontak açık)', deger: araclar.filter(a => a.ignition).length, renk: '#10b981' },
+            { etiket: 'Ortalama Hız', deger: araclar.length ? Math.round(araclar.reduce((s, a) => s + Number(a.gpsSpeed || 0), 0) / araclar.length) + ' km/s' : '—', renk: '#f59e0b' },
+            { etiket: 'Yakınlık İzleme', deger: yakinliklar.length, renk: yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#64748b' },
+          ].map(k => (
+            <Card key={k.etiket} style={{ padding: 12, textAlign: 'center' }}>
+              <div style={{ font: '700 20px/24px var(--font-sans)', color: k.renk }}>{k.deger}</div>
+              <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>{k.etiket}</div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Yakınlık uyarıları */}
+      {yakinliklar.length > 0 && (
+        <Card style={{ marginBottom: 16, padding: 14, borderLeft: '4px solid ' + (yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#f59e0b') }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 20 }}>🕵️</span>
+            <strong style={{ font: '600 14px/18px var(--font-sans)' }}>
+              {yakinliklar.filter(y => y.alarm_verildi).length > 0
+                ? `${yakinliklar.filter(y => y.alarm_verildi).length} aktif alarm`
+                : `${yakinliklar.length} yakınlık izleniyor`}
+            </strong>
+          </div>
+          <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+            {yakinliklar.map(y => {
+              const dk = Math.max(0, Math.round((new Date() - new Date(y.ilk_zaman)) / 60000))
+              const alarm = y.alarm_verildi
+              return (
+                <div key={y.id} style={{
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: alarm ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.06)',
+                  color: 'var(--text-primary)',
+                }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600 }}>{y.arac1_plaka}</span>
+                    <span style={{ opacity: 0.6 }}>+</span>
+                    <span style={{ fontWeight: 600 }}>{y.arac2_plaka}</span>
+                    <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                      {alarm ? '🚨 ' : ''}{dk} dk · {y.son_mesafe_m}m
+                    </span>
+                  </div>
+                  {y.son_adres && <div style={{ opacity: 0.7, marginTop: 2 }}>{y.son_adres}</div>}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* LİSTE GÖRÜNÜMÜ */}
+      {gorunum === 'liste' && (
+        <Card padding={0} style={{ overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12px/16px var(--font-sans)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
+                  {['Etiket', 'Tarih-Saat', 'Adres', 'Hız', 'Yön', 'Durum'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', font: '600 11px/14px var(--font-sans)', letterSpacing: 0.3, textTransform: 'uppercase' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {araclar.map(a => {
+                  const hiz = Number(a.gpsSpeed || 0)
+                  // Mobiltek 'ignition' bazen yanlış rapor ediyor — birden fazla sinyale bak
+                  const kontak = a.ignition === '1' || a.ignition === true || a.ignition === 1
+                    || a.engineStatus === 'on'
+                    || hiz > 0
+                  return (
+                    <tr
+                      key={a.id}
+                      onClick={() => aracSec(a)}
+                      style={{ borderBottom: '1px solid var(--border-default)', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '10px 12px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 4, background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)', font: '600 12px/16px var(--font-sans)' }}>
+                          {a.plateNo || `#${a.id}`}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                        {a.gpsTime ? new Date(a.gpsTime).toLocaleString('tr-TR') : '—'}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: 380 }}>
+                        {a.address || '—'}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{hiz} km/s</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-tertiary)' }}>{a.direction ?? 0}°</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '3px 8px', borderRadius: 4,
+                          background: kontak ? 'rgba(16,185,129,0.14)' : 'rgba(148,163,184,0.14)',
+                          color: kontak ? 'var(--success)' : 'var(--text-tertiary)',
+                          font: '600 11px/14px var(--font-sans)',
+                        }}>
+                          {kontak ? <><Zap size={11} strokeWidth={2} /> Kontak açık</> : <><ZapOff size={11} strokeWidth={2} /> Kontak kapalı</>}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* HARİTA GÖRÜNÜMÜ (split — sol araç listesi + sağ harita) */}
+      {gorunum === 'harita' && (
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, minHeight: 600 }}>
         {/* Sol — araç listesi */}
         <Card padding={0} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -70,7 +254,11 @@ export default function Mobiltek() {
             <div style={{ overflowY: 'auto' }}>
               {araclar.map(a => {
                 const aktif = seciliArac?.id === a.id
-                const kontak = a.ignition === '1' || a.engineStatus === 'on'
+                // Mobiltek 'ignition' bazen yanlış rapor ediyor (aracın çalışırken bile false döndürebiliyor).
+                // Bu yüzden birden fazla sinyale bakıyoruz: ignition, engineStatus veya hız > 0
+                const kontak = a.ignition === '1' || a.ignition === true || a.ignition === 1
+                  || a.engineStatus === 'on'
+                  || Number(a.gpsSpeed || 0) > 0
                 return (
                   <div
                     key={a.id}
@@ -108,7 +296,32 @@ export default function Mobiltek() {
                         </span>
                         <span>{kucukTarih(a.gpsTime)}</span>
                       </div>
+                      <div style={{
+                        font: '600 11px/15px var(--font-sans)',
+                        color: kontak ? 'var(--success)' : 'var(--text-tertiary)',
+                        marginTop: 3,
+                      }}>
+                        {kontak ? 'Kontak açık' : 'Kontak kapalı'}
+                      </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSeciliArac(a)
+                        setCanliKameraAcik(true)
+                      }}
+                      title="Canlı Kamera İzle"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 34, height: 34, borderRadius: 8,
+                        background: 'var(--brand-primary)',
+                        color: '#fff',
+                        border: 'none', cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Video size={16} strokeWidth={1.75} />
+                    </button>
                   </div>
                 )
               })}
@@ -136,6 +349,14 @@ export default function Mobiltek() {
                     {kameralar.length} kamera
                   </p>
                 </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  iconLeft={<Video size={14} strokeWidth={1.5} />}
+                  onClick={() => setCanliKameraAcik(true)}
+                >
+                  Canlı İzle (v2)
+                </Button>
               </div>
 
               {kameralar.length === 0 ? (
@@ -176,6 +397,7 @@ export default function Mobiltek() {
           )}
         </div>
       </div>
+      )}
 
       {/* Canlı yayın modalı */}
       {webviewUrl && (
@@ -214,6 +436,12 @@ export default function Mobiltek() {
           </div>
         </div>
       )}
+
+      <CanliKameraModal
+        acik={canliKameraAcik}
+        kapat={() => setCanliKameraAcik(false)}
+        arac={seciliArac}
+      />
     </div>
   )
 }

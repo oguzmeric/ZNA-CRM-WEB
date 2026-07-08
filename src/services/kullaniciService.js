@@ -1,12 +1,20 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
+// Liste kolonları — 21 kullanıcı listesinde imza (~150KB base64) taşımak saçma.
+// Servis Formu / mobil profil ihtiyacı için ayrıca session'a özgü kolon seti var.
+const KULLANICI_KOLONLARI = 'id, ad, kullanici_adi, tip, moduller, durum, izinli_turler, firma_adi, unvan, foto_url, rol, email, musteri_id, cep_telefon, siparis_onay_yetkilisi, siparis_onay_ust_yetkili, teklif_onay_yetkilisi, teklif_onay_ust_yetkili, hesap_silindi, onay_durum, onay_tarihi, onaylayan_id, red_nedeni, email_dogrulandi, zeyna_kalan_soru, zeyna_toplam_soru, created_at, silinebilir, auth_id'
+
+// Session'daki kullanıcının tam bilgisi — imza dahil (Profil ekranı için gerekli).
+// Liste'de değil, sadece login/session-restore çağrılarında kullanılır.
+const KULLANICI_SESSION_KOLONLARI = KULLANICI_KOLONLARI + ', imza'
+
 // Username → internal email (auth için sentetik email)
 const kullaniciAdiToEmail = (kullaniciAdi) =>
   `${kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
 
 export const kullanicilariGetir = async () => {
-  const { data } = await supabase.from('kullanicilar').select('*').order('id')
+  const { data } = await supabase.from('kullanicilar').select(KULLANICI_KOLONLARI).order('id')
   return arrayToCamel(data)
 }
 
@@ -27,6 +35,22 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
     } catch (e) { console.warn('[kullaniciGirisKontrol] email cozumle hata:', e?.message) }
     if (!email) email = kullaniciAdiToEmail(girdi)
   }
+
+  // Brute-force kilit kontrolü — 15 dk'da 5+ başarısız → 15 dk kilit
+  try {
+    const { data: kilitSn } = await supabase.rpc('giris_kilit_saniye', { p_email: email })
+    if (typeof kilitSn === 'number' && kilitSn > 0) {
+      const dk = Math.ceil(kilitSn / 60)
+      const e = new Error(`Çok fazla başarısız deneme. Hesap ${dk} dakika kilitli. Şifrenizi hatırlayamıyorsanız "Şifremi Unuttum" ile sıfırlayabilirsiniz.`)
+      e.kod = 'KILITLI'
+      e.kalanSaniye = kilitSn
+      throw e
+    }
+  } catch (e) {
+    if (e.kod === 'KILITLI') throw e
+    console.warn('[kullaniciGirisKontrol] kilit kontrolü hata:', e?.message)
+  }
+
   let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password: sifre,
@@ -39,11 +63,18 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
       if (!retry.error && retry.data?.user) { authData = retry.data; authError = null }
     }
   }
+
+  // Deneme kaydı (başarılı/başarısız)
+  const basarili = !!(authData?.user && !authError)
+  try {
+    await supabase.rpc('giris_denemesi_kaydet', { p_email: email, p_basarili: basarili })
+  } catch (e) { console.warn('[kullaniciGirisKontrol] deneme kaydı hata:', e?.message) }
+
   if (authError || !authData?.user) return null
 
   const { data: profil, error: profilError } = await supabase
     .from('kullanicilar')
-    .select('*')
+    .select(KULLANICI_SESSION_KOLONLARI)
     .eq('auth_id', authData.user.id)
     .single()
 
@@ -91,7 +122,7 @@ export const mevcutOturumKullanici = async () => {
 
   try {
     const { data: profil, error } = await ileTimeout(
-      supabase.from('kullanicilar').select('*').eq('auth_id', session.user.id).single(),
+      supabase.from('kullanicilar').select(KULLANICI_SESSION_KOLONLARI).eq('auth_id', session.user.id).single(),
       6000,
       'profil',
     )
