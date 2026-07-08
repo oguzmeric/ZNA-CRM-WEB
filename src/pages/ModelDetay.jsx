@@ -9,7 +9,7 @@ import {
 import {
   modelKalemleriniGetir, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
-  snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil,
+  snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, SN_SILME_SEBEPLERI,
 } from '../services/stokService'
 import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
@@ -73,6 +73,7 @@ function ModelDetay() {
   const [yenile, setYenile] = useState(0)
   const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
   const [duzenlenenKalem, setDuzenlenenKalem] = useState(null)  // SN düzenleme modalı için
+  const [silinecekKalem, setSilinecekKalem] = useState(null)  // SN sil sebep modalı için
 
   useEffect(() => {
     Promise.all([
@@ -414,12 +415,8 @@ function ModelDetay() {
                               <Pencil size={12} strokeWidth={1.5} />
                             </button>
                             <button
-                              onClick={async () => {
-                                if (!confirm(`${k.seriNo || 'Bu SN'} silinsin mi? Geri alınamaz.`)) return
-                                await snSil(k.id)
-                                setYenile(y => y + 1)
-                              }}
-                              title="SN'i sil"
+                              onClick={() => setSilinecekKalem(k)}
+                              title="SN'i sil (sebep sorulur)"
                               style={{
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 width: 28, height: 28, borderRadius: 6,
@@ -603,6 +600,94 @@ function ModelDetay() {
           }}
         />
       )}
+
+      {/* SN Sil Sebep Modalı */}
+      {silinecekKalem && (
+        <SnSilModal
+          kalem={silinecekKalem}
+          onKapat={() => setSilinecekKalem(null)}
+          onSil={async ({ sebep, not }) => {
+            await snSil(silinecekKalem.id, { sebep, not })
+            setSilinecekKalem(null)
+            setYenile(y => y + 1)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function SnSilModal({ kalem, onKapat, onSil }) {
+  const [sebep, setSebep] = useState('')
+  const [not, setNot] = useState('')
+  const [yukleniyor, setYukleniyor] = useState(false)
+  return (
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 12, padding: 24, maxWidth: 500, width: '100%',
+        border: '1px solid var(--border-default)',
+      }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 18, color: 'var(--danger)' }}>SN Silme — Sebep</h3>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 14 }}>
+          Silinecek: <span className="t-mono">{kalem.seriNo}</span>
+        </div>
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, fontWeight: 600 }}>
+          Neden siliyorsun? *
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+          {SN_SILME_SEBEPLERI.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSebep(s.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 12px', borderRadius: 8, textAlign: 'left', fontSize: 13,
+                background: sebep === s.id ? 'var(--danger)' : 'var(--surface-sunken)',
+                color: sebep === s.id ? '#fff' : 'var(--text-primary)',
+                border: `1px solid ${sebep === s.id ? 'var(--danger)' : 'var(--border-default)'}`,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{s.ikon}</span> {s.ad}
+            </button>
+          ))}
+        </div>
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600 }}>
+          Not (opsiyonel)
+        </label>
+        <input
+          value={not}
+          onChange={e => setNot(e.target.value)}
+          placeholder="Örn: müşteri firma adı, kayıp tarihi, arıza detayı…"
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 8,
+            border: '1px solid var(--border-default)',
+            background: 'var(--surface-sunken)', color: 'var(--text-primary)',
+            fontSize: 14, boxSizing: 'border-box', marginBottom: 16,
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Button variant="secondary" size="sm" onClick={onKapat} disabled={yukleniyor}>İptal</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!sebep || yukleniyor}
+            onClick={async () => {
+              setYukleniyor(true)
+              try { await onSil({ sebep, not: not.trim() }) }
+              catch (e) { alert('Silme hatası: ' + (e?.message || e)) }
+              finally { setYukleniyor(false) }
+            }}
+            style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
+          >
+            {yukleniyor ? 'Siliniyor…' : 'Sil ve Logla'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
