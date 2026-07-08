@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
-import { stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle } from '../services/stokService'
+import { stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle, stokKalemOzetleriniGetir } from '../services/stokService'
 import { trContains } from '../lib/trSearch'
 import { musterileriGetir } from '../services/musteriService'
 import {
@@ -47,6 +47,7 @@ export default function StokHareketleri() {
 
   const [hareketler, setHareketler] = useState([])
   const [urunler, setUrunler] = useState([])
+  const [kalemOzetleri, setKalemOzetleri] = useState(new Map())
   const [musteriler, setMusteriler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
@@ -56,8 +57,11 @@ export default function StokHareketleri() {
   const [detayHareket, setDetayHareket] = useState(null)
 
   useEffect(() => {
-    Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), musterileriGetir()])
-      .then(([u, h, m]) => { setUrunler(u || []); setHareketler(h || []); setMusteriler(m || []) })
+    Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), musterileriGetir(), stokKalemOzetleriniGetir()])
+      .then(([u, h, m, ko]) => {
+        setUrunler(u || []); setHareketler(h || []); setMusteriler(m || [])
+        setKalemOzetleri(ko || new Map())
+      })
       .catch(err => console.error('[StokHareketleri yükle]', err))
       .finally(() => setYukleniyor(false))
   }, [])
@@ -66,13 +70,21 @@ export default function StokHareketleri() {
 
   const secilenUrun = urunler.find(u => u.stokKodu === form.stokKodu)
 
-  const anaBakiye = (kod) => hareketler
-    .filter(h => h.stokKodu === kod)
-    .reduce((t, h) => {
-      if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return t + Number(h.miktar)
-      if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return t - Number(h.miktar)
-      return t
-    }, 0)
+  // SN takipli ürünlerde bakiye = kalem sayısı (hurda hariç). Değilse hareket bazlı.
+  const anaBakiye = (kod) => {
+    const urun = urunler.find(u => u.stokKodu === kod)
+    if (urun?.seriTakipli) {
+      const ozet = kalemOzetleri.get(kod)
+      return Math.max(0, (Number(ozet?.toplam) || 0) - (Number(ozet?.hurda) || 0))
+    }
+    return hareketler
+      .filter(h => h.stokKodu === kod)
+      .reduce((t, h) => {
+        if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return t + Number(h.miktar)
+        if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return t - Number(h.miktar)
+        return t
+      }, 0)
+  }
 
   const formAc = () => {
     setForm({ ...bosForm, tarih: new Date().toISOString().split('T')[0] })
