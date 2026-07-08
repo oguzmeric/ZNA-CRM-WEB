@@ -217,8 +217,13 @@ function App() {
     )
   }
 
-  // /skor — login zorunlu ama MainLayout olmadan fullscreen (kiosk-mimarisi ama auth'lu)
+  // /skor — sadece yönetim (Oğuz Meriç, Ali Uğur Aktepe, Ferdi Kalkan) erişebilir
   if (location.pathname === '/skor') {
+    const skorAd = (kullanici?.ad || '').toLocaleLowerCase('tr')
+    const skorYetkili = /\b(oğuz|oguz|ali|ferdi)\b/i.test(skorAd)
+    if (!skorYetkili) {
+      return <Navigate to="/dashboard" replace />
+    }
     return (
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
