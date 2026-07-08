@@ -20,6 +20,8 @@ import {
 } from '../services/depoService'
 import { AlertOctagon, Wrench, ShoppingCart, XCircle } from 'lucide-react'
 import SnEkleModal from '../components/SnEkleModal'
+import BarkodEtiketYazdir from '../components/BarkodEtiketYazdir'
+import { Printer } from 'lucide-react'
 import { musterileriGetir } from '../services/musteriService'
 import { supabase } from '../lib/supabase'
 import {
@@ -97,6 +99,7 @@ function ModelDetay() {
   const [rmaModal, setRmaModal] = useState(null)          // kalem — RMA gönder modalı
   const [rmaDonusModal, setRmaDonusModal] = useState(null) // kalem — RMA dönüş işle modalı
   const [rezerveModal, setRezerveModal] = useState(null)  // kalem — rezerve teklif seç modalı
+  const [etiketAcik, setEtiketAcik] = useState(false)     // toplu barkod etiket yazdırma
 
   useEffect(() => {
     Promise.all([
@@ -199,7 +202,15 @@ function ModelDetay() {
       </button>
 
       {seriTakipli && urun && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+          <Button
+            variant="secondary"
+            onClick={() => setEtiketAcik(true)}
+            iconLeft={<Printer size={14} strokeWidth={1.5} />}
+            disabled={!kalemler.some(k => !k.silindi)}
+          >
+            Etiket Yazdır
+          </Button>
           <Button
             variant="primary"
             onClick={() => setSnEkleAcik(true)}
@@ -824,6 +835,15 @@ function ModelDetay() {
             await rmaGeriDondu(rmaDonusModal.rma.id, payload)
             setRmaDonusModal(null); setYenile(y => y + 1)
           }}
+        />
+      )}
+
+      {etiketAcik && (
+        <BarkodEtiketYazdir
+          kalemler={kalemler.filter(k => !k.silindi && k.seriNo)}
+          marka={urun?.marka || (kalemler[0]?.marka || 'ZNA')}
+          stokKodu={stokKodu}
+          onKapat={() => setEtiketAcik(false)}
         />
       )}
 
