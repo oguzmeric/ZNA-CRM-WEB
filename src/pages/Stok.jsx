@@ -94,6 +94,13 @@ function Stok() {
   }, [])
 
   const stokBakiye = (stokKodu) => {
+    // SN takipli ürün: gerçek stok = SN sayısı (hurda hariç)
+    // Hareket bazlı sayaç insan girdileriyle kayabilir; SN sayımı fiziksel gerçek.
+    const kalemOzet = kalemOzetleri.get(stokKodu)
+    if (kalemOzet && kalemOzet.toplam > 0) {
+      const hurda = Number(kalemOzet.hurda) || 0
+      return kalemOzet.toplam - hurda
+    }
     return hareketler
       .filter((h) => h.stokKodu === stokKodu)
       .reduce((toplam, h) => {
