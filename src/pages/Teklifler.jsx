@@ -839,6 +839,17 @@ function EsnwebPanel() {
             </span>
           )}
         </span>
+        <Button
+          variant="primary"
+          size="sm"
+          iconLeft={<Download size={12} strokeWidth={1.5} />}
+          onClick={topluAktar}
+          disabled={!!topluAktarim || !tumu.some(x => !x.crm_teklif_id)}
+        >
+          {topluAktarim
+            ? `Aktarılıyor ${topluAktarim.yapilan}/${topluAktarim.toplam}${topluAktarim.hata ? ` (${topluAktarim.hata} hata)` : ''}…`
+            : 'Filtredekileri CRM\'e Aktar'}
+        </Button>
       </div>
 
       <Card padding={0} style={{ overflow: 'hidden' }}>
