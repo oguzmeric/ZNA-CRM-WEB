@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     if (!authHeader) return jsn({ ok: false, hata: 'yetkisiz' }, 401)
 
     const body = await req.json().catch(() => ({}))
-    const limit = Math.min(Math.max(parseInt(body.limit ?? 100, 10), 1), 500)
+    const limit = Math.min(Math.max(parseInt(body.limit ?? 100, 10), 1), 2000)
 
     const svc = createClient(
       Deno.env.get('SUPABASE_URL')!,
