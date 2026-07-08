@@ -985,18 +985,25 @@ function Stok() {
                         📷 Barkod tarayıcı ile toplu ekle
                       </label>
                       <textarea
-                        placeholder={'Barkod tarayıcıyı buraya odakla ve peşpeşe okut.\nHer okutmadan sonra otomatik yeni satıra geçer.\nYa da Excel/Word\'den kopyala‑yapıştır.\n\nÖrn:\nJB3062404010491\nJB3062404010492\nJB3062404010493'}
+                        placeholder={'Barkod tarayıcıyı buraya odakla ve peşpeşe okut.\nHer okutma Enter gönderir → o SN listeye eklenir.\nYa da Excel/Word\'den kopyala‑yapıştır.\n\nÖrn:\nJB3062404010491\nJB3062404010492\nJB3062404010493'}
                         rows={5}
                         autoFocus
                         onChange={(e) => {
-                          const lines = e.target.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-                          if (lines.length === 0) return
-                          // Mevcut boş satır varsa oradan itibaren doldur, yeni satırlar da ekle
-                          const yeni = lines.map(sn => ({ seriNo: sn, barkod: '', notlar: '' }))
-                          // Eğer sadece 1 boş varsayılan varsa değiştir, değilse birleştir
+                          const val = e.target.value
+                          // Enter gelmeden hiçbir şey yapma — barkod cihazı karakter karakter yazıyor
+                          if (!val.includes('\n')) return
+                          const parcalar = val.split(/\r?\n/)
+                          // Son parça tamamlanmamış olabilir (Enter'sız kalan), onu textarea'da bırak
+                          const tamamlananlar = parcalar.slice(0, -1).map(s => s.trim()).filter(Boolean)
+                          const yarim = parcalar[parcalar.length - 1] || ''
+                          if (tamamlananlar.length === 0) {
+                            e.target.value = yarim
+                            return
+                          }
+                          const yeni = tamamlananlar.map(sn => ({ seriNo: sn, barkod: '', notlar: '' }))
                           const mevcutDolu = form.seriKalemleri.filter(k => k.seriNo?.trim())
                           setForm({ ...form, seriKalemleri: [...mevcutDolu, ...yeni] })
-                          e.target.value = ''  // temizle, yeniden okumaya hazır
+                          e.target.value = yarim  // yarım kalan text kaydedilir, kaybolmaz
                         }}
                         style={{
                           width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)',
@@ -1007,7 +1014,7 @@ function Stok() {
                         }}
                       />
                       <p className="t-caption" style={{ marginTop: 6, color: 'var(--text-tertiary)' }}>
-                        Barkod cihazı Enter (\n) gönderir → her okutma otomatik yeni satır → listeye eklenir.
+                        Karakter karakter yazma sırasında beklenir; Enter geldiğinde tamamlanan satır listeye eklenir.
                       </p>
                     </div>
 
