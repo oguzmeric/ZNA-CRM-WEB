@@ -8,6 +8,7 @@ import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
 import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
 import { dosyayiKaydet } from '../lib/dosyaIndir'
+import { tipCoz } from '../lib/teklifTemplates'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -16,9 +17,12 @@ const ciktiMap = {
 }
 
 const tipSecenekleri = [
-  { value: 'standart', label: 'Standart' },
-  { value: 'trassir',  label: 'Trassir' },
-  { value: 'karel',    label: 'Karel' },
+  { value: 'standart',       label: 'Standart' },
+  { value: 'standart_pacal', label: 'Standart Paçal' },
+  { value: 'trassir',        label: 'Trassir' },
+  { value: 'trassir_pacal',  label: 'Trassir Paçal' },
+  { value: 'karel',          label: 'Karel' },
+  { value: 'karel_pacal',    label: 'Karel Paçal' },
 ]
 
 export default function TeklifYazdir() {
@@ -54,7 +58,8 @@ export default function TeklifYazdir() {
     return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Yükleniyor...</div>
   }
 
-  const Cikti = ciktiMap[seciliTip] || StandartCikti
+  const { baseTip, pacal } = tipCoz(seciliTip)
+  const Cikti = ciktiMap[baseTip] || StandartCikti
 
   // PDF'i direkt indir — html2canvas + jsPDF, dialog acmaz.
   // Cikti elementini off-screen container'a klonla (print CSS bypass icin),
@@ -260,7 +265,7 @@ export default function TeklifYazdir() {
       </div>
 
       <div ref={ciktiRef}>
-        <Cikti teklif={teklif} />
+        <Cikti teklif={teklif} pacal={pacal} />
       </div>
     </>
   )

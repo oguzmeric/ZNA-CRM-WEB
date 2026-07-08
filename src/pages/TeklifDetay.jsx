@@ -76,9 +76,12 @@ const hatirlatmaSecenekleri = [
 ]
 
 const teklifTipiSecenekleri = [
-  { value: 'standart', label: 'Standart' },
-  { value: 'trassir',  label: 'Trassir' },
-  { value: 'karel',    label: 'Karel' },
+  { value: 'standart',        label: 'Standart' },
+  { value: 'standart_pacal',  label: 'Standart Paçal' },
+  { value: 'trassir',         label: 'Trassir' },
+  { value: 'trassir_pacal',   label: 'Trassir Paçal' },
+  { value: 'karel',           label: 'Karel' },
+  { value: 'karel_pacal',     label: 'Karel Paçal' },
 ]
 
 function TeklifDetay() {

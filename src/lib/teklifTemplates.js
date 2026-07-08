@@ -31,8 +31,20 @@ export const HIZMETLERIMIZ = [
 ]
 
 // Şablon tipi → görünür isim
+// Paçal = kalem birim fiyatları gizli, tek proje toplamı gösterilen versiyon
 export const TEKLIF_TIPI_LABEL = {
   standart: 'Standart',
+  standart_pacal: 'Standart Paçal',
   trassir: 'Trassir',
+  trassir_pacal: 'Trassir Paçal',
   karel: 'Karel',
+  karel_pacal: 'Karel Paçal',
+}
+
+// tip='standart_pacal' → { baseTip: 'standart', pacal: true }
+// tip='trassir' → { baseTip: 'trassir', pacal: false }
+export function tipCoz(tip) {
+  const pacal = typeof tip === 'string' && tip.endsWith('_pacal')
+  const baseTip = pacal ? tip.replace('_pacal', '') : (tip || 'standart')
+  return { baseTip, pacal }
 }
