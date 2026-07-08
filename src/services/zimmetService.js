@@ -23,37 +23,65 @@ const kalemiEnvantereCevir = (k) => ({
   },
 })
 
-// Bir teknisyenin aktif envanterini getir
+// Yardımcı: stok kodlarına göre stok_urunler bilgilerini toplu çek
+async function urunlerToplu(stokKodlari) {
+  const benzersiz = Array.from(new Set((stokKodlari || []).filter(Boolean)))
+  if (!benzersiz.length) return new Map()
+  const { data, error } = await supabase
+    .from('stok_urunler')
+    .select('stok_kodu, ad, marka, model')
+    .in('stok_kodu', benzersiz)
+  if (error) { console.error('[zimmet] urunlerToplu:', error); return new Map() }
+  return new Map((data || []).map(u => [u.stok_kodu, u]))
+}
+
+// Yardımcı: kullanıcı id → kullanıcı bilgisi map'i
+async function kullanicilarToplu(idler) {
+  const benzersiz = Array.from(new Set((idler || []).filter(Boolean)))
+  if (!benzersiz.length) return new Map()
+  const { data, error } = await supabase
+    .from('kullanicilar')
+    .select('id, ad, foto_url, unvan')
+    .in('id', benzersiz)
+  if (error) { console.error('[zimmet] kullanicilarToplu:', error); return new Map() }
+  return new Map((data || []).map(k => [k.id, k]))
+}
+
+// Bir teknisyenin aktif envanterini getir — embed yok, iki adım
 export async function teknisyenAktifEnvanter(kullaniciId) {
   const { data, error } = await supabase
     .from('stok_kalemleri')
-    .select(`
-      id, seri_no, stok_kodu, teknisyen_id, durum, olusturma_tarih, guncelleme_tarih,
-      urun:stok_kodu (id, ad, marka, model)
-    `)
+    .select('id, seri_no, stok_kodu, teknisyen_id, durum, silindi, olusturma_tarih, guncelleme_tarih, marka, model')
     .eq('teknisyen_id', kullaniciId)
     .eq('durum', 'teknisyende')
     .eq('silindi', false)
     .order('guncelleme_tarih', { ascending: false })
-  if (error) throw error
-  return (data || []).map(kalemiEnvantereCevir)
+  if (error) { console.error('[zimmet] teknisyenAktifEnvanter:', error); throw error }
+  const urunMap = await urunlerToplu((data || []).map(k => k.stok_kodu))
+  return (data || []).map(k => kalemiEnvantereCevir({ ...k, urun: urunMap.get(k.stok_kodu) || { marka: k.marka, model: k.model } }))
 }
 
-// Tüm teknisyenlerin özeti (admin görünümü)
+// Tüm teknisyenlerin özeti (admin görünümü) — embed yok, iki adım
 export async function tumTeknisyenEnvanter() {
   const { data, error } = await supabase
     .from('stok_kalemleri')
-    .select(`
-      id, seri_no, stok_kodu, teknisyen_id, durum, olusturma_tarih, guncelleme_tarih,
-      kullanici:teknisyen_id (id, ad, foto_url, unvan),
-      urun:stok_kodu (id, ad, marka, model)
-    `)
+    .select('id, seri_no, stok_kodu, teknisyen_id, durum, silindi, olusturma_tarih, guncelleme_tarih, marka, model')
     .eq('durum', 'teknisyende')
     .eq('silindi', false)
     .not('teknisyen_id', 'is', null)
     .order('guncelleme_tarih', { ascending: false })
-  if (error) throw error
-  return (data || []).map(kalemiEnvantereCevir)
+  if (error) { console.error('[zimmet] tumTeknisyenEnvanter:', error); throw error }
+  const rows = data || []
+  console.log('[zimmet] tumTeknisyenEnvanter satır:', rows.length, rows)
+  const [urunMap, kullaniciMap] = await Promise.all([
+    urunlerToplu(rows.map(k => k.stok_kodu)),
+    kullanicilarToplu(rows.map(k => k.teknisyen_id)),
+  ])
+  return rows.map(k => kalemiEnvantereCevir({
+    ...k,
+    urun: urunMap.get(k.stok_kodu) || { marka: k.marka, model: k.model },
+    kullanici: kullaniciMap.get(k.teknisyen_id) || { id: k.teknisyen_id, ad: `#${k.teknisyen_id}` },
+  }))
 }
 
 // SN ile stok kalemi bul (zimmetlemek için)
