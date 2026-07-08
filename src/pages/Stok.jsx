@@ -99,13 +99,17 @@ function Stok() {
   }, [])
 
   const stokBakiye = (stokKodu) => {
-    // SN takipli ürün: gerçek stok = SN sayısı (hurda hariç)
-    // Hareket bazlı sayaç insan girdileriyle kayabilir; SN sayımı fiziksel gerçek.
-    const kalemOzet = kalemOzetleri.get(stokKodu)
-    if (kalemOzet && kalemOzet.toplam > 0) {
-      const hurda = Number(kalemOzet.hurda) || 0
-      return kalemOzet.toplam - hurda
+    // SN takipli ürün: gerçek stok = SN sayısı (hurda hariç), 0 dahil
+    // Ürün seriTakipli ise hareket sayısına DOKUNMA. SN silinince kalem düşer,
+    // hareket kalır — o yüzden seriTakipli ürüne hareket bazlı fallback yanlış.
+    const urun = urunler.find(u => u.stokKodu === stokKodu)
+    if (urun?.seriTakipli) {
+      const kalemOzet = kalemOzetleri.get(stokKodu)
+      const toplam = Number(kalemOzet?.toplam) || 0
+      const hurda = Number(kalemOzet?.hurda) || 0
+      return Math.max(0, toplam - hurda)
     }
+    // SN takipsiz: hareket bazlı sayı
     return hareketler
       .filter((h) => h.stokKodu === stokKodu)
       .reduce((toplam, h) => {
