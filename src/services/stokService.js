@@ -186,6 +186,24 @@ export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async
 })
 
 // Belirli stok_kodu için S/N'li tüm kalemleri getir
+// Tüm SN'lerin haritası — { seri_no.toLowerCase(): stok_kodu }
+// Cross-product duplicate kontrolü için. Cache'li: SN eklemede invalidate ediliyor.
+export const tumSeriNumaralariniGetir = () => cached('tumSN:list', async () => {
+  const data = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_kalemleri')
+      .select('seri_no, stok_kodu, barkod')
+      .not('seri_no', 'is', null)
+      .range(off, off + size - 1)
+  )
+  const map = new Map()
+  for (const k of data || []) {
+    if (k.seri_no) map.set(String(k.seri_no).trim().toLowerCase(), k.stok_kodu || null)
+    if (k.barkod) map.set(String(k.barkod).trim().toLowerCase(), k.stok_kodu || null)
+  }
+  return map
+})
+
 export const modelKalemleriniGetir = async (stokKodu) => {
   const data = await pagedFetch((off, size) =>
     supabase

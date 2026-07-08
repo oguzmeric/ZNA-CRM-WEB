@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Hash, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Modal, Button, Textarea, Label, Alert } from './ui'
-import { stokKalemleriToplu, modelKalemleriniGetir } from '../services/stokService'
+import { stokKalemleriToplu, modelKalemleriniGetir, tumSeriNumaralariniGetir } from '../services/stokService'
 
 export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
   const [metin, setMetin] = useState('')
@@ -12,19 +12,24 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
   const [hata, setHata] = useState('')
   const [basari, setBasari] = useState('')
   const [mevcutSeriler, setMevcutSeriler] = useState(new Set())
+  const [globalSN, setGlobalSN] = useState(new Map())  // seri_no.lower → stok_kodu (başka ürün)
 
   // Modal her acildiginda mevcut seri no'lari cek — dublikasyon kontrolu icin
   useEffect(() => {
     if (!open || !urun?.stokKodu) return
     setMetin(''); setHata(''); setBasari('')
-    modelKalemleriniGetir(urun.stokKodu)
-      .then(arr => {
+    Promise.all([
+      modelKalemleriniGetir(urun.stokKodu),
+      tumSeriNumaralariniGetir(),
+    ])
+      .then(([arr, gmap]) => {
         const set = new Set(
           (arr || []).filter(k => k.seriNo).map(k => k.seriNo.trim().toLowerCase())
         )
         setMevcutSeriler(set)
+        setGlobalSN(gmap || new Map())
       })
-      .catch(() => setMevcutSeriler(new Set()))
+      .catch(() => { setMevcutSeriler(new Set()); setGlobalSN(new Map()) })
   }, [open, urun?.stokKodu])
 
   const satirlar = useMemo(
@@ -33,17 +38,22 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
   )
 
   const analiz = useMemo(() => {
-    const yeni = [], dublike = [], cakisma = []
+    const yeni = [], dublike = [], cakisma = [], baskaUrunde = []  // { sn, stokKodu }
     const goruldu = new Set()
     for (const s of satirlar) {
       const k = s.toLowerCase()
       if (goruldu.has(k)) { dublike.push(s); continue }
       goruldu.add(k)
-      if (mevcutSeriler.has(k)) cakisma.push(s)
-      else yeni.push(s)
+      if (mevcutSeriler.has(k)) { cakisma.push(s); continue }
+      const digerStok = globalSN.get(k)
+      if (digerStok && digerStok !== urun?.stokKodu) {
+        baskaUrunde.push({ sn: s, stokKodu: digerStok })
+        continue
+      }
+      yeni.push(s)
     }
-    return { yeni, dublike, cakisma }
-  }, [satirlar, mevcutSeriler])
+    return { yeni, dublike, cakisma, baskaUrunde }
+  }, [satirlar, mevcutSeriler, globalSN, urun?.stokKodu])
 
   const kaydet = async () => {
     setHata(''); setBasari('')
@@ -114,7 +124,7 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
 
         {satirlar.length > 0 && (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
             background: 'var(--surface-sunken)', padding: 12, borderRadius: 'var(--radius)',
           }}>
             <div>
@@ -122,14 +132,43 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
               <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--success)' }}>{analiz.yeni.length}</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>ÇAKIŞMA</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>BU ÜRÜNDE</div>
               <div style={{ fontSize: 18, fontWeight: 500, color: analiz.cakisma.length > 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{analiz.cakisma.length}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>BAŞKA ÜRÜNDE</div>
+              <div style={{ fontSize: 18, fontWeight: 500, color: analiz.baskaUrunde.length > 0 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{analiz.baskaUrunde.length}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>TEKRAR</div>
               <div style={{ fontSize: 18, fontWeight: 500, color: analiz.dublike.length > 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{analiz.dublike.length}</div>
             </div>
           </div>
+        )}
+
+        {analiz.baskaUrunde.length > 0 && (
+          <Alert tone="danger" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
+            <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
+              <strong>Bu S/N/barkodlar başka bir ürüne kayıtlı!</strong> Aynı fiziksel seri numarası iki farklı ürüne verilemez.
+              <div style={{ marginTop: 6, display: 'grid', gap: 3 }}>
+                {analiz.baskaUrunde.slice(0, 5).map(x => (
+                  <div key={x.sn}>
+                    <span style={{ fontFamily: 'var(--font-mono)' }}>{x.sn}</span> → <strong>{x.stokKodu}</strong>
+                  </div>
+                ))}
+                {analiz.baskaUrunde.length > 5 && <div>… (+{analiz.baskaUrunde.length - 5} daha)</div>}
+              </div>
+            </div>
+          </Alert>
+        )}
+
+        {analiz.dublike.length > 0 && (
+          <Alert tone="warning" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
+            <div style={{ fontSize: 12.5 }}>
+              Aynı S/N metinde tekrar ediyor, sadece 1 kez eklenir:{' '}
+              <strong>{analiz.dublike.slice(0, 5).join(', ')}{analiz.dublike.length > 5 ? ` … (+${analiz.dublike.length - 5})` : ''}</strong>
+            </div>
+          </Alert>
         )}
 
         {analiz.cakisma.length > 0 && (
