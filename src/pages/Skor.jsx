@@ -3,6 +3,7 @@
 // Yarış/ödül vurgusu yok — düz performans dashboard'u.
 
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 // TR = UTC+3, toISOString() UTC'ye çevirdiği için local midnight bir gün geri gidebiliyor.
@@ -147,9 +148,20 @@ export default function Skor() {
             Teknisyen Performans Paneli
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', color: '#E5E9F4' }}>{saat}</div>
-          <div style={{ fontSize: 13, color: '#7A8AA8', marginTop: 2, textTransform: 'capitalize' }}>{tarih}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <Link to="/zimmet" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 16px', borderRadius: 10,
+            background: 'rgba(139,92,246,0.15)',
+            border: '1px solid rgba(139,92,246,0.35)',
+            color: '#c4b5fd', fontSize: 14, fontWeight: 600, textDecoration: 'none',
+          }}>
+            🎒 Zimmet & Envanter
+          </Link>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', color: '#E5E9F4' }}>{saat}</div>
+            <div style={{ fontSize: 13, color: '#7A8AA8', marginTop: 2, textTransform: 'capitalize' }}>{tarih}</div>
+          </div>
         </div>
       </div>
 

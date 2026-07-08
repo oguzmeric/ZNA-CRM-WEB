@@ -70,6 +70,7 @@ const Skor = lazy(() => import('./pages/Skor'))
 const Mobiltek = lazy(() => import('./pages/Mobiltek'))
 const AracYonetimi = lazy(() => import('./pages/AracYonetimi'))
 const FiloYonetimi = lazy(() => import('./pages/FiloYonetimi'))
+const Zimmet = lazy(() => import('./pages/Zimmet'))
 const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
@@ -310,6 +311,7 @@ function App() {
           <Route path="/filo/belgeler" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
           <Route path="/filo/yakit" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
           <Route path="/filo/surucu" element={<YonetimGuard><FiloYonetimi /></YonetimGuard>} />
+          <Route path="/zimmet" element={<Zimmet />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
