@@ -402,11 +402,12 @@ export const modelKalemleriniGetirTumu = async (stokKodu, silinenlerDahil = fals
 
 // Bir SN'in tam geçmişi — bu ürünün stok_hareketleri'nde seri_no geçen kayıtları
 export const snGecmisi = async (seriNo, stokKodu) => {
-  const { data } = await supabase.from('stok_hareketleri')
+  const { data, error } = await supabase.from('stok_hareketleri')
     .select('*, kullanici:kullanici_id (ad)')
     .eq('stok_kodu', stokKodu)
     .ilike('aciklama', `%${seriNo}%`)
-    .order('olusturma_tarih', { ascending: false })
+    .order('tarih', { ascending: false })
+  if (error) { console.error('[snGecmisi]', error); return [] }
   return arrayToCamel(data) ?? []
 }
 
