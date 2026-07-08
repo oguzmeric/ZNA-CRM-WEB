@@ -1,6 +1,7 @@
 // Stok sayım modu — sayım oluştur, SN taratıp tikle, eksik/fazla raporu.
 import { useEffect, useRef, useState } from 'react'
-import { ClipboardCheck, ScanLine, Play, CheckSquare } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ClipboardCheck, ScanLine, Play, CheckSquare, X } from 'lucide-react'
 import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar } from '../services/depoService'
 import { Card, Button, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
@@ -15,7 +16,23 @@ export default function StokSayim() {
   const [taramaBuf, setTaramaBuf] = useState('')
   const [gecmis, setGecmis] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [detayModal, setDetayModal] = useState(null)  // { sayim, ozet }
+  const [detayYukleniyor, setDetayYukleniyor] = useState(false)
   const inputRef = useRef(null)
+
+  const detayAc = async (sayim) => {
+    setDetayModal({ sayim, ozet: null })
+    setDetayYukleniyor(true)
+    try {
+      const o = await sayimOzet(sayim.id)
+      setDetayModal({ sayim, ozet: o })
+    } catch (e) {
+      toast.error('Detay yüklenemedi: ' + (e?.message || 'hata'))
+      setDetayModal(null)
+    } finally {
+      setDetayYukleniyor(false)
+    }
+  }
 
   const gecmisiYukle = () =>
     sonSayimlar(20).then(list => {
@@ -171,7 +188,7 @@ export default function StokSayim() {
             <THead><TR><TH>#</TH><TH>Başlangıç</TH><TH>Bitiş</TH><TH>Açıklama</TH><TH>Durum</TH></TR></THead>
             <TBody>
               {gecmis.map(s => (
-                <TR key={s.id}>
+                <TR key={s.id} onClick={() => detayAc(s)} style={{ cursor: 'pointer' }}>
                   <TD>#{s.id}</TD>
                   <TD>{fmtTarih(s.olusturuldu)}</TD>
                   <TD>{s.tamamlanma_tarihi ? fmtTarih(s.tamamlanma_tarihi) : '—'}</TD>
@@ -186,6 +203,101 @@ export default function StokSayim() {
           </Table>
         )}
       </Card>
+
+      {detayModal && (
+        <SayimDetayModal
+          sayim={detayModal.sayim}
+          ozet={detayModal.ozet}
+          yukleniyor={detayYukleniyor}
+          onKapat={() => setDetayModal(null)}
+        />
+      )}
     </div>
+  )
+}
+
+function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat }) {
+  const [sekme, setSekme] = useState('tarandi')
+  const liste = sekme === 'tarandi' ? (ozet?.tarandiList || []) : (ozet?.eksik || [])
+  return createPortal(
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 14, padding: 24, maxWidth: 780, width: '100%', maxHeight: '85vh',
+        overflow: 'auto', border: '1px solid var(--border-default)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <h3 style={{ margin: 0, fontSize: 18 }}>Sayım #{sayim.id} Detayı</h3>
+          <button onClick={onKapat} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+          {sayim.aciklama || '—'} · Başlangıç: {fmtTarih(sayim.olusturuldu)}
+          {sayim.tamamlanma_tarihi && <> · Bitiş: {fmtTarih(sayim.tamamlanma_tarihi)}</>}
+        </div>
+
+        {yukleniyor ? (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : !ozet ? (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)' }}>Detay bulunamadı.</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 20, marginBottom: 14, padding: '10px 12px', background: 'var(--surface-sunken)', borderRadius: 8 }}>
+              <div><div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Toplam</div><div style={{ fontWeight: 700, fontSize: 20 }}>{ozet.toplam}</div></div>
+              <div><div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Tarandı</div><div style={{ fontWeight: 700, fontSize: 20, color: 'var(--success)' }}>{ozet.tarandi}</div></div>
+              <div><div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Eksik</div><div style={{ fontWeight: 700, fontSize: 20, color: 'var(--danger)' }}>{ozet.eksik.length}</div></div>
+              <div><div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Doluluk</div><div style={{ fontWeight: 700, fontSize: 20 }}>
+                {ozet.toplam ? `%${Math.round(ozet.tarandi * 100 / ozet.toplam)}` : '—'}
+              </div></div>
+            </div>
+
+            <div style={{ display: 'inline-flex', background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 10, padding: 3, marginBottom: 12 }}>
+              {[
+                { id: 'tarandi', ad: `✅ Tarandı (${ozet.tarandi})` },
+                { id: 'eksik',   ad: `❌ Eksik (${ozet.eksik.length})` },
+              ].map(t => (
+                <button key={t.id} onClick={() => setSekme(t.id)}
+                  style={{
+                    padding: '8px 14px', borderRadius: 7,
+                    background: sekme === t.id ? 'var(--brand-primary)' : 'transparent',
+                    color: sekme === t.id ? '#fff' : 'var(--text-secondary)',
+                    border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                  }}>{t.ad}</button>
+              ))}
+            </div>
+
+            {liste.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                {sekme === 'tarandi' ? 'Bu sayımda hiç SN taratılmamış.' : 'Bu sayımda eksik yok. 👍'}
+              </div>
+            ) : (
+              <Table>
+                <THead><TR><TH>SN</TH><TH>Stok Kodu</TH><TH>Ürün</TH>{sekme === 'tarandi' && <TH>Tarama Zamanı</TH>}</TR></THead>
+                <TBody>
+                  {liste.slice(0, 500).map(s => (
+                    <TR key={s.id}>
+                      <TD><CodeBadge>{s.kalem?.seri_no || '—'}</CodeBadge></TD>
+                      <TD>{s.kalem?.stok_kodu || '—'}</TD>
+                      <TD>{[s.kalem?.marka, s.kalem?.model].filter(Boolean).join(' ') || '—'}</TD>
+                      {sekme === 'tarandi' && <TD>{s.tarama_zamani ? fmtTarih(s.tarama_zamani) : '—'}</TD>}
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+            {liste.length > 500 && (
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8, textAlign: 'center' }}>
+                İlk 500 kayıt gösteriliyor. Toplam: {liste.length}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
   )
 }
