@@ -4,12 +4,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
   ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus, User, PackageOpen,
-  Pencil, Trash2,
+  Pencil, Trash2, History, RotateCcw, Eye,
 } from 'lucide-react'
 import {
-  modelKalemleriniGetir, DURUMLAR, durumBul,
+  modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
-  snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, SN_SILME_SEBEPLERI,
+  snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
+  SN_SILME_SEBEPLERI,
 } from '../services/stokService'
 import SnEkleModal from '../components/SnEkleModal'
 import { musterileriGetir } from '../services/musteriService'
@@ -74,10 +75,12 @@ function ModelDetay() {
   const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
   const [duzenlenenKalem, setDuzenlenenKalem] = useState(null)  // SN düzenleme modalı için
   const [silinecekKalem, setSilinecekKalem] = useState(null)  // SN sil sebep modalı için
+  const [silinenleriGoster, setSilinenleriGoster] = useState(false)
+  const [gecmisModal, setGecmisModal] = useState(null)  // { seriNo, kayitlar }
 
   useEffect(() => {
     Promise.all([
-      modelKalemleriniGetir(stokKodu),
+      modelKalemleriniGetirTumu(stokKodu, silinenleriGoster),
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       musterileriGetir(),
@@ -99,7 +102,7 @@ function ModelDetay() {
       })
       .catch(err => console.error('[ModelDetay yükle]', err))
       .finally(() => setYukleniyor(false))
-  }, [stokKodu, yenile])
+  }, [stokKodu, yenile, silinenleriGoster])
 
   const sayilar = useMemo(() => {
     const s = { toplam: kalemler.length, depoda: 0, teknisyende: 0, sahada: 0, arizada: 0, arizali_depoda: 0, tamirde: 0, hurda: 0 }
@@ -317,6 +320,10 @@ function ModelDetay() {
                 {FILTRELER.map(f => <option key={f.id} value={f.id}>{f.isim}</option>)}
               </CustomSelect>
             </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={silinenleriGoster} onChange={e => setSilinenleriGoster(e.target.checked)} style={{ accentColor: 'var(--danger)' }} />
+              🗑️ Silinenleri de göster
+            </label>
           </div>
 
           <Card padding={0}>
@@ -345,8 +352,9 @@ function ModelDetay() {
                     const d = durumBul(k.durum)
                     const musteri = k.musteriId ? musteriMap.get(k.musteriId) : null
                     const teknisyen = k.teknisyenId ? teknisyenMap.get(k.teknisyenId) : null
+                    const rowStil = k.silindi ? { opacity: 0.5, textDecoration: 'line-through' } : {}
                     return (
-                      <TR key={k.id}>
+                      <TR key={k.id} style={rowStil}>
                         <TD><CodeBadge>{k.seriNo || '—'}</CodeBadge></TD>
                         <TD>{d ? <Badge tone={durumTone[d.id] || 'neutral'}>{d.isim}</Badge> : '—'}</TD>
                         <TD>
@@ -387,13 +395,13 @@ function ModelDetay() {
                         </TD>
                         <TD style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                            {k.durum === 'depoda' && (
+                            {!k.silindi && k.durum === 'depoda' && (
                               <Button size="sm" variant="secondary" iconLeft={<User size={12} strokeWidth={1.5} />}
                                 onClick={() => setSeciliKalem(k)}>
                                 Teknisyene Ver
                               </Button>
                             )}
-                            {k.durum === 'teknisyende' && (
+                            {!k.silindi && k.durum === 'teknisyende' && (
                               <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
                                 onClick={async () => {
                                   if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
@@ -403,28 +411,65 @@ function ModelDetay() {
                                 Depoya Çek
                               </Button>
                             )}
+                            {/* Geçmiş */}
                             <button
-                              onClick={() => setDuzenlenenKalem(k)}
-                              title="SN'i düzenle"
+                              onClick={async () => {
+                                const kayitlar = await snGecmisi(k.seriNo, stokKodu)
+                                setGecmisModal({ seriNo: k.seriNo, kayitlar })
+                              }}
+                              title="Bu SN'in geçmişi"
                               style={{
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 width: 28, height: 28, borderRadius: 6,
                                 background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
                                 color: 'var(--text-secondary)', cursor: 'pointer',
                               }}>
-                              <Pencil size={12} strokeWidth={1.5} />
+                              <History size={12} strokeWidth={1.5} />
                             </button>
-                            <button
-                              onClick={() => setSilinecekKalem(k)}
-                              title="SN'i sil (sebep sorulur)"
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                width: 28, height: 28, borderRadius: 6,
-                                background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
-                                color: 'var(--danger)', cursor: 'pointer',
-                              }}>
-                              <Trash2 size={12} strokeWidth={1.5} />
-                            </button>
+                            {!k.silindi ? (
+                              <>
+                                <button
+                                  onClick={() => setDuzenlenenKalem(k)}
+                                  title="SN'i düzenle"
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 28, height: 28, borderRadius: 6,
+                                    background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
+                                  }}>
+                                  <Pencil size={12} strokeWidth={1.5} />
+                                </button>
+                                <button
+                                  onClick={() => setSilinecekKalem(k)}
+                                  title="SN'i sil (sebep sorulur)"
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 28, height: 28, borderRadius: 6,
+                                    background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                                    color: 'var(--danger)', cursor: 'pointer',
+                                  }}>
+                                  <Trash2 size={12} strokeWidth={1.5} />
+                                </button>
+                              </>
+                            ) : (
+                              /* Silindi ise geri getir */
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`${k.seriNo} geri getirilsin mi?`)) return
+                                  await snGeriGetir(k.id)
+                                  setYenile(y => y + 1)
+                                }}
+                                title="SN'i geri getir"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  padding: '4px 10px', borderRadius: 6,
+                                  background: 'var(--success)', color: '#fff', border: 'none',
+                                  cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                                }}>
+                                <RotateCcw size={12} strokeWidth={1.5} />
+                                Geri Getir
+                              </button>
+                            )}
                           </div>
                         </TD>
                       </TR>
@@ -613,6 +658,69 @@ function ModelDetay() {
           }}
         />
       )}
+
+      {/* SN Geçmişi Modalı */}
+      {gecmisModal && (
+        <SnGecmisModal
+          seriNo={gecmisModal.seriNo}
+          kayitlar={gecmisModal.kayitlar}
+          onKapat={() => setGecmisModal(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function SnGecmisModal({ seriNo, kayitlar, onKapat }) {
+  const fmtTarih = (t) => {
+    if (!t) return '—'
+    try { return new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
+    catch { return t }
+  }
+  return (
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface-card)', color: 'var(--text-primary)',
+        borderRadius: 12, padding: 24, maxWidth: 640, width: '100%', maxHeight: '85vh', overflow: 'auto',
+        border: '1px solid var(--border-default)',
+      }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 18 }}>SN Geçmişi</h3>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 18, fontFamily: 'monospace' }}>
+          {seriNo}
+        </div>
+        {kayitlar.length === 0 ? (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+            Bu SN için geçmiş kayıt yok.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {kayitlar.map((h, i) => {
+              const isCikis = h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis'
+              const isSilme = String(h.aciklama || '').startsWith('SN silindi')
+              const renk = isSilme ? 'var(--danger)' : isCikis ? '#a855f7' : 'var(--success)'
+              return (
+                <div key={i} style={{
+                  padding: 12, borderRadius: 8,
+                  background: 'var(--surface-sunken)',
+                  borderLeft: `3px solid ${renk}`,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                    <span>{fmtTarih(h.olusturmaTarih || h.tarih)}</span>
+                    {h.kullanici?.ad && <span>👤 {h.kullanici.ad}</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{h.aciklama}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" size="sm" onClick={onKapat}>Kapat</Button>
+        </div>
+      </div>
     </div>
   )
 }
