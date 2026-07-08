@@ -449,7 +449,7 @@ function Stok() {
               setKalemOzetleri(yeniOzet)
               toast.success(`${gecerli.length} adet S/N kaydedildi.`)
             } catch (e) {
-              toast.error('S/N kayıtlarında hata oluştu.')
+              toast.error(e?.message || 'S/N kaydedilirken bir sorun oldu.')
             }
           }
         } else if (form.ilkStok && Number(form.ilkStok) > 0) {
