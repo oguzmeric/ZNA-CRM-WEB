@@ -52,6 +52,7 @@ export default function ZimmetPanel({ onKapat }) {
   const [demirbasListe, setDemirbasListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [ekleModal, setEkleModal] = useState(false)
+  const [seciliTeknisyenId, setSeciliTeknisyenId] = useState(null)
 
   useEffect(() => {
     (async () => {
@@ -167,14 +168,23 @@ export default function ZimmetPanel({ onKapat }) {
         {/* Content */}
         {yukleniyor ? (
           <div style={{ padding: 60, textAlign: 'center', color: R.metin2 }}>Yükleniyor…</div>
+        ) : yonetim ? (
+          <YonetimGorunum
+            sekme={sekme}
+            envanterGruplu={envanterGruplu}
+            demirbasGruplu={demirbasGruplu}
+            seciliId={seciliTeknisyenId}
+            setSeciliId={setSeciliTeknisyenId}
+            onIade={async (id) => {
+              if (!confirm('Bu demirbaş iade edildi olarak işaretlensin mi?')) return
+              await demirbasIade(id)
+              yukle()
+            }}
+          />
         ) : sekme === 'envanter' ? (
-          <EnvanterListe yonetim={yonetim} liste={envanterListe} gruplu={envanterGruplu} />
+          <EnvanterListe yonetim={false} liste={envanterListe} />
         ) : (
-          <DemirbasListe yonetim={yonetim} liste={demirbasListe} gruplu={demirbasGruplu} onIade={async (id) => {
-            if (!confirm('Bu demirbaş iade edildi olarak işaretlensin mi?')) return
-            await demirbasIade(id)
-            yukle()
-          }} />
+          <DemirbasListe yonetim={false} liste={demirbasListe} onIade={null} />
         )}
       </div>
 
@@ -191,19 +201,71 @@ export default function ZimmetPanel({ onKapat }) {
   return createPortal(icerik, document.body)
 }
 
-function EnvanterListe({ yonetim, liste, gruplu }) {
-  if (!liste.length) return <BosMesaj>Aktif envanter yok.</BosMesaj>
-  if (yonetim && gruplu) {
-    return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        {gruplu.map(g => (
-          <TeknisyenKart key={g.kullanici.id} kullanici={g.kullanici} sayi={g.kayitlar.length} birim="kalem">
-            {g.kayitlar.map(k => <EnvanterSatir key={k.id} kayit={k} />)}
-          </TeknisyenKart>
-        ))}
-      </div>
-    )
+// Yönetim modu için master-detail: sol teknisyen listesi, sağ seçili teknisyenin kayıtları
+function YonetimGorunum({ sekme, envanterGruplu, demirbasGruplu, seciliId, setSeciliId, onIade }) {
+  const gruplu = sekme === 'envanter' ? envanterGruplu : demirbasGruplu
+  const birim = sekme === 'envanter' ? 'kalem' : 'demirbaş'
+
+  if (!gruplu || gruplu.length === 0) {
+    return <BosMesaj>Şu an hiçbir teknisyende aktif {birim} yok.</BosMesaj>
   }
+
+  const secili = gruplu.find(g => g.kullanici.id === seciliId) || gruplu[0]
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
+      {/* Sol: teknisyen listesi */}
+      <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ fontSize: 12, color: R.metin3, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, padding: '0 4px 6px' }}>
+          Teknisyenler ({gruplu.length})
+        </div>
+        {gruplu.map(g => {
+          const on = secili?.kullanici.id === g.kullanici.id
+          return (
+            <button
+              key={g.kullanici.id}
+              onClick={() => setSeciliId(g.kullanici.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: 12, borderRadius: 10,
+                background: on ? 'rgba(139,92,246,0.12)' : R.panel,
+                border: `1px solid ${on ? 'rgba(139,92,246,0.45)' : R.border}`,
+                cursor: 'pointer', textAlign: 'left', color: R.metin,
+                width: '100%',
+              }}
+            >
+              {g.kullanici.foto_url ? (
+                <img src={g.kullanici.foto_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: R.panel2, color: R.metin, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
+                  {(g.kullanici.ad || '?').slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{g.kullanici.ad}</div>
+                <div style={{ fontSize: 12, color: R.metin2, marginTop: 2 }}>{g.kayitlar.length} {birim}</div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Sağ: seçili teknisyenin kayıtları */}
+      <div style={kartStil()}>
+        <div style={{ marginBottom: 12, fontSize: 14, color: R.metin2 }}>
+          <strong style={{ color: R.metin }}>{secili.kullanici.ad}</strong> · {secili.kayitlar.length} {birim}
+        </div>
+        {sekme === 'envanter'
+          ? secili.kayitlar.map(k => <EnvanterSatir key={k.id} kayit={k} />)
+          : secili.kayitlar.map(d => <DemirbasSatir key={d.id} kayit={d} yonetim onIade={onIade} />)
+        }
+      </div>
+    </div>
+  )
+}
+
+function EnvanterListe({ liste }) {
+  if (!liste.length) return <BosMesaj>Aktif envanter yok.</BosMesaj>
   return <div style={kartStil()}>{liste.map(k => <EnvanterSatir key={k.id} kayit={k} />)}</div>
 }
 
@@ -222,63 +284,32 @@ function EnvanterSatir({ kayit }) {
   )
 }
 
-function DemirbasListe({ yonetim, liste, gruplu, onIade }) {
-  if (!liste.length) return <BosMesaj>Aktif demirbaş zimmeti yok.</BosMesaj>
-  const kartlariYaz = (kayitlar) => kayitlar.map(d => {
-    const kat = DEMIRBAS_KATEGORI.find(k => k.id === d.kategori)
-    return (
-      <div key={d.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 12, background: R.panel2, borderRadius: 8, marginBottom: 6 }}>
-        {d.foto_url ? (
-          <img src={d.foto_url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: 60, height: 60, borderRadius: 8, background: '#0B1220', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{kat?.ikon}</div>
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, color: R.metin }}>{kat?.ad}</div>
-          <div style={{ fontSize: 12, color: R.metin2 }}>{d.aciklama || '—'}</div>
-          <div style={{ fontSize: 11, color: R.metin3, marginTop: 2 }}>Verildi: {new Date(d.verildi_tarih).toLocaleDateString('tr-TR')}</div>
-        </div>
-        {yonetim && (
-          <button onClick={() => onIade(d.id)} style={{
-            padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
-          }}>İade Al</button>
-        )}
-      </div>
-    )
-  })
-  if (yonetim && gruplu) {
-    return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        {gruplu.map(g => (
-          <TeknisyenKart key={g.kullanici.id} kullanici={g.kullanici} sayi={g.kayitlar.length} birim="demirbaş">
-            {kartlariYaz(g.kayitlar)}
-          </TeknisyenKart>
-        ))}
-      </div>
-    )
-  }
-  return <div style={kartStil()}>{kartlariYaz(liste)}</div>
-}
-
-function TeknisyenKart({ kullanici, sayi, birim, children }) {
+function DemirbasSatir({ kayit, yonetim, onIade }) {
+  const kat = DEMIRBAS_KATEGORI.find(k => k.id === kayit.kategori)
   return (
-    <div style={kartStil()}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        {kullanici.foto_url ? (
-          <img src={kullanici.foto_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: R.panel2, color: R.metin, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
-            {(kullanici.ad || '?').slice(0, 2).toUpperCase()}
-          </div>
-        )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, color: R.metin }}>{kullanici.ad}</div>
-          <div style={{ fontSize: 12, color: R.metin2 }}>{sayi} {birim}</div>
-        </div>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 12, background: R.panel2, borderRadius: 8, marginBottom: 6 }}>
+      {kayit.foto_url ? (
+        <img src={kayit.foto_url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
+      ) : (
+        <div style={{ width: 60, height: 60, borderRadius: 8, background: '#0B1220', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{kat?.ikon}</div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, color: R.metin }}>{kat?.ad}</div>
+        <div style={{ fontSize: 12, color: R.metin2 }}>{kayit.aciklama || '—'}</div>
+        <div style={{ fontSize: 11, color: R.metin3, marginTop: 2 }}>Verildi: {new Date(kayit.verildi_tarih).toLocaleDateString('tr-TR')}</div>
       </div>
-      {children}
+      {yonetim && onIade && (
+        <button onClick={() => onIade(kayit.id)} style={{
+          padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
+        }}>İade Al</button>
+      )}
     </div>
   )
+}
+
+function DemirbasListe({ liste }) {
+  if (!liste.length) return <BosMesaj>Aktif demirbaş zimmeti yok.</BosMesaj>
+  return <div style={kartStil()}>{liste.map(d => <DemirbasSatir key={d.id} kayit={d} yonetim={false} />)}</div>
 }
 
 function BosMesaj({ children }) {
