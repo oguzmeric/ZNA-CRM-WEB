@@ -4,42 +4,56 @@
 
 import { supabase } from '../lib/supabase'
 
-// ---------- Transit envanter (teknisyen_envanter) ----------
+// ---------- Transit envanter — kaynak: stok_kalemleri (durum='teknisyende') ----------
+// Not: 108 numaralı teknisyen_envanter tablosu vardı ama stok akışı doğrudan
+// stok_kalemleri.teknisyen_id kullanıyor (116). Kaynağı tek noktada birleştirdik.
 
-// Bir teknisyenin aktif (durum='yolda') envanterini getir
+// stok_kalemi satırını ZimmetPanel'in beklediği şekle çevir
+const kalemiEnvantereCevir = (k) => ({
+  id: k.id,
+  kullanici_id: k.teknisyen_id,
+  kullanici: k.kullanici,
+  zimmet_zamani: k.guncellendi || k.olusturuldu,
+  durum: 'yolda',
+  stok_kalemi: {
+    id: k.id,
+    seri_no: k.seri_no,
+    stok_kodu: k.stok_kodu,
+    urun: k.urun,
+  },
+})
+
+// Bir teknisyenin aktif envanterini getir
 export async function teknisyenAktifEnvanter(kullaniciId) {
   const { data, error } = await supabase
-    .from('teknisyen_envanter')
+    .from('stok_kalemleri')
     .select(`
-      id, zimmet_zamani, durum, not,
-      stok_kalemi:stok_kalemi_id (
-        id, seri_no, stok_kodu,
-        urun:stok_kodu (id, ad, marka, model)
-      )
+      id, seri_no, stok_kodu, teknisyen_id, durum, olusturuldu, guncellendi,
+      urun:stok_kodu (id, ad, marka, model)
     `)
-    .eq('kullanici_id', kullaniciId)
-    .eq('durum', 'yolda')
-    .order('zimmet_zamani', { ascending: false })
+    .eq('teknisyen_id', kullaniciId)
+    .eq('durum', 'teknisyende')
+    .eq('silindi', false)
+    .order('guncellendi', { ascending: false })
   if (error) throw error
-  return data || []
+  return (data || []).map(kalemiEnvantereCevir)
 }
 
-// Tüm teknisyenlerin özet (admin dashboard için)
+// Tüm teknisyenlerin özeti (admin görünümü)
 export async function tumTeknisyenEnvanter() {
   const { data, error } = await supabase
-    .from('teknisyen_envanter')
+    .from('stok_kalemleri')
     .select(`
-      id, kullanici_id, zimmet_zamani, durum,
-      kullanici:kullanici_id (id, ad, foto_url, unvan),
-      stok_kalemi:stok_kalemi_id (
-        id, seri_no, stok_kodu,
-        urun:stok_kodu (ad, marka, model)
-      )
+      id, seri_no, stok_kodu, teknisyen_id, durum, olusturuldu, guncellendi,
+      kullanici:teknisyen_id (id, ad, foto_url, unvan),
+      urun:stok_kodu (id, ad, marka, model)
     `)
-    .eq('durum', 'yolda')
-    .order('zimmet_zamani', { ascending: false })
+    .eq('durum', 'teknisyende')
+    .eq('silindi', false)
+    .not('teknisyen_id', 'is', null)
+    .order('guncellendi', { ascending: false })
   if (error) throw error
-  return data || []
+  return (data || []).map(kalemiEnvantereCevir)
 }
 
 // SN ile stok kalemi bul (zimmetlemek için)
