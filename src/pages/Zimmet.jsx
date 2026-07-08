@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   tumTeknisyenEnvanter, teknisyenAktifEnvanter,
-  stokKalemiBulSN, envanterZimmetle, envanterDurumGuncelle,
+  envanterDurumGuncelle,
   tumDemirbaslar, teknisyenDemirbaslari,
   demirbasEkle, demirbasIade, demirbasFotoYukle,
 } from '../services/zimmetService'
@@ -110,15 +110,12 @@ export default function Zimmet() {
         })}
       </div>
 
-      {/* Add button */}
-      <div style={{ marginBottom: 16 }}>
-        {sekme === 'envanter' && (
-          <button onClick={() => setEkleModal('envanter')} style={btnPrimary}>+ Envanter Zimmet</button>
-        )}
-        {sekme === 'demirbas' && rol === 'admin' && (
+      {/* Add button — sadece demirbaş için (envanter mevcut SN akışıyla otomatik gelir) */}
+      {sekme === 'demirbas' && rol === 'admin' && (
+        <div style={{ marginBottom: 16 }}>
           <button onClick={() => setEkleModal('demirbas')} style={btnPrimary}>+ Demirbaş Ekle</button>
-        )}
-      </div>
+        </div>
+      )}
 
       {yukleniyor ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
@@ -135,9 +132,6 @@ export default function Zimmet() {
         }} />
       )}
 
-      {ekleModal === 'envanter' && (
-        <EnvanterEkleModal kullanicilar={kullanicilar} varsayilanKullaniciId={rol === 'admin' ? null : kullaniciId} onKapat={() => setEkleModal(null)} onKaydet={() => { setEkleModal(null); yukle() }} />
-      )}
       {ekleModal === 'demirbas' && rol === 'admin' && (
         <DemirbasEkleModal kullanicilar={kullanicilar} onKapat={() => setEkleModal(null)} onKaydet={() => { setEkleModal(null); yukle() }} />
       )}
@@ -234,75 +228,6 @@ function DemirbasListe({ rol, liste, gruplu, onIade }) {
     )
   }
   return <div style={{ ...kartStil, display: 'grid', gap: 8 }}>{kartlariYaz(liste)}</div>
-}
-
-function EnvanterEkleModal({ kullanicilar, varsayilanKullaniciId, onKapat, onKaydet }) {
-  const [seriNo, setSeriNo] = useState('')
-  const [kullaniciId, setKullaniciId] = useState(varsayilanKullaniciId || '')
-  const [bulunan, setBulunan] = useState(null)
-  const [not, setNot] = useState('')
-  const [hata, setHata] = useState(null)
-  const [yukleniyor, setYukleniyor] = useState(false)
-
-  const ara = async () => {
-    setHata(null); setBulunan(null)
-    try {
-      const k = await stokKalemiBulSN(seriNo)
-      if (!k) { setHata('Bu SN sistemde yok. Önce stoğa ekle.'); return }
-      setBulunan(k)
-    } catch (e) { setHata(e?.message || 'Arama hatası') }
-  }
-
-  const kaydet = async () => {
-    setYukleniyor(true); setHata(null)
-    try {
-      await envanterZimmetle({ kullaniciId, stokKalemiId: bulunan.id, not })
-      onKaydet()
-    } catch (e) {
-      const m = String(e?.message || '')
-      if (m.includes('teknisyen_envanter_aktif_kalem_uq')) {
-        setHata('Bu SN zaten bir teknisyende aktif — önce oradan düş/iade et.')
-      } else {
-        setHata(m || 'Kayıt hatası')
-      }
-    } finally { setYukleniyor(false) }
-  }
-
-  return (
-    <ModalKapak onKapat={onKapat} baslik="Envanter Zimmetle">
-      <div style={{ display: 'grid', gap: 12 }}>
-        <div>
-          <label style={etiket}>Seri No</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input value={seriNo} onChange={e => setSeriNo(e.target.value)} placeholder="SN oku veya yaz" style={input} onKeyDown={e => e.key === 'Enter' && ara()} />
-            <button onClick={ara} style={btnGhost} disabled={!seriNo.trim()}>Bul</button>
-          </div>
-        </div>
-        {bulunan && (
-          <div style={{ padding: 10, background: 'var(--surface-secondary)', borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Ürün</div>
-            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{[bulunan.urun?.marka, bulunan.urun?.model, bulunan.urun?.ad].filter(Boolean).join(' · ') || bulunan.stok_kodu}</div>
-          </div>
-        )}
-        <div>
-          <label style={etiket}>Kime Zimmet</label>
-          <select value={kullaniciId} onChange={e => setKullaniciId(e.target.value)} style={input}>
-            <option value="">— seç —</option>
-            {kullanicilar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={etiket}>Not (opsiyonel)</label>
-          <input value={not} onChange={e => setNot(e.target.value)} style={input} />
-        </div>
-        {hata && <div style={{ color: '#ef4444', fontSize: 13 }}>{hata}</div>}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onKapat} style={btnGhost}>İptal</button>
-          <button onClick={kaydet} disabled={!bulunan || !kullaniciId || yukleniyor} style={btnPrimary}>{yukleniyor ? 'Kaydediliyor…' : 'Zimmetle'}</button>
-        </div>
-      </div>
-    </ModalKapak>
-  )
 }
 
 function DemirbasEkleModal({ kullanicilar, onKapat, onKaydet }) {
