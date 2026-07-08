@@ -23,12 +23,12 @@ create index if not exists stok_kalemleri_silindi_idx
 
 -- Aktif kalemler için mevcut UNIQUE constraint'i soft delete uyumlu yap
 -- Silinen SN'lerin unique constraint'i bloğu kaldırma; sadece silindi=false için tekil
-drop index if exists stok_kalemleri_seri_no_key;
+alter table stok_kalemleri drop constraint if exists stok_kalemleri_seri_no_key;
+alter table stok_kalemleri drop constraint if exists stok_kalemleri_barkod_key;
+
 create unique index if not exists stok_kalemleri_seri_no_aktif_uq
   on stok_kalemleri (seri_no) where silindi = false and seri_no is not null;
 
--- Barkod için de aynı
-drop index if exists stok_kalemleri_barkod_key;
 create unique index if not exists stok_kalemleri_barkod_aktif_uq
   on stok_kalemleri (barkod) where silindi = false and barkod is not null;
 
