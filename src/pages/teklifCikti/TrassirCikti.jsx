@@ -147,38 +147,40 @@ export default function TrassirCikti({ teklif, pacal = false }) {
         </h2>
 
         {pacal ? (
-          /* PAÇAL — sağa yapışık büyük tek proje bedeli kutusu */
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 0 }}>
-            <table style={{ flex: 1, borderCollapse: 'collapse', fontSize: 11.5 }}>
-              <thead>
-                <tr style={{ background: '#0176D3', color: '#fff' }}>
-                  <th style={{ padding: 8, textAlign: 'left', border: '1px solid #0176D3', width: '20%' }}>Marka</th>
-                  <th style={{ padding: 8, textAlign: 'left', border: '1px solid #0176D3' }}>Açıklama</th>
-                  <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '18%' }}>Ad./Mt.</th>
+          /* PAÇAL — tek tablo, sağdaki fiyat sütunu rowspan ile tüm data satırlarını kapsar
+             Header hizası: 'PROJE BEDELİ' başlığı diğer başlıklarla aynı satırda */
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+            <thead>
+              <tr style={{ background: '#0176D3', color: '#fff' }}>
+                <th style={{ padding: 8, textAlign: 'left', border: '1px solid #0176D3', width: '20%' }}>Marka</th>
+                <th style={{ padding: 8, textAlign: 'left', border: '1px solid #0176D3' }}>Açıklama</th>
+                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '15%' }}>Ad./Mt.</th>
+                <th style={{ padding: 8, textAlign: 'center', border: '1px solid #0176D3', width: '22%', fontSize: 10, letterSpacing: '0.06em' }}>PROJE BEDELİ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(teklif.satirlar || []).map((s, i) => (
+                <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
+                  <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? 'Trassir' : 'ZNA')}</td>
+                  <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
+                  <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
+                  {i === 0 && (
+                    <td
+                      rowSpan={(teklif.satirlar || []).length}
+                      style={{
+                        background: '#0176D3', color: '#fff',
+                        textAlign: 'center', verticalAlign: 'middle',
+                        fontSize: 20, fontWeight: 800,
+                        border: '1px solid #0176D3',
+                      }}
+                    >
+                      {paraSembol}{fmt(araToplam)}
+                    </td>
+                  )}
                 </tr>
-              </thead>
-              <tbody>
-                {(teklif.satirlar || []).map((s, i) => (
-                  <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? 'Trassir' : 'ZNA')}</td>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{
-              width: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#0176D3', color: '#fff',
-              padding: 20, textAlign: 'center',
-              border: '1px solid #0176D3',
-            }}>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Proje Bedeli</p>
-                <p style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>{paraSembol}{fmt(araToplam)}</p>
-              </div>
-            </div>
-          </div>
+              ))}
+            </tbody>
+          </table>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
             <thead>

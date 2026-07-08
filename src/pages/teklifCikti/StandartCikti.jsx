@@ -91,46 +91,47 @@ export default function StandartCikti({ teklif, pacal = false }) {
           {pacal ? 'Fiyatlandırma' : 'Ürün / Hizmet Satırları'}
         </p>
         {pacal ? (
-          /* PAÇAL — kalem birim fiyatları GİZLİ, sağda tek proje toplamı */
-          <div style={{ display: 'flex', gap: 0, marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-            <table style={{ flex: 1 }}>
-              <colgroup>
-                <col style={{ width: '4%' }} />
-                <col style={{ width: '18%' }} />
-                <col />
-                <col style={{ width: '14%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Marka</th>
-                  <th>Açıklama</th>
-                  <th style={{ textAlign: 'right' }}>Ad./Mt.</th>
+          /* PAÇAL — tek tablo, PROJE BEDELİ başlığı hizalı */
+          <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '16%' }} />
+              <col />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '22%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Marka</th>
+                <th>Açıklama</th>
+                <th style={{ textAlign: 'right' }}>Ad./Mt.</th>
+                <th style={{ textAlign: 'center', background: '#0176D3', color: '#fff', fontSize: 10, letterSpacing: '0.06em' }}>PROJE BEDELİ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(teklif.satirlar || []).map((s, i) => (
+                <tr key={i}>
+                  <td style={{ color: '#94a3b8' }}>{i + 1}</td>
+                  <td>{s.marka || '—'}</td>
+                  <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                  <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
+                  {i === 0 && (
+                    <td
+                      rowSpan={(teklif.satirlar || []).length}
+                      style={{
+                        background: '#0176D3', color: '#fff',
+                        textAlign: 'center', verticalAlign: 'middle',
+                        fontSize: 22, fontWeight: 800,
+                      }}
+                    >
+                      {paraSembol}{fmt(araToplam)}
+                    </td>
+                  )}
                 </tr>
-              </thead>
-              <tbody>
-                {(teklif.satirlar || []).map((s, i) => (
-                  <tr key={i}>
-                    <td style={{ color: '#94a3b8' }}>{i + 1}</td>
-                    <td>{s.marka || '—'}</td>
-                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
-                    <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {/* Sağa yapışık büyük tek fiyat kutusu */}
-            <div style={{
-              width: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#0176D3', color: '#fff',
-              padding: 20, textAlign: 'center',
-            }}>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Proje Bedeli</p>
-                <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1 }}>{paraSembol}{fmt(araToplam)}</p>
-              </div>
-            </div>
-          </div>
+              ))}
+            </tbody>
+          </table>
         ) : (
           /* DETAYLI — mevcut hâli */
           <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
