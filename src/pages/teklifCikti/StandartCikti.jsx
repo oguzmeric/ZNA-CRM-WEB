@@ -1,7 +1,7 @@
 // Standart teklif çıktısı — A4 dikey, tek sayfa, sade.
 // (Eski TeklifYazdir.jsx render'ının birebir taşınmış hâli; sadece component'a sarıldı.)
 
-export default function StandartCikti({ teklif }) {
+export default function StandartCikti({ teklif, pacal = false }) {
   const kdvOranlari = {}
   ;(teklif.satirlar || []).forEach((s) => {
     const kdv = s.kdv || 20
@@ -87,51 +87,97 @@ export default function StandartCikti({ teklif }) {
         </div>
 
         {/* Ürünler */}
-        <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Ürün / Hizmet Satırları</p>
-        <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-          <colgroup>
-            <col style={{ width: '4%' }} />
-            <col />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '12%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Ürün / Hizmet</th>
-              <th style={{ textAlign: 'right' }}>Miktar</th>
-              <th>Birim</th>
-              <th style={{ textAlign: 'right' }}>Birim Fiyat</th>
-              <th style={{ textAlign: 'right' }}>İsk%</th>
-              <th style={{ textAlign: 'right' }}>KDV%</th>
-              <th style={{ textAlign: 'right' }}>Toplam</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(teklif.satirlar || []).map((s, i) => {
-              const ara = s.miktar * s.birimFiyat
-              const isk = ara * ((s.iskonto || 0) / 100)
-              const kdvT = (ara - isk) * ((s.kdv || 20) / 100)
-              const top = ara - isk + kdvT
-              return (
-                <tr key={i}>
-                  <td style={{ color: '#94a3b8' }}>{i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
-                  <td style={{ textAlign: 'right' }}>{s.miktar}</td>
-                  <td>{s.birim}</td>
-                  <td style={{ textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
-                  <td style={{ textAlign: 'right', color: s.iskonto > 0 ? '#f59e0b' : '#94a3b8' }}>{s.iskonto || 0}%</td>
-                  <td style={{ textAlign: 'right' }}>%{s.kdv || 20}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(top)}</td>
+        <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+          {pacal ? 'Fiyatlandırma' : 'Ürün / Hizmet Satırları'}
+        </p>
+        {pacal ? (
+          /* PAÇAL — kalem birim fiyatları GİZLİ, sağda tek proje toplamı */
+          <div style={{ display: 'flex', gap: 0, marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ flex: 1 }}>
+              <colgroup>
+                <col style={{ width: '4%' }} />
+                <col style={{ width: '18%' }} />
+                <col />
+                <col style={{ width: '14%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Marka</th>
+                  <th>Açıklama</th>
+                  <th style={{ textAlign: 'right' }}>Ad./Mt.</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {(teklif.satirlar || []).map((s, i) => (
+                  <tr key={i}>
+                    <td style={{ color: '#94a3b8' }}>{i + 1}</td>
+                    <td>{s.marka || '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                    <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Sağa yapışık büyük tek fiyat kutusu */}
+            <div style={{
+              width: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: '#0176D3', color: '#fff',
+              padding: 20, textAlign: 'center',
+            }}>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Proje Bedeli</p>
+                <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1 }}>{paraSembol}{fmt(araToplam)}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* DETAYLI — mevcut hâli */
+          <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ürün / Hizmet</th>
+                <th style={{ textAlign: 'right' }}>Miktar</th>
+                <th>Birim</th>
+                <th style={{ textAlign: 'right' }}>Birim Fiyat</th>
+                <th style={{ textAlign: 'right' }}>İsk%</th>
+                <th style={{ textAlign: 'right' }}>KDV%</th>
+                <th style={{ textAlign: 'right' }}>Toplam</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(teklif.satirlar || []).map((s, i) => {
+                const ara = s.miktar * s.birimFiyat
+                const isk = ara * ((s.iskonto || 0) / 100)
+                const kdvT = (ara - isk) * ((s.kdv || 20) / 100)
+                const top = ara - isk + kdvT
+                return (
+                  <tr key={i}>
+                    <td style={{ color: '#94a3b8' }}>{i + 1}</td>
+                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                    <td style={{ textAlign: 'right' }}>{s.miktar}</td>
+                    <td>{s.birim}</td>
+                    <td style={{ textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
+                    <td style={{ textAlign: 'right', color: s.iskonto > 0 ? '#f59e0b' : '#94a3b8' }}>{s.iskonto || 0}%</td>
+                    <td style={{ textAlign: 'right' }}>%{s.kdv || 20}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(top)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
 
         {/* Toplamlar */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 28 }}>
