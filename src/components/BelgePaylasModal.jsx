@@ -30,9 +30,12 @@ const SURE_SECENEKLERI = [
 ]
 
 const SABLON_SECENEKLERI = [
-  { id: 'standart', label: 'Standart' },
-  { id: 'trassir',  label: 'Trassir' },
-  { id: 'karel',    label: 'Karel' },
+  { id: 'standart',       label: 'Standart' },
+  { id: 'standart_pacal', label: 'Standart Paçal' },
+  { id: 'trassir',        label: 'Trassir' },
+  { id: 'trassir_pacal',  label: 'Trassir Paçal' },
+  { id: 'karel',          label: 'Karel' },
+  { id: 'karel_pacal',    label: 'Karel Paçal' },
 ]
 
 export default function BelgePaylasModal({
