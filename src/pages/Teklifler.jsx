@@ -625,24 +625,33 @@ export default function Teklifler() {
 }
 
 // esnweb'den teklif çekme butonu — 100 son teklifi liste + baş + kalem senkron eder
+// supabase.functions.invoke bilinmeyen bir nedenle 'Failed to send request' veriyor,
+// doğrudan fetch ile session token gönderiyoruz (test edildi: çalışıyor)
 function EsnCekButonu() {
   const [cekiliyor, setCekiliyor] = useState(false)
   const cek = async () => {
     setCekiliyor(true)
     try {
-      const { data, error } = await supabase.functions.invoke('esn-teklif-senkron', { body: { limit: 100 } })
-      let hata = null
-      if (error) {
-        try { const ctx = await error.context?.json(); hata = ctx?.hata || ctx?.error } catch {}
-        hata = hata || error.message
-      } else if (!data?.ok) {
-        hata = data?.hata || 'bilinmiyor'
-      }
-      if (hata) { alert('Çekilemedi: ' + hata); return }
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      if (!token) { alert('Oturum bulunamadı'); return }
+      const url = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/esn-teklif-senkron'
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const data = await r.json()
+      if (!data?.ok) { alert('Çekilemedi: ' + (data?.hata || r.status)); return }
       const y = data.yeni || 0, g = data.guncellenen || 0, k = data.kalem_yeni || 0, h = data.hatalar || []
       let msg = `Tarandı: ${data.taranan}\nYeni: ${y}\nGüncellenen: ${g}\nKalem eklendi: ${k}`
       if (h.length) msg += `\n\nHatalar (${h.length}):\n` + h.slice(0, 5).join('\n')
       alert(msg)
+    } catch (e) {
+      alert('Hata: ' + (e?.message || e))
     } finally {
       setCekiliyor(false)
     }
