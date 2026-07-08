@@ -178,7 +178,7 @@ export default function Teklifler() {
             <span className="tabular-nums">{teklifler.length}</span> teklif
           </p>
         </div>
-        {aktifSekme !== 'musteri_talepleri' && (
+        {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
           <div style={{ display: 'flex', gap: 8 }}>
             <EsnCekButonu />
             <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
@@ -189,7 +189,7 @@ export default function Teklifler() {
       </div>
 
       {/* Arama + Sıralama */}
-      {aktifSekme !== 'musteri_talepleri' && (
+      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
         <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, maxWidth: 400, minWidth: 240 }}>
             <SearchInput
@@ -216,6 +216,7 @@ export default function Teklifler() {
           { id: 'onaylananlar',      label: 'Onaylananlar' },
           { id: 'reddedilenler',     label: 'Reddedilenler' },
           { id: 'tumu',              label: 'Tümü' },
+          { id: 'esnweb',            label: 'esnweb', icon: <CloudDownload size={12} strokeWidth={1.5} /> },
           { id: 'musteri_talepleri', label: 'Müşteri Talepleri', icon: <InboxMail size={12} strokeWidth={1.5} />, badge: bekleyenSayisi },
         ].map(s => {
           const aktif = aktifSekme === s.id
@@ -382,8 +383,11 @@ export default function Teklifler() {
         </div>
       )}
 
+      {/* esnweb tekliflerini panel */}
+      {aktifSekme === 'esnweb' && <EsnwebPanel />}
+
       {/* TEKLİF TABLOSU */}
-      {aktifSekme !== 'musteri_talepleri' && (
+      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
         <div style={{ marginTop: 20 }}>
           <Card padding={0} style={{ overflow: 'hidden' }}>
             {gorunenTeklifler.length === 0 ? (
@@ -620,6 +624,197 @@ export default function Teklifler() {
           </Card>
         </div>
       )}
+    </div>
+  )
+}
+
+// esnweb tekliflerini listeleyen panel — arama, tarih filtresi, kalem expand
+function EsnwebPanel() {
+  const [tumu, setTumu] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [arama, setArama] = useState('')
+  const [gunFiltresi, setGunFiltresi] = useState('7')  // son N gün
+  const [acikFisno, setAcikFisno] = useState(null)
+  const [kalemler, setKalemler] = useState({})  // fisno → kalem[]
+
+  useEffect(() => {
+    (async () => {
+      setYukleniyor(true)
+      const bugun = new Date()
+      const oncesi = new Date()
+      oncesi.setDate(bugun.getDate() - Number(gunFiltresi))
+      const alt = oncesi.toISOString().slice(0, 10)
+      const { data, error } = await supabase.from('esn_teklifler')
+        .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul')
+        .eq('silindi', false)
+        .gte('tarih', alt)
+        .order('tarih', { ascending: false })
+        .order('evrak_no', { ascending: false })
+        .limit(500)
+      if (error) console.warn('[esnweb-panel]', error.message)
+      setTumu(data || [])
+      setYukleniyor(false)
+    })()
+  }, [gunFiltresi])
+
+  const acKapa = async (fisno) => {
+    if (acikFisno === fisno) { setAcikFisno(null); return }
+    setAcikFisno(fisno)
+    if (!kalemler[fisno]) {
+      const { data } = await supabase.from('esn_teklif_kalemleri')
+        .select('refno, stok_kodu, stok_adi, birim, miktar, fiyat, tutar, kdv_yuzde, net_tutar, dovkod, kur')
+        .eq('fisno', fisno)
+        .order('refno')
+      setKalemler(k => ({ ...k, [fisno]: data || [] }))
+    }
+  }
+
+  const filtreli = tumu.filter(t => {
+    if (!arama.trim()) return true
+    const q = arama.toLowerCase()
+    return (t.firma_adi || '').toLowerCase().includes(q)
+      || String(t.evrak_no || '').includes(q)
+      || (t.teklif_konusu || '').toLowerCase().includes(q)
+      || (t.temsilci || '').toLowerCase().includes(q)
+  })
+
+  const fmtDov = (n, dov) => {
+    const sym = dov === 'D' ? '$' : dov === 'E' ? '€' : dov === 'S' ? '£' : '₺'
+    return sym + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          value={arama}
+          onChange={e => setArama(e.target.value)}
+          placeholder="Firma, teklif no, konu, temsilci ara…"
+          style={{
+            flex: 1, minWidth: 260, padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-default)',
+            background: 'var(--surface-card)', color: 'var(--text-primary)',
+            font: '400 13px/18px var(--font-sans)',
+          }}
+        />
+        <select value={gunFiltresi} onChange={e => setGunFiltresi(e.target.value)}
+          style={{
+            padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-default)', background: 'var(--surface-card)',
+            color: 'var(--text-primary)', font: '400 13px/18px var(--font-sans)',
+          }}>
+          <option value="1">Son 1 gün</option>
+          <option value="3">Son 3 gün</option>
+          <option value="7">Son 7 gün</option>
+          <option value="30">Son 30 gün</option>
+          <option value="90">Son 3 ay</option>
+          <option value="365">Son 1 yıl</option>
+        </select>
+        <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+          <span className="tabular-nums">{filtreli.length}</span> teklif
+        </span>
+      </div>
+
+      <Card padding={0} style={{ overflow: 'hidden' }}>
+        {yukleniyor ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : filtreli.length === 0 ? (
+          <div style={{ padding: 40 }}>
+            <EmptyState
+              icon={<CloudDownload size={32} strokeWidth={1.5} />}
+              title="Kayıt yok"
+              description="Üstteki 'esnweb Çek' butonuyla senkron yap veya tarih aralığını genişlet."
+            />
+          </div>
+        ) : (
+          <div>
+            {filtreli.map(t => {
+              const acik = acikFisno === t.fisno
+              return (
+                <div key={t.fisno} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  <div onClick={() => acKapa(t.fisno)} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '80px 100px 1fr 160px 130px 32px',
+                    gap: 12, alignItems: 'center',
+                    padding: '12px 16px', cursor: 'pointer',
+                    background: acik ? 'var(--surface-sunken)' : 'transparent',
+                    transition: 'background 120ms',
+                  }}>
+                    <div style={{ fontWeight: 600, color: 'var(--brand-primary)', fontSize: 13 }}>#{t.evrak_no || '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                      {t.tarih ? new Date(t.tarih).toLocaleDateString('tr-TR') : '—'}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{t.firma_adi}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{t.teklif_konusu || '—'}</div>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.temsilci || t.hazirlayan || '—'}</div>
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtDov(t.genel_toplam, t.dovkod)}
+                    </div>
+                    <ChevronDown size={16} style={{ transform: acik ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 150ms', color: 'var(--text-tertiary)' }} />
+                  </div>
+
+                  {acik && (
+                    <div style={{ padding: '10px 16px 16px', background: 'var(--surface-sunken)' }}>
+                      {!kalemler[t.fisno] ? (
+                        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Kalemler yükleniyor…</div>
+                      ) : kalemler[t.fisno].length === 0 ? (
+                        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Kalem bulunmuyor</div>
+                      ) : (
+                        <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                          <div style={{
+                            display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 110px 110px',
+                            gap: 8, padding: '8px 12px',
+                            background: 'var(--surface-sunken)',
+                            font: '600 11px/14px var(--font-sans)',
+                            color: 'var(--text-tertiary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em',
+                            borderBottom: '1px solid var(--border-default)',
+                          }}>
+                            <div>Stok Kodu</div>
+                            <div>Ürün</div>
+                            <div style={{ textAlign: 'right' }}>Miktar</div>
+                            <div>Birim</div>
+                            <div style={{ textAlign: 'right' }}>Birim Fiyat</div>
+                            <div style={{ textAlign: 'right' }}>Tutar</div>
+                          </div>
+                          {kalemler[t.fisno].map(k => (
+                            <div key={k.refno} style={{
+                              display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 110px 110px',
+                              gap: 8, padding: '8px 12px',
+                              font: '400 12px/16px var(--font-sans)',
+                              color: 'var(--text-primary)',
+                              borderTop: '1px solid var(--border-default)',
+                            }}>
+                              <div style={{ fontFamily: 'monospace', fontSize: 11 }}>{k.stok_kodu}</div>
+                              <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.stok_adi}</div>
+                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Number(k.miktar || 0)}</div>
+                              <div style={{ color: 'var(--text-tertiary)' }}>{k.birim}</div>
+                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDov(k.fiyat, k.dovkod)}</div>
+                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmtDov(k.tutar, k.dovkod)}</div>
+                            </div>
+                          ))}
+                          <div style={{
+                            padding: '10px 12px', display: 'flex', justifyContent: 'flex-end', gap: 20,
+                            fontSize: 12, color: 'var(--text-secondary)',
+                            background: 'var(--surface-sunken)', borderTop: '1px solid var(--border-default)',
+                          }}>
+                            {t.dovkod === 'D' && <span>Kur: <strong style={{ color: 'var(--text-primary)' }}>{kalemler[t.fisno][0]?.kur?.toFixed(4) || '—'}</strong></span>}
+                            <span>Genel Toplam: <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>{fmtDov(t.genel_toplam, t.dovkod)}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
