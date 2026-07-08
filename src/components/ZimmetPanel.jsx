@@ -9,7 +9,9 @@ import {
   tumTeknisyenEnvanter, teknisyenAktifEnvanter,
   tumDemirbaslar, teknisyenDemirbaslari,
   demirbasEkle, demirbasIade, demirbasFotoYukle,
+  stokKalemiBulSN,
 } from '../services/zimmetService'
+import { snTeknisyeneVer } from '../services/stokService'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -52,6 +54,7 @@ export default function ZimmetPanel({ onKapat }) {
   const [demirbasListe, setDemirbasListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [ekleModal, setEkleModal] = useState(false)
+  const [snEkleModal, setSnEkleModal] = useState(false)
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState(null)
 
   useEffect(() => {
@@ -150,6 +153,13 @@ export default function ZimmetPanel({ onKapat }) {
             })}
           </div>
 
+          {sekme === 'envanter' && yonetim && (
+            <button onClick={() => setSnEkleModal(true)} style={{
+              padding: '10px 18px', borderRadius: 10,
+              background: R.mor, color: '#fff', border: 'none',
+              fontWeight: 600, cursor: 'pointer', fontSize: 14,
+            }}>+ SN Tarat → Teknisyene Ver</button>
+          )}
           {sekme === 'demirbas' && yonetim && (
             <button onClick={() => setEkleModal(true)} style={{
               padding: '10px 18px', borderRadius: 10,
@@ -161,7 +171,7 @@ export default function ZimmetPanel({ onKapat }) {
 
         {sekme === 'envanter' && yonetim && (
           <div style={{ padding: 12, marginBottom: 16, background: R.panel, border: `1px solid ${R.border}`, borderRadius: 10, fontSize: 13, color: R.metin2 }}>
-            💡 Envanter kayıtları servise SN taradığında otomatik gelir. Buradan sadece izleme yapılır.
+            💡 Stok &gt; SN Detay ekranından "Teknisyene Ver" ile atadığın kalemler burada listelenir. Yukarıdaki butonla SN tarayarak da atayabilirsin.
           </div>
         )}
 
@@ -193,6 +203,13 @@ export default function ZimmetPanel({ onKapat }) {
           kullanicilar={kullanicilar}
           onKapat={() => setEkleModal(false)}
           onKaydet={() => { setEkleModal(false); yukle() }}
+        />
+      )}
+      {snEkleModal && yonetim && (
+        <SnZimmetModal
+          kullanicilar={kullanicilar}
+          onKapat={() => setSnEkleModal(false)}
+          onKaydet={() => { setSnEkleModal(false); yukle() }}
         />
       )}
     </div>
@@ -391,6 +408,107 @@ function DemirbasEkleModal({ kullanicilar, onKapat, onKaydet }) {
               padding: '10px 18px', borderRadius: 8, background: R.mor, color: '#fff',
               border: 'none', fontWeight: 600, cursor: yukleniyor ? 'default' : 'pointer', fontSize: 14, opacity: (!kullaniciId || yukleniyor) ? 0.5 : 1,
             }}>{yukleniyor ? 'Yükleniyor…' : 'Kaydet'}</button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+// SN tarayarak teknisyene envanter atama modalı
+function SnZimmetModal({ kullanicilar, onKapat, onKaydet }) {
+  const [kullaniciId, setKullaniciId] = useState('')
+  const [seriNo, setSeriNo] = useState('')
+  const [bulunanKalem, setBulunanKalem] = useState(null)
+  const [aramaMesaj, setAramaMesaj] = useState(null)
+  const [hata, setHata] = useState(null)
+  const [yukleniyor, setYukleniyor] = useState(false)
+  const [aranıyor, setAranıyor] = useState(false)
+
+  // SN yazınca kısa debounce ile ara
+  useEffect(() => {
+    const sn = seriNo.trim()
+    setBulunanKalem(null); setAramaMesaj(null); setHata(null)
+    if (sn.length < 3) return
+    setAranıyor(true)
+    const t = setTimeout(async () => {
+      try {
+        const k = await stokKalemiBulSN(sn)
+        if (!k) setAramaMesaj('Bu SN depoda bulunamadı.')
+        else setBulunanKalem(k)
+      } catch (e) { setHata(e?.message || 'Arama hatası') }
+      finally { setAranıyor(false) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [seriNo])
+
+  const kaydet = async () => {
+    if (!kullaniciId || !bulunanKalem) return
+    setYukleniyor(true); setHata(null)
+    try {
+      await snTeknisyeneVer(bulunanKalem.id, Number(kullaniciId))
+      onKaydet()
+    } catch (e) { setHata(e?.message || 'Zimmet hatası') }
+    finally { setYukleniyor(false) }
+  }
+
+  return createPortal(
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100001,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: R.panel, color: R.metin,
+        borderRadius: 14, padding: 24,
+        maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto',
+        border: `1px solid ${R.border2}`,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h3 style={{ margin: 0, color: R.metin, fontSize: 18 }}>SN Tarat → Teknisyene Ver</h3>
+          <button onClick={onKapat} style={{ background: 'none', border: 'none', color: R.metin2, fontSize: 24, cursor: 'pointer' }}>×</button>
+        </div>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={etiket}>Kime</label>
+            <select value={kullaniciId} onChange={e => setKullaniciId(e.target.value)} style={inputStil()}>
+              <option value="">— teknisyen seç —</option>
+              {kullanicilar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={etiket}>Seri No (barkod okut veya elle gir)</label>
+            <input
+              autoFocus
+              value={seriNo}
+              onChange={e => setSeriNo(e.target.value)}
+              placeholder="Örn: JB306ABC123"
+              style={{ ...inputStil(), fontFamily: 'monospace' }}
+            />
+            {aranıyor && <div style={{ fontSize: 12, color: R.metin3, marginTop: 6 }}>Aranıyor…</div>}
+            {aramaMesaj && <div style={{ fontSize: 12, color: R.kirmizi, marginTop: 6 }}>{aramaMesaj}</div>}
+            {bulunanKalem && (
+              <div style={{ marginTop: 8, padding: 10, background: R.panel2, borderRadius: 8, border: `1px solid ${R.border2}` }}>
+                <div style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13 }}>{bulunanKalem.seri_no}</div>
+                <div style={{ fontSize: 12, color: R.metin2, marginTop: 3 }}>
+                  {[bulunanKalem.urun?.marka, bulunanKalem.urun?.model, bulunanKalem.urun?.ad].filter(Boolean).join(' · ') || bulunanKalem.stok_kodu}
+                </div>
+              </div>
+            )}
+          </div>
+          {hata && <div style={{ color: R.kirmizi, fontSize: 13 }}>{hata}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onKapat} style={{ padding: '10px 16px', borderRadius: 8, background: R.panel2, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 14 }}>İptal</button>
+            <button
+              onClick={kaydet}
+              disabled={!kullaniciId || !bulunanKalem || yukleniyor}
+              style={{
+                padding: '10px 18px', borderRadius: 8, background: R.mor, color: '#fff',
+                border: 'none', fontWeight: 600, fontSize: 14,
+                cursor: yukleniyor ? 'default' : 'pointer',
+                opacity: (!kullaniciId || !bulunanKalem || yukleniyor) ? 0.5 : 1,
+              }}
+            >{yukleniyor ? 'Kaydediliyor…' : 'Zimmetle'}</button>
           </div>
         </div>
       </div>
