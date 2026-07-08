@@ -404,6 +404,15 @@ export async function sayimBitir(sayimId) {
   if (error) throw error
 }
 
+// Sayımı sil — cascade ile stok_sayim_kalemleri de siler
+export async function sayimSil(sayimId) {
+  const { error } = await supabase
+    .from('stok_sayimlar')
+    .delete()
+    .eq('id', sayimId)
+  if (error) throw error
+}
+
 export async function sonSayimlar(limit = 10) {
   const { data, error } = await supabase
     .from('stok_sayimlar')

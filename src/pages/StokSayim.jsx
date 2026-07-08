@@ -1,8 +1,8 @@
 // Stok sayım modu — sayım oluştur, SN taratıp tikle, eksik/fazla raporu.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ClipboardCheck, ScanLine, Play, CheckSquare, X } from 'lucide-react'
-import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar } from '../services/depoService'
+import { ClipboardCheck, ScanLine, Play, CheckSquare, X, Trash2 } from 'lucide-react'
+import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar, sayimSil } from '../services/depoService'
 import { Card, Button, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
@@ -210,13 +210,24 @@ export default function StokSayim() {
           ozet={detayModal.ozet}
           yukleniyor={detayYukleniyor}
           onKapat={() => setDetayModal(null)}
+          onSil={async () => {
+            if (!confirm(`Sayım #${detayModal.sayim.id} kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`)) return
+            try {
+              await sayimSil(detayModal.sayim.id)
+              toast.success('Sayım silindi.')
+              setDetayModal(null)
+              await gecmisiYukle()
+            } catch (e) {
+              toast.error('Silme hatası: ' + (e?.message || 'bilinmeyen'))
+            }
+          }}
         />
       )}
     </div>
   )
 }
 
-function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat }) {
+function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil }) {
   const [sekme, setSekme] = useState('tarandi')
   const liste = sekme === 'tarandi' ? (ozet?.tarandiList || []) : (ozet?.eksik || [])
   return createPortal(
@@ -231,9 +242,23 @@ function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <h3 style={{ margin: 0, fontSize: 18 }}>Sayım #{sayim.id} Detayı</h3>
-          <button onClick={onKapat} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
-            <X size={18} strokeWidth={1.5} />
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {onSil && (
+              <button onClick={onSil}
+                title="Bu sayımı sil"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 10px', borderRadius: 6,
+                  background: 'transparent', color: 'var(--danger)',
+                  border: '1px solid var(--danger)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>
+                <Trash2 size={12} strokeWidth={1.5} /> Sayımı Sil
+              </button>
+            )}
+            <button onClick={onKapat} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+              <X size={18} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
           {sayim.aciklama || '—'} · Başlangıç: {fmtTarih(sayim.olusturuldu)}
