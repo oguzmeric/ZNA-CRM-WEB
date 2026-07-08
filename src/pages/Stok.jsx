@@ -440,7 +440,8 @@ function Stok() {
         return
       }
     } else {
-      const { ilkStok, seriTakipli, seriKalemleri, model, ...insertForm } = form
+      // BUG FIX: seriTakipli ve model DB'ye yazılmalı, sadece frontend-only alanları çıkar
+      const { ilkStok, topluSN, seriKalemleri, ...insertForm } = form
       const yeniUrun = await stokUrunEkle(insertForm)
       if (yeniUrun) {
         setUrunler(prev => [...prev, yeniUrun])
