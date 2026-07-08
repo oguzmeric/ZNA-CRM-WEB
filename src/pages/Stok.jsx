@@ -11,7 +11,9 @@ import {
   stokUrunleriniGetir, stokUrunEkle, stokUrunGuncelle, stokUrunSil,
   stokHareketleriniGetir, stokHareketEkle, gorselYukle,
   stokKalemOzetleriniGetir, stokKalemleriToplu,
+  tumSeriNumaralariniGetir, modelKalemleriniGetir,
 } from '../services/stokService'
+import { AlertTriangle as AlertIkon } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { trContains } from '../lib/trSearch'
@@ -77,6 +79,9 @@ function Stok() {
   const [excelModal, setExcelModal] = useState(false)
   const [gorselYukleniyor, setGorselYukleniyor] = useState(false)
   const gorselRef = useRef(null)
+  // SN duplicate kontrolü — düzenleme modunda yüklenen mevcut SN'ler + global map
+  const [urunSNSet, setUrunSNSet] = useState(new Set())  // bu üründeki SN'ler
+  const [globalSN, setGlobalSN] = useState(new Map())  // seri_no.lower → stok_kodu
 
   useEffect(() => {
     Promise.all([
@@ -314,7 +319,42 @@ function Stok() {
     setDuzenleId(u.id)
     setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    // SN takipli üründe düzenleme açılınca mevcut SN'leri ve global SN map'ini yükle
+    if (u.seriTakipli) {
+      Promise.all([
+        modelKalemleriniGetir(u.stokKodu),
+        tumSeriNumaralariniGetir(),
+      ])
+        .then(([arr, gmap]) => {
+          setUrunSNSet(new Set((arr || []).filter(k => k.seriNo).map(k => k.seriNo.trim().toLowerCase())))
+          setGlobalSN(gmap || new Map())
+        })
+        .catch(() => { setUrunSNSet(new Set()); setGlobalSN(new Map()) })
+    } else {
+      setUrunSNSet(new Set())
+      setGlobalSN(new Map())
+    }
   }
+
+  // Toplu SN analizi (yeni/bu ürün/başka ürün/tekrar)
+  const topluSNAnaliz = (() => {
+    const lines = (form.topluSN || '').split('\n').map(s => s.trim()).filter(Boolean)
+    const yeni = [], buUrunde = [], baskaUrunde = [], tekrar = []
+    const goruldu = new Set()
+    for (const s of lines) {
+      const k = s.toLowerCase()
+      if (goruldu.has(k)) { tekrar.push(s); continue }
+      goruldu.add(k)
+      if (urunSNSet.has(k)) { buUrunde.push(s); continue }
+      const digerStok = globalSN.get(k)
+      if (digerStok && digerStok !== form.stokKodu) {
+        baskaUrunde.push({ sn: s, stokKodu: digerStok })
+        continue
+      }
+      yeni.push(s)
+    }
+    return { yeni, buUrunde, baskaUrunde, tekrar }
+  })()
 
   const kaydet = async () => {
     if (!form.stokAdi || !form.stokKodu) {
@@ -333,8 +373,9 @@ function Stok() {
         setUrunler(prev => prev.map(u => u.id === duzenleId ? guncellendi : u))
 
         // Toplu S/N ekleme — seri_takipli ürünler için
+        // DUPLICATE FİLTRE: sadece "yeni" olanları ekle (analiz sonucundan)
         if (form.seriTakipli && topluSN?.trim()) {
-          const snListesi = topluSN.split('\n').map(s => s.trim()).filter(Boolean)
+          const snListesi = topluSNAnaliz.yeni  // filtrelenmiş: sadece yeni ve unique
           if (snListesi.length > 0) {
             try {
               const hazir = snListesi.map(sn => ({
@@ -812,14 +853,74 @@ function Stok() {
                     minHeight: 120,
                   }}
                 />
-                <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
-                  {(() => {
-                    const say = form.topluSN.split('\n').map(s => s.trim()).filter(Boolean).length
-                    return say > 0
-                      ? `→ ${say} adet yeni S/N eklenecek + ${say} birim stok girişi oluşturulacak.`
-                      : 'Excel veya listeden kopyala‑yapıştır: her satırda 1 S/N.'
-                  })()}
-                </p>
+                {(() => {
+                  const say = form.topluSN.split('\n').map(s => s.trim()).filter(Boolean).length
+                  if (say === 0) {
+                    return (
+                      <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
+                        Excel veya listeden kopyala‑yapıştır: her satırda 1 S/N.
+                      </p>
+                    )
+                  }
+                  const a = topluSNAnaliz
+                  return (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{
+                        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+                        background: 'var(--surface-sunken)', padding: 10, borderRadius: 'var(--radius-sm)',
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>YENİ</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--success)' }}>{a.yeni.length}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>BU ÜRÜNDE</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: a.buUrunde.length > 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{a.buUrunde.length}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>BAŞKA ÜRÜNDE</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: a.baskaUrunde.length > 0 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{a.baskaUrunde.length}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>TEKRAR</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: a.tekrar.length > 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{a.tekrar.length}</div>
+                        </div>
+                      </div>
+                      {a.baskaUrunde.length > 0 && (
+                        <Alert tone="danger" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                          <div style={{ fontSize: 12 }}>
+                            <strong>Bu S/N/barkodlar başka bir ürüne kayıtlı!</strong>
+                            <div style={{ marginTop: 4, display: 'grid', gap: 2 }}>
+                              {a.baskaUrunde.slice(0, 5).map(x => (
+                                <div key={x.sn}>
+                                  <span style={{ fontFamily: 'var(--font-mono)' }}>{x.sn}</span> → <strong>{x.stokKodu}</strong>
+                                </div>
+                              ))}
+                              {a.baskaUrunde.length > 5 && <div>… (+{a.baskaUrunde.length - 5} daha)</div>}
+                            </div>
+                          </div>
+                        </Alert>
+                      )}
+                      {a.tekrar.length > 0 && (
+                        <Alert tone="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                          <div style={{ fontSize: 12 }}>
+                            Aynı S/N tekrar okundu, sadece 1 kez eklenir: <strong>{a.tekrar.slice(0, 5).join(', ')}{a.tekrar.length > 5 ? ` … (+${a.tekrar.length - 5})` : ''}</strong>
+                          </div>
+                        </Alert>
+                      )}
+                      {a.buUrunde.length > 0 && (
+                        <Alert tone="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                          <div style={{ fontSize: 12 }}>
+                            Bu S/N'ler bu üründe zaten kayıtlı: <strong>{a.buUrunde.slice(0, 5).join(', ')}{a.buUrunde.length > 5 ? ` … (+${a.buUrunde.length - 5})` : ''}</strong>
+                          </div>
+                        </Alert>
+                      )}
+                      <p className="t-caption" style={{ marginTop: 8, color: a.yeni.length > 0 ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                        → <strong>{a.yeni.length}</strong> adet yeni S/N eklenecek {a.yeni.length > 0 && `+ ${a.yeni.length} birim stok girişi`}.
+                      </p>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
