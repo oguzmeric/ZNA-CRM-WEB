@@ -271,20 +271,38 @@ export const snGuncelle = async (id, alanlar) => {
   return toCamel(data)
 }
 
-// Bir SN'i sil — otomatik olarak cikis hareketi de eklenir (sayaç senkron)
-export const snSil = async (id) => {
-  // Önce silineni oku (hareket için)
+// SN silme sebepleri — audit için standart set
+export const SN_SILME_SEBEPLERI = [
+  { id: 'satildi',       ad: 'Satıldı / Müşteriye teslim',   ikon: '🛒' },
+  { id: 'iade',          ad: 'İade edildi (tedarikçiye)',    ikon: '↩️' },
+  { id: 'hasarli',       ad: 'Hasarlı / Bozuldu',            ikon: '💥' },
+  { id: 'kayip',         ad: 'Kayıp / Bulunamadı',           ikon: '❓' },
+  { id: 'yanlis_kayit',  ad: 'Yanlış eklenmiş',              ikon: '⚠️' },
+  { id: 'diger',         ad: 'Diğer',                        ikon: '📝' },
+]
+
+// Bir SN'i sil — sebep zorunlu, hareket olarak loglanır (audit trail)
+// snSil(id, { sebep, not }) — sebep SN_SILME_SEBEPLERI id'sinden
+export const snSil = async (id, sebepBilgi = {}) => {
+  const { sebep = 'diger', not = '' } = sebepBilgi
+  const sebepObj = SN_SILME_SEBEPLERI.find(s => s.id === sebep) || SN_SILME_SEBEPLERI[SN_SILME_SEBEPLERI.length - 1]
+  // Önce silineni oku
   const { data: kalem } = await supabase.from('stok_kalemleri').select('stok_kodu, seri_no, marka').eq('id', id).maybeSingle()
   const { error } = await supabase.from('stok_kalemleri').delete().eq('id', id)
   if (error) { console.error('snSil:', error.message); throw error }
-  // Cikis hareketi ekle (sessizce, hata olsa da devam)
+  // Cikis hareketi ekle (audit)
   if (kalem?.stok_kodu) {
+    const aciklama = [
+      `SN silindi: ${kalem.seri_no || id}`,
+      `Sebep: ${sebepObj.ad}`,
+      not ? `Not: ${not}` : null,
+    ].filter(Boolean).join(' — ')
     await supabase.from('stok_hareketleri').insert({
       stok_kodu: kalem.stok_kodu,
       stok_adi: kalem.marka || null,
       hareket_tipi: 'cikis',
       miktar: 1,
-      aciklama: `SN silindi: ${kalem.seri_no || id}`,
+      aciklama,
       tarih: new Date().toISOString().split('T')[0],
     }).then(({ error: eH }) => { if (eH) console.warn('SN sil hareket:', eH.message) })
   }
