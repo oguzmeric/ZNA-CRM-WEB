@@ -401,7 +401,7 @@ function Stok() {
               })
               toast.success(`${snListesi.length} adet S/N kaydedildi.`)
             } catch (e) {
-              toast.error('S/N kayıtlarında hata: ' + (e?.message ?? 'bilinmiyor'))
+              toast.error(e?.message || 'S/N kaydedilirken bir sorun oldu.')
             }
           }
         } else if (ilkStok !== '' && Number(ilkStok) >= 0) {
