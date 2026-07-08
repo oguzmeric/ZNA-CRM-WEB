@@ -646,6 +646,7 @@ function EsnwebPanel() {
   const [acikFisno, setAcikFisno] = useState(null)
   const [kalemler, setKalemler] = useState({})  // fisno → kalem[]
   const [importEdiliyor, setImportEdiliyor] = useState(null)  // fisno
+  const [topluAktarim, setTopluAktarim] = useState(null)  // { toplam, yapilan, hata }
 
   useEffect(() => {
     (async () => {
@@ -677,6 +678,66 @@ function EsnwebPanel() {
         .order('refno')
       setKalemler(k => ({ ...k, [fisno]: data || [] }))
     }
+  }
+
+  // Aktarılmamış tüm teklifleri toplu CRM'e aktarır (yönlendirmesiz, arka planda)
+  const topluAktar = async () => {
+    const aktarilmayan = tumu.filter(x => !x.crm_teklif_id)
+    if (!aktarilmayan.length) { alert('Aktarılacak yeni teklif yok — hepsi zaten CRM\'de.'); return }
+    if (!confirm(`${aktarilmayan.length} teklif CRM'e aktarılacak. Devam edilsin mi?`)) return
+    setTopluAktarim({ toplam: aktarilmayan.length, yapilan: 0, hata: 0 })
+    let yapilan = 0, hata = 0
+    // Musteri map — bir kez al, sık sık sorgulama
+    const { data: musteriler } = await supabase.from('musteriler').select('id, ad').limit(5000)
+    const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toUpperCase()
+    const musteriMap = new Map((musteriler || []).map(m => [norm(m.ad), m.id]))
+
+    for (const t of aktarilmayan) {
+      try {
+        // Kalemleri çek
+        const { data: kalemLst } = await supabase.from('esn_teklif_kalemleri')
+          .select('stok_kodu, stok_adi, birim, miktar, fiyat, kdv_yuzde, iskonto1_yuzde, kur')
+          .eq('fisno', t.fisno)
+        const satirlar = (kalemLst || []).map(k => ({
+          id: crypto.randomUUID(),
+          stokKodu: k.stok_kodu || '',
+          stokAdi: k.stok_adi || '',
+          miktar: Number(k.miktar) || 0,
+          birim: k.birim || 'Adet',
+          birimFiyat: Number(k.fiyat) || 0,
+          iskonto: Number(k.iskonto1_yuzde) || 0,
+          kdv: Number(k.kdv_yuzde) || 20,
+        }))
+        const yeni = {
+          tarih: t.tarih || new Date().toISOString().slice(0, 10),
+          musteri_id: musteriMap.get(norm(t.firma_adi)) || null,
+          firma_adi: t.firma_adi,
+          konu: t.teklif_konusu || `esnweb #${t.evrak_no}`,
+          para_birimi: dovkodDon(t.dovkod),
+          doviz_kuru: Number(kalemLst?.[0]?.kur) || 0,
+          hazirlayan: t.hazirlayan || t.temsilci || null,
+          onay_durumu: 'takipte',
+          satirlar,
+          aciklama: `esnweb'den içe aktarıldı: FISNO ${t.fisno}, Evrak ${t.evrak_no}`,
+        }
+        const { data: inserted, error } = await supabase.from('teklifler').insert(yeni).select('id').single()
+        if (error) throw error
+        await supabase.from('esn_teklifler').update({ crm_teklif_id: inserted.id }).eq('fisno', t.fisno)
+        yapilan++
+      } catch (e) {
+        console.warn('[toplu-aktar]', t.fisno, e?.message)
+        hata++
+      }
+      setTopluAktarim({ toplam: aktarilmayan.length, yapilan, hata })
+    }
+    // Listeyi tazele
+    const { data: tazelenmis } = await supabase.from('esn_teklifler')
+      .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul, crm_teklif_id')
+      .eq('silindi', false)
+      .in('fisno', tumu.map(x => x.fisno))
+    if (tazelenmis) setTumu(tazelenmis)
+    alert(`Toplu aktarım tamamlandı!\n\nBaşarılı: ${yapilan}\nHata: ${hata}`)
+    setTopluAktarim(null)
   }
 
   const crmeAktar = async (t) => {
@@ -772,7 +833,23 @@ function EsnwebPanel() {
         </select>
         <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
           <span className="tabular-nums">{filtreli.length}</span> teklif
+          {tumu.some(x => !x.crm_teklif_id) && (
+            <span style={{ marginLeft: 8, color: 'var(--warning)' }}>
+              (<span className="tabular-nums">{tumu.filter(x => !x.crm_teklif_id).length}</span> aktarılmayı bekliyor)
+            </span>
+          )}
         </span>
+        <Button
+          variant="primary"
+          size="sm"
+          iconLeft={<Download size={12} strokeWidth={1.5} />}
+          onClick={topluAktar}
+          disabled={!!topluAktarim || !tumu.some(x => !x.crm_teklif_id)}
+        >
+          {topluAktarim
+            ? `Aktarılıyor ${topluAktarim.yapilan}/${topluAktarim.toplam}${topluAktarim.hata ? ` (${topluAktarim.hata} hata)` : ''}…`
+            : 'Tümünü CRM\'e Aktar'}
+        </Button>
       </div>
 
       <Card padding={0} style={{ overflow: 'hidden' }}>
