@@ -281,19 +281,29 @@ export const snSil = async (id) => {
 // Birden fazla S/N kalemi toplu ekle
 // PG hata mesajlarını kullanıcı dostu Türkçe'ye çevir
 const stokHataMesaji = (error) => {
-  const msg = String(error?.message || '')
-  if (msg.includes('stok_kalemleri_seri_no_key') || msg.includes('duplicate key') && msg.includes('seri_no')) {
+  // Supabase PostgrestError: message + details + hint + code (23505 = unique_violation)
+  const parcalar = [error?.message, error?.details, error?.hint].filter(Boolean).join(' | ')
+  const msg = String(parcalar).toLowerCase()
+  const kod = String(error?.code || '')
+
+  const isDuplicate = kod === '23505' || msg.includes('duplicate key') || msg.includes('already exists')
+
+  if (isDuplicate && (msg.includes('seri_no') || msg.includes('stok_kalemleri_seri_no_key'))) {
     // Hata mesajından SN'yi çıkarmayı dene: Key (seri_no)=(XXX) already exists
-    const m = msg.match(/\(seri_no\)=\(([^)]+)\)/)
+    const m = parcalar.match(/\(seri_no\)=\(([^)]+)\)/i)
     const sn = m ? m[1] : null
     return sn
-      ? `Bu seri numarası zaten kayıtlı: ${sn}. Aynı SN iki farklı ürüne verilemez.`
+      ? `Bu seri numarası zaten kayıtlı: ${sn} — aynı SN iki farklı ürüne verilemez.`
       : 'Bu seri numarası zaten kayıtlı — aynı SN iki farklı ürüne verilemez.'
   }
-  if (msg.includes('duplicate key') && msg.includes('barkod')) {
-    return 'Bu barkod zaten kayıtlı — aynı barkod iki farklı ürüne verilemez.'
+  if (isDuplicate && msg.includes('barkod')) {
+    const m = parcalar.match(/\(barkod\)=\(([^)]+)\)/i)
+    const bk = m ? m[1] : null
+    return bk
+      ? `Bu barkod zaten kayıtlı: ${bk} — aynı barkod iki farklı ürüne verilemez.`
+      : 'Bu barkod zaten kayıtlı — aynı barkod iki farklı ürüne verilemez.'
   }
-  return msg || 'Bilinmeyen hata'
+  return error?.message || 'Bilinmeyen hata'
 }
 
 export const stokKalemleriToplu = async (kalemler) => {
