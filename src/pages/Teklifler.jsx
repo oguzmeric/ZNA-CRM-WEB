@@ -628,14 +628,24 @@ export default function Teklifler() {
   )
 }
 
+// esn.dovkod → CRM para_birimi
+function dovkodDon(dov) {
+  if (dov === 'D') return 'USD'
+  if (dov === 'E') return 'EUR'
+  if (dov === 'S') return 'GBP'
+  return 'TL'
+}
+
 // esnweb tekliflerini listeleyen panel — arama, tarih filtresi, kalem expand
 function EsnwebPanel() {
+  const navigate = useNavigate()
   const [tumu, setTumu] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [arama, setArama] = useState('')
   const [gunFiltresi, setGunFiltresi] = useState('7')  // son N gün
   const [acikFisno, setAcikFisno] = useState(null)
   const [kalemler, setKalemler] = useState({})  // fisno → kalem[]
+  const [importEdiliyor, setImportEdiliyor] = useState(null)  // fisno
 
   useEffect(() => {
     (async () => {
@@ -662,10 +672,57 @@ function EsnwebPanel() {
     setAcikFisno(fisno)
     if (!kalemler[fisno]) {
       const { data } = await supabase.from('esn_teklif_kalemleri')
-        .select('refno, stok_kodu, stok_adi, birim, miktar, fiyat, tutar, kdv_yuzde, net_tutar, dovkod, kur')
+        .select('refno, stok_kodu, stok_adi, birim, miktar, fiyat, tutar, kdv_yuzde, iskonto1_yuzde, net_tutar, dovkod, kur')
         .eq('fisno', fisno)
         .order('refno')
       setKalemler(k => ({ ...k, [fisno]: data || [] }))
+    }
+  }
+
+  const crmeAktar = async (t) => {
+    setImportEdiliyor(t.fisno)
+    try {
+      const kalemLst = kalemler[t.fisno] || []
+      // Müşteriyi firma_adi ile bul (fuzzy: temizlenmiş, upper)
+      const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toUpperCase()
+      const { data: musteriler } = await supabase.from('musteriler').select('id, ad').ilike('ad', `%${(t.firma_adi || '').split(' ')[0]}%`).limit(50)
+      const eslesme = (musteriler || []).find(m => norm(m.ad) === norm(t.firma_adi))
+
+      // Kalem satırları CRM formatına
+      const satirlar = kalemLst.map(k => ({
+        id: crypto.randomUUID(),
+        stokKodu: k.stok_kodu || '',
+        stokAdi: k.stok_adi || '',
+        miktar: Number(k.miktar) || 0,
+        birim: k.birim || 'Adet',
+        birimFiyat: Number(k.fiyat) || 0,
+        iskonto: Number(k.iskonto1_yuzde) || 0,
+        kdv: Number(k.kdv_yuzde) || 20,
+      }))
+
+      const yeniTeklif = {
+        tarih: t.tarih || new Date().toISOString().slice(0, 10),
+        musteri_id: eslesme?.id || null,
+        firma_adi: t.firma_adi,
+        konu: t.teklif_konusu || `esnweb #${t.evrak_no}`,
+        para_birimi: dovkodDon(t.dovkod),
+        doviz_kuru: Number(kalemLst[0]?.kur) || 0,
+        hazirlayan: t.hazirlayan || t.temsilci || null,
+        onay_durumu: 'takipte',
+        satirlar,
+        aciklama: `esnweb'den içe aktarıldı: FISNO ${t.fisno}, Evrak ${t.evrak_no}`,
+      }
+
+      const { data, error } = await supabase.from('teklifler').insert(yeniTeklif).select('id').single()
+      if (error) {
+        alert('İçe aktarma hatası: ' + error.message)
+        return
+      }
+      navigate(`/teklifler/${data.id}`)
+    } catch (e) {
+      alert('Hata: ' + (e?.message || e))
+    } finally {
+      setImportEdiliyor(null)
     }
   }
 
@@ -798,12 +855,23 @@ function EsnwebPanel() {
                             </div>
                           ))}
                           <div style={{
-                            padding: '10px 12px', display: 'flex', justifyContent: 'flex-end', gap: 20,
+                            padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20,
                             fontSize: 12, color: 'var(--text-secondary)',
                             background: 'var(--surface-sunken)', borderTop: '1px solid var(--border-default)',
                           }}>
-                            {t.dovkod === 'D' && <span>Kur: <strong style={{ color: 'var(--text-primary)' }}>{kalemler[t.fisno][0]?.kur?.toFixed(4) || '—'}</strong></span>}
-                            <span>Genel Toplam: <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>{fmtDov(t.genel_toplam, t.dovkod)}</strong></span>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              iconLeft={<Download size={12} strokeWidth={1.5} />}
+                              onClick={() => crmeAktar(t)}
+                              disabled={importEdiliyor === t.fisno}
+                            >
+                              {importEdiliyor === t.fisno ? 'İçe aktarılıyor…' : "CRM'e İçe Aktar"}
+                            </Button>
+                            <div style={{ display: 'flex', gap: 20 }}>
+                              {t.dovkod === 'D' && <span>Kur: <strong style={{ color: 'var(--text-primary)' }}>{kalemler[t.fisno][0]?.kur?.toFixed(4) || '—'}</strong></span>}
+                              <span>Genel Toplam: <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>{fmtDov(t.genel_toplam, t.dovkod)}</strong></span>
+                            </div>
                           </div>
                         </div>
                       )}
