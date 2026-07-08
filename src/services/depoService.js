@@ -138,7 +138,7 @@ export async function rmaOlustur(stokKalemId, { tedarikci_ad, kargo_no = '', tah
   await hareket({
     stokKodu: kalem.stok_kodu, stokAdi: kalem.marka,
     tip: 'rma_cikis',
-    aciklama: `RMA gönderim: ${kalem.seri_no} → ${tedarikci_ad}${kargo_no ? ` (kargo: ${kargo_no})` : ''}`,
+    aciklama: `Servise gönderildi: ${kalem.seri_no} → ${tedarikci_ad}${kargo_no ? ` (kargo: ${kargo_no})` : ''}`,
   })
   return { kalem, rma }
 }
@@ -164,7 +164,7 @@ export async function rmaGeriDondu(rmaId, { sonuc, notlar = '', yeniDurum = null
     await hareket({
       stokKodu: kalem.stok_kodu, stokAdi: kalem.marka,
       tip: 'rma_giris',
-      aciklama: `RMA dönüş: ${kalem.seri_no} — ${(RMA_SONUCLARI.find(s => s.id === sonuc) || {}).ad || sonuc}`,
+      aciklama: `Servisten döndü: ${kalem.seri_no} — ${(RMA_SONUCLARI.find(s => s.id === sonuc) || {}).ad || sonuc}`,
     })
   }
   return { rma, kalem }

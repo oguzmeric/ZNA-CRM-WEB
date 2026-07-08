@@ -53,7 +53,7 @@ export default function DepoRaporlar() {
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Truck size={16} strokeWidth={1.5} />
-          <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Açık RMA'lar ({rmalar.length})</h3>
+          <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Servisteki Ürünler — Dönüş Bekleniyor ({rmalar.length})</h3>
         </div>
         {rmalar.length === 0 ? (
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: 8 }}>Servisten dönüşü bekleyen kayıt yok.</div>

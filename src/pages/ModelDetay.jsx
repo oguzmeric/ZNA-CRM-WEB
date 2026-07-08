@@ -512,10 +512,10 @@ function ModelDetay() {
                                 onClick={async () => {
                                   const list = await kalemRMAGecmisi(k.id)
                                   const acik = list.find(x => !x.geri_donus_tarih)
-                                  if (!acik) return alert('Açık RMA kaydı bulunamadı.')
+                                  if (!acik) return alert('Serviste bekleyen kayıt bulunamadı.')
                                   setRmaDonusModal({ kalem: k, rma: acik })
                                 }}>
-                                RMA Dönüşü
+                                Servisten Döndü
                               </Button>
                             )}
                             {!k.silindi && k.durum === 'sahada' && (
@@ -914,7 +914,7 @@ function RMAModal({ kalem, onKapat, onKaydet }) {
     } finally { setKaydediliyor(false) }
   }
   return (
-    <ModalKutu onKapat={onKapat} baslik="Tamire Gönder (RMA)" alt={`SN: ${kalem.seriNo} → durum: tamirde`}>
+    <ModalKutu onKapat={onKapat} baslik="Servise / Tamire Gönder" alt={`SN: ${kalem.seriNo} → durum: tamirde`}>
       <FieldLabel>Tedarikçi / Servis Adı</FieldLabel>
       <input value={tedarikci} onChange={e => setTedarikci(e.target.value)}
         placeholder="Örn: Hikvision Türkiye" style={selectStil} />
@@ -952,7 +952,7 @@ function RMADonusModal({ kalem, rma, onKapat, onKaydet }) {
     finally { setKaydediliyor(false) }
   }
   return (
-    <ModalKutu onKapat={onKapat} baslik="RMA Dönüşü İşle" alt={`SN: ${kalem.seriNo} — ${rma.tedarikci_ad}`}>
+    <ModalKutu onKapat={onKapat} baslik="Servisten Döndü — Sonucu İşle" alt={`SN: ${kalem.seriNo} — ${rma.tedarikci_ad}`}>
       <FieldLabel>Sonuç</FieldLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
         {RMA_SONUCLARI.map(s => (
