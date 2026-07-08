@@ -83,6 +83,27 @@ export default function StokSayim() {
         )}
       </div>
 
+      {!aktifSayim && (
+        <Card style={{ marginBottom: 16, background: 'var(--surface-sunken)' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-primary)' }}>📖 Nasıl çalışır?</h3>
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            <li><strong>Başlat:</strong> Şu an <em>depoda</em> aktif olan tüm SN'ler "beklenen liste"ye eklenir (teknisyendekiler <strong>hariç</strong>).</li>
+            <li><strong>Fiziksel sayım:</strong> Raflarda dolaş, her SN'i barkod okut veya elle yaz + Enter.
+              <ul style={{ marginTop: 4 }}>
+                <li>✅ <strong>Tarandı</strong>: sayı artar.</li>
+                <li>⚠️ <strong>Zaten tarandı</strong>: aynı SN 2. kez okutulmuş.</li>
+                <li>🆕 <strong>Fazladan</strong>: fiziksel var ama listede yok — kayıt hatası.</li>
+                <li>❌ <strong>Bulunamadı</strong>: DB'de o SN kayıtlı değil.</li>
+              </ul>
+            </li>
+            <li><strong>Bitir:</strong> "Sayımı Bitir" tıkla. Eksik listesindekiler <em>kayıp/çalıntı</em> demek — araştırılmalı.</li>
+          </ol>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10, padding: '8px 10px', background: 'var(--surface-card)', borderRadius: 6 }}>
+            💡 Sayım <strong>read-only</strong>: SN'lerin durumunu değiştirmez, sadece raporlar. Fiziksel eksik bulursan Depo Raporları'ndan araştır ya da SN'i "Kayıp" olarak sil.
+          </div>
+        </Card>
+      )}
+
       {aktifSayim && ozet && (
         <>
           <Card style={{ marginBottom: 16 }}>
@@ -100,6 +121,9 @@ export default function StokSayim() {
               <Button variant="secondary" size="sm" iconLeft={<CheckSquare size={13} />} onClick={sayimBitirAksiyon}>
                 Sayımı Bitir
               </Button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              📋 Raflarda dolaş, SN barkodu okut veya elle yaz + Enter. "Tarandı" artar, "Eksik" azalır. Bitince "Sayımı Bitir".
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--surface-sunken)', borderRadius: 8 }}>
               <ScanLine size={16} strokeWidth={1.5} />
