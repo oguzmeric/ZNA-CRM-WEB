@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
   ChevronUp, ChevronDown, Download, Inbox as InboxMail, ClipboardEdit, Search as SearchIc,
-  CheckCircle2, Ban, Clock,
+  CheckCircle2, Ban, Clock, CloudDownload,
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -178,9 +179,12 @@ export default function Teklifler() {
           </p>
         </div>
         {aktifSekme !== 'musteri_talepleri' && (
-          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
-            Yeni teklif
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <EsnCekButonu />
+            <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
+              Yeni teklif
+            </Button>
+          </div>
         )}
       </div>
 
@@ -617,5 +621,41 @@ export default function Teklifler() {
         </div>
       )}
     </div>
+  )
+}
+
+// esnweb'den teklif çekme butonu — 100 son teklifi liste + baş + kalem senkron eder
+function EsnCekButonu() {
+  const [cekiliyor, setCekiliyor] = useState(false)
+  const cek = async () => {
+    setCekiliyor(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('esn-teklif-senkron', { body: { limit: 100 } })
+      let hata = null
+      if (error) {
+        try { const ctx = await error.context?.json(); hata = ctx?.hata || ctx?.error } catch {}
+        hata = hata || error.message
+      } else if (!data?.ok) {
+        hata = data?.hata || 'bilinmiyor'
+      }
+      if (hata) { alert('Çekilemedi: ' + hata); return }
+      const y = data.yeni || 0, g = data.guncellenen || 0, k = data.kalem_yeni || 0, h = data.hatalar || []
+      let msg = `Tarandı: ${data.taranan}\nYeni: ${y}\nGüncellenen: ${g}\nKalem eklendi: ${k}`
+      if (h.length) msg += `\n\nHatalar (${h.length}):\n` + h.slice(0, 5).join('\n')
+      alert(msg)
+    } finally {
+      setCekiliyor(false)
+    }
+  }
+  return (
+    <Button
+      variant="secondary"
+      iconLeft={<CloudDownload size={14} strokeWidth={1.5} />}
+      onClick={cek}
+      disabled={cekiliyor}
+      title="Son 100 esnweb teklifini kalemleriyle birlikte senkron eder"
+    >
+      {cekiliyor ? 'Çekiliyor…' : 'esnweb Çek'}
+    </Button>
   )
 }
