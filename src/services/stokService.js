@@ -224,7 +224,10 @@ export const stokKalemEkle = async (kalem) => {
     .insert(toSnake(rest))
     .select()
     .single()
-  if (error) { console.error('stokKalemEkle hata:', error.message); throw error }
+  if (error) {
+    console.error('stokKalemEkle hata:', error.message)
+    throw new Error(stokHataMesaji(error))
+  }
   invalidatePrefix('stok')
   return toCamel(data)
 }
@@ -276,6 +279,23 @@ export const snSil = async (id) => {
 }
 
 // Birden fazla S/N kalemi toplu ekle
+// PG hata mesajlarını kullanıcı dostu Türkçe'ye çevir
+const stokHataMesaji = (error) => {
+  const msg = String(error?.message || '')
+  if (msg.includes('stok_kalemleri_seri_no_key') || msg.includes('duplicate key') && msg.includes('seri_no')) {
+    // Hata mesajından SN'yi çıkarmayı dene: Key (seri_no)=(XXX) already exists
+    const m = msg.match(/\(seri_no\)=\(([^)]+)\)/)
+    const sn = m ? m[1] : null
+    return sn
+      ? `Bu seri numarası zaten kayıtlı: ${sn}. Aynı SN iki farklı ürüne verilemez.`
+      : 'Bu seri numarası zaten kayıtlı — aynı SN iki farklı ürüne verilemez.'
+  }
+  if (msg.includes('duplicate key') && msg.includes('barkod')) {
+    return 'Bu barkod zaten kayıtlı — aynı barkod iki farklı ürüne verilemez.'
+  }
+  return msg || 'Bilinmeyen hata'
+}
+
 export const stokKalemleriToplu = async (kalemler) => {
   if (!kalemler?.length) return []
   const rows = kalemler.map(k => {
@@ -286,7 +306,12 @@ export const stokKalemleriToplu = async (kalemler) => {
     .from('stok_kalemleri')
     .insert(rows)
     .select()
-  if (error) { console.error('stokKalemleriToplu hata:', error.message); throw error }
+  if (error) {
+    console.error('stokKalemleriToplu hata:', error.message)
+    const dostuHata = new Error(stokHataMesaji(error))
+    dostuHata.origMessage = error.message
+    throw dostuHata
+  }
   invalidatePrefix('stok')
   return arrayToCamel(data) ?? []
 }
