@@ -211,6 +211,32 @@ export const stokKalemEkle = async (kalem) => {
   return toCamel(data)
 }
 
+// Bir SN'i teknisyene ver — durum='teknisyende', teknisyen_id set
+export const snTeknisyeneVer = async (id, teknisyenId) => {
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({ durum: 'teknisyende', teknisyen_id: teknisyenId })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) { console.error('snTeknisyeneVer:', error.message); throw error }
+  invalidatePrefix('stok')
+  return toCamel(data)
+}
+
+// SN'i depoya çek — durum='depoda', teknisyen_id trigger ile null olur
+export const snDepoyaCek = async (id) => {
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({ durum: 'depoda' })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) { console.error('snDepoyaCek:', error.message); throw error }
+  invalidatePrefix('stok')
+  return toCamel(data)
+}
+
 // Birden fazla S/N kalemi toplu ekle
 export const stokKalemleriToplu = async (kalemler) => {
   if (!kalemler?.length) return []
