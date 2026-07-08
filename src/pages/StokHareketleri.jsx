@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Package, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, X,
-  ArrowRight,
+  ArrowRight, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -55,6 +55,7 @@ export default function StokHareketleri() {
   const [filtre, setFiltre] = useState('hepsi')
   const [arama, setArama] = useState('')
   const [detayHareket, setDetayHareket] = useState(null)
+  const [acikGruplar, setAcikGruplar] = useState(new Set())  // expand olan grup ID'leri
 
   useEffect(() => {
     Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), musterileriGetir(), stokKalemOzetleriniGetir()])
@@ -122,6 +123,23 @@ export default function StokHareketleri() {
   const gorunenHareketler = [...hareketler]
     .filter(h => filtre === 'hepsi' || h.hareketTipi === filtre)
     .filter(h => trContains(`${h.stokKodu || ''} ${h.stokAdi || ''} ${h.aciklama || ''}`, arama))
+
+  // Aynı dakika + stok_kodu + hareket_tipi olan satırları grupla
+  // Böylece toplu SN eklemede 20 satır yerine 1 grup + expand görürüz
+  const grupla = (harekets) => {
+    const gruplar = new Map()
+    for (const h of harekets) {
+      const zaman = h.olusturmaTarih || h.createdAt || h.tarih || ''
+      const dakika = String(zaman).slice(0, 16)  // 'YYYY-MM-DD HH:mm'
+      const anahtar = `${dakika}|${h.stokKodu}|${h.hareketTipi}`
+      if (!gruplar.has(anahtar)) gruplar.set(anahtar, { anahtar, hareketler: [], toplamMiktar: 0 })
+      const g = gruplar.get(anahtar)
+      g.hareketler.push(h)
+      g.toplamMiktar += Number(h.miktar) || 0
+    }
+    return Array.from(gruplar.values())
+  }
+  const gruplananlar = grupla(gorunenHareketler)
 
   const h = detayHareket
   const modalTur = h ? hareketTurleri.find(t => t.id === h.hareketTipi) : null
@@ -287,53 +305,93 @@ export default function StokHareketleri() {
                 </tr>
               </thead>
               <tbody>
-                {gorunenHareketler.map(h => {
-                  const tur = hareketTurleri.find(t => t.id === h.hareketTipi)
-                  const urun = urunler.find(u => u.stokKodu === h.stokKodu)
+                {gruplananlar.map(grup => {
+                  const ilkHareket = grup.hareketler[0]
+                  const tur = hareketTurleri.find(t => t.id === ilkHareket.hareketTipi)
+                  const urun = urunler.find(u => u.stokKodu === ilkHareket.stokKodu)
                   const giris = tur?.gc === 'G'
+                  const cokluMu = grup.hareketler.length > 1
+                  const acikMi = acikGruplar.has(grup.anahtar)
+                  const grupClick = () => {
+                    if (cokluMu) {
+                      const yeni = new Set(acikGruplar)
+                      acikMi ? yeni.delete(grup.anahtar) : yeni.add(grup.anahtar)
+                      setAcikGruplar(yeni)
+                    } else {
+                      setDetayHareket(ilkHareket)
+                    }
+                  }
                   return (
-                    <tr key={h.id}
-                      onClick={() => setDetayHareket(h)}
-                      style={{ cursor: 'pointer', transition: 'background 120ms' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                        {tarihSaat(h.tarih)}
-                      </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                        <CodeBadge>{h.stokKodu}</CodeBadge>
-                      </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 280 }}>
-                        <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {h.stokAdi || urun?.stokAdi || '—'}
-                        </div>
-                        {h.aciklama && (
-                          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {h.aciklama}
+                    <React.Fragment key={grup.anahtar}>
+                      <tr
+                        onClick={grupClick}
+                        style={{ cursor: 'pointer', transition: 'background 120ms', background: acikMi ? 'var(--surface-sunken)' : 'transparent' }}
+                        onMouseEnter={e => { if (!acikMi) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+                        onMouseLeave={e => { if (!acikMi) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {cokluMu && (acikMi ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />)}
+                            {tarihSaat(ilkHareket.tarih)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                          <CodeBadge>{ilkHareket.stokKodu}</CodeBadge>
+                        </td>
+                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 320 }}>
+                          <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ilkHareket.stokAdi || urun?.stokAdi || '—'}
                           </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                        {tur && <Badge tone={tur.tone}>{tur.isim}</Badge>}
-                      </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid var(--border-default)' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 22, height: 22, borderRadius: '50%',
-                          background: giris ? 'var(--success-soft)' : 'var(--danger-soft)',
-                          color: giris ? 'var(--success)' : 'var(--danger)',
-                        }}>
-                          {giris ? <ArrowUp size={12} strokeWidth={2} /> : <ArrowDown size={12} strokeWidth={2} />}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                        <span style={{ font: '600 14px/20px var(--font-sans)', color: giris ? 'var(--success)' : 'var(--danger)' }}>
-                          {giris ? '+' : '−'}{Number(h.miktar).toFixed(0)}
-                        </span>
-                        <span className="t-caption" style={{ marginLeft: 4 }}>{urun?.birim || ''}</span>
-                      </td>
-                    </tr>
+                          {cokluMu ? (
+                            <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--brand-primary)', marginTop: 2 }}>
+                              📦 {grup.hareketler.length} kalem — {tur?.isim || ''}
+                            </div>
+                          ) : (
+                            ilkHareket.aciklama && (
+                              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {ilkHareket.aciklama}
+                              </div>
+                            )
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                          {tur && <Badge tone={tur.tone}>{tur.isim}</Badge>}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid var(--border-default)' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: giris ? 'var(--success-soft)' : 'var(--danger-soft)',
+                            color: giris ? 'var(--success)' : 'var(--danger)',
+                          }}>
+                            {giris ? <ArrowUp size={12} strokeWidth={2} /> : <ArrowDown size={12} strokeWidth={2} />}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                          <span style={{ font: '600 14px/20px var(--font-sans)', color: giris ? 'var(--success)' : 'var(--danger)' }}>
+                            {giris ? '+' : '−'}{grup.toplamMiktar.toFixed(0)}
+                          </span>
+                          <span className="t-caption" style={{ marginLeft: 4 }}>{urun?.birim || ''}</span>
+                        </td>
+                      </tr>
+                      {acikMi && grup.hareketler.map(h => (
+                        <tr key={h.id}
+                          onClick={() => setDetayHareket(h)}
+                          style={{ cursor: 'pointer', background: 'var(--surface-sunken)' }}
+                        >
+                          <td colSpan={6} style={{ padding: '6px 14px 6px 42px', borderBottom: '1px solid var(--border-default)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+                              <span style={{ font: '400 12px/16px var(--font-mono, monospace)', color: 'var(--text-tertiary)' }}>
+                                └ {h.aciklama || '—'}
+                              </span>
+                              <span style={{ color: giris ? 'var(--success)' : 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                {giris ? '+' : '−'}{Number(h.miktar).toFixed(0)} {urun?.birim || ''}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   )
                 })}
               </tbody>
