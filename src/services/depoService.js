@@ -420,16 +420,22 @@ export async function sonSayimlar(limit = 10) {
 
 export async function teknisyenAylikRapor(kullaniciId, ay /* YYYY-MM */) {
   const [y, m] = String(ay).split('-').map(Number)
-  const bas = new Date(y, m - 1, 1).toISOString()
-  const bit = new Date(y, m, 1).toISOString()
-  // stok_hareketleri'nden — kullanici_id + tarih arası
+  const bas = new Date(y, m - 1, 1).toISOString().split('T')[0]
+  const bit = new Date(y, m, 1).toISOString().split('T')[0]
+  // Kullanıcının adını al (hareket açıklamalarında geçiyor)
+  const { data: kul } = await supabase
+    .from('kullanicilar').select('ad').eq('id', kullaniciId).maybeSingle()
+  const ad = String(kul?.ad || '').trim()
+  if (!ad) return { hareketler: [], ozet: { toplam: 0, cikis: 0, giris: 0, ariza: 0 } }
+  // stok_hareketleri.aciklama'da adı geçen tüm hareketler
+  // (hareket yapan yönetim olsa da, teknisyene ait audit satırları burada)
   const { data, error } = await supabase
     .from('stok_hareketleri')
     .select('*')
-    .eq('kullanici_id', kullaniciId)
-    .gte('tarih', bas.split('T')[0])
-    .lt('tarih', bit.split('T')[0])
-    .order('tarih', { ascending: true })
+    .ilike('aciklama', `%${ad}%`)
+    .gte('tarih', bas)
+    .lt('tarih', bit)
+    .order('tarih', { ascending: false })
   if (error) throw error
   const list = data || []
   return {
