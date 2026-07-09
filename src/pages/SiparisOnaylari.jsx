@@ -44,9 +44,9 @@ const fmtTarih = (iso) => {
   } catch { return iso }
 }
 
+// Onaylı sekmesi kaldırıldı — onaylanmış siparişler /siparisler sayfasında görünür.
 const SEKMELER = [
-  { id: 'bekleyen', label: 'Bekleyen', renk: '#F59E0B' },
-  { id: 'onayli',   label: 'Onaylı',   renk: '#10B981' },
+  { id: 'bekleyen', label: 'Bekleyen',   renk: '#F59E0B' },
   { id: 'red',      label: 'Reddedilen', renk: '#DC2626' },
 ]
 
