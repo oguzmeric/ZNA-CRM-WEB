@@ -931,17 +931,18 @@ function Gorusmeler() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-                        {g.gorusmeNo && (
-                          <span style={{
-                            fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
-                            color: 'var(--brand)', letterSpacing: 0.3,
-                          }} title="Görüşme No">
-                            {g.gorusmeNo}
-                          </span>
-                        )}
-                        {g.aktNo ? <CodeBadge>{g.aktNo}</CodeBadge> : (!g.gorusmeNo && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>)}
-                      </div>
+                      {g.gorusmeNo ? (
+                        <span style={{
+                          fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                          color: 'var(--brand)', letterSpacing: 0.3,
+                          padding: '3px 8px', background: 'rgba(59,130,246,0.08)',
+                          borderRadius: 4,
+                        }} title="Görüşme Numarası">
+                          {g.gorusmeNo}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>

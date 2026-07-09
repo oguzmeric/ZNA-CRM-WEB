@@ -59,6 +59,8 @@ export default function SiparisOnaylari() {
   const [secili, setSecili] = useState(null)
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
   const [wizardAcik, setWizardAcik] = useState(false)
+  // Bekleyen sekmesi için alt filtre — default ön siparişler (tedarik odaklı)
+  const [bekleyenAltFiltre, setBekleyenAltFiltre] = useState('on_siparis') // 'on_siparis' | 'teklif' | 'tumu'
 
   // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping
   useEffect(() => {
@@ -79,10 +81,10 @@ export default function SiparisOnaylari() {
     setYukleniyor(true)
     try {
       if (sekme === 'bekleyen') {
-        // Teklif + ön sipariş birleşik liste
+        // Alt filtreye göre sadece gereken kaynağı çek (default: ön sipariş)
         const [teklifler, onSiparisler] = await Promise.all([
-          bekleyenSiparisleriGetir().catch(() => []),
-          bekleyenOnSiparisleriGetir().catch(() => []),
+          bekleyenAltFiltre !== 'on_siparis' ? bekleyenSiparisleriGetir().catch(() => []) : Promise.resolve([]),
+          bekleyenAltFiltre !== 'teklif' ? bekleyenOnSiparisleriGetir().catch(() => []) : Promise.resolve([]),
         ])
         const birlesik = [
           ...teklifler.map(t => ({ ...t, _kaynak: 'teklif' })),
@@ -105,7 +107,7 @@ export default function SiparisOnaylari() {
     }
   }
 
-  useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili])
+  useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili, bekleyenAltFiltre])
 
   if (!yetkili) {
     return (
@@ -162,6 +164,36 @@ export default function SiparisOnaylari() {
           )
         })}
       </div>
+
+      {/* Alt filtre — sadece Bekleyen sekmesinde */}
+      {sekme === 'bekleyen' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.4 }}>KAYNAK:</span>
+          {[
+            { id: 'on_siparis', label: 'Ön Siparişler (tedarik)', renk: '#10b981' },
+            { id: 'teklif',     label: 'Teklif Onayları',         renk: '#3b82f6' },
+            { id: 'tumu',       label: 'Tümü',                    renk: '#94a3b8' },
+          ].map(f => {
+            const aktif = bekleyenAltFiltre === f.id
+            return (
+              <button
+                key={f.id}
+                onClick={() => setBekleyenAltFiltre(f.id)}
+                style={{
+                  padding: '5px 10px', borderRadius: 6,
+                  background: aktif ? `${f.renk}22` : 'transparent',
+                  color: aktif ? f.renk : 'var(--text-secondary)',
+                  border: `1px solid ${aktif ? f.renk + '55' : 'var(--border-default)'}`,
+                  cursor: 'pointer',
+                  font: aktif ? '600 12px/16px var(--font-sans)' : '500 12px/16px var(--font-sans)',
+                }}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) 1fr', gap: 16 }}>
         {/* Liste */}
