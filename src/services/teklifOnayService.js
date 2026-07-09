@@ -5,15 +5,15 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
 
-// Bekleyen teklif onayları (durum='bekliyor'). En yeni önce (id DESC).
-// Defansif: onay_durumu 'kabul' olmayan teklifler kuyrukta görünmemeli
-// (kullanıcı kabul→takipte'ye çevirmiş olabilir, JSONB kalıntısı takılmasın).
+// Bekleyen teklif onayları — Teklifler > Cevap Beklenenler ile aynı liste.
+// Yönetim henüz karar vermemişse (teklif_onayi null veya durumu 'onayli'/'reddedildi'
+// değil) bekleyen sayılır. Böylece her yeni teklif otomatik onay kuyruğunda görünür.
 export async function bekleyenTeklifOnaylariniGetir() {
   const { data, error } = await supabase
     .from('teklifler')
     .select('*')
-    .eq('teklif_onayi->>durum', 'bekliyor')
-    .eq('onay_durumu', 'kabul')
+    .eq('onay_durumu', 'bekliyor')
+    .or('teklif_onayi.is.null,teklif_onayi->>durum.not.in.(onayli,reddedildi)')
     .order('id', { ascending: false })
   if (error) { console.error('[bekleyenTeklifOnaylari]', error.message); return [] }
   return arrayToCamel(data)
