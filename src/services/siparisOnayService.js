@@ -1,7 +1,10 @@
 // Sipariş onay sistemi — frontend service.
+// Not: 126 migration'dan itibaren onay verildiğinde `siparisler` tablosuna
+// da INSERT edilir ve ZNA-SIP-YYYY-NNNNNN no üretilir. Ön siparişler de aynı
+// akıştan geçer.
 
 import { supabase } from '../lib/supabase'
-import { toCamel } from '../lib/mapper'
+import { toCamel, arrayToCamel } from '../lib/mapper'
 
 const BUCKET = 'siparis-imzalari'
 
@@ -65,6 +68,8 @@ export async function imzaYukle(file, teklifId) {
 
 /**
  * Siparişi onayla — imza url'i ile birlikte.
+ * ARTIK: onaydan sonra siparisler + siparis_kalemleri tablosuna INSERT eder.
+ * ZNA-SIP-YYYY-NNNNNN no otomatik atanır (DB trigger).
  */
 export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUrl, onayGerekcesi = '' }) {
   const onay = {
@@ -75,12 +80,219 @@ export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUr
     imza_url: imzaUrl,
     onay_gerekcesi: onayGerekcesi || null,
   }
-  const { error } = await supabase
+  // 1) Mevcut geriye uyum: teklifler.siparis_onayi güncelle
+  const { error: e1 } = await supabase
     .from('teklifler')
     .update({ siparis_onayi: onay })
     .eq('id', teklifId)
+  if (e1) throw e1
+
+  // 2) Yeni: siparisler tablosuna INSERT (kalıcı sipariş no üretimi)
+  const siparisNo = await tekliftenSiparisiOlustur(teklifId, {
+    onaylayanId, onaylayanAd, imzaUrl,
+    notlar: onayGerekcesi || null,
+  })
+
+  return { ...onay, siparis_no: siparisNo }
+}
+
+/**
+ * Tekliften kalıcı sipariş oluşturur.
+ * - siparisler INSERT (ZNA-SIP-... trigger ile atanır)
+ * - siparis_kalemleri INSERT (teklif.satirlar jsonb'sinden mapping)
+ * Zaten aynı teklifId için aktif sipariş varsa yeni INSERT yapmaz (idempotent).
+ */
+export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylayanAd, imzaUrl, notlar }) {
+  // Idempotent kontrol
+  const { data: mevcut } = await supabase
+    .from('siparisler')
+    .select('id, siparis_no')
+    .eq('teklif_id', teklifId)
+    .neq('durum', 'iptal')
+    .limit(1)
+    .maybeSingle()
+  if (mevcut) return mevcut.siparis_no
+
+  // Teklifi çek
+  const { data: teklif, error: eT } = await supabase
+    .from('teklifler')
+    .select('*')
+    .eq('id', teklifId)
+    .single()
+  if (eT || !teklif) throw eT || new Error('Teklif bulunamadı')
+
+  // siparisler INSERT
+  const payload = {
+    musteri_id: teklif.musteri_id,
+    gorusme_id: teklif.gorusme_id,
+    kaynak_tipi: 'teklif',
+    teklif_id: teklifId,
+    onay_tarihi: new Date().toISOString(),
+    onaylayan_id: onaylayanId,
+    onaylayan_ad: onaylayanAd,
+    imza_url: imzaUrl,
+    para_birimi: teklif.para_birimi || 'TL',
+    doviz_kuru: teklif.doviz_kuru || 1,
+    genel_iskonto: teklif.genel_iskonto || 0,
+    genel_toplam: teklif.genel_toplam || 0,
+    konu: teklif.konu,
+    notlar,
+  }
+  const { data: siparis, error: eI } = await supabase
+    .from('siparisler')
+    .insert(payload)
+    .select()
+    .single()
+  if (eI) throw eI
+
+  // Kalemleri kopyala (teklif.satirlar jsonb → siparis_kalemleri satırları)
+  const satirlar = Array.isArray(teklif.satirlar) ? teklif.satirlar : []
+  if (satirlar.length > 0) {
+    const kalemler = satirlar.map((s, i) => {
+      const miktar = Number(s.miktar || 0)
+      const fiyat = Number(s.birimFiyat || 0)
+      const isk = Number(s.iskonto || 0)
+      return {
+        siparis_id: siparis.id,
+        stok_kodu: s.stokKodu || null,
+        urun_ad: s.stokAdi || s.ad || 'Satır',
+        birim: s.birim || 'Adet',
+        miktar,
+        birim_fiyat: fiyat,
+        iskonto_orani: isk,
+        kdv_orani: Number(s.kdv || 20),
+        ara_toplam: miktar * fiyat * (1 - isk / 100),
+        aciklama: s.aciklama || null,
+        siralama: i,
+      }
+    })
+    const { error: eK } = await supabase.from('siparis_kalemleri').insert(kalemler)
+    if (eK) console.error('siparis_kalemleri insert hatasi:', eK.message)
+  }
+
+  return siparis.siparis_no
+}
+
+/**
+ * Bekleyen ön siparişleri getir — Sipariş Onayı ekranında listelenir.
+ */
+export async function bekleyenOnSiparisleriGetir() {
+  const { data, error } = await supabase
+    .from('on_siparisler')
+    .select('*')
+    .eq('durum', 'onay_bekliyor')
+    .order('olusturma_tarih', { ascending: false })
   if (error) throw error
-  return onay
+  return arrayToCamel(data || [])
+}
+
+/**
+ * Ön siparişi onayla → kalıcı sipariş oluştur.
+ * Kalemler burada FİYATLI olmalı (onay ekranında fiyatlar girilir).
+ */
+export async function onSiparisiOnayla(onSiparisId, {
+  onaylayanId, onaylayanAd, imzaUrl, notlar,
+  fiyatliKalemler,          // [{ urunAd, miktar, birimFiyat, iskontoOrani, kdvOrani, ... }]
+  paraBirimi = 'TL',
+  dovizKuru = 1,
+  genelIskonto = 0,
+}) {
+  // Idempotent kontrol
+  const { data: mevcut } = await supabase
+    .from('siparisler')
+    .select('id, siparis_no')
+    .eq('on_siparis_id', onSiparisId)
+    .neq('durum', 'iptal')
+    .limit(1)
+    .maybeSingle()
+  if (mevcut) return mevcut.siparis_no
+
+  // Ön siparişi çek
+  const { data: os, error: eOs } = await supabase
+    .from('on_siparisler')
+    .select('*')
+    .eq('id', onSiparisId)
+    .single()
+  if (eOs || !os) throw eOs || new Error('Ön sipariş bulunamadı')
+
+  // Genel toplam hesapla (kalemlerden)
+  const araToplam = (fiyatliKalemler || []).reduce((s, k) => {
+    const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0)
+    return s + m * f * (1 - i / 100)
+  }, 0)
+  const kdvToplam = (fiyatliKalemler || []).reduce((s, k) => {
+    const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0), kd = Number(k.kdvOrani || 0)
+    return s + m * f * (1 - i / 100) * (kd / 100)
+  }, 0)
+  const genelToplam = araToplam - Number(genelIskonto || 0) + kdvToplam
+
+  // siparisler INSERT
+  const payload = {
+    musteri_id: os.musteri_id,
+    gorusme_id: os.gorusme_id,
+    kaynak_tipi: 'on_siparis',
+    on_siparis_id: onSiparisId,
+    onay_tarihi: new Date().toISOString(),
+    onaylayan_id: onaylayanId,
+    onaylayan_ad: onaylayanAd,
+    imza_url: imzaUrl,
+    para_birimi: paraBirimi,
+    doviz_kuru: dovizKuru,
+    genel_iskonto: genelIskonto,
+    genel_toplam: genelToplam,
+    konu: os.aciklama || null,
+    notlar,
+  }
+  const { data: siparis, error: eI } = await supabase
+    .from('siparisler')
+    .insert(payload)
+    .select()
+    .single()
+  if (eI) throw eI
+
+  // Kalemleri INSERT
+  if (fiyatliKalemler && fiyatliKalemler.length > 0) {
+    const kalemler = fiyatliKalemler.map((k, i) => ({
+      siparis_id: siparis.id,
+      stok_kodu: k.stokKodu || null,
+      urun_ad: k.urunAd,
+      urun_marka: k.urunMarka || null,
+      urun_model: k.urunModel || null,
+      kategori: k.kategori || null,
+      birim: k.birim || 'Adet',
+      miktar: Number(k.miktar || 0),
+      birim_fiyat: Number(k.birimFiyat || 0),
+      iskonto_orani: Number(k.iskontoOrani || 0),
+      kdv_orani: Number(k.kdvOrani || 20),
+      ara_toplam:
+        Number(k.miktar || 0) * Number(k.birimFiyat || 0) *
+        (1 - Number(k.iskontoOrani || 0) / 100),
+      aciklama: k.aciklama || null,
+      siralama: i,
+    }))
+    const { error: eK } = await supabase.from('siparis_kalemleri').insert(kalemler)
+    if (eK) console.error('siparis_kalemleri insert hatasi:', eK.message)
+  }
+
+  // Ön siparişi 'siparise_donustu' olarak işaretle + siparis_id bağla
+  await supabase
+    .from('on_siparisler')
+    .update({ durum: 'siparise_donustu', siparis_id: siparis.id })
+    .eq('id', onSiparisId)
+
+  return siparis.siparis_no
+}
+
+/**
+ * Ön siparişi reddet (durum='iptal') — imza gerekmez, sadece red nedeni.
+ */
+export async function onSiparisiReddet(onSiparisId, { onaylayanId, redNedeni }) {
+  const { error } = await supabase
+    .from('on_siparisler')
+    .update({ durum: 'iptal', iptal_sebebi: redNedeni })
+    .eq('id', onSiparisId)
+  if (error) throw error
+  return true
 }
 
 /**

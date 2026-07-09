@@ -15,8 +15,10 @@ import {
 } from '../components/ui'
 import {
   bekleyenSiparisleriGetir, onaylananSiparisleriGetir, reddedilenSiparisleriGetir,
+  bekleyenOnSiparisleriGetir, onSiparisiOnayla, onSiparisiReddet,
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
+import { kalemleriGetir as onSiparisKalemleriGetir } from '../services/onSiparisService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
@@ -59,10 +61,26 @@ export default function SiparisOnaylari() {
   const yukle = async () => {
     setYukleniyor(true)
     try {
-      const d = sekme === 'bekleyen' ? await bekleyenSiparisleriGetir()
-              : sekme === 'onayli' ? await onaylananSiparisleriGetir()
-              : await reddedilenSiparisleriGetir()
-      setListe(d)
+      if (sekme === 'bekleyen') {
+        // Teklif + ön sipariş birleşik liste
+        const [teklifler, onSiparisler] = await Promise.all([
+          bekleyenSiparisleriGetir().catch(() => []),
+          bekleyenOnSiparisleriGetir().catch(() => []),
+        ])
+        const birlesik = [
+          ...teklifler.map(t => ({ ...t, _kaynak: 'teklif' })),
+          ...onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' })),
+        ].sort((a, b) => {
+          const at = new Date(a.olusturmaTarih || a.tarih || 0).getTime()
+          const bt = new Date(b.olusturmaTarih || b.tarih || 0).getTime()
+          return bt - at
+        })
+        setListe(birlesik)
+      } else {
+        const d = sekme === 'onayli' ? await onaylananSiparisleriGetir()
+                : await reddedilenSiparisleriGetir()
+        setListe((d || []).map(t => ({ ...t, _kaynak: 'teklif' })))
+      }
     } catch (e) {
       console.error('[siparis onay liste]', e)
     } finally {
@@ -132,11 +150,17 @@ export default function SiparisOnaylari() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {liste.map(t => {
+                const kaynak = t._kaynak || 'teklif'
+                const isOn = kaynak === 'on_siparis'
                 const s = t.siparisOnayi || {}
-                const seciliMi = secili?.id === t.id
+                const seciliMi = secili?.id === t.id && secili?._kaynak === kaynak
+                const kayitNo = isOn ? t.onSiparisNo : t.teklifNo
+                const konu = isOn ? (t.aciklama?.slice(0, 40) || 'Ön Sipariş') : (t.konu || '—')
+                const firma = isOn ? '—' : (t.firmaAdi || '—')
+                const tarih = isOn ? t.olusturmaTarih : t.tarih
                 return (
                   <button
-                    key={t.id}
+                    key={`${kaynak}-${t.id}`}
                     onClick={() => setSecili(t)}
                     style={{
                       textAlign: 'left',
@@ -150,17 +174,24 @@ export default function SiparisOnaylari() {
                     onMouseEnter={e => { if (!seciliMi) e.currentTarget.style.background = 'var(--surface-subtle)' }}
                     onMouseLeave={e => { if (!seciliMi) e.currentTarget.style.background = 'transparent' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t.teklifNo}</strong>
-                      <Badge tone="brand">{t.konu || '—'}</Badge>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{kayitNo || '—'}</strong>
+                      <Badge tone={isOn ? 'success' : 'brand'} style={{ fontSize: 10 }}>
+                        {isOn ? 'ÖN SİPARİŞ' : 'TEKLİF'}
+                      </Badge>
+                      {!isOn && <Badge tone="brand">{konu}</Badge>}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                       <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
-                      {t.firmaAdi || '—'}
+                      {firma}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTarih(t.tarih)}</span>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(gerçekToplam(t), t.paraBirimi)}</strong>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTarih(tarih)}</span>
+                      {!isOn ? (
+                        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(gerçekToplam(t), t.paraBirimi)}</strong>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600 }}>fiyat girilecek</span>
+                      )}
                     </div>
                     {sekme === 'onayli' && s.onaylayan_ad && (
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
@@ -182,17 +213,26 @@ export default function SiparisOnaylari() {
         {/* Detay */}
         <div>
           {secili ? (
-            <DetayPaneli
-              teklif={secili}
-              sekme={sekme}
-              kullanici={kullanici}
-              onTamamlandi={() => { setSecili(null); yukle() }}
-            />
+            secili._kaynak === 'on_siparis' ? (
+              <OnSiparisDetayPaneli
+                onSiparis={secili}
+                sekme={sekme}
+                kullanici={kullanici}
+                onTamamlandi={() => { setSecili(null); yukle() }}
+              />
+            ) : (
+              <DetayPaneli
+                teklif={secili}
+                sekme={sekme}
+                kullanici={kullanici}
+                onTamamlandi={() => { setSecili(null); yukle() }}
+              />
+            )
           ) : (
             <Card>
               <EmptyState
-                title="Bir teklif seç"
-                aciklama="Soldaki listeden bir sipariş seçerek detaylarını gör ve onay/red işlemi yap."
+                title="Bir kayıt seç"
+                aciklama="Soldaki listeden bir teklif veya ön sipariş seçerek detaylarını gör ve onay/red işlemi yap."
                 icon={<FileText size={24} />}
               />
             </Card>
@@ -587,5 +627,286 @@ function BilgiKart({ Icon, etiket, deger, vurgu }) {
         {deger}
       </div>
     </div>
+  )
+}
+
+// ─── Ön Sipariş Detay Paneli — fiyat girme + onay ──────────────────────────
+function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, onTamamlandi }) {
+  const fileRef = useRef(null)
+  const [imzaDosyasi, setImzaDosyasi] = useState(null)
+  const [imzaPreview, setImzaPreview] = useState(null)
+  const [redNedeni, setRedNedeni] = useState('')
+  const [redModalAcik, setRedModalAcik] = useState(false)
+  const [onayGerekcesi, setOnayGerekcesi] = useState('')
+  const [calisiyor, setCalisiyor] = useState(false)
+  const [hata, setHata] = useState(null)
+  const [kalemler, setKalemler] = useState([])
+  const [yukleniyorKalem, setYukleniyorKalem] = useState(true)
+  const [genelIskonto, setGenelIskonto] = useState(0)
+  const [paraBirimi, setParaBirimi] = useState('TL')
+
+  const profilImzasi = kullanici?.imza
+  const imzaVar = !!(imzaDosyasi || profilImzasi)
+  const ustYetkili = kullanici?.siparisOnayUstYetkili === true || kullanici?.siparis_onay_ust_yetkili === true
+
+  // Kalemleri yükle — DB'den al, birimFiyat = 0 varsayılan (kullanıcı girecek)
+  useEffect(() => {
+    setYukleniyorKalem(true)
+    onSiparisKalemleriGetir(os.id)
+      .then(k => {
+        setKalemler((k || []).map(x => ({
+          ...x,
+          birimFiyat: Number(x.birimFiyat || 0),
+          iskontoOrani: Number(x.iskontoOrani || 0),
+          kdvOrani: Number(x.kdvOrani || 20),
+        })))
+      })
+      .catch(() => setKalemler([]))
+      .finally(() => setYukleniyorKalem(false))
+  }, [os.id])
+
+  const kalemGuncelle = (idx, alan, deger) => {
+    const yeni = [...kalemler]
+    yeni[idx] = { ...yeni[idx], [alan]: deger }
+    setKalemler(yeni)
+  }
+
+  const toplamlar = useMemo(() => {
+    const araToplam = kalemler.reduce((s, k) => {
+      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0)
+      return s + m * f * (1 - i / 100)
+    }, 0)
+    const kdvToplam = kalemler.reduce((s, k) => {
+      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0), kd = Number(k.kdvOrani || 0)
+      return s + m * f * (1 - i / 100) * (kd / 100)
+    }, 0)
+    const iskontolu = araToplam - Number(genelIskonto || 0)
+    return { araToplam, kdvToplam, iskontolu, genelToplam: iskontolu + kdvToplam }
+  }, [kalemler, genelIskonto])
+
+  const imzaSec = (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (!f.type.startsWith('image/')) { setHata('Sadece görsel dosyalar.'); return }
+    if (f.size > 5 * 1024 * 1024) { setHata('Dosya 5 MB\'ı aşıyor.'); return }
+    setHata(null)
+    setImzaDosyasi(f)
+    setImzaPreview(URL.createObjectURL(f))
+  }
+
+  const onayla = async () => {
+    setHata(null)
+    if (kalemler.length === 0) { setHata('Kalem yok.'); return }
+    const eksikFiyat = kalemler.some(k => !Number(k.birimFiyat))
+    if (eksikFiyat) { setHata('Tüm kalemler için birim fiyat girmelisin.'); return }
+    if (!imzaDosyasi && !profilImzasi) {
+      setHata('İmza gerekli. Profilden veya buradan yükle.')
+      return
+    }
+    setCalisiyor(true)
+    try {
+      const url = imzaDosyasi
+        ? await imzaYukle(imzaDosyasi, `on-${os.id}`)
+        : profilImzasi
+      const siparisNo = await onSiparisiOnayla(os.id, {
+        onaylayanId: kullanici.id,
+        onaylayanAd: kullanici.ad,
+        imzaUrl: url,
+        notlar: onayGerekcesi.trim() || null,
+        fiyatliKalemler: kalemler,
+        paraBirimi,
+        dovizKuru: 1,
+        genelIskonto: Number(genelIskonto) || 0,
+      })
+      alert(`Sipariş oluştu: ${siparisNo}`)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Onay hatası.')
+    } finally { setCalisiyor(false) }
+  }
+
+  const reddet = async () => {
+    setHata(null)
+    if (!redNedeni.trim()) { setHata('Red nedeni boş olamaz.'); return }
+    setCalisiyor(true)
+    try {
+      await onSiparisiReddet(os.id, {
+        onaylayanId: kullanici.id,
+        redNedeni: redNedeni.trim(),
+      })
+      setRedModalAcik(false)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Red hatası.')
+    } finally { setCalisiyor(false) }
+  }
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <Badge tone="success" style={{ fontSize: 10 }}>ÖN SİPARİŞ</Badge>
+        <CardTitle style={{ margin: 0 }}>{os.onSiparisNo}</CardTitle>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+        {os.ilgiliKisi && <>👤 {os.ilgiliKisi} · </>}
+        Aciliyet: <strong>{os.aciliyet || 'orta'}</strong>
+        {os.musteriOnayBilgisi && <> · {os.musteriOnayBilgisi}</>}
+      </div>
+      {os.aciklama && (
+        <div style={{ background: 'var(--surface-subtle)', padding: 10, borderRadius: 6, fontSize: 13, marginBottom: 12 }}>
+          {os.aciklama}
+        </div>
+      )}
+
+      {/* Kalem tablosu — fiyat girme */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+          Fiyatlandırma (kalemler DB'den, birim fiyatları burada gir)
+        </div>
+        {yukleniyorKalem ? (
+          <div style={{ padding: 12, color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : kalemler.length === 0 ? (
+          <div style={{ padding: 12, color: 'var(--text-tertiary)' }}>Kalem yok</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>
+                  <th style={{ textAlign: 'left', padding: 6, fontWeight: 500 }}>Ürün</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>Miktar</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Birim ₺</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>İsk %</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>KDV %</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Ara Toplam</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kalemler.map((k, i) => {
+                  const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), isk = Number(k.iskontoOrani || 0)
+                  const at = m * f * (1 - isk / 100)
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: 6 }}>
+                        <div style={{ fontWeight: 600 }}>{k.urunAd}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          {k.birim || 'Adet'}{k.aciklama ? ' · ' + k.aciklama : ''}
+                        </div>
+                      </td>
+                      <td style={{ padding: 6, textAlign: 'right' }}>{m}</td>
+                      <td style={{ padding: 6 }}>
+                        <input
+                          type="number" step="0.01" min="0" value={f || ''}
+                          onChange={e => kalemGuncelle(i, 'birimFiyat', Number(e.target.value) || 0)}
+                          style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 12 }}
+                          placeholder="Fiyat"
+                        />
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <input
+                          type="number" step="0.01" min="0" value={isk || ''}
+                          onChange={e => kalemGuncelle(i, 'iskontoOrani', Number(e.target.value) || 0)}
+                          style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 12 }}
+                        />
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <input
+                          type="number" step="0.01" min="0" value={Number(k.kdvOrani || 0)}
+                          onChange={e => kalemGuncelle(i, 'kdvOrani', Number(e.target.value) || 0)}
+                          style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 12 }}
+                        />
+                      </td>
+                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 600 }}>{fmtPara(at, paraBirimi)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Toplamlar */}
+        {kalemler.length > 0 && (
+          <div style={{ marginTop: 12, padding: 12, background: 'var(--surface-subtle)', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Ara Toplam</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtPara(toplamlar.araToplam, paraBirimi)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Genel İskonto</div>
+              <input
+                type="number" step="0.01" min="0" value={genelIskonto || ''}
+                onChange={e => setGenelIskonto(Number(e.target.value) || 0)}
+                style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 13 }}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>KDV Toplamı</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtPara(toplamlar.kdvToplam, paraBirimi)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Genel Toplam</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent, #1E5AA8)' }}>{fmtPara(toplamlar.genelToplam, paraBirimi)}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {sekme === 'bekleyen' && (
+        <>
+          {/* İmza */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>İmza</div>
+            {profilImzasi && !imzaDosyasi ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src={profilImzasi} alt="Profil imza" style={{ maxHeight: 40, border: '1px solid var(--border-default)', borderRadius: 4, background: '#fff' }} />
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Profil imzası kullanılacak</span>
+                <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>Değiştir</Button>
+              </div>
+            ) : imzaPreview ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src={imzaPreview} alt="Yeni imza" style={{ maxHeight: 40, border: '1px solid var(--border-default)', borderRadius: 4, background: '#fff' }} />
+                <Button variant="ghost" size="sm" onClick={() => { setImzaDosyasi(null); setImzaPreview(null) }}>Kaldır</Button>
+              </div>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} iconLeft={<Upload size={13} />}>İmza Yükle</Button>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={imzaSec} />
+          </div>
+
+          {/* Gerekçe */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Onay gerekçesi (opsiyonel)</div>
+            <Textarea rows={2} value={onayGerekcesi} onChange={e => setOnayGerekcesi(e.target.value)} placeholder="Not..." />
+          </div>
+
+          {hata && (
+            <div style={{ padding: 10, borderRadius: 6, background: 'rgba(220,38,38,0.1)', color: '#B91C1C', fontSize: 12, marginBottom: 12 }}>
+              {hata}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="ghost" onClick={() => setRedModalAcik(true)} disabled={calisiyor} style={{ color: '#DC2626' }}>Reddet</Button>
+            <Button variant="primary" onClick={onayla} disabled={calisiyor}>
+              {calisiyor ? 'İşleniyor…' : 'Onayla ve Sipariş Oluştur'}
+            </Button>
+          </div>
+        </>
+      )}
+
+      {redModalAcik && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--surface-card)', borderRadius: 12, padding: 20, maxWidth: 480, width: '100%' }}>
+            <h3 style={{ margin: '0 0 12px' }}>Ön Siparişi Reddet</h3>
+            <Textarea rows={3} value={redNedeni} onChange={e => setRedNedeni(e.target.value)} placeholder="Red nedeni..." />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button variant="ghost" onClick={() => setRedModalAcik(false)}>Vazgeç</Button>
+              <Button variant="primary" onClick={reddet} disabled={calisiyor} style={{ background: '#DC2626' }}>Reddet</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }
