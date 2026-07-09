@@ -25,7 +25,7 @@ const bosKalem = () => ({
 
 export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapat, onKaydedildi }) {
   const { kullanici } = useAuth()
-  const toast = useToast()
+  const { toast } = useToast()
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [stokUrunleri, setStokUrunleri] = useState([])
   const [stokAramaAcik, setStokAramaAcik] = useState(null) // idx | null
