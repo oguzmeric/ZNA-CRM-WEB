@@ -266,18 +266,6 @@ function GorusmeDetay() {
               )
             })()}
             <Button
-              variant="secondary"
-              onClick={() => {
-                const p = new URLSearchParams()
-                if (gorusme.musteriId) p.set('musteriId', String(gorusme.musteriId))
-                if (gorusme.konu) p.set('konu', gorusme.konu)
-                p.set('gorusmeId', String(gorusme.id))
-                navigate(`/siparisler/yeni?${p.toString()}`)
-              }}
-            >
-              Ön Sipariş Oluştur
-            </Button>
-            <Button
               variant={duzenleAcik ? 'secondary' : 'primary'}
               iconLeft={duzenleAcik ? null : undefined}
               onClick={duzenleAcik ? () => setDuzenleAcik(false) : duzenleAc}

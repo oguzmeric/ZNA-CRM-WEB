@@ -599,20 +599,6 @@ function TeklifDetay() {
               Fatura oluştur
             </Button>
           )}
-          {!yeni && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const p = new URLSearchParams()
-                if (form?.musteriId) p.set('musteriId', String(form.musteriId))
-                if (form?.baslik) p.set('konu', form.baslik)
-                p.set('teklifId', String(form.id))
-                navigate(`/siparisler/yeni?${p.toString()}`)
-              }}
-            >
-              Siparişe Çevir
-            </Button>
-          )}
           <Button variant="primary" onClick={kaydet}>Kaydet</Button>
         </div>
       </div>
