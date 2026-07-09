@@ -19,6 +19,7 @@ import {
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
 import { kalemleriGetir as onSiparisKalemleriGetir } from '../services/onSiparisService'
+import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
@@ -55,6 +56,20 @@ export default function SiparisOnaylari() {
   const [liste, setListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [secili, setSecili] = useState(null)
+  const [gorusmeMap, setGorusmeMap] = useState(new Map())
+
+  // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping
+  useEffect(() => {
+    if (!yetkili) return
+    gorusmeleriGetir()
+      .then(gs => {
+        const m = new Map()
+        ;(gs || []).forEach(g => m.set(g.id, g))
+        setGorusmeMap(m)
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const yetkili = kullanici?.siparisOnayYetkilisi === true || kullanici?.siparis_onay_yetkilisi === true
 
@@ -179,6 +194,18 @@ export default function SiparisOnaylari() {
                       <Badge tone={isOn ? 'success' : 'brand'} style={{ fontSize: 10 }}>
                         {isOn ? 'ÖN SİPARİŞ' : 'TEKLİF'}
                       </Badge>
+                      {(() => {
+                        const g = gorusmeMap.get(t.gorusmeId)
+                        return g?.gorusmeNo ? (
+                          <span style={{
+                            fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
+                            color: '#3b82f6', padding: '2px 6px',
+                            background: 'rgba(59,130,246,0.10)', borderRadius: 4,
+                          }} title="Kaynak görüşme">
+                            {g.gorusmeNo}
+                          </span>
+                        ) : null
+                      })()}
                       {!isOn && <Badge tone="brand">{konu}</Badge>}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
@@ -218,6 +245,7 @@ export default function SiparisOnaylari() {
                 onSiparis={secili}
                 sekme={sekme}
                 kullanici={kullanici}
+                gorusme={gorusmeMap.get(secili.gorusmeId)}
                 onTamamlandi={() => { setSecili(null); yukle() }}
               />
             ) : (
@@ -225,6 +253,7 @@ export default function SiparisOnaylari() {
                 teklif={secili}
                 sekme={sekme}
                 kullanici={kullanici}
+                gorusme={gorusmeMap.get(secili.gorusmeId)}
                 onTamamlandi={() => { setSecili(null); yukle() }}
               />
             )
@@ -245,7 +274,7 @@ export default function SiparisOnaylari() {
 
 // ─── Detay paneli ──────────────────────────────────────────────────────────
 
-function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
+function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi, gorusme }) {
   const fileRef = useRef(null)
   const [imzaDosyasi, setImzaDosyasi] = useState(null)
   const [imzaPreview, setImzaPreview] = useState(null)
@@ -348,6 +377,18 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            {gorusme?.gorusmeNo && (
+              <span style={{
+                fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                color: '#3b82f6', padding: '3px 8px',
+                background: 'rgba(59,130,246,0.10)', borderRadius: 6,
+              }} title="Kaynak görüşme">
+                {gorusme.gorusmeNo}
+              </span>
+            )}
+            <Badge tone="brand" style={{ fontSize: 10 }}>TEKLİF</Badge>
+          </div>
           <CardTitle>{t.teklifNo} · {t.konu || '—'}</CardTitle>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
             {t.firmaAdi} · {t.musteriYetkilisi || '—'}
@@ -631,7 +672,7 @@ function BilgiKart({ Icon, etiket, deger, vurgu }) {
 }
 
 // ─── Ön Sipariş Detay Paneli — fiyat girme + onay ──────────────────────────
-function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, onTamamlandi }) {
+function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTamamlandi }) {
   const fileRef = useRef(null)
   const [imzaDosyasi, setImzaDosyasi] = useState(null)
   const [imzaPreview, setImzaPreview] = useState(null)
@@ -743,10 +784,27 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, onTamamlandi })
 
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        {gorusme?.gorusmeNo && (
+          <span style={{
+            fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+            color: '#3b82f6', padding: '3px 8px',
+            background: 'rgba(59,130,246,0.10)', borderRadius: 6,
+          }} title="Kaynak görüşme">
+            {gorusme.gorusmeNo}
+          </span>
+        )}
         <Badge tone="success" style={{ fontSize: 10 }}>ÖN SİPARİŞ</Badge>
         <CardTitle style={{ margin: 0 }}>{os.onSiparisNo}</CardTitle>
       </div>
+      {gorusme && (
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+          <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />
+          {gorusme.firmaAdi || '—'}
+          {gorusme.tarih && <> · Görüşme: {fmtTarih(gorusme.tarih)}</>}
+          {gorusme.gorusen && <> · {gorusme.gorusen}</>}
+        </div>
+      )}
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
         {os.ilgiliKisi && <>👤 {os.ilgiliKisi} · </>}
         Aciliyet: <strong>{os.aciliyet || 'orta'}</strong>

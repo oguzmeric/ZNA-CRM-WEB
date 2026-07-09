@@ -8,6 +8,7 @@ import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam,
 } from '../services/siparisService'
 import { musteriGetir } from '../services/musteriService'
+import { gorusmeGetir } from '../services/gorusmeService'
 
 const fmtPara = (n, pb = 'TL') => {
   const num = Number(n || 0)
@@ -29,6 +30,7 @@ export default function SiparisDetay() {
   const [siparis, setSiparis] = useState(null)
   const [kalemler, setKalemler] = useState([])
   const [musteri, setMusteri] = useState(null)
+  const [gorusme, setGorusme] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
 
   useEffect(() => {
@@ -38,12 +40,14 @@ export default function SiparisDetay() {
         const s = await siparisGetir(id)
         if (!s) { setSiparis(null); return }
         setSiparis(s)
-        const [k, m] = await Promise.all([
+        const [k, m, g] = await Promise.all([
           kalemleriGetir(s.id),
           s.musteriId ? musteriGetir(s.musteriId) : Promise.resolve(null),
+          s.gorusmeId ? gorusmeGetir(s.gorusmeId) : Promise.resolve(null),
         ])
         setKalemler(k || [])
         setMusteri(m)
+        setGorusme(g)
       } catch (e) {
         console.error('[siparis detay]', e)
       } finally { setYukleniyor(false) }
@@ -87,6 +91,18 @@ export default function SiparisDetay() {
               {isTeklif ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'}
             </span>
           </div>
+          {gorusme?.gorusmeNo && (
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              <span style={{
+                fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                color: '#3b82f6', padding: '2px 6px',
+                background: 'rgba(59,130,246,0.10)', borderRadius: 4,
+              }}>{gorusme.gorusmeNo}</span>
+              <span>Kaynak görüşme</span>
+              {gorusme.tarih && <>· {fmtTarih(gorusme.tarih)}</>}
+              {gorusme.gorusen && <>· {gorusme.gorusen}</>}
+            </div>
+          )}
         </div>
       </div>
 

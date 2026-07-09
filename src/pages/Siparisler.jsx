@@ -9,6 +9,7 @@ import { Card, Button, Badge, EmptyState, Input } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import { siparisleriGetir, SIPARIS_DURUMLARI } from '../services/siparisService'
 import { musterileriGetir } from '../services/musteriService'
+import { gorusmeleriGetir } from '../services/gorusmeService'
 
 const fmtPara = (n, pb = 'TL') => {
   const num = Number(n || 0)
@@ -36,6 +37,7 @@ export default function Siparisler() {
   const navigate = useNavigate()
   const [liste, setListe] = useState([])
   const [musteriler, setMusteriler] = useState([])
+  const [gorusmeMap, setGorusmeMap] = useState(new Map())
   const [yukleniyor, setYukleniyor] = useState(true)
   const [sekme, setSekme] = useState('aktif')
   const [arama, setArama] = useState('')
@@ -45,12 +47,16 @@ export default function Siparisler() {
     (async () => {
       setYukleniyor(true)
       try {
-        const [s, m] = await Promise.all([
+        const [s, m, gs] = await Promise.all([
           siparisleriGetir(),
           musterileriGetir(),
+          gorusmeleriGetir().catch(() => []),
         ])
         setListe(s || [])
         setMusteriler(m || [])
+        const gm = new Map()
+        ;(gs || []).forEach(g => gm.set(g.id, g))
+        setGorusmeMap(gm)
       } catch (e) {
         console.error('[siparisler]', e)
       } finally { setYukleniyor(false) }
@@ -218,6 +224,16 @@ export default function Siparisler() {
                     }}>
                       {kaynakIcon} {kaynakLabel}
                     </span>
+                    {(() => {
+                      const g = gorusmeMap.get(s.gorusmeId)
+                      return g?.gorusmeNo ? (
+                        <span style={{
+                          fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
+                          color: '#3b82f6', padding: '2px 6px',
+                          background: 'rgba(59,130,246,0.10)', borderRadius: 4,
+                        }}>{g.gorusmeNo}</span>
+                      ) : null
+                    })()}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
                     <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
