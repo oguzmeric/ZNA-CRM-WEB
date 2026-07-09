@@ -59,8 +59,6 @@ export default function SiparisOnaylari() {
   const [secili, setSecili] = useState(null)
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
   const [wizardAcik, setWizardAcik] = useState(false)
-  // Bekleyen sekmesi için alt filtre — default ön siparişler (tedarik odaklı)
-  const [bekleyenAltFiltre, setBekleyenAltFiltre] = useState('on_siparis') // 'on_siparis' | 'teklif' | 'tumu'
 
   // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping
   useEffect(() => {
@@ -81,19 +79,15 @@ export default function SiparisOnaylari() {
     setYukleniyor(true)
     try {
       if (sekme === 'bekleyen') {
-        // Alt filtreye göre sadece gereken kaynağı çek (default: ön sipariş)
-        const [teklifler, onSiparisler] = await Promise.all([
-          bekleyenAltFiltre !== 'on_siparis' ? bekleyenSiparisleriGetir().catch(() => []) : Promise.resolve([]),
-          bekleyenAltFiltre !== 'teklif' ? bekleyenOnSiparisleriGetir().catch(() => []) : Promise.resolve([]),
-        ])
-        const birlesik = [
-          ...teklifler.map(t => ({ ...t, _kaynak: 'teklif' })),
-          ...onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' })),
-        ].sort((a, b) => {
-          const at = new Date(a.olusturmaTarih || a.tarih || 0).getTime()
-          const bt = new Date(b.olusturmaTarih || b.tarih || 0).getTime()
-          return bt - at
-        })
+        // Sadece ön siparişler — teklif onayları burada yer almaz
+        // (teklif kabul akışı ayrı; tedarik odaklı bir ekran)
+        const onSiparisler = await bekleyenOnSiparisleriGetir().catch(() => [])
+        const birlesik = onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' }))
+          .sort((a, b) => {
+            const at = new Date(a.olusturmaTarih || 0).getTime()
+            const bt = new Date(b.olusturmaTarih || 0).getTime()
+            return bt - at
+          })
         setListe(birlesik)
       } else {
         const d = sekme === 'onayli' ? await onaylananSiparisleriGetir()
@@ -107,7 +101,7 @@ export default function SiparisOnaylari() {
     }
   }
 
-  useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili, bekleyenAltFiltre])
+  useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili])
 
   if (!yetkili) {
     return (
@@ -164,36 +158,6 @@ export default function SiparisOnaylari() {
           )
         })}
       </div>
-
-      {/* Alt filtre — sadece Bekleyen sekmesinde */}
-      {sekme === 'bekleyen' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.4 }}>KAYNAK:</span>
-          {[
-            { id: 'on_siparis', label: 'Ön Siparişler (tedarik)', renk: '#10b981' },
-            { id: 'teklif',     label: 'Teklif Onayları',         renk: '#3b82f6' },
-            { id: 'tumu',       label: 'Tümü',                    renk: '#94a3b8' },
-          ].map(f => {
-            const aktif = bekleyenAltFiltre === f.id
-            return (
-              <button
-                key={f.id}
-                onClick={() => setBekleyenAltFiltre(f.id)}
-                style={{
-                  padding: '5px 10px', borderRadius: 6,
-                  background: aktif ? `${f.renk}22` : 'transparent',
-                  color: aktif ? f.renk : 'var(--text-secondary)',
-                  border: `1px solid ${aktif ? f.renk + '55' : 'var(--border-default)'}`,
-                  cursor: 'pointer',
-                  font: aktif ? '600 12px/16px var(--font-sans)' : '500 12px/16px var(--font-sans)',
-                }}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) 1fr', gap: 16 }}>
         {/* Liste */}
