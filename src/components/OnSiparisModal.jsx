@@ -43,7 +43,9 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
     aciklama: mevcutOnSiparis?.aciklama || '',
     aciliyet: mevcutOnSiparis?.aciliyet || 'orta',
     musteriOnayBilgisi: mevcutOnSiparis?.musteriOnayBilgisi || '',
-    durum: mevcutOnSiparis?.durum || 'taslak',
+    // Yeni kayıt → direkt Sipariş Onayı ekranına düşsün (onay_bekliyor).
+    // Mevcut kayıt varsa durumu koru.
+    durum: mevcutOnSiparis?.durum || 'onay_bekliyor',
     olusturanId: mevcutOnSiparis?.olusturanId ?? kullanici?.id ?? null,
   })
   const [kalemler, setKalemler] = useState([bosKalem()])
