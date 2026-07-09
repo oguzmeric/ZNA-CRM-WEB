@@ -16,11 +16,20 @@ const fmtPara = (n, pb = 'TL') => {
   return `${sembol} ${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+// Tarih + saat (onay, timestamp'ler için)
 const fmtTarih = (iso) => {
   if (!iso) return '—'
   try {
     const d = new Date(iso)
     return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  } catch { return iso }
+}
+// Sadece tarih (görüşme tarihi gibi date alanları için — saatsiz)
+const fmtSadeceTarih = (iso) => {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`
   } catch { return iso }
 }
 
@@ -93,13 +102,18 @@ export default function SiparisDetay() {
           </div>
           {gorusme?.gorusmeNo && (
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
-              <span style={{
-                fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
-                color: '#3b82f6', padding: '2px 6px',
-                background: 'rgba(59,130,246,0.10)', borderRadius: 4,
-              }}>{gorusme.gorusmeNo}</span>
+              <button
+                onClick={() => navigate(`/gorusmeler/${gorusme.id}`)}
+                style={{
+                  fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                  color: '#3b82f6', padding: '2px 6px',
+                  background: 'rgba(59,130,246,0.10)', borderRadius: 4,
+                  border: 'none', cursor: 'pointer',
+                }}
+                title="Kaynak görüşmeye git"
+              >{gorusme.gorusmeNo}</button>
               <span>Kaynak görüşme</span>
-              {gorusme.tarih && <>· {fmtTarih(gorusme.tarih)}</>}
+              {gorusme.tarih && <>· {fmtSadeceTarih(gorusme.tarih)}</>}
               {gorusme.gorusen && <>· {gorusme.gorusen}</>}
             </div>
           )}
@@ -214,29 +228,18 @@ export default function SiparisDetay() {
             )}
           </Card>
 
-          {/* Kaynak */}
-          <Card style={{ padding: 16 }}>
-            <CardTitle style={{ marginBottom: 8 }}>Kaynak</CardTitle>
-            {isTeklif ? (
+          {/* Kaynak — sadece tekliftense göster (görüşme linki üstte zaten tıklanabilir) */}
+          {isTeklif && siparis.teklifId && (
+            <Card style={{ padding: 16 }}>
+              <CardTitle style={{ marginBottom: 8 }}>Kaynak Teklif</CardTitle>
               <Button
                 variant="secondary" size="sm" iconLeft={<FileText size={13} />}
                 onClick={() => navigate(`/teklifler/${siparis.teklifId}`)}
               >
-                Kaynak Teklife git <ExternalLink size={12} style={{ marginLeft: 4 }} />
+                Teklife git <ExternalLink size={12} style={{ marginLeft: 4 }} />
               </Button>
-            ) : (
-              siparis.gorusmeId ? (
-                <Button
-                  variant="secondary" size="sm" iconLeft={<ShoppingCart size={13} />}
-                  onClick={() => navigate(`/gorusmeler/${siparis.gorusmeId}`)}
-                >
-                  Görüşmeye git <ExternalLink size={12} style={{ marginLeft: 4 }} />
-                </Button>
-              ) : (
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Ön sipariş #{siparis.onSiparisId}</div>
-              )
-            )}
-          </Card>
+            </Card>
+          )}
 
           {siparis.notlar && (
             <Card style={{ padding: 16 }}>
