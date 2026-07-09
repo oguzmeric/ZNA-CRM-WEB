@@ -102,7 +102,12 @@ Deno.serve(async (req) => {
     const { data: kul } = await svc
       .from('kullanicilar').select('ad, rol').eq('auth_id', authRes.user.id).maybeSingle()
     if (!kul) return jsn({ ok: false, hata: 'kullanici_yok' }, 403)
-    const yonetim = kul.rol === 'admin' || /\b(oğuz|oguz|ali|ferdi)\b/i.test(kul.ad ?? '')
+    // TR karakter safe: JS \b Unicode değil, "OĞUZ" için \boğuz\b false döner (Ğ non-word)
+    const adLower = String(kul.ad ?? '').toLocaleLowerCase('tr')
+    const yonetim = kul.rol === 'admin'
+      || adLower.includes('oğuz') || adLower.includes('oguz')
+      || adLower.includes('ali uğur') || adLower.includes('ali ugur')
+      || adLower.includes('ferdi')
     if (!yonetim) return jsn({ ok: false, hata: 'yetkisiz' }, 403)
 
     // 1) Liste — son N teklif (Verilen)
