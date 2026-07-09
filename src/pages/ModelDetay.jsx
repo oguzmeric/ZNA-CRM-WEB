@@ -1102,7 +1102,7 @@ function RezerveModal({ kalem, onKapat, onKaydet }) {
 // ─────────────────────────────────────────────────────────────
 function ModalKutu({ baslik, alt, children, onKapat }) {
   return (
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
@@ -1142,7 +1142,7 @@ function SnGecmisModal({ seriNo, kayitlar, onKapat }) {
     catch { return t }
   }
   return (
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
@@ -1194,7 +1194,7 @@ function SnSilModal({ kalem, onKapat, onSil }) {
   const [not, setNot] = useState('')
   const [yukleniyor, setYukleniyor] = useState(false)
   return (
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
@@ -1290,7 +1290,7 @@ function SnDuzenleModal({ kalem, onKapat, onKaydet }) {
     </div>
   )
   return (
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
@@ -1332,7 +1332,7 @@ function TeknisyeneVerModal({ kalem, personel, onKapat, onKaydet }) {
   const [teknisyenId, setTeknisyenId] = useState('')
   const [yukleniyor, setYukleniyor] = useState(false)
   return (
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>

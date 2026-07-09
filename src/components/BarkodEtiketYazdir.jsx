@@ -43,7 +43,7 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat 
 
   return createPortal(
     <>
-      <div onClick={onKapat} className="etiket-modal-overlay" style={{
+      <div className="etiket-modal-overlay" style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
       }}>

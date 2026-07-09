@@ -358,7 +358,7 @@ function DemirbasEkleModal({ kullanicilar, onKapat, onKaydet }) {
   }
 
   return createPortal(
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100001,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
@@ -454,7 +454,7 @@ function SnZimmetModal({ kullanicilar, onKapat, onKaydet }) {
   }
 
   return createPortal(
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100001,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>

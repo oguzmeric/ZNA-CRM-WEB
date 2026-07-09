@@ -61,7 +61,6 @@ export default function KonuYonetimModal({ acik, onClose, gorusmeler = [], varsa
 
   return (
     <div
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.45)',

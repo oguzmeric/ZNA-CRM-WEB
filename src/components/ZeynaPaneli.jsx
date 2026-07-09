@@ -108,7 +108,6 @@ export default function ZeynaPaneli({ acik, onKapat }) {
     <>
       {/* Backdrop — tıklayınca kapan */}
       <div
-        onClick={onKapat}
         style={{
           position: 'fixed', inset: 0,
           background: 'rgba(15,27,46,0.35)',

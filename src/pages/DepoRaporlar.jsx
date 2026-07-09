@@ -158,7 +158,7 @@ function ServisDonusModal({ rma, onKapat, onKaydet }) {
   }
   const sn = rma?.kalem?.seri_no || '—'
   return createPortal(
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>

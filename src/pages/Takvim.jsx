@@ -750,7 +750,6 @@ function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
 
   return (
     <div
-      onClick={onKapat}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.5)',
@@ -1142,7 +1141,6 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
 
   return (
     <div
-      onClick={onKapat}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.5)',
