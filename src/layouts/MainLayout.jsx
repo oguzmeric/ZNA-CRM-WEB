@@ -9,7 +9,7 @@ import {
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car,
-  FileCheck, Fuel,
+  FileCheck, Fuel, ShoppingCart,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -73,6 +73,7 @@ function SortableSatir({ id, children }) {
 const GRUPLAR = [
   { id: 'gunluk',    baslik: 'Günlük' },
   { id: 'satis',     baslik: 'Satış' },
+  { id: 'tedarik',   baslik: 'Tedarik Süreçleri' },
   { id: 'operasyon', baslik: 'Operasyon' },
   { id: 'filo',      baslik: 'ZNA Filo Yönetimi' },
   { id: 'yonetim',   baslik: 'Yönetim' },
@@ -103,7 +104,6 @@ const menuItems = [
     grup: 'satis',
     altMenu: [
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
-      { id: 'siparisler', isim: 'Siparişler', yol: '/siparisler' },
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
   },
@@ -115,7 +115,18 @@ const menuItems = [
     grup: 'satis',
     altMenu: [
       { id: 'teklif_onaylari',  isim: 'Teklif Onayı',  yol: '/teklif-onaylari' },
-      { id: 'siparis_onaylari', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
+    ],
+  },
+  // ── Tedarik Süreçleri — Ön Sipariş → Sipariş Onayı → Sipariş takibi ──
+  {
+    id: 'tedarik_surecleri',
+    isim: 'Sipariş Yönetimi',
+    Icon: ShoppingCart,
+    modul: 'musteriler',
+    grup: 'tedarik',
+    altMenu: [
+      { id: 'siparis_onaylari_tedarik', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
+      { id: 'siparisler_tedarik',       isim: 'Siparişler',    yol: '/siparisler' },
     ],
   },
   { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar', grup: 'satis' },
