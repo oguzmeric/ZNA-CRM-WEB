@@ -375,7 +375,7 @@ function Gorusmeler() {
     .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
     .filter(g => trContains(
-      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.muhatapAd || ''} ${g.takipNotu || ''}`,
+      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.gorusmeNo || ''} ${g.muhatapAd || ''} ${g.takipNotu || ''}`,
       arama,
     ))
 
@@ -931,7 +931,17 @@ function Gorusmeler() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                      {g.aktNo ? <CodeBadge>{g.aktNo}</CodeBadge> : <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                        {g.gorusmeNo && (
+                          <span style={{
+                            fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                            color: 'var(--brand)', letterSpacing: 0.3,
+                          }} title="Görüşme No">
+                            {g.gorusmeNo}
+                          </span>
+                        )}
+                        {g.aktNo ? <CodeBadge>{g.aktNo}</CodeBadge> : (!g.gorusmeNo && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>)}
+                      </div>
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
