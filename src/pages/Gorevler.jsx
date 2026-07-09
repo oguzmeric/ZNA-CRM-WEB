@@ -426,6 +426,21 @@ function Gorevler() {
     }
     // Kaydetmeden önce sonTarih'i bitisTarih'in tarih kısmından türet (geriye uyum)
     form.sonTarih = dtToTarih(form.bitisTarih)
+    // Ekip = ek atananlar (birincil hariç, unique)
+    const ekipIds = Array.from(new Set((form.ekip || []).map(String).filter(x => x && x !== String(form.atanan)).map(Number)))
+    const ekipeBildir = async (gorevId, oncelik) => {
+      const sonTarihStr = form.bitisTarih
+        ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+        : form.sonTarih
+      for (const uid of ekipIds) {
+        bildirimEkle(String(uid), 'Yeni Görev — Ekip', `"${form.baslik}" görevine ekip üyesi olarak eklendiniz. Öncelik: ${oncelik?.isim || form.oncelik}. Son tarih: ${form.sonTarih}`, 'gorev', '/gorevler')
+        gorevAtamaSMSGonderVeIsaretle({
+          gorevId, atananId: String(uid),
+          gorevBaslik: form.baslik, sonTarih: sonTarihStr, oncelik: oncelik?.isim || form.oncelik,
+        }).catch(() => {})
+      }
+    }
+
     if (duzenleId) {
       const eski = gorevler.find(g => g.id === duzenleId)
       await dbGorevGuncelle(duzenleId, form)
@@ -439,9 +454,28 @@ function Gorevler() {
           gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: form.oncelik,
         }).catch(() => {})
       }
+      // Ekipte yeni gelen üyelere bildir (eski ekipte olmayanlar)
+      const eskiEkipSet = new Set((eski?.ekip || []).map(String))
+      const yeniEklenenler = ekipIds.filter(uid => !eskiEkipSet.has(String(uid)))
+      if (yeniEklenenler.length) {
+        const yeniEkipIds = yeniEklenenler
+        await Promise.resolve()
+        // Yeni eklenen ekip üyelerine bildir
+        const oncelik = oncelikler.find(o => o.id === form.oncelik)
+        const sonTarihStr = form.bitisTarih
+          ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+          : form.sonTarih
+        for (const uid of yeniEkipIds) {
+          bildirimEkle(String(uid), 'Görev Ekibine Eklendiniz', `"${form.baslik}" görevine ekip üyesi olarak eklendiniz.`, 'gorev', '/gorevler')
+          gorevAtamaSMSGonderVeIsaretle({
+            gorevId: duzenleId, atananId: String(uid),
+            gorevBaslik: form.baslik, sonTarih: sonTarihStr, oncelik: oncelik?.isim || form.oncelik,
+          }).catch(() => {})
+        }
+      }
     } else {
       const { servisTalebiOlustur, ...gorevAlanlari } = form
-      const yeniGorev = { ...gorevAlanlari, durum: gorevAlanlari.durum || 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
+      const yeniGorev = { ...gorevAlanlari, ekip: ekipIds, durum: gorevAlanlari.durum || 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
       const eklenen = await gorevEkle(yeniGorev)
       if (eklenen) {
         setGorevler(prev => [eklenen, ...prev])
@@ -453,6 +487,8 @@ function Gorevler() {
           gorevId: eklenen.id, atananId: form.atanan,
           gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: oncelik?.isim,
         }).catch(() => {})
+        // Ekip üyelerine de bildirim + SMS
+        ekipeBildir(eklenen.id, oncelik).catch(() => {})
 
         // Servis talebi de istendiyse oluştur ve oraya yönlendir
         if (servisTalebiOlustur && form.musteriId) {
@@ -529,12 +565,15 @@ function Gorevler() {
     ? gorevler
     : gorevler.filter(g => {
         if (!g) return false
+        const uidStr = String(kullanici?.id ?? '___')
         const banaAtanmis =
-          String(g.atanan ?? '') === String(kullanici?.id ?? '___') ||
-          String(g.atananId ?? '') === String(kullanici?.id ?? '___') ||
+          String(g.atanan ?? '') === uidStr ||
+          String(g.atananId ?? '') === uidStr ||
           g.atananAd === kullanici?.ad
+        // Ekip üyesiysem de görevi göreyim
+        const ekiptenim = Array.isArray(g.ekip) && g.ekip.some(x => String(x) === uidStr)
         const benYarattim = g.olusturanAd === kullanici?.ad
-        return banaAtanmis || benYarattim
+        return banaAtanmis || ekiptenim || benYarattim
       })
 
   const filtreliGorevler = gorunurGorevler.filter(g => {
@@ -637,11 +676,46 @@ function Gorevler() {
               <Input value={form.baslik} onChange={e => setForm({ ...form, baslik: e.target.value })} placeholder="Görev başlığı" />
             </div>
             <div>
-              <Label required>Atanacak kişi</Label>
+              <Label required>Atanacak kişi (birincil)</Label>
               <CustomSelect value={form.atanan} onChange={e => setForm({ ...form, atanan: e.target.value })}>
                 <option value="">Kişi seç…</option>
                 {kullanicilar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
               </CustomSelect>
+            </div>
+            <div>
+              <Label>Ekip (ek kişiler, opsiyonel)</Label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: 8, background: 'var(--surface-sunken)', borderRadius: 8, border: '1px solid var(--border-default)', minHeight: 40 }}>
+                {(form.ekip || []).map(uid => {
+                  const k = kullanicilar.find(x => String(x.id) === String(uid))
+                  return (
+                    <span key={uid} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'var(--brand-primary)', color: '#fff', fontSize: 12, fontWeight: 600 }}>
+                      {k?.ad || `#${uid}`}
+                      <button type="button" onClick={() => setForm({ ...form, ekip: (form.ekip || []).filter(x => String(x) !== String(uid)) })}
+                        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+                    </span>
+                  )
+                })}
+                <CustomSelect
+                  value=""
+                  onChange={e => {
+                    const yeni = e.target.value
+                    if (!yeni) return
+                    if (String(yeni) === String(form.atanan)) return  // birincil zaten
+                    if ((form.ekip || []).some(x => String(x) === String(yeni))) return
+                    setForm({ ...form, ekip: [...(form.ekip || []), Number(yeni)] })
+                  }}
+                  style={{ minWidth: 160, height: 32 }}
+                >
+                  <option value="">+ Ekle…</option>
+                  {kullanicilar
+                    .filter(k => String(k.id) !== String(form.atanan))
+                    .filter(k => !(form.ekip || []).some(x => String(x) === String(k.id)))
+                    .map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
+                </CustomSelect>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                Ekip üyeleri de bildirim ve SMS alır. Görev listelerinde görev onlara da görünür.
+              </div>
             </div>
             <div>
               <Label>İlgili müşteri</Label>
