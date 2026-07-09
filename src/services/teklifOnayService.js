@@ -6,13 +6,14 @@ import { toCamel, arrayToCamel } from '../lib/mapper'
 import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
 
 // Bekleyen teklif onayları — Teklifler > Cevap Beklenenler ile aynı liste.
+// Teklifler.jsx'te filtre: onay_durumu IN ('takipte', 'revizyon').
 // Yönetim henüz karar vermemişse (teklif_onayi null veya durumu 'onayli'/'reddedildi'
-// değil) bekleyen sayılır. Böylece her yeni teklif otomatik onay kuyruğunda görünür.
+// değil) bekleyen sayılır.
 export async function bekleyenTeklifOnaylariniGetir() {
   const { data, error } = await supabase
     .from('teklifler')
     .select('*')
-    .eq('onay_durumu', 'bekliyor')
+    .in('onay_durumu', ['takipte', 'revizyon'])
     .or('teklif_onayi.is.null,teklif_onayi->>durum.not.in.(onayli,reddedildi)')
     .order('id', { ascending: false })
   if (error) { console.error('[bekleyenTeklifOnaylari]', error.message); return [] }
