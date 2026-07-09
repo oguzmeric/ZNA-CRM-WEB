@@ -33,9 +33,6 @@ function normTeknisyen(t: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   try {
-    const authHeader = req.headers.get('Authorization') ?? ''
-    if (!authHeader) return json({ ok: false, hata: 'yetkisiz-header-yok' }, 401)
-
     const body = await req.json().catch(() => ({}))
     const limit = Math.min(Math.max(parseInt(body.limit ?? 100, 10), 1), 500)
 
@@ -43,35 +40,48 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
-    const usr = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    )
-    const { data: authRes, error: authErr } = await usr.auth.getUser()
-    if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz-jwt', jwtHata: authErr?.message }, 401)
-    // Kullanıcıyı önce auth_id, yoksa email ile bul (email auth migration için)
-    let { data: kul } = await svc
-      .from('kullanicilar').select('id, ad, rol, auth_id, email').eq('auth_id', authRes.user.id).maybeSingle()
-    if (!kul && authRes.user.email) {
-      const r = await svc.from('kullanicilar').select('id, ad, rol, auth_id, email').eq('email', authRes.user.email).maybeSingle()
-      kul = r.data
+
+    // Cron path — X-Cron-Secret header ile guard atla (pg_cron için)
+    const cronSecret = req.headers.get('X-Cron-Secret')
+    const expectedSecret = Deno.env.get('ESN_CRON_SECRET')
+    const cronMode = !!(cronSecret && expectedSecret && cronSecret === expectedSecret)
+
+    if (!cronMode) {
+      // Normal kullanıcı çağrısı — auth kontrolü
+      const authHeader = req.headers.get('Authorization') ?? ''
+      if (!authHeader) return json({ ok: false, hata: 'yetkisiz-header-yok' }, 401)
+
+      const usr = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const { data: authRes, error: authErr } = await usr.auth.getUser()
+      if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz-jwt', jwtHata: authErr?.message }, 401)
+      // Kullanıcıyı önce auth_id, yoksa email ile bul (email auth migration için)
+      let { data: kul } = await svc
+        .from('kullanicilar').select('id, ad, rol, auth_id, email').eq('auth_id', authRes.user.id).maybeSingle()
+      if (!kul && authRes.user.email) {
+        const r = await svc.from('kullanicilar').select('id, ad, rol, auth_id, email').eq('email', authRes.user.email).maybeSingle()
+        kul = r.data
+      }
+      if (!kul) return json({
+        ok: false, hata: 'kullanici-yok',
+        debug: { authUserId: authRes.user.id, authEmail: authRes.user.email },
+      }, 403)
+      // Yönetim kontrolü — TR karakter safe (JS \b Unicode'a duyarlı değil,
+      // "OĞUZ" için \boğuz\b false döner çünkü Ğ non-word char).
+      const adLower = String(kul.ad ?? '').toLocaleLowerCase('tr')
+      const yonetim = kul.rol === 'admin'
+        || adLower.includes('oğuz') || adLower.includes('oguz')
+        || adLower.includes('ali uğur') || adLower.includes('ali ugur')
+        || adLower.includes('ferdi')
+      if (!yonetim) return json({
+        ok: false, hata: 'yetki-yok',
+        debug: { ad: kul.ad, rol: kul.rol },
+      }, 403)
     }
-    if (!kul) return json({
-      ok: false, hata: 'kullanici-yok',
-      debug: { authUserId: authRes.user.id, authEmail: authRes.user.email },
-    }, 403)
-    // Yönetim kontrolü — TR karakter safe (JS \b Unicode'a duyarlı değil,
-    // "OĞUZ" için \boğuz\b false döner çünkü Ğ non-word char).
-    const adLower = String(kul.ad ?? '').toLocaleLowerCase('tr')
-    const yonetim = kul.rol === 'admin'
-      || adLower.includes('oğuz') || adLower.includes('oguz')
-      || adLower.includes('ali uğur') || adLower.includes('ali ugur')
-      || adLower.includes('ferdi')
-    if (!yonetim) return json({
-      ok: false, hata: 'yetki-yok',
-      debug: { ad: kul.ad, rol: kul.rol },
-    }, 403)
+    // ---- Guard bitti (normal veya cron mode). Bundan sonra iş mantığı. ----
 
     const firmakodu = Deno.env.get('ESN_FIRMA_KODU') ?? 'AKELTELEKOM'
     const kno = Deno.env.get('ESN_KNO') ?? '99'
