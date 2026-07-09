@@ -17,6 +17,7 @@ import { musteriLokasyonlariniGetir, musteriLokasyonEkle, musteriLokasyonGuncell
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
+import { musteriSiparisleri, SIPARIS_DURUMLARI } from '../services/siparisService'
 import { gorevleriGetir } from '../services/gorevService'
 import {
   Button, Input, Textarea, Label,
@@ -79,12 +80,13 @@ function MusteriDetay() {
   const [teklifler, setTeklifler]   = useState([])
   const [satislar, setSatislar]     = useState([])
   const [gorevler, setGorevler]     = useState([])
+  const [siparisler, setSiparisler] = useState([])
 
   useEffect(() => {
     const yukle = async () => {
       const musteriIdNum = Number(id)
       try {
-        const [m, k, l, g, t, s, gv] = await Promise.all([
+        const [m, k, l, g, t, s, gv, sip] = await Promise.all([
           musteriGetir(musteriIdNum),
           musteriKisileriniGetir(musteriIdNum),
           musteriLokasyonlariniGetir(musteriIdNum),
@@ -92,8 +94,10 @@ function MusteriDetay() {
           teklifleriGetir(),
           satislariGetir(),
           gorevleriGetir(),
+          musteriSiparisleri(musteriIdNum).catch(() => []),
         ])
         setMusteri(m); setKisiler(k); setLokasyonlar(l)
+        setSiparisler(sip || [])
         if (m?.firma) {
           const firma = m.firma.toLowerCase().trim()
           setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
@@ -802,6 +806,94 @@ function MusteriDetay() {
           </div>
         )}
       </Card>
+
+      {/* Sipariş Özeti — ZNA-SIP kayıtları */}
+      {siparisler.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <CardTitle>Sipariş Özeti</CardTitle>
+            <button
+              onClick={() => navigate('/siparisler')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Tüm siparişler <ArrowRight size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {(() => {
+            const aktif = siparisler.filter(s => s.durum === 'aktif').length
+            const tamamlanan = siparisler.filter(s => s.durum === 'tamamlandi').length
+            const iptal = siparisler.filter(s => s.durum === 'iptal').length
+            const toplamTutar = siparisler.filter(s => s.durum !== 'iptal').reduce((sum, s) => sum + Number(s.genelToplam || 0), 0)
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+                {[
+                  { label: 'TOPLAM SİPARİŞ', value: siparisler.length, color: 'var(--text-primary)' },
+                  { label: 'AKTİF',          value: aktif,             color: '#3b82f6' },
+                  { label: 'TAMAMLANDI',     value: tamamlanan,        color: 'var(--success)' },
+                  { label: 'TOPLAM TUTAR',   value: `₺${fmt(toplamTutar)}`, color: 'var(--text-primary)' },
+                ].map(k => (
+                  <div key={k.label} style={{
+                    background: 'var(--surface-sunken)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 14px',
+                  }}>
+                    <div className="t-label" style={{ marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ font: '600 16px/22px var(--font-sans)', color: k.color, fontVariantNumeric: 'tabular-nums' }}>
+                      {k.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          <div>
+            {siparisler.slice(0, 5).map(s => {
+              const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
+              const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'
+              const kaynakRenk = s.kaynakTipi === 'teklif' ? '#3b82f6' : '#10b981'
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => navigate(`/siparisler/${s.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13 }}>{s.siparisNo}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                      background: `${durumObj?.renk}22`, color: durumObj?.renk,
+                      border: `1px solid ${durumObj?.renk}55`,
+                    }}>{durumObj?.isim || s.durum}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                      background: `${kaynakRenk}15`, color: kaynakRenk,
+                    }}>{kaynakLabel}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      ₺{fmt(s.genelToplam)}
+                    </span>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>
+                      {s.onayTarihi ? new Date(s.onayTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Finansal özet */}
       {satislar.length > 0 && (
