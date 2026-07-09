@@ -50,6 +50,10 @@ export default function TeklifOnaylari() {
   const [liste, setListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [secili, setSecili] = useState(null)
+  // Filtre + sıralama
+  const [tarihBas, setTarihBas] = useState('')
+  const [tarihBit, setTarihBit] = useState('')
+  const [siralama, setSiralama] = useState('yeni') // 'yeni' | 'eski'
 
   const yetkili = kullanici?.teklifOnayYetkilisi === true || kullanici?.teklif_onay_yetkilisi === true
 
@@ -68,6 +72,24 @@ export default function TeklifOnaylari() {
   }
 
   useEffect(() => { if (yetkili) yukle() }, [sekme, yetkili])
+
+  // Tarih baz al: bekleyen için tarih (teklif tarihi), diğerleri için onay/red tarihi
+  const filtreliListe = () => {
+    const bazTarih = (t) => {
+      if (sekme === 'bekleyen') return t.tarih || null
+      return t.teklifOnayi?.onayTarih || t.teklifOnayi?.onay_tarih || t.tarih || null
+    }
+    let sonuc = liste.slice()
+    if (tarihBas) sonuc = sonuc.filter(t => { const d = bazTarih(t); return d && d >= tarihBas })
+    if (tarihBit) sonuc = sonuc.filter(t => { const d = bazTarih(t); return d && d <= tarihBit })
+    sonuc.sort((a, b) => {
+      const da = bazTarih(a) || ''
+      const db = bazTarih(b) || ''
+      const cmp = da.localeCompare(db)
+      return siralama === 'yeni' ? -cmp : cmp
+    })
+    return sonuc
+  }
 
   if (!yetkili) {
     return (
@@ -113,6 +135,48 @@ export default function TeklifOnaylari() {
         })}
       </div>
 
+      {/* Tarih + sıralama filtresi */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 10, marginBottom: 14,
+        padding: 12, background: 'var(--surface-sunken)', borderRadius: 10,
+      }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Tarih başlangıç</label>
+          <input type="date" value={tarihBas} onChange={e => setTarihBas(e.target.value)}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: '#fff', fontSize: 13 }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Tarih bitiş</label>
+          <input type="date" value={tarihBit} onChange={e => setTarihBit(e.target.value)}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: '#fff', fontSize: 13 }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Sıralama</label>
+          <div style={{ display: 'inline-flex', background: '#fff', border: '1px solid var(--border-default)', borderRadius: 8, padding: 3 }}>
+            {[{ id: 'yeni', label: 'Yeniden → Eskiye' }, { id: 'eski', label: 'Eskiden → Yeniye' }].map(o => (
+              <button key={o.id} onClick={() => setSiralama(o.id)}
+                style={{
+                  padding: '6px 12px', borderRadius: 6,
+                  background: siralama === o.id ? 'var(--brand-primary)' : 'transparent',
+                  color: siralama === o.id ? '#fff' : 'var(--text-secondary)',
+                  border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>{o.label}</button>
+            ))}
+          </div>
+        </div>
+        {(tarihBas || tarihBit) && (
+          <Button variant="secondary" size="sm" onClick={() => { setTarihBas(''); setTarihBit('') }}>
+            Tarihi Temizle
+          </Button>
+        )}
+        <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {(() => {
+            const f = filtreliListe()
+            return `${f.length} kayıt${(tarihBas || tarihBit) ? ` (${liste.length}'den)` : ''}`
+          })()}
+        </div>
+      </div>
+
       {/* Seçili detay üstte tam genişlik */}
       {secili && (
         <div style={{ marginBottom: 16 }}>
@@ -133,7 +197,7 @@ export default function TeklifOnaylari() {
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {yukleniyor ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
-        ) : liste.length === 0 ? (
+        ) : filtreliListe().length === 0 ? (
           <EmptyState
             title={sekme === 'bekleyen' ? 'Bekleyen teklif onayı yok' : sekme === 'onayli' ? 'Onaylanmış teklif yok' : 'Reddedilmiş teklif yok'}
             icon={<Clock size={24} />}
@@ -153,7 +217,7 @@ export default function TeklifOnaylari() {
                 </tr>
               </thead>
               <tbody>
-                {liste.map(t => {
+                {filtreliListe().map(t => {
                   const to = t.teklifOnayi || {}
                   const tarihGoster = sekme === 'bekleyen'
                     ? fmtTarih(to.gonderme_tarih || t.tarih)
