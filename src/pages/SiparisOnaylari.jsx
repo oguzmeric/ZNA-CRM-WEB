@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle2, XCircle, Clock, FileText, Upload, X, Image as ImageIcon,
-  Building2, User as UserIcon, Calendar, Receipt,
+  Building2, User as UserIcon, Calendar, Receipt, Plus,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -21,6 +21,7 @@ import {
 import { kalemleriGetir as onSiparisKalemleriGetir } from '../services/onSiparisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
+import YeniOnSiparisWizard from '../components/YeniOnSiparisWizard'
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
 function gerçekToplam(t) {
@@ -57,6 +58,7 @@ export default function SiparisOnaylari() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [secili, setSecili] = useState(null)
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
+  const [wizardAcik, setWizardAcik] = useState(false)
 
   // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping
   useEffect(() => {
@@ -119,9 +121,18 @@ export default function SiparisOnaylari() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         <h1 className="t-h1">Sipariş Onayları</h1>
-        <Button variant="secondary" onClick={() => navigate('/teklifler')}>← Tekliflere dön</Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" onClick={() => navigate('/siparisler')}>Siparişler →</Button>
+          <Button
+            variant="primary"
+            iconLeft={<Plus size={14} strokeWidth={1.5} />}
+            onClick={() => setWizardAcik(true)}
+          >
+            Yeni Ön Sipariş
+          </Button>
+        </div>
       </div>
 
       {/* Sekme barı */}
@@ -268,6 +279,14 @@ export default function SiparisOnaylari() {
           )}
         </div>
       </div>
+
+      {/* Yeni Ön Sipariş wizard'ı */}
+      {wizardAcik && (
+        <YeniOnSiparisWizard
+          onKapat={() => setWizardAcik(false)}
+          onKaydedildi={() => { yukle() }}
+        />
+      )}
     </div>
   )
 }
