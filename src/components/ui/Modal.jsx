@@ -21,7 +21,6 @@ export function Modal({ open, onClose, title, children, footer, width = 520, sty
     <div
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
@@ -34,7 +33,6 @@ export function Modal({ open, onClose, title, children, footer, width = 520, sty
       }}
     >
       <div
-        onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--surface-card)',
           borderRadius: 'var(--radius-lg)',
