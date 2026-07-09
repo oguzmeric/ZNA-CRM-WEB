@@ -219,7 +219,7 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
           <div>
             <Label>
               İlgili Kişi
-              {musteriKisileri.length > 0 && !ilgiliManuel && (
+              {!ilgiliManuel ? (
                 <button
                   type="button"
                   onClick={() => { setIlgiliManuel(true); setForm({ ...form, ilgiliKisi: '' }) }}
@@ -231,11 +231,10 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
                   <UserPlus size={11} strokeWidth={2} style={{ verticalAlign: 'middle', marginRight: 2 }} />
                   Manuel Yaz
                 </button>
-              )}
-              {ilgiliManuel && musteriKisileri.length > 0 && (
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setIlgiliManuel(false)}
+                  onClick={() => { setIlgiliManuel(false); setForm({ ...form, ilgiliKisi: gorusme?.muhatapAd || '' }) }}
                   style={{
                     marginLeft: 8, background: 'none', border: 'none', color: 'var(--text-tertiary)',
                     cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: 0,
@@ -245,23 +244,45 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
                 </button>
               )}
             </Label>
-            {musteriKisileri.length > 0 && !ilgiliManuel ? (
-              <CustomSelect
-                value={form.ilgiliKisi}
-                onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
-              >
-                <option value="">Seç...</option>
-                {musteriKisileri.map(k => (
-                  <option key={k.id} value={k.ad}>
-                    {k.ad}{k.unvan ? ` — ${k.unvan}` : ''}{k.telefon ? ` (${k.telefon})` : ''}
-                  </option>
-                ))}
-              </CustomSelect>
+            {!ilgiliManuel ? (
+              (() => {
+                // Görüşme muhatabı + müşteri kişileri birleşik liste (duplicate temizlenir)
+                const opts = []
+                const seen = new Set()
+                if (gorusme?.muhatapAd?.trim()) {
+                  opts.push({ value: gorusme.muhatapAd, label: `${gorusme.muhatapAd}  ·  Görüşme muhatabı`, kaynak: 'muhatap' })
+                  seen.add(gorusme.muhatapAd.trim().toLocaleLowerCase('tr'))
+                }
+                musteriKisileri.forEach(k => {
+                  const key = String(k.ad || '').trim().toLocaleLowerCase('tr')
+                  if (!key || seen.has(key)) return
+                  seen.add(key)
+                  opts.push({
+                    value: k.ad,
+                    label: `${k.ad}${k.unvan ? ' — ' + k.unvan : ''}${k.telefon ? ' (' + k.telefon + ')' : ''}`,
+                    kaynak: 'kisi',
+                  })
+                })
+                return (
+                  <CustomSelect
+                    value={form.ilgiliKisi}
+                    onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
+                  >
+                    <option value="">Seç...</option>
+                    {opts.map(o => (
+                      <option key={o.value + o.kaynak} value={o.value}>{o.label}</option>
+                    ))}
+                    {opts.length === 0 && (
+                      <option value="" disabled>Bu müşteride kayıtlı kişi yok — "Manuel Yaz" tıkla</option>
+                    )}
+                  </CustomSelect>
+                )
+              })()
             ) : (
               <Input
                 value={form.ilgiliKisi}
                 onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
-                placeholder="Muhatap adı"
+                placeholder="Muhatap adı..."
               />
             )}
           </div>
