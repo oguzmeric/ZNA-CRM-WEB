@@ -341,11 +341,11 @@ function DokumanEkleModal({ duzenle, kategoriler, kullanicilar, onKapat, onKayde
   }
 
   return createPortal(
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div style={{
         background: 'var(--surface-card)', borderRadius: 14, padding: 22,
         maxWidth: 620, width: '100%', maxHeight: '90vh', overflow: 'auto',
         border: '1px solid var(--border-default)',
@@ -508,11 +508,11 @@ function KategoriYonetimModal({ kategoriler, kullanici, onKapat, onDegisiklik })
   }
 
   return createPortal(
-    <div onClick={onKapat} style={{
+    <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div style={{
         background: 'var(--surface-card)', borderRadius: 14, padding: 22,
         maxWidth: 480, width: '100%', maxHeight: '85vh', overflow: 'auto',
         border: '1px solid var(--border-default)',
