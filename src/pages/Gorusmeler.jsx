@@ -1195,9 +1195,9 @@ function GecmisGorusmeler({ firma, gorusmeler, navigate, mevcutId }) {
                   {g.gorusen && <span style={{ font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>· {g.gorusen}</span>}
                 </div>
                 <div style={{ font: '600 12.5px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>{g.konu || '—'}</div>
-                {g.takipNotu && (
+                {(g.takipNotu || g.notlar) && (
                   <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {g.takipNotu}
+                    {g.takipNotu || g.notlar}
                   </div>
                 )}
               </button>
