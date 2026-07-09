@@ -1,0 +1,117 @@
+-- 121: skor_liderlik — servis_raporlari baz'ı bil_tarih (bildirim/açılış tarihi).
+-- Sebep: iş dün açılıp bugün kapandığında (gid_tarih=bugün), önceki mantık bugün
+-- teknisyenine puan yazıyordu. Bu şişme yaratıyordu.
+-- Yeni mantık:
+--   - bil_tarih baz (iş açılış günü = teknisyenin skoru o gün)
+--   - gid_tarih is not null (yani iş kapanmış, açık fişleri sayma)
+-- servis_talepleri kısmı değişmez — CRM içi taleplerde "tamamlanma_tarihi" doğru.
+
+drop function if exists skor_liderlik(date, date);
+
+create or replace function skor_liderlik(baslangic date, bitis date)
+returns table (
+  kim text,
+  sayi bigint,
+  foto_url text,
+  unvan text,
+  telefon text
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  _asci text := 'İıĞğŞşÇçÖöÜü';
+  _asci_ozeti text := 'IIGGSSCCOOUU';
+begin
+  return query
+  with birlesim as (
+    -- CRM içi tamamlanmış servis talepleri — tamamlanma tarihi baz
+    select
+      atanan_kullanici_ad as tek_ad,
+      tamamlanma_tarihi::date as tarih,
+      coalesce(firma_adi, '(bilinmiyor)') as firma
+    from servis_talepleri
+    where durum = 'tamamlandi'
+      and tamamlanma_tarihi is not null
+      and tamamlanma_tarihi::date between baslangic and bitis
+      and atanan_kullanici_ad is not null
+      and coalesce(servis_tipi, '') !~* '^bakim$'
+    union all
+    -- esnweb servis raporları — bil_tarih baz (iş açılış günü) + kapanmış olmalı
+    select
+      teknisyen as tek_ad,
+      bil_tarih as tarih,
+      coalesce(firma_adi, '(bilinmiyor)') as firma
+    from servis_raporlari
+    where bil_tarih between baslangic and bitis
+      and gid_tarih is not null                  -- iş kapanmış olmalı
+      and teknisyen is not null
+      and ariza_kodu is not null
+      and trim(ariza_kodu) <> ''
+      and ariza_kodu !~* 'bakım|bakim'
+      and silindi = false
+  ),
+  temiz as (
+    select tek_ad, tarih, firma
+    from birlesim
+    where tek_ad is not null and trim(tek_ad) <> ''
+  ),
+  admin_norm as (
+    select upper(translate(k.ad, _asci, _asci_ozeti)) as norm_ad
+    from kullanicilar k
+    where k.rol = 'admin'
+  ),
+  gruplu as (
+    select t.tek_ad, count(*)::bigint as tek_sayi
+    from temiz t
+    where not exists (
+      select 1 from admin_norm a
+      where a.norm_ad = upper(translate(t.tek_ad, _asci, _asci_ozeti))
+    )
+    group by t.tek_ad
+  ),
+  kullanici_norm as (
+    select
+      k.foto_url as k_foto,
+      k.unvan as k_unvan,
+      k.cep_telefon as k_tel,
+      upper(translate(k.ad, _asci, _asci_ozeti)) as norm_ad,
+      upper(translate(split_part(k.ad, ' ', 1), _asci, _asci_ozeti)) as ilk,
+      upper(translate(
+        (string_to_array(k.ad, ' '))[array_length(string_to_array(k.ad, ' '), 1)],
+        _asci, _asci_ozeti
+      )) as son
+    from kullanicilar k
+    where k.rol = 'personel'
+  )
+  select
+    g.tek_ad,
+    g.tek_sayi,
+    matched.k_foto,
+    coalesce(matched.k_unvan, 'Teknisyen'),
+    matched.k_tel
+  from gruplu g
+  left join lateral (
+    select k.k_foto, k.k_unvan, k.k_tel
+    from kullanici_norm k
+    where
+      k.norm_ad = upper(translate(g.tek_ad, _asci, _asci_ozeti))
+      or (
+        k.ilk = upper(translate(split_part(g.tek_ad, ' ', 1), _asci, _asci_ozeti))
+        and k.son = upper(translate(
+          (string_to_array(g.tek_ad, ' '))[array_length(string_to_array(g.tek_ad, ' '), 1)],
+          _asci, _asci_ozeti
+        ))
+      )
+    order by
+      case when k.norm_ad = upper(translate(g.tek_ad, _asci, _asci_ozeti)) then 0 else 1 end
+    limit 1
+  ) matched on true
+  order by g.tek_sayi desc, g.tek_ad asc;
+end;
+$$;
+
+grant execute on function skor_liderlik(date, date) to authenticated;
+
+notify pgrst, 'reload schema';
