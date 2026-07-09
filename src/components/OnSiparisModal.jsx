@@ -4,12 +4,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Trash2, Package, Search, ShoppingCart, AlertCircle } from 'lucide-react'
+import { X, Plus, Trash2, Package, Search, ShoppingCart, AlertCircle, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button, Input, Textarea, Label } from './ui'
 import CustomSelect from './CustomSelect'
 import { stokUrunleriniGetir } from '../services/stokService'
+import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import {
   onSiparisTumunuKaydet, kalemleriGetir,
   ACILIYETLER,
@@ -29,6 +30,8 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
   const [stokUrunleri, setStokUrunleri] = useState([])
   const [stokAramaAcik, setStokAramaAcik] = useState(null) // idx | null
   const [stokQuery, setStokQuery] = useState('')
+  const [musteriKisileri, setMusteriKisileri] = useState([])
+  const [ilgiliManuel, setIlgiliManuel] = useState(false)
 
   const [form, setForm] = useState({
     id: mevcutOnSiparis?.id || null,
@@ -58,6 +61,13 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
   useEffect(() => {
     stokUrunleriniGetir().then(setStokUrunleri).catch(() => setStokUrunleri([]))
   }, [])
+
+  // Müşteri kişilerini yükle (İlgili Kişi dropdown için)
+  useEffect(() => {
+    if (gorusme?.musteriId) {
+      musteriKisileriniGetir(gorusme.musteriId).then(setMusteriKisileri).catch(() => setMusteriKisileri([]))
+    }
+  }, [gorusme?.musteriId])
 
   const filtreliStok = useMemo(() => {
     if (!stokQuery.trim()) return stokUrunleri.slice(0, 20)
@@ -181,20 +191,64 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
         {/* Genel alanlar */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
           <div>
-            <Label>İlgili Kişi</Label>
-            <Input
-              value={form.ilgiliKisi}
-              onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
-              placeholder="Muhatap adı"
-            />
+            <Label>
+              İlgili Kişi
+              {musteriKisileri.length > 0 && !ilgiliManuel && (
+                <button
+                  type="button"
+                  onClick={() => { setIlgiliManuel(true); setForm({ ...form, ilgiliKisi: '' }) }}
+                  style={{
+                    marginLeft: 8, background: 'none', border: 'none', color: 'var(--brand)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: 0,
+                  }}
+                >
+                  <UserPlus size={11} strokeWidth={2} style={{ verticalAlign: 'middle', marginRight: 2 }} />
+                  Manuel Yaz
+                </button>
+              )}
+              {ilgiliManuel && musteriKisileri.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIlgiliManuel(false)}
+                  style={{
+                    marginLeft: 8, background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: 0,
+                  }}
+                >
+                  Listeden Seç
+                </button>
+              )}
+            </Label>
+            {musteriKisileri.length > 0 && !ilgiliManuel ? (
+              <CustomSelect
+                value={form.ilgiliKisi}
+                onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
+              >
+                <option value="">Seç...</option>
+                {musteriKisileri.map(k => (
+                  <option key={k.id} value={k.ad}>
+                    {k.ad}{k.unvan ? ` — ${k.unvan}` : ''}{k.telefon ? ` (${k.telefon})` : ''}
+                  </option>
+                ))}
+              </CustomSelect>
+            ) : (
+              <Input
+                value={form.ilgiliKisi}
+                onChange={e => setForm({ ...form, ilgiliKisi: e.target.value })}
+                placeholder="Muhatap adı"
+              />
+            )}
           </div>
           <div>
             <Label>Aciliyet</Label>
             <CustomSelect
               value={form.aciliyet}
-              onChange={v => setForm({ ...form, aciliyet: v })}
-              options={ACILIYETLER.map(a => ({ value: a.id, label: a.isim }))}
-            />
+              onChange={e => setForm({ ...form, aciliyet: e.target.value })}
+            >
+              {ACILIYETLER.map(a => (
+                <option key={a.id} value={a.id}>{a.isim}</option>
+              ))}
+            </CustomSelect>
           </div>
           <div>
             <Label>Müşteri Onay Bilgisi</Label>
@@ -355,9 +409,12 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
                     <Label>Birim</Label>
                     <CustomSelect
                       value={k.birim}
-                      onChange={v => kalemGuncelle(idx, 'birim', v)}
-                      options={BIRIMLER.map(b => ({ value: b, label: b }))}
-                    />
+                      onChange={e => kalemGuncelle(idx, 'birim', e.target.value)}
+                    >
+                      {BIRIMLER.map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </CustomSelect>
                   </div>
                   <div>
                     <Label>Açıklama</Label>
