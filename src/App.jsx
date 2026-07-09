@@ -38,6 +38,8 @@ const Performans = lazy(() => import('./pages/Performans'))
 const TrassirLisanslar = lazy(() => import('./pages/TrassirLisanslar'))
 const Teklifler = lazy(() => import('./pages/Teklifler'))
 const SiparisOnaylari = lazy(() => import('./pages/SiparisOnaylari'))
+const Siparisler = lazy(() => import('./pages/Siparisler'))
+const SiparisDetay = lazy(() => import('./pages/SiparisDetay'))
 const TeklifOnaylari = lazy(() => import('./pages/TeklifOnaylari'))
 const TeklifDetay = lazy(() => import('./pages/TeklifDetay'))
 const TeklifKiyasla = lazy(() => import('./pages/TeklifKiyasla'))
@@ -289,6 +291,9 @@ function App() {
           <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />
           <Route path="/teklifler/:id" element={<TeklifDetay />} />
           <Route path="/siparis-onaylari" element={<SiparisOnaylari />} />
+          <Route path="/siparisler" element={<Siparisler />} />
+          <Route path="/siparisler/yeni" element={<SiparisDetay />} />
+          <Route path="/siparisler/:id" element={<SiparisDetay />} />
           <Route path="/teklif-onaylari" element={<TeklifOnaylari />} />
           <Route path="/satislar" element={<Satislar />} />
           <Route path="/satislar/:id" element={<SatisDetay />} />
