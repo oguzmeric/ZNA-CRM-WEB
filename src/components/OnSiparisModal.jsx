@@ -12,7 +12,7 @@ import CustomSelect from './CustomSelect'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import {
-  onSiparisTumunuKaydet, kalemleriGetir,
+  onSiparisTumunuKaydet, kalemleriGetir, onSiparisSil,
   ACILIYETLER,
 } from '../services/onSiparisService'
 
@@ -36,14 +36,15 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
   const [form, setForm] = useState({
     id: mevcutOnSiparis?.id || null,
     gorusmeId: gorusme?.id,
-    musteriId: gorusme?.musteriId || null,
-    lokasyonId: gorusme?.lokasyonId || null,
-    ilgiliKisi: gorusme?.muhatapAd || '',
+    // Mevcut kayıt varsa oradan al; yoksa görüşmeden devral
+    musteriId: mevcutOnSiparis?.musteriId ?? gorusme?.musteriId ?? null,
+    lokasyonId: mevcutOnSiparis?.lokasyonId ?? gorusme?.lokasyonId ?? null,
+    ilgiliKisi: mevcutOnSiparis?.ilgiliKisi || gorusme?.muhatapAd || '',
     aciklama: mevcutOnSiparis?.aciklama || '',
     aciliyet: mevcutOnSiparis?.aciliyet || 'orta',
     musteriOnayBilgisi: mevcutOnSiparis?.musteriOnayBilgisi || '',
     durum: mevcutOnSiparis?.durum || 'taslak',
-    olusturanId: kullanici?.id || null,
+    olusturanId: mevcutOnSiparis?.olusturanId ?? kullanici?.id ?? null,
   })
   const [kalemler, setKalemler] = useState([bosKalem()])
   const [silinecekKalemIdleri, setSilinecekKalemIdleri] = useState([])
@@ -112,6 +113,23 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
     const yeni = [...kalemler]
     yeni[idx] = { ...yeni[idx], stokKodu: '', urunAd: '', urunMarka: '', kategori: '' }
     setKalemler(yeni)
+  }
+
+  const sil = async () => {
+    if (!form.id) return
+    if (!confirm(`${mevcutOnSiparis?.onSiparisNo || 'Bu ön siparişi'} silmek istediğine emin misin? Kalemler de silinecek. Bu işlem geri alınamaz.`)) return
+    setKaydediliyor(true)
+    try {
+      const ok = await onSiparisSil(form.id)
+      if (!ok) { toast.error('Silinemedi.'); return }
+      toast.success('Ön sipariş silindi.')
+      if (onKaydedildi) onKaydedildi(null)
+      onKapat?.()
+    } catch (e) {
+      toast.error(e?.message || 'Silme hatası')
+    } finally {
+      setKaydediliyor(false)
+    }
   }
 
   const kaydet = async () => {
@@ -431,11 +449,26 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
         </div>
 
         {/* Alt butonlar */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-default)', paddingTop: 12 }}>
-          <Button variant="ghost" onClick={onKapat}>Vazgeç</Button>
-          <Button variant="primary" onClick={kaydet} disabled={kaydediliyor}>
-            {kaydediliyor ? 'Kaydediliyor…' : (mevcutOnSiparis ? 'Güncelle' : 'Kaydet')}
-          </Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderTop: '1px solid var(--border-default)', paddingTop: 12 }}>
+          <div>
+            {mevcutOnSiparis?.id && (
+              <Button
+                variant="ghost"
+                onClick={sil}
+                disabled={kaydediliyor}
+                iconLeft={<Trash2 size={13} strokeWidth={1.5} />}
+                style={{ color: '#ef4444' }}
+              >
+                Sil
+              </Button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="ghost" onClick={onKapat}>Vazgeç</Button>
+            <Button variant="primary" onClick={kaydet} disabled={kaydediliyor}>
+              {kaydediliyor ? 'Kaydediliyor…' : (mevcutOnSiparis ? 'Güncelle' : 'Kaydet')}
+            </Button>
+          </div>
         </div>
       </div>
     </div>,
