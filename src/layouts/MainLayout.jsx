@@ -103,6 +103,7 @@ const menuItems = [
     grup: 'satis',
     altMenu: [
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
+      { id: 'siparisler', isim: 'Siparişler', yol: '/siparisler' },
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
   },
@@ -204,6 +205,7 @@ const sayfaIsimleri = {
   '/stok-hareketleri': 'Stok Hareketleri',
   '/stok-opsiyon': 'Stok Opsiyonları',
   '/teklifler': 'Teklifler',
+  '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
