@@ -22,6 +22,7 @@ export const stokUrunGetir = async (id) => {
 const KABUL_EDILEN_KOLONLAR = [
   'stokKodu', 'stokAdi', 'birim', 'minStok', 'aciklama',
   'marka', 'grupKodu', 'gorselUrl', 'katalogdaGoster', 'birimFiyat',
+  'seriTakipli', 'beklenenAdet', 'kategori', 'stokMiktari', 'kdvOrani',
 ]
 
 // Eski tablolarda olmayan kolonlar varsa fallback — burada da grupKodu dahil
