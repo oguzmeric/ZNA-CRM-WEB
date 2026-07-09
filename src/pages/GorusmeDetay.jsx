@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
-  BellRing, Clock, Check, X,
+  BellRing, Clock, Check, X, ShoppingCart,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -16,6 +16,8 @@ import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../serv
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { musterileriGetir } from '../services/musteriService'
+import { gorusmeninOnSiparisleri, ON_SIPARIS_DURUMLARI } from '../services/onSiparisService'
+import OnSiparisModal from '../components/OnSiparisModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
@@ -68,6 +70,9 @@ function GorusmeDetay() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [hatirlatmaModalAcik, setHatirlatmaModalAcik] = useState(false)
+  const [onSiparisModalAcik, setOnSiparisModalAcik] = useState(false)
+  const [duzenlenenOnSiparis, setDuzenlenenOnSiparis] = useState(null)
+  const [onSiparisler, setOnSiparisler] = useState([])
 
   const [gorusme, setGorusme] = useState(null)
   const [gorevler, setGorevler] = useState([])
@@ -99,9 +104,15 @@ function GorusmeDetay() {
         if (g?.musteriId) {
           musteriLokasyonlariniGetir(g.musteriId).then(setGorusmeLokasyonlari).catch(() => setGorusmeLokasyonlari([]))
         }
+        // Bu görüşmeye bağlı ön siparişler
+        gorusmeninOnSiparisleri(id).then(setOnSiparisler).catch(() => setOnSiparisler([]))
       } finally { setYukleniyor(false) }
     })()
   }, [id])
+
+  const onSiparisleriYenile = () => {
+    gorusmeninOnSiparisleri(id).then(setOnSiparisler).catch(() => {})
+  }
 
   if (yukleniyor) return <SkeletonDetay />
 
@@ -276,6 +287,14 @@ function GorusmeDetay() {
               )
             })()}
             <Button
+              variant="secondary"
+              iconLeft={<ShoppingCart size={14} strokeWidth={1.5} />}
+              onClick={() => { setDuzenlenenOnSiparis(null); setOnSiparisModalAcik(true) }}
+              title="Bu görüşmeden ön sipariş oluştur (fiyatsız kalem talebi)"
+            >
+              Ön Sipariş Oluştur
+            </Button>
+            <Button
               variant={duzenleAcik ? 'secondary' : 'primary'}
               iconLeft={duzenleAcik ? null : undefined}
               onClick={duzenleAcik ? () => setDuzenleAcik(false) : duzenleAc}
@@ -444,6 +463,67 @@ function GorusmeDetay() {
           </div>
         )}
       </Card>
+
+      {/* Bağlı ön siparişler */}
+      {onSiparisler.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <CardTitle>Bağlı Ön Siparişler</CardTitle>
+              <p className="t-caption" style={{ marginTop: 2 }}>
+                <span className="tabular-nums">{onSiparisler.length}</span> ön sipariş
+              </p>
+            </div>
+            <Button
+              variant="secondary" size="sm"
+              iconLeft={<Plus size={13} strokeWidth={1.5} />}
+              onClick={() => { setDuzenlenenOnSiparis(null); setOnSiparisModalAcik(true) }}
+            >
+              Yeni
+            </Button>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {onSiparisler.map(os => {
+              const durum = ON_SIPARIS_DURUMLARI.find(d => d.id === os.durum)
+              return (
+                <div key={os.id}
+                  onClick={() => { setDuzenlenenOnSiparis(os); setOnSiparisModalAcik(true) }}
+                  style={{
+                    padding: 10, border: '1px solid var(--border-default)', borderRadius: 8,
+                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                    background: 'var(--surface-sunken)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>
+                        {os.onSiparisNo}
+                      </span>
+                      {durum && (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                          background: `${durum.renk}22`, color: durum.renk,
+                          border: `1px solid ${durum.renk}55`,
+                        }}>
+                          {durum.isim}
+                        </span>
+                      )}
+                    </div>
+                    {os.aciklama && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {os.aciklama}
+                      </div>
+                    )}
+                  </div>
+                  <ArrowRight size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Bağlı görevler */}
       <Card>
@@ -634,6 +714,16 @@ function GorusmeDetay() {
           } catch (e) { toast.error(e?.message || 'İşlem başarısız.') }
         }}
       />
+
+      {/* Ön Sipariş modalı */}
+      {onSiparisModalAcik && (
+        <OnSiparisModal
+          gorusme={gorusme}
+          mevcutOnSiparis={duzenlenenOnSiparis}
+          onKapat={() => { setOnSiparisModalAcik(false); setDuzenlenenOnSiparis(null) }}
+          onKaydedildi={() => { onSiparisleriYenile() }}
+        />
+      )}
     </div>
   )
 }
