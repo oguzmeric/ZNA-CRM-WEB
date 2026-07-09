@@ -212,7 +212,7 @@ export default function Siparisler() {
             const musteri = musteriMap.get(s.musteriId)
             const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
             const kaynakIcon = s.kaynakTipi === 'teklif' ? <FileText size={11} /> : <ShoppingCart size={11} />
-            const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİF' : 'ÖN SİPARİŞ'
+            const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'
             return (
               <Card key={s.id}
                 onClick={() => navigate(`/siparisler/${s.id}`)}
