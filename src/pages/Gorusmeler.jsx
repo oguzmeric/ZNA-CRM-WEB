@@ -931,7 +931,7 @@ function Gorusmeler() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                      <CodeBadge>{g.aktNo}</CodeBadge>
+                      {g.aktNo ? <CodeBadge>{g.aktNo}</CodeBadge> : <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -993,7 +993,7 @@ function Gorusmeler() {
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
                       <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {g.takipNotu || '—'}
+                        {g.takipNotu || g.notlar || '—'}
                       </p>
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }} title={g.konu || ''}>
