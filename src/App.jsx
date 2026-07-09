@@ -46,6 +46,7 @@ const SatisDetay = lazy(() => import('./pages/SatisDetay'))
 const Raporlar = lazy(() => import('./pages/Raporlar'))
 const RaporMerkezi = lazy(() => import('./pages/RaporMerkezi'))
 const DokumanMerkezi = lazy(() => import('./pages/DokümanMerkezi'))
+const KisiselDokumanlar = lazy(() => import('./pages/KisiselDokumanlar'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Profil = lazy(() => import('./pages/Profil'))
 const FirmaGecmisi = lazy(() => import('./pages/FirmaGecmisi'))
@@ -306,6 +307,7 @@ function App() {
           <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />
           <Route path="/servis-raporlari" element={<ServisRaporlari />} />
           <Route path="/dokuman-merkezi" element={<DokumanMerkezi />} />
+          <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
           <Route path="/kargolar" element={<Kargolar />} />
           <Route path="/kargolar/:id" element={<KargoDetay />} />
           <Route path="/takvim" element={<Takvim />} />
