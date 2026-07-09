@@ -136,9 +136,15 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
     // Validasyon
     if (!form.gorusmeId) { toast.warning('Görüşme bilgisi eksik.'); return }
     const gecerliKalemler = kalemler.filter(k => k.urunAd && k.urunAd.trim() && Number(k.miktar) > 0)
-    if (gecerliKalemler.length === 0) {
-      toast.warning('En az bir ürün ekle (ürün adı + miktar zorunlu).')
+
+    // Yeni kayıt (henüz id yok) + hiç geçerli kalem yok → zorla kalem iste
+    if (!form.id && gecerliKalemler.length === 0) {
+      toast.warning('Yeni ön sipariş için en az bir ürün ekle (ürün adı + miktar).')
       return
+    }
+    // Güncelleme + tüm kalemler silindiyse: soft confirm ile devam
+    if (form.id && gecerliKalemler.length === 0) {
+      if (!confirm('Bu ön siparişte hiç kalem kalmadı. Yine de kaydedelim mi?\n(İstersen Sil butonu ile tüm kaydı silebilirsin.)')) return
     }
 
     setKaydediliyor(true)
