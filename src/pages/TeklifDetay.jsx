@@ -678,15 +678,14 @@ function TeklifDetay() {
           )}
           {!yeni && (() => {
             // Spec: "Yönetici tarafından onaylanmayan teklif müşteriye gönderilemez"
-            // Yön.Onayladı, Müşteriye Gönderildi, Müşteri Onayı Bekliyor, Müşteri Onayladı,
-            // Müşteri Reddetti veya Siparişe Aktarıldı durumlarında gönderime izin ver.
+            // Yön.Onayladı ve sonrası durumlarda gönderime izin ver.
             const gonderimeUygun = [
               'yon_onayladi', 'musteriye_gonderildi', 'musteri_onay_bekliyor',
               'musteri_onayladi', 'musteri_reddetti', 'siparise_aktarildi',
             ].includes(spekDurumKey)
             return (
               <Button
-                variant="primary"
+                variant={gonderimeUygun ? 'primary' : 'secondary'}
                 iconLeft={<Send size={14} strokeWidth={1.5} />}
                 onClick={() => {
                   if (!gonderimeUygun) {
@@ -695,10 +694,9 @@ function TeklifDetay() {
                   }
                   setPaylasimModalAcik(true)
                 }}
-                title={gonderimeUygun ? 'Müşteriye e-posta / WhatsApp / SMS ile gönder' : 'Önce yönetici onayı gerekli'}
-                style={!gonderimeUygun ? { opacity: 0.6 } : undefined}
+                title={gonderimeUygun ? 'Müşteriye e-posta / WhatsApp / SMS ile gönder' : 'Yönetici onayı gerek — durum: ' + (spekDurumMeta?.isim || spekDurumKey)}
               >
-                Müşteriye Gönder
+                Müşteriye Gönder{!gonderimeUygun && ' 🔒'}
               </Button>
             )
           })()}
