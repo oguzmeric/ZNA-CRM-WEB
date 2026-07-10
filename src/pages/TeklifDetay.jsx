@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
-  CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save,
+  CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
 } from 'lucide-react'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import { siparisOnayNotuKaydet, siparisOnayGeriAl } from '../services/siparisOnayService'
@@ -120,6 +120,8 @@ function TeklifDetay() {
   const [musteriKisileri, setMusteriKisileri] = useState([])
   // Durum değiştirme modal (spec 10 durum) — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
   const [durumModalAcik, setDurumModalAcik] = useState(false)
+  // Satış Fiyatı Hesapla modal — satır index + alış/katsayı state
+  const [hesaplaModal, setHesaplaModal] = useState(null) // null | { idx, alis, katsayi }
 
   // useState initializer: sadece MOUNT'ta bir kez okunur, sonraki render'larda null olsa da persist eder.
   // Önceki const-based versiyonda her render'da yeniden hesaplanıyor + localStorage boşaltıldığı için
@@ -1221,13 +1223,32 @@ function TeklifDetay() {
                       />
                     </TD>
                     <TD align="right">
-                      <Input
-                        type="number"
-                        value={satir.birimFiyat}
-                        onChange={(e) => satirGuncelle(index, 'birimFiyat', Number(e.target.value))}
-                        min="0"
-                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                      />
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <Input
+                          type="number"
+                          value={satir.birimFiyat}
+                          onChange={(e) => satirGuncelle(index, 'birimFiyat', Number(e.target.value))}
+                          min="0"
+                          style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setHesaplaModal({ idx: index, alis: 0, katsayi: 1.4 })}
+                          title="Alış × Katsayı ile satış fiyatı hesapla"
+                          style={{
+                            width: 28, height: 28, padding: 0, flexShrink: 0,
+                            background: 'var(--surface-subtle)',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 4, cursor: 'pointer',
+                            display: 'grid', placeItems: 'center',
+                            color: 'var(--text-secondary)',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-soft, rgba(59,130,246,0.1))'; e.currentTarget.style.color = 'var(--brand, #3b82f6)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <Calculator size={13} strokeWidth={1.7} />
+                        </button>
+                      </div>
                     </TD>
                     <TD align="right">
                       <Input
@@ -1569,6 +1590,100 @@ function TeklifDetay() {
               }
             }}
           />
+        )
+      })()}
+
+      {/* Satış Fiyatı Hesapla modal — Alış × Katsayı */}
+      {hesaplaModal && (() => {
+        const alis = Number(hesaplaModal.alis || 0)
+        const katsayi = Number(hesaplaModal.katsayi || 0)
+        const satis = alis * katsayi
+        const kapat = () => setHesaplaModal(null)
+        const uygula = () => {
+          if (!Number.isFinite(satis) || satis <= 0) {
+            toast.warning('Geçerli alış fiyatı ve katsayı girin.')
+            return
+          }
+          // Kuruş hassasiyeti — 2 haneye yuvarla
+          satirGuncelle(hesaplaModal.idx, 'birimFiyat', Number(satis.toFixed(2)))
+          setHesaplaModal(null)
+        }
+        return (
+          <div
+            onClick={kapat}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--surface-card)', color: 'var(--text-primary)',
+                borderRadius: 10, width: '100%', maxWidth: 380,
+                border: '1px solid var(--border-default)', overflow: 'hidden',
+              }}
+            >
+              <div style={{
+                background: '#6366F1', color: '#fff',
+                padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                  <Calculator size={16} strokeWidth={2} /> Satış Fiyatı Hesapla
+                </div>
+                <button onClick={kapat}
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}>
+                  <XCircle size={18} strokeWidth={1.8} />
+                </button>
+              </div>
+
+              <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Alış Fiyatı</label>
+                  <Input
+                    type="number" step="0.01" min="0"
+                    value={hesaplaModal.alis}
+                    onChange={e => setHesaplaModal({ ...hesaplaModal, alis: e.target.value })}
+                    autoFocus
+                    style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Alış Katsayısı</label>
+                  <Input
+                    type="number" step="0.01" min="0"
+                    value={hesaplaModal.katsayi}
+                    onChange={e => setHesaplaModal({ ...hesaplaModal, katsayi: e.target.value })}
+                    style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                  />
+                </div>
+
+                {satis > 0 && (
+                  <div style={{
+                    padding: '10px 12px', borderRadius: 6, background: 'rgba(99,102,241,0.08)',
+                    border: '1px solid rgba(99,102,241,0.25)', textAlign: 'right',
+                  }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>SATIŞ FİYATI</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#6366F1', fontVariantNumeric: 'tabular-nums' }}>
+                      {satis.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                  <Button variant="ghost" onClick={kapat}>Vazgeç</Button>
+                  <Button
+                    variant="primary"
+                    iconLeft={<Calculator size={13} strokeWidth={1.7} />}
+                    onClick={uygula}
+                    disabled={!Number.isFinite(satis) || satis <= 0}
+                  >
+                    Hesapla ve Uygula
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )
       })()}
 
