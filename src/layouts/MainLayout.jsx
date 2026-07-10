@@ -525,7 +525,7 @@ function MainLayout({ children }) {
                 style={{
                   background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                   color: 'var(--text-on-dark)',
-                  font: '500 13px/18px var(--font-sans)',
+                  font: '500 14px/20px var(--font-sans)',
                   textAlign: 'left',
                   width: '100%',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -570,10 +570,10 @@ function MainLayout({ children }) {
                   style={{
                     width: '100%',
                     display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     background: 'transparent', border: 'none', cursor: 'pointer',
                     color: 'var(--text-on-dark)',
-                    font: '400 13px/18px var(--font-sans)',
+                    font: '400 14px/20px var(--font-sans)',
                     textAlign: 'left',
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
@@ -646,7 +646,7 @@ function MainLayout({ children }) {
                     style={{
                       width: '100%',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 12px',
+                      padding: '10px 12px',
                       borderRadius: 'var(--radius-sm)',
                       background: altAktif ? 'var(--surface-sidebar-active)' : 'transparent',
                       color: altAktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
@@ -654,14 +654,14 @@ function MainLayout({ children }) {
                       borderLeft: `3px solid ${altAktif ? 'var(--brand-primary)' : 'transparent'}`,
                       paddingLeft: 9,
                       cursor: 'pointer',
-                      font: altAktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                      font: altAktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
                       transition: 'background 120ms, color 120ms',
                     }}
                     onMouseEnter={e => { if (!altAktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
                     onMouseLeave={e => { if (!altAktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                      <item.Icon size={16} strokeWidth={1.5} />
+                      <item.Icon size={18} strokeWidth={1.5} />
                       {item.isim}
                       {/* Parent kapalıyken bile farkına vatsın diye 'Servis' başlığında kırmızı nokta */}
                       {item.id === 'servis' && servisTalebiOkunmamis > 0 && !acik && (
@@ -705,13 +705,13 @@ function MainLayout({ children }) {
                             style={{
                               width: '100%', textAlign: 'left',
                               display: 'flex', alignItems: 'center', gap: 8,
-                              padding: '6px 12px',
+                              padding: '8px 12px',
                               borderRadius: 'var(--radius-sm)',
                               background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
                               color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
                               border: 'none',
                               cursor: 'pointer',
-                              font: aktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                              font: aktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
                             }}
                             onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
                             onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
@@ -750,7 +750,7 @@ function MainLayout({ children }) {
                 style={{
                   width: '100%',
                   display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px',
+                  padding: '10px 12px',
                   borderRadius: 'var(--radius-sm)',
                   background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
                   color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
@@ -758,7 +758,7 @@ function MainLayout({ children }) {
                   borderLeft: `3px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
                   paddingLeft: 9,
                   cursor: 'pointer',
-                  font: aktif ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                  font: aktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
                   transition: 'background 120ms, color 120ms',
                 }}
                 onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
@@ -767,7 +767,7 @@ function MainLayout({ children }) {
               >
                 {item.id === 'trassir'
                   ? <img src="/trassirlogo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                  : <item.Icon size={16} strokeWidth={1.5} />}
+                  : <item.Icon size={18} strokeWidth={1.5} />}
                 <span style={{ flex: 1, textAlign: 'left' }}>{item.isim}</span>
                 {item.id === 'chat' && okunmamis > 0 && (
                   <span style={{
@@ -830,13 +830,13 @@ function MainLayout({ children }) {
             style={{
               width: '100%',
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px',
+              padding: '10px 12px',
               borderRadius: 'var(--radius-sm)',
               background: 'transparent',
               color: 'var(--text-on-dark-muted)',
               border: 'none',
               cursor: 'pointer',
-              font: '400 13px/18px var(--font-sans)',
+              font: '400 14px/20px var(--font-sans)',
               transition: 'background 120ms, color 120ms',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(178,58,58,0.12)'; e.currentTarget.style.color = '#E88B8B' }}
@@ -968,7 +968,7 @@ function MainLayout({ children }) {
                   </div>
                   <div style={{ maxHeight: 420, overflowY: 'auto' }}>
                     {benimBildirimlerim.length === 0 ? (
-                      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)', font: '400 14px/20px var(--font-sans)' }}>
                         Henüz bildirim yok
                       </div>
                     ) : (
@@ -993,7 +993,7 @@ function MainLayout({ children }) {
                               <IconC size={16} strokeWidth={1.5} />
                             </span>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{b.baslik}</div>
+                              <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{b.baslik}</div>
                               <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>{b.mesaj}</div>
                               <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>{zamanFormat(b.olusturmaTarih || b.tarih || b.olusturma_tarih)}</div>
                             </div>
