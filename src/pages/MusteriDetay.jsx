@@ -808,17 +808,30 @@ function MusteriDetay() {
       </Card>
 
       {/* Sipariş Özeti — ZNA-SIP kayıtları */}
-      {siparisler.length > 0 && (
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <CardTitle>Sipariş Özeti</CardTitle>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <CardTitle>Sipariş Özeti</CardTitle>
+          {siparisler.length > 0 && (
             <button
-              onClick={() => navigate('/siparisler')}
+              onClick={() => navigate(`/siparisler?musteri=${musteri.id}`)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
             >
-              Tüm siparişler <ArrowRight size={14} strokeWidth={1.5} />
+              Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
             </button>
+          )}
+        </div>
+        {siparisler.length === 0 ? (
+          <div style={{
+            padding: '20px 12px', textAlign: 'center',
+            color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)',
+            background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)',
+            border: '1px dashed var(--border-default)',
+          }}>
+            Bu müşteriye ait sipariş yok.
           </div>
+        ) : (
+        <>
+
 
           {(() => {
             const aktif = siparisler.filter(s => s.durum === 'aktif').length
@@ -892,8 +905,9 @@ function MusteriDetay() {
               )
             })}
           </div>
-        </Card>
-      )}
+        </>
+        )}
+      </Card>
 
       {/* Finansal özet */}
       {satislar.length > 0 && (

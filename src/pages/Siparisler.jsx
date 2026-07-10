@@ -2,7 +2,7 @@
 // Sipariş no ZNA-SIP-YYYY-NNNNNN formatında.
 
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Package, FileText, ShoppingCart, Building2, Calendar, Plus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Card, Button, Badge, EmptyState, Input } from '../components/ui'
@@ -36,6 +36,8 @@ const SEKMELER = [
 export default function Siparisler() {
   const { kullanici } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const musteriFiltre = searchParams.get('musteri') || ''
   const [liste, setListe] = useState([])
   const [musteriler, setMusteriler] = useState([])
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
@@ -77,6 +79,7 @@ export default function Siparisler() {
     return liste.filter(s => {
       if (!sekmeObj.durumlar.includes(s.durum)) return false
       if (kaynakFiltre && s.kaynakTipi !== kaynakFiltre) return false
+      if (musteriFiltre && String(s.musteriId) !== String(musteriFiltre)) return false
       if (q) {
         const musteri = musteriMap.get(s.musteriId)
         const alan = [s.siparisNo, s.konu, s.notlar, musteri?.firma, musteri?.ad]
@@ -85,7 +88,9 @@ export default function Siparisler() {
       }
       return true
     })
-  }, [liste, sekme, arama, kaynakFiltre, musteriMap])
+  }, [liste, sekme, arama, kaynakFiltre, musteriFiltre, musteriMap])
+
+  const musteriFiltreObj = musteriFiltre ? musteriMap.get(Number(musteriFiltre)) : null
 
   const kpi = useMemo(() => {
     const aktif = liste.filter(s => s.durum === 'aktif')
@@ -176,6 +181,34 @@ export default function Siparisler() {
           )
         })}
       </div>
+
+      {/* Aktif müşteri filtresi chip'i */}
+      {musteriFiltreObj && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>Müşteri filtresi:</span>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(59,130,246,0.10)', color: '#3b82f6',
+            fontSize: 12, fontWeight: 700,
+            border: '1px solid rgba(59,130,246,0.35)',
+          }}>
+            <Building2 size={12} strokeWidth={1.5} />
+            {musteriFiltreObj.firma || `${musteriFiltreObj.ad || ''} ${musteriFiltreObj.soyad || ''}`.trim()}
+            <button
+              onClick={() => {
+                const yeni = new URLSearchParams(searchParams)
+                yeni.delete('musteri')
+                setSearchParams(yeni, { replace: true })
+              }}
+              style={{ background: 'none', border: 'none', padding: 0, marginLeft: 2, cursor: 'pointer', color: 'inherit', display: 'inline-flex' }}
+              title="Filtreyi kaldır"
+            >
+              ✕
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Filtre */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
