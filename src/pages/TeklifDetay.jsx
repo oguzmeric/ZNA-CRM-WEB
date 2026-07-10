@@ -118,15 +118,17 @@ function TeklifDetay() {
   // Seçili müşterinin yetkili kişileri (kayıtlıysa dropdown'a düşer)
   const [musteriKisileri, setMusteriKisileri] = useState([])
 
-  const onDoldurum = yeni
-    ? (() => {
-        try {
-          const d = JSON.parse(localStorage.getItem('teklif_on_doldurum') || 'null')
-          if (d) localStorage.removeItem('teklif_on_doldurum')
-          return d
-        } catch { return null }
-      })()
-    : null
+  // useState initializer: sadece MOUNT'ta bir kez okunur, sonraki render'larda null olsa da persist eder.
+  // Önceki const-based versiyonda her render'da yeniden hesaplanıyor + localStorage boşaltıldığı için
+  // useEffect çalıştığında null olup form pre-fill'i kaçıyordu.
+  const [onDoldurum] = useState(() => {
+    if (!yeni) return null
+    try {
+      const d = JSON.parse(localStorage.getItem('teklif_on_doldurum') || 'null')
+      if (d) localStorage.removeItem('teklif_on_doldurum')
+      return d
+    } catch { return null }
+  })
 
   useEffect(() => {
     const promises = [
