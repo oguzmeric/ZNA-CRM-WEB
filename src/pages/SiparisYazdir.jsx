@@ -370,7 +370,7 @@ export default function SiparisYazdir() {
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>{siparis.onaylayanAd || '—'}</div>
                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{fmtTarih(siparis.onayTarihi)}</div>
               </div>
-              <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 {siparis.imzaUrl ? (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
@@ -379,7 +379,7 @@ export default function SiparisYazdir() {
                     <img
                       src={siparis.imzaUrl} alt="İmza"
                       crossOrigin="anonymous"
-                      style={{ maxHeight: 70, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: 4 }}
+                      style={{ maxHeight: 70, background: 'transparent', display: 'block' }}
                     />
                   </>
                 ) : null}
