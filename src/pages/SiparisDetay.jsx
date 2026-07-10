@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink } from 'lucide-react'
+import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer } from 'lucide-react'
 import { Card, CardTitle, Button, Badge, EmptyState } from '../components/ui'
 import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam,
@@ -84,6 +84,7 @@ export default function SiparisDetay() {
       {/* Üst bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/siparisler')}>Geri</Button>
+        <Button variant="secondary" iconLeft={<Printer size={14} />} onClick={() => window.open(`/siparisler/${siparis.id}/yazdir`, '_blank')}>PDF / Yazdır</Button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'monospace' }}>{siparis.siparisNo}</h1>

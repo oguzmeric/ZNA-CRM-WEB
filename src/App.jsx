@@ -71,6 +71,7 @@ const TeklifIste = lazy(() => import('./pages/musteri/TeklifIste'))
 const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const ServisFormuYazdir = lazy(() => import('./pages/ServisFormuYazdir'))
+const SiparisYazdir = lazy(() => import('./pages/SiparisYazdir'))
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
 const Skor = lazy(() => import('./pages/Skor'))
 const Mobiltek = lazy(() => import('./pages/Mobiltek'))
@@ -218,6 +219,7 @@ function App() {
           <Route path="/teklifler/:id/yazdir" element={<TeklifYazdir />} />
           <Route path="/satislar/:id/yazdir" element={<FaturaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
+          <Route path="/siparisler/:id/yazdir" element={<SiparisYazdir />} />
         </Routes>
       </Suspense>
     )
