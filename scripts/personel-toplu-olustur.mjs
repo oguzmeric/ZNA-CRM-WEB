@@ -1,7 +1,16 @@
 import pg from 'pg'
 
 const { Client } = pg
-const conn = 'postgresql://postgres.hcrbwxeuscfibgmchdtt:Ogzcxyv1907%2A%21@aws-0-eu-west-1.pooler.supabase.com:5432/postgres'
+
+// DB bağlantı bilgisi env var'lardan alınır — bu dosya git'te tutulur, secret asla gömülmez.
+// Kullanım: PGPASSWORD='...' node scripts/personel-toplu-olustur.mjs
+const password = process.env.PGPASSWORD
+if (!password) {
+  console.error('PGPASSWORD env var gerekli. Örnek: PGPASSWORD=\'...\' node scripts/personel-toplu-olustur.mjs')
+  process.exit(1)
+}
+const encoded = encodeURIComponent(password)
+const conn = `postgresql://postgres.hcrbwxeuscfibgmchdtt:${encoded}@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`
 
 const kullaniciAdiToEmail = (ka) => `${ka.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
 
