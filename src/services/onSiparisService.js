@@ -4,6 +4,67 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
+import { bildirimEkleDb } from './bildirimService'
+
+// SMS-friendly TR → ASCII (smsService ile aynı desen)
+const trAsciify = (s) => String(s || '')
+  .replace(/İ/g, 'I').replace(/ı/g, 'i')
+  .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+  .replace(/Ş/g, 'S').replace(/ş/g, 's')
+  .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+  .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+  .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+
+// Sipariş Onayı yetkilileri: Ahmet Agün + Ali Uğur Aktepe + Oğuz Meriç
+// İsim eşleşmesi ILIKE ile — büyük/küçük ve boşluk toleranslı.
+const ONAY_YETKILI_PATTERNS = ['%ahmet%agun%', '%ali%ugur%', '%oguz%meri%']
+
+/**
+ * Ön sipariş oluşturulduğunda Sipariş Onayı yetkilerine (Ahmet, Ali, Oğuz)
+ * hem sistem bildirimi hem SMS gönderir. Best-effort — bir kullanıcı bulunamaz
+ * veya SMS başarısız olursa akış bozulmaz.
+ */
+export async function onSiparisOnayaBildir(onSiparis, { firmaAdi, olusturanAd } = {}) {
+  if (!onSiparis?.id) return
+  try {
+    // 1) Yetkili kullanıcıları çek
+    const yetkiler = []
+    for (const p of ONAY_YETKILI_PATTERNS) {
+      const { data } = await supabase
+        .from('kullanicilar')
+        .select('id, ad, cep_telefon')
+        .ilike('ad', p)
+        .limit(1)
+      if (data && data[0]) yetkiler.push(data[0])
+    }
+    if (yetkiler.length === 0) return
+
+    const osNo = onSiparis.on_siparis_no || onSiparis.onSiparisNo || onSiparis.id
+    const firma = firmaAdi || onSiparis.firma_adi || 'Firma —'
+    const kim = olusturanAd || 'Bir personel'
+
+    // 2) Bildirim + SMS paralel
+    await Promise.all(yetkiler.map(async (y) => {
+      // Sistem bildirimi
+      bildirimEkleDb({
+        aliciId: y.id,
+        baslik: 'Yeni Ön Sipariş — Onay Bekliyor',
+        mesaj: `${firma} için "${osNo}" ön siparişi oluşturuldu. ${kim} tarafından — Sipariş Onayı ekranında incelenmeyi bekliyor.`,
+        tip: 'siparis',
+        link: '/siparis-onaylari',
+      }).catch(e => console.warn('[bildirim] ön sipariş onay:', e?.message))
+
+      // SMS
+      if (y.cep_telefon) {
+        const mesaj = `ZNA CRM: Yeni on siparis onay bekliyor.\n${trAsciify(firma)}\nNo: ${osNo}\nEkleyen: ${trAsciify(kim)}\ntalep.znateknoloji.com`
+        supabase.functions.invoke('sms-gonder', { body: { gsm: y.cep_telefon, mesaj } })
+          .catch(e => console.warn('[sms] ön sipariş onay:', e?.message))
+      }
+    }))
+  } catch (e) {
+    console.warn('[onSiparisOnayaBildir] hata:', e?.message)
+  }
+}
 
 export const ON_SIPARIS_DURUMLARI = [
   { id: 'taslak',           isim: 'Taslak',            renk: '#94a3b8' },
@@ -136,7 +197,8 @@ export const kalemSil = async (id) => {
 
 // ==================== TAM KAYDET ====================
 // Modal'dan gelen bütün paketi: ön sipariş + kalemler.
-export const onSiparisTumunuKaydet = async ({ onSiparis, kalemler, silinecekKalemIdleri = [] }) => {
+export const onSiparisTumunuKaydet = async ({ onSiparis, kalemler, silinecekKalemIdleri = [], firmaAdi, olusturanAd }) => {
+  const yeniKayit = !onSiparis.id
   let osKayit = onSiparis.id
     ? await onSiparisGuncelle(onSiparis.id, onSiparis)
     : await onSiparisEkle(onSiparis)
@@ -152,6 +214,12 @@ export const onSiparisTumunuKaydet = async ({ onSiparis, kalemler, silinecekKale
     const payload = { ...k, onSiparisId: osKayit.id }
     if (k.id) await kalemGuncelle(k.id, payload)
     else await kalemEkle(payload)
+  }
+
+  // Yeni ön sipariş oluşturulduğunda Sipariş Onayı yetkililerine bildir (best-effort)
+  if (yeniKayit && (osKayit.durum || onSiparis.durum) === 'onay_bekliyor') {
+    onSiparisOnayaBildir(osKayit, { firmaAdi, olusturanAd })
+      .catch(e => console.warn('[onSiparisOnayaBildir]', e?.message))
   }
 
   return osKayit

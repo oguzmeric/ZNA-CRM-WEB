@@ -155,6 +155,8 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
         onSiparis: form,
         kalemler: gecerliKalemler,
         silinecekKalemIdleri,
+        firmaAdi: gorusme?.firmaAdi || form.firmaAdi || null,
+        olusturanAd: kullanici?.ad || null,
       })
       if (!sonuc) {
         toast.error('Ön sipariş kaydedilemedi.')
