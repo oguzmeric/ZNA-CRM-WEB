@@ -77,7 +77,11 @@ export async function teklifOnayla(teklifId, kullanici, gerekce, imzaUrl) {
   }
   const { error } = await supabase
     .from('teklifler')
-    .update({ teklif_onayi: onay, siparis_onayi: siparisOnayi })
+    .update({
+      teklif_onayi: onay,
+      siparis_onayi: siparisOnayi,
+      spek_durum: 'yon_onayladi', // spec 10-durum sistemi
+    })
     .eq('id', teklifId)
   if (error) throw error
   return { ok: true }
@@ -93,7 +97,11 @@ export async function teklifReddet(teklifId, kullanici, redNedeni) {
     onay_tarih: new Date().toISOString(),
     red_nedeni: redNedeni || 'Belirtilmedi',
   }
-  const { error } = await supabase.from('teklifler').update({ teklif_onayi: onay }).eq('id', teklifId)
+  // Spec: yönetici teklifi reddederse "Revizyon İstendi"ne düşer
+  const { error } = await supabase.from('teklifler').update({
+    teklif_onayi: onay,
+    spek_durum: 'revizyon_istendi',
+  }).eq('id', teklifId)
   if (error) throw error
   return { ok: true }
 }
@@ -111,7 +119,11 @@ export async function teklifOnayGeriAl(teklifId) {
     onaylayan_imza: null,
     red_nedeni: null,
   }
-  const { error } = await supabase.from('teklifler').update({ teklif_onayi: onay }).eq('id', teklifId)
+  // Karar geri alındı → yönetici onayı beklemeye döner
+  const { error } = await supabase.from('teklifler').update({
+    teklif_onayi: onay,
+    spek_durum: 'yon_onay_bekliyor',
+  }).eq('id', teklifId)
   if (error) throw error
   return { ok: true }
 }

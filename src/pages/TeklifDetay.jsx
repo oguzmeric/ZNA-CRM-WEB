@@ -442,8 +442,13 @@ function TeklifDetay() {
         // (migration 055). Client teklif_no gondermez → trigger max+1 ile set eder.
         // Bu sayede race condition + stale state sorunlari yok.
         const { teklifNo: _omit, ...payload } = kaydedilecek
+        // Spec: "Teklif kaydedildiğinde 'Yönetici Teklif Onayı Bekliyor' durumuna düşer"
+        // Kullanıcı manuel farklı bir durum seçmediyse otomatik yon_onay_bekliyor.
+        const hedefDurum = payload.spekDurum || 'yon_onay_bekliyor'
+        const otomatikDurum = durumdanDbAlanlar(hedefDurum)
         const yeniTeklif = await teklifEkle({
           ...payload,
+          ...otomatikDurum,
           olusturmaTarih: new Date().toISOString(),
         })
         if (yeniTeklif) {
