@@ -799,16 +799,21 @@ function MesaiRaporTab() {
       })
     } catch {}
 
+    // Tüm dinamik değerler HTML enjeksiyon güvenli olsun — XSS savunması
+    const esc = (s) => String(s ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
     const satirlar = veri.map((r, i) => `
       <tr>
         <td class="znapdf-num">${i + 1}</td>
-        <td>${r.Tarih}</td>
-        <td><b>${r.Personel}</b>${r.Unvan ? `<br><span class="znapdf-dim">${r.Unvan}</span>` : ''}</td>
-        <td>${r.Giris}</td>
-        <td class="${r.Cikis === 'devam' ? 'znapdf-aktif' : ''}">${r.Cikis}</td>
-        <td><b>${r.Sure}</b></td>
-        <td>${r.MesafeM !== '' && r.MesafeM != null ? r.MesafeM + ' m' : '—'}</td>
-        <td class="znapdf-not">${(r.Not || '').replace(/</g, '&lt;')}</td>
+        <td>${esc(r.Tarih)}</td>
+        <td><b>${esc(r.Personel)}</b>${r.Unvan ? `<br><span class="znapdf-dim">${esc(r.Unvan)}</span>` : ''}</td>
+        <td>${esc(r.Giris)}</td>
+        <td class="${r.Cikis === 'devam' ? 'znapdf-aktif' : ''}">${esc(r.Cikis)}</td>
+        <td><b>${esc(r.Sure)}</b></td>
+        <td>${r.MesafeM !== '' && r.MesafeM != null ? esc(r.MesafeM) + ' m' : '—'}</td>
+        <td class="znapdf-not">${esc(r.Not)}</td>
       </tr>`).join('')
 
     // NOT: Tüm CSS .znapdf-root altında scope'lu — sayfaya sızmayı engeller.
@@ -872,14 +877,14 @@ function MesaiRaporTab() {
           </div>
           <div class="znapdf-tip">
             <div class="znapdf-buyuk">Mesai Raporu</div>
-            <div class="znapdf-kucuk">${donem}</div>
+            <div class="znapdf-kucuk">${esc(donem)}</div>
           </div>
         </div>
 
         <div class="znapdf-meta">
-          <div><span class="znapdf-label">Personel:</span> <span class="znapdf-val">${secili ? secili.ad : 'Tüm personel'}</span></div>
+          <div><span class="znapdf-label">Personel:</span> <span class="znapdf-val">${esc(secili ? secili.ad : 'Tüm personel')}</span></div>
           <div><span class="znapdf-label">Kayıt:</span> <span class="znapdf-val">${kayitlar.length}</span></div>
-          ${aktifKayit ? `<div><span class="znapdf-label">Aktif mesai:</span> <span class="znapdf-val">${aktifKayit}</span></div>` : ''}
+          ${aktifKayit ? `<div><span class="znapdf-label">Aktif mesai:</span> <span class="znapdf-val">${esc(aktifKayit)}</span></div>` : ''}
           <div><span class="znapdf-label">Rapor tarihi:</span> <span class="znapdf-val">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>
         </div>
 

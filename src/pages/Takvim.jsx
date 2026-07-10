@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DOMPurify from 'dompurify'
 import {
   ChevronLeft, ChevronRight, Phone, CheckSquare, Wrench, Truck, X, Inbox, Loader2, Mail,
   MapPin, Users, Video, Clock, ExternalLink, Plus, Copy, Check, Trash2,
@@ -898,7 +899,11 @@ function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
-              dangerouslySetInnerHTML={{ __html: h.aciklama }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.aciklama || '', {
+                ALLOWED_TAGS: ['br', 'p', 'b', 'strong', 'i', 'em', 'u', 'a', 'ul', 'ol', 'li', 'span'],
+                ALLOWED_ATTR: ['href', 'target', 'rel'],
+                ALLOW_DATA_ATTR: false,
+              }) }}
             />
           </div>
         )}
