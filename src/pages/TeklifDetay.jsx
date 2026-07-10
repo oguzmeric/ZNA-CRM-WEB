@@ -1158,8 +1158,8 @@ function TeklifDetay() {
             <colgroup>
               <col style={{ width: 140 }} />
               <col />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 90 }} />
+              <col style={{ width: 110 }} />{/* Miktar — sayı sığsın (10, 100 vs.) */}
+              <col style={{ width: 100 }} />{/* Birim — "ADET" kesilmesin */}
               <col style={{ width: 170 }} />{/* Birim fiyat — input + calculator ikonu için genişletildi */}
               <col style={{ width: 100 }} />{/* İsk.% — sayı sığsın */}
               <col style={{ width: 100 }} />
