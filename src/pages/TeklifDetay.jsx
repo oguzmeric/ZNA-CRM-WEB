@@ -4,8 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
-  ChevronUp, ChevronDown,
+  GripVertical,
 } from 'lucide-react'
+// Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import { siparisOnayNotuKaydet, siparisOnayGeriAl } from '../services/siparisOnayService'
 import { useAuth } from '../context/AuthContext'
@@ -339,13 +343,21 @@ function TeklifDetay() {
     setForm({ ...form, satirlar: yeniSatirlar })
   }
 
-  // Satırı yukarı/aşağı taşı (yer değiştirme)
-  const satirTasi = (index, yon) => {
-    const hedef = index + yon
-    if (hedef < 0 || hedef >= form.satirlar.length) return
-    const yeni = [...form.satirlar]
-    ;[yeni[index], yeni[hedef]] = [yeni[hedef], yeni[index]]
-    setForm({ ...form, satirlar: yeni })
+  // Drag & drop — satırları yer değiştir (mouse ile taşıma)
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, {
+      // 5px hareket sonra drag başlasın — input tıklamaları kazayla drag başlatmasın
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = Number(String(active.id).replace('satir-', ''))
+    const newIdx = Number(String(over.id).replace('satir-', ''))
+    if (Number.isNaN(oldIdx) || Number.isNaN(newIdx)) return
+    setForm(f => ({ ...f, satirlar: arrayMove(f.satirlar, oldIdx, newIdx) }))
   }
 
   const satirToplamHesapla = (satir) => {
@@ -1166,6 +1178,7 @@ function TeklifDetay() {
         ) : (
           <Table style={{ tableLayout: 'fixed' }}>
             <colgroup>
+              <col style={{ width: 26 }} />{/* Grip — drag handle */}
               <col style={{ width: 140 }} />
               <col />
               <col style={{ width: 110 }} />{/* Miktar — sayı sığsın (10, 100 vs.) */}
@@ -1174,10 +1187,11 @@ function TeklifDetay() {
               <col style={{ width: 100 }} />{/* İsk.% — sayı sığsın */}
               <col style={{ width: 100 }} />
               <col style={{ width: 130 }} />
-              <col style={{ width: 90 }} />{/* Aksiyon: ↑ ↓ 🗑 */}
+              <col style={{ width: 50 }} />{/* Sil */}
             </colgroup>
             <THead>
               <TR>
+                <TH></TH>{/* Grip */}
                 <TH>Stok</TH>
                 <TH>Ürün adı</TH>
                 <TH align="right">Miktar</TH>
@@ -1190,10 +1204,19 @@ function TeklifDetay() {
               </TR>
             </THead>
             <TBody>
+              <DndContext
+                sensors={dndSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={form.satirlar.map((_, i) => `satir-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
               {form.satirlar.map((satir, index) => {
                 const { toplam } = satirToplamHesapla(satir)
                 return (
-                  <TR key={satir.id || index}>
+                  <SortableSatirTR key={`satir-${index}`} index={index}>
                     <TD>
                       <CustomSelect
                         value={satir.stokKodu}
@@ -1284,51 +1307,21 @@ function TeklifDetay() {
                       </span>
                     </TD>
                     <TD align="right">
-                      <div style={{ display: 'inline-flex', gap: 2 }}>
-                        <button
-                          aria-label="Yukarı taşı"
-                          onClick={() => satirTasi(index, -1)}
-                          disabled={index === 0}
-                          title="Yukarı taşı"
-                          style={{
-                            ...iconBtnStyle,
-                            opacity: index === 0 ? 0.35 : 1,
-                            cursor: index === 0 ? 'not-allowed' : 'pointer',
-                          }}
-                          onMouseEnter={e => { if (index !== 0) { e.currentTarget.style.background = 'var(--brand-soft, rgba(59,130,246,0.1))'; e.currentTarget.style.color = 'var(--brand, #3b82f6)' } }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                        >
-                          <ChevronUp size={13} strokeWidth={1.7} />
-                        </button>
-                        <button
-                          aria-label="Aşağı taşı"
-                          onClick={() => satirTasi(index, +1)}
-                          disabled={index === form.satirlar.length - 1}
-                          title="Aşağı taşı"
-                          style={{
-                            ...iconBtnStyle,
-                            opacity: index === form.satirlar.length - 1 ? 0.35 : 1,
-                            cursor: index === form.satirlar.length - 1 ? 'not-allowed' : 'pointer',
-                          }}
-                          onMouseEnter={e => { if (index !== form.satirlar.length - 1) { e.currentTarget.style.background = 'var(--brand-soft, rgba(59,130,246,0.1))'; e.currentTarget.style.color = 'var(--brand, #3b82f6)' } }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                        >
-                          <ChevronDown size={13} strokeWidth={1.7} />
-                        </button>
-                        <button
-                          aria-label="Satırı sil"
-                          onClick={() => satirSil(index)}
-                          style={iconBtnStyle}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                        >
-                          <Trash2 size={12} strokeWidth={1.5} />
-                        </button>
-                      </div>
+                      <button
+                        aria-label="Satırı sil"
+                        onClick={() => satirSil(index)}
+                        style={iconBtnStyle}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      >
+                        <Trash2 size={12} strokeWidth={1.5} />
+                      </button>
                     </TD>
-                  </TR>
+                  </SortableSatirTR>
                 )
               })}
+                </SortableContext>
+              </DndContext>
             </TBody>
           </Table>
         )}
@@ -1971,6 +1964,47 @@ const iconBtnStyle = {
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-secondary)',
   cursor: 'pointer',
+}
+
+// Kalem satırı — drag+drop sortable wrapper.
+// İlk hücre olarak grip handle render eder, sonra parent'tan gelen children (diğer TD'ler).
+function SortableSatirTR({ index, children }) {
+  const id = `satir-${index}`
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    background: isDragging ? 'var(--surface-sunken, #F4F6F8)' : undefined,
+    opacity: isDragging ? 0.7 : 1,
+    boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.10)' : 'none',
+    zIndex: isDragging ? 10 : 'auto',
+    position: 'relative',
+  }
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td style={{ padding: '4px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Satırı sürükle"
+          title="Sürükleyip yer değiştir"
+          style={{
+            width: 22, height: 22, padding: 0,
+            background: 'none', border: 'none',
+            cursor: 'grab', color: 'var(--text-tertiary, #94A3B8)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            touchAction: 'none',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand, #3b82f6)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary, #94A3B8)' }}
+        >
+          <GripVertical size={14} strokeWidth={1.7} />
+        </button>
+      </td>
+      {children}
+    </tr>
+  )
 }
 
 export default TeklifDetay
