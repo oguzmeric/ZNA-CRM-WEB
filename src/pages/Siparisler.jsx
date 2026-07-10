@@ -73,13 +73,22 @@ export default function Siparisler() {
     return m
   }, [musteriler])
 
+  // Firma filtresi için: musteriFiltre id'li kişinin firma'sı ile aynı olan tüm müşteri id'leri
+  const musteriFiltreIdler = useMemo(() => {
+    if (!musteriFiltre) return null
+    const secili = musteriMap.get(Number(musteriFiltre))
+    if (!secili?.firma) return new Set([Number(musteriFiltre)])
+    const norm = secili.firma.toLowerCase().trim()
+    return new Set(musteriler.filter(m => m.firma?.toLowerCase().trim() === norm).map(m => Number(m.id)))
+  }, [musteriFiltre, musteriler, musteriMap])
+
   const filtreli = useMemo(() => {
     const sekmeObj = SEKMELER.find(s => s.id === sekme) || SEKMELER[0]
     const q = arama.toLocaleLowerCase('tr').trim()
     return liste.filter(s => {
       if (!sekmeObj.durumlar.includes(s.durum)) return false
       if (kaynakFiltre && s.kaynakTipi !== kaynakFiltre) return false
-      if (musteriFiltre && String(s.musteriId) !== String(musteriFiltre)) return false
+      if (musteriFiltreIdler && !musteriFiltreIdler.has(Number(s.musteriId))) return false
       if (q) {
         const musteri = musteriMap.get(s.musteriId)
         const alan = [s.siparisNo, s.konu, s.notlar, musteri?.firma, musteri?.ad]
@@ -88,7 +97,7 @@ export default function Siparisler() {
       }
       return true
     })
-  }, [liste, sekme, arama, kaynakFiltre, musteriFiltre, musteriMap])
+  }, [liste, sekme, arama, kaynakFiltre, musteriFiltreIdler, musteriMap])
 
   const musteriFiltreObj = musteriFiltre ? musteriMap.get(Number(musteriFiltre)) : null
 

@@ -50,11 +50,20 @@ export const gorusmeninSiparisleri = async (gorusmeId) => {
 }
 
 // Bir müşteriye bağlı siparişler
-export const musteriSiparisleri = async (musteriId) => {
+// Bir firmaya ait birden fazla müşteri kaydı olabildiği için (kişi başına)
+// firma verilirse aynı firmadaki tüm müşteri id'lerini toplayıp onlarla sorgular.
+export const musteriSiparisleri = async (musteriId, firma) => {
+  let idler = [Number(musteriId)]
+  if (firma) {
+    const { data: aynifirma } = await supabase
+      .from('musteriler').select('id').eq('firma', firma)
+    const ekstra = (aynifirma || []).map(m => Number(m.id)).filter(Boolean)
+    if (ekstra.length > 0) idler = Array.from(new Set([...idler, ...ekstra]))
+  }
   const { data, error } = await supabase
     .from('siparisler')
     .select('*')
-    .eq('musteri_id', musteriId)
+    .in('musteri_id', idler)
     .order('olusturma_tarih', { ascending: false })
   if (error) return []
   return arrayToCamel(data || [])

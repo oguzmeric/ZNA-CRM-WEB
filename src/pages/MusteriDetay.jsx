@@ -97,13 +97,17 @@ function MusteriDetay() {
           musteriSiparisleri(musteriIdNum).catch(() => []),
         ])
         setMusteri(m); setKisiler(k); setLokasyonlar(l)
-        setSiparisler(sip || [])
+        // Siparişler firma bazında da toplansın (aynı firmadaki başka müşteri kayıtları da dahil)
         if (m?.firma) {
+          const sipFirma = await musteriSiparisleri(musteriIdNum, m.firma).catch(() => sip || [])
+          setSiparisler(sipFirma || [])
           const firma = m.firma.toLowerCase().trim()
           setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
           setTeklifler((t || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
           setSatislar((s || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
           setGorevler((gv || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+        } else {
+          setSiparisler(sip || [])
         }
         if (yeniOlusturuldu) {
           setKisiForm({ ...bosKisi })
