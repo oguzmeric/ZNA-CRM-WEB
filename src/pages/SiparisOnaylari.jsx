@@ -776,7 +776,8 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
       return s + m * a
     }, 0)
     const toplamKar = araToplam - toplamAlis
-    const karYuzde = toplamAlis > 0 ? (toplamKar / toplamAlis) * 100 : null
+    // Satış (araToplam) girilmediğinde kar hesabı anlamsız — "—" göster
+    const karYuzde = (toplamAlis > 0 && araToplam > 0) ? (toplamKar / toplamAlis) * 100 : null
     return { araToplam, kdvToplam, toplamAlis, toplamKar, karYuzde, genelToplam: araToplam + kdvToplam }
   }, [kalemler])
 
@@ -873,9 +874,6 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
 
       {/* Kalem tablosu — fiyat girme */}
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-          Fiyatlandırma (kalemler DB'den, birim fiyatları burada gir)
-        </div>
         {yukleniyorKalem ? (
           <div style={{ padding: 12, color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
         ) : kalemler.length === 0 ? (
@@ -900,7 +898,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                   const f = Number(k.birimFiyat || 0)
                   const a = Number(k.alisFiyat || 0)
                   const at = m * f
-                  const karYuzde = a > 0 ? ((f - a) / a) * 100 : null
+                  const karYuzde = (a > 0 && f > 0) ? ((f - a) / a) * 100 : null
                   const karRenk = karYuzde == null
                     ? 'var(--text-tertiary)'
                     : karYuzde < 0 ? '#dc2626' : karYuzde < 15 ? '#f59e0b' : '#10b981'
@@ -1002,11 +1000,13 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                   ? 'var(--text-tertiary)'
                   : toplamlar.karYuzde < 0 ? '#dc2626' : toplamlar.karYuzde < 15 ? '#f59e0b' : '#10b981',
               }}>
-                {fmtPara(toplamlar.toplamKar, paraBirimi)}
-                {toplamlar.karYuzde != null && (
-                  <span style={{ fontSize: 11, marginLeft: 6 }}>
-                    ({toplamlar.karYuzde >= 0 ? '+' : ''}{toplamlar.karYuzde.toFixed(1)}%)
-                  </span>
+                {toplamlar.karYuzde == null ? '—' : (
+                  <>
+                    {fmtPara(toplamlar.toplamKar, paraBirimi)}
+                    <span style={{ fontSize: 11, marginLeft: 6 }}>
+                      ({toplamlar.karYuzde >= 0 ? '+' : ''}{toplamlar.karYuzde.toFixed(1).replace('.', ',')}%)
+                    </span>
+                  </>
                 )}
               </div>
             </div>
