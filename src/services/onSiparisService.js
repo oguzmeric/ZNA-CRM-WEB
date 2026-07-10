@@ -15,29 +15,27 @@ const trAsciify = (s) => String(s || '')
   .replace(/Ö/g, 'O').replace(/ö/g, 'o')
   .replace(/Ü/g, 'U').replace(/ü/g, 'u')
 
-// Sipariş Onayı yetkilileri: Ahmet Agün + Ali Uğur Aktepe + Oğuz Meriç
-// İsim eşleşmesi ILIKE ile — büyük/küçük ve boşluk toleranslı.
-const ONAY_YETKILI_PATTERNS = ['%ahmet%agun%', '%ali%ugur%', '%oguz%meri%']
-
 /**
- * Ön sipariş oluşturulduğunda Sipariş Onayı yetkilerine (Ahmet, Ali, Oğuz)
+ * Ön sipariş oluşturulduğunda Sipariş Onayı yetkilerine (kullanicilar.siparis_onay_yetkili=true)
  * hem sistem bildirimi hem SMS gönderir. Best-effort — bir kullanıcı bulunamaz
  * veya SMS başarısız olursa akış bozulmaz.
+ *
+ * Yetkili listesi DB'de yönetilir (mig 132). Personel değişikliğinde:
+ *   update kullanicilar set siparis_onay_yetkili = true/false where id = X;
  */
 export async function onSiparisOnayaBildir(onSiparis, { firmaAdi, olusturanAd } = {}) {
   if (!onSiparis?.id) return
   try {
-    // 1) Yetkili kullanıcıları çek
-    const yetkiler = []
-    for (const p of ONAY_YETKILI_PATTERNS) {
-      const { data } = await supabase
-        .from('kullanicilar')
-        .select('id, ad, cep_telefon')
-        .ilike('ad', p)
-        .limit(1)
-      if (data && data[0]) yetkiler.push(data[0])
+    // 1) DB flag'i true olan tüm yetkilileri çek
+    const { data: yetkiler, error } = await supabase
+      .from('kullanicilar')
+      .select('id, ad, cep_telefon')
+      .eq('siparis_onay_yetkili', true)
+    if (error) { console.warn('[onSiparisOnayaBildir] yetkili çekilemedi:', error.message); return }
+    if (!yetkiler || yetkiler.length === 0) {
+      console.warn('[onSiparisOnayaBildir] siparis_onay_yetkili=true kullanıcı yok')
+      return
     }
-    if (yetkiler.length === 0) return
 
     const osNo = onSiparis.on_siparis_no || onSiparis.onSiparisNo || onSiparis.id
     const firma = firmaAdi || onSiparis.firma_adi || 'Firma —'
