@@ -127,6 +127,11 @@ function TeklifDetay() {
   const [durumModalAcik, setDurumModalAcik] = useState(false)
   // Satış Fiyatı Hesapla modal — satır index + alış/katsayı state
   const [hesaplaModal, setHesaplaModal] = useState(null) // null | { idx, alis, katsayi }
+  // Drag & drop sensors — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // useState initializer: sadece MOUNT'ta bir kez okunur, sonraki render'larda null olsa da persist eder.
   // Önceki const-based versiyonda her render'da yeniden hesaplanıyor + localStorage boşaltıldığı için
@@ -343,14 +348,7 @@ function TeklifDetay() {
     setForm({ ...form, satirlar: yeniSatirlar })
   }
 
-  // Drag & drop — satırları yer değiştir (mouse ile taşıma)
-  const dndSensors = useSensors(
-    useSensor(PointerSensor, {
-      // 5px hareket sonra drag başlasın — input tıklamaları kazayla drag başlatmasın
-      activationConstraint: { distance: 5 },
-    }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
+  // dndSensors yukarıda tanımlı (Rules of Hooks — early return'ün üstünde).
   const handleDragEnd = (event) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
