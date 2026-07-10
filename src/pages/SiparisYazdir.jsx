@@ -294,7 +294,7 @@ export default function SiparisYazdir() {
                   <th>Ürün / Hizmet</th>
                   <th style={{ textAlign: 'right' }}>Miktar</th>
                   <th style={{ textAlign: 'right' }}>Birim Fiyat</th>
-                  <th style={{ textAlign: 'right' }}>İsk%</th>
+                  <th style={{ textAlign: 'right' }}>Kar %</th>
                   <th style={{ textAlign: 'right' }}>KDV%</th>
                   <th style={{ textAlign: 'right' }}>Ara Toplam</th>
                 </tr>
@@ -302,6 +302,12 @@ export default function SiparisYazdir() {
               <tbody>
                 {kalemler.map((k, i) => {
                   const at = kalemAraToplam(k)
+                  const bf = Number(k.birimFiyat || 0)
+                  const af = Number(k.alisFiyat || 0)
+                  const karYuzde = (af > 0 && bf > 0) ? ((bf - af) / af) * 100 : null
+                  const karRenk = karYuzde == null
+                    ? '#94a3b8'
+                    : karYuzde < 0 ? '#dc2626' : karYuzde < 15 ? '#f59e0b' : '#10b981'
                   return (
                     <tr key={k.id}>
                       <td style={{ color: '#94a3b8' }}>{i + 1}</td>
@@ -320,8 +326,8 @@ export default function SiparisYazdir() {
                       </td>
                       <td style={{ textAlign: 'right' }}>{Number(k.miktar || 0)} {k.birim || ''}</td>
                       <td style={{ textAlign: 'right' }}>{sembol}{fmt(k.birimFiyat)}</td>
-                      <td style={{ textAlign: 'right', color: Number(k.iskontoOrani) > 0 ? '#f59e0b' : '#94a3b8' }}>
-                        {Number(k.iskontoOrani || 0)}%
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: karRenk }}>
+                        {karYuzde == null ? '—' : `${karYuzde >= 0 ? '+' : ''}${karYuzde.toFixed(1).replace('.', ',')}%`}
                       </td>
                       <td style={{ textAlign: 'right' }}>%{Number(k.kdvOrani || 0)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{sembol}{fmt(at)}</td>
@@ -337,11 +343,6 @@ export default function SiparisYazdir() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: '#475569' }}>
                   <span>Ara Toplam</span><span>{sembol}{fmt(toplam.araToplam)}</span>
                 </div>
-                {Number(siparis.genelIskonto) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: '#475569' }}>
-                    <span>Genel İskonto</span><span>−{sembol}{fmt(siparis.genelIskonto)}</span>
-                  </div>
-                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: '#475569' }}>
                   <span>KDV Toplamı</span><span>{sembol}{fmt(toplam.kdvToplam)}</span>
                 </div>
