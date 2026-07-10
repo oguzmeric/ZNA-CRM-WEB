@@ -23,6 +23,7 @@ import { siparisleriGetir } from '../services/siparisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 import YeniOnSiparisWizard from '../components/YeniOnSiparisWizard'
+import { useDovizKuru } from '../hooks/useDovizKuru'
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
 function gerçekToplam(t) {
@@ -728,6 +729,11 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
   const [yukleniyorKalem, setYukleniyorKalem] = useState(true)
   const [genelIskonto, setGenelIskonto] = useState(0)
   const [paraBirimi, setParaBirimi] = useState('TL')
+  const { kurlar, yukleniyor: kurYukleniyor, kurCek } = useDovizKuru()
+  const aktifKur = paraBirimi === 'USD' ? Number(kurlar?.USD || 0)
+                 : paraBirimi === 'EUR' ? Number(kurlar?.EUR || 0)
+                 : 1
+  const tlKarsiligi = (tutar) => paraBirimi === 'TL' ? tutar : Number(tutar || 0) * aktifKur
 
   const profilImzasi = kullanici?.imza
   const imzaVar = !!(imzaDosyasi || profilImzasi)
@@ -813,7 +819,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         notlar: onayGerekcesi.trim() || null,
         fiyatliKalemler: kalemler,
         paraBirimi,
-        dovizKuru: 1,
+        dovizKuru: aktifKur || 1,
         genelIskonto: 0,
       })
       alert(`Sipariş oluştu: ${siparisNo}`)
@@ -886,6 +892,66 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         </div>
       )}
 
+      {/* Para birimi + kur bilgisi */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 12, flexWrap: 'wrap', marginBottom: 10,
+        padding: '10px 12px', borderRadius: 8,
+        background: 'var(--surface-subtle)',
+        border: '1px solid var(--border-default)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Para Birimi
+          </span>
+          {['TL', 'USD', 'EUR'].map(pb => {
+            const aktif = paraBirimi === pb
+            return (
+              <button
+                key={pb}
+                type="button"
+                onClick={() => setParaBirimi(pb)}
+                style={{
+                  padding: '5px 12px', borderRadius: 6,
+                  border: aktif ? '1px solid #3b82f6' : '1px solid var(--border-default)',
+                  background: aktif ? '#3b82f6' : 'var(--surface-card)',
+                  color: aktif ? '#fff' : 'var(--text-primary)',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 120ms',
+                }}
+              >
+                {pb === 'TL' ? '₺ TL' : pb === 'USD' ? '$ USD' : '€ EUR'}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: 'var(--text-tertiary)' }}>
+          {kurlar?.USD && (
+            <span><strong style={{ color: 'var(--text-secondary)' }}>USD:</strong> ₺{Number(kurlar.USD).toFixed(2)}</span>
+          )}
+          {kurlar?.EUR && (
+            <span><strong style={{ color: 'var(--text-secondary)' }}>EUR:</strong> ₺{Number(kurlar.EUR).toFixed(2)}</span>
+          )}
+          <span style={{ color: 'var(--text-tertiary)' }}>
+            {kurlar?.tcmbTarih ? `· TCMB ${kurlar.tcmbTarih}` : ''}
+          </span>
+          <button
+            type="button"
+            onClick={kurCek}
+            disabled={kurYukleniyor}
+            style={{
+              padding: '3px 8px', borderRadius: 4, fontSize: 11,
+              background: 'transparent', border: '1px solid var(--border-default)',
+              color: 'var(--text-secondary)',
+              cursor: kurYukleniyor ? 'wait' : 'pointer',
+            }}
+            title="Kuru yenile (TCMB anlık)"
+          >
+            {kurYukleniyor ? '…' : '↻'}
+          </button>
+        </div>
+      </div>
+
       {/* Kalem tablosu — fiyat girme */}
       <div style={{ marginBottom: 12 }}>
         {yukleniyorKalem ? (
@@ -899,8 +965,8 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                 <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>
                   <th style={{ textAlign: 'left', padding: 6, fontWeight: 500 }}>Ürün</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>Miktar</th>
-                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Alış ₺</th>
-                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Satış ₺</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Alış {paraBirimi === 'TL' ? '₺' : paraBirimi === 'USD' ? '$' : '€'}</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Satış {paraBirimi === 'TL' ? '₺' : paraBirimi === 'USD' ? '$' : '€'}</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 70 }}>Kar %</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>KDV %</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Ara Toplam</th>
@@ -1031,7 +1097,30 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Genel Toplam</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent, #1E5AA8)' }}>{fmtPara(toplamlar.genelToplam, paraBirimi)}</div>
+              {paraBirimi !== 'TL' && aktifKur > 0 && (
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  ≈ {fmtPara(tlKarsiligi(toplamlar.genelToplam), 'TL')}
+                </div>
+              )}
             </div>
+          </div>
+        )}
+        {/* TL karşılığı özet — TL değilse tek satırda ana metrikler */}
+        {paraBirimi !== 'TL' && kalemler.length > 0 && aktifKur > 0 && (
+          <div style={{
+            marginTop: 8, padding: '8px 12px',
+            background: 'rgba(59,130,246,0.06)',
+            border: '1px dashed rgba(59,130,246,0.3)',
+            borderRadius: 6,
+            display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+            fontSize: 11.5, color: 'var(--text-secondary)',
+          }}>
+            <span>TL karşılığı ({paraBirimi} = ₺{Number(aktifKur).toFixed(2)})</span>
+            <span>
+              <strong>Alış:</strong> {fmtPara(tlKarsiligi(toplamlar.toplamAlis), 'TL')} ·
+              &nbsp;<strong>Kar:</strong> {fmtPara(tlKarsiligi(toplamlar.toplamKar), 'TL')} ·
+              &nbsp;<strong>Genel:</strong> {fmtPara(tlKarsiligi(toplamlar.genelToplam), 'TL')}
+            </span>
           </div>
         )}
       </div>
