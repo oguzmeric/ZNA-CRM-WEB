@@ -931,9 +931,31 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                       </td>
                       <td style={{ padding: 6 }}>
                         <input
-                          type="number" step="0.1" value={karYuzde == null ? '' : karYuzde.toFixed(1)}
+                          type="text" inputMode="decimal"
+                          value={
+                            k.karInputText != null
+                              ? k.karInputText
+                              : karYuzde == null ? '' : karYuzde.toFixed(1).replace('.', ',')
+                          }
                           disabled={!(a > 0)}
-                          onChange={e => kalemGuncelle(i, 'karYuzde', Number(e.target.value) || 0)}
+                          onChange={e => {
+                            const raw = e.target.value
+                            // Serbest yazımı sakla (kullanıcı "1," yazarken kaybolmasın)
+                            const parsed = parseFloat(raw.replace(',', '.'))
+                            const yeni = [...kalemler]
+                            yeni[i] = { ...yeni[i], karInputText: raw }
+                            if (!isNaN(parsed) && a > 0) {
+                              yeni[i].birimFiyat = Number((a * (1 + parsed / 100)).toFixed(2))
+                            }
+                            setKalemler(yeni)
+                          }}
+                          onBlur={() => {
+                            // Odak çıkınca serbest yazımı temizle, hesaplı değere dön
+                            const yeni = [...kalemler]
+                            const { karInputText, ...rest } = yeni[i]
+                            yeni[i] = rest
+                            setKalemler(yeni)
+                          }}
                           style={{
                             width: '100%', textAlign: 'right', padding: '4px 6px',
                             border: '1px solid var(--border-default)', borderRadius: 4,
@@ -941,8 +963,8 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                             background: a > 0 ? 'var(--surface-card)' : 'var(--surface-sunken)',
                             cursor: a > 0 ? 'text' : 'not-allowed',
                           }}
-                          placeholder={a > 0 ? '0' : 'Alış gir'}
-                          title={a > 0 ? 'Kar %: girildiğinde Satış otomatik hesaplanır' : 'Önce Alış girin'}
+                          placeholder={a > 0 ? 'örn. 1,5' : 'Alış gir'}
+                          title={a > 0 ? 'Kar %: 1,5 veya 5,4 gibi ondalıklı yazabilirsin — Satış otomatik hesaplanır' : 'Önce Alış girin'}
                         />
                       </td>
                       <td style={{ padding: 6 }}>
