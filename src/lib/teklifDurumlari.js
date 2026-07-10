@@ -32,24 +32,28 @@ export const TEKLIF_DURUM_META = {
 
 /**
  * Geriye uyum mapper: mevcut kayıtları spec'teki 10 duruma çevirir.
- * @param teklif — { onayDurumu, teklifOnayi } (camelCase JS objesi)
+ * Öncelik: teklifler.spek_durum (yeni sistem) > mapper (eski değerlerden çıkarım).
+ * @param teklif — { spekDurum, onayDurumu, teklifOnayi } (camelCase JS objesi)
  * @returns {string} — TEKLIF_DURUM anahtarlarından biri
  */
 export function tekliftenDurum(teklif) {
   if (!teklif) return TEKLIF_DURUM.TASLAK
+  // 1) Yeni kolon (spek_durum) doluysa doğrudan kullan
+  const spek = teklif.spekDurum || teklif.spek_durum || ''
+  if (Object.values(TEKLIF_DURUM).includes(spek)) return spek
+
+  // 2) Eski onay_durumu + teklif_onayi jsonb'sinden çıkarım
   const od = teklif.onayDurumu || teklif.onay_durumu || ''
   const to = teklif.teklifOnayi || teklif.teklif_onayi || {}
-  const toDurum = to?.durum || to?.durum === '' ? to.durum : null
+  const toDurum = to?.durum ?? null
 
-  // Zaten yeni değer varsa doğrudan kullan
+  // Zaten yeni değer eski kolona düşmüş (nadir edge case)
   if (Object.values(TEKLIF_DURUM).includes(od)) return od
 
-  // Eski değerler → yeni sistem
   if (od === 'kabul') return TEKLIF_DURUM.MUSTERI_ONAYLADI
   if (od === 'vazgecildi') return TEKLIF_DURUM.MUSTERI_REDDETTI
   if (od === 'revizyon') return TEKLIF_DURUM.REVIZYON_ISTENDI
 
-  // 'takipte' + yönetici onay durumu:
   if (od === 'takipte') {
     if (toDurum === 'onayli') return TEKLIF_DURUM.YON_ONAYLADI
     if (toDurum === 'reddedildi') return TEKLIF_DURUM.REVIZYON_ISTENDI
@@ -57,6 +61,32 @@ export function tekliftenDurum(teklif) {
     return TEKLIF_DURUM.YON_ONAY_BEKLIYOR
   }
   return TEKLIF_DURUM.TASLAK
+}
+
+/**
+ * Yeni durumu DB'ye yazarken hangi kolon(lar)ı güncellemeliyiz?
+ * spek_durum → yeni sistem (gerçek durum)
+ * onay_durumu → eski kod okumaya devam etsin diye map ile eski değere yazıyoruz
+ */
+export function durumdanDbAlanlar(yeniDurum) {
+  // Eski kolonun almasına izin verilen değer
+  const eskiOnayDurumu = (() => {
+    switch (yeniDurum) {
+      case TEKLIF_DURUM.MUSTERI_ONAYLADI:
+      case TEKLIF_DURUM.SIPARISE_AKTARILDI:
+        return 'kabul'
+      case TEKLIF_DURUM.MUSTERI_REDDETTI:
+        return 'vazgecildi'
+      case TEKLIF_DURUM.REVIZYON_ISTENDI:
+        return 'revizyon'
+      default:
+        return 'takipte'
+    }
+  })()
+  return {
+    spekDurum: yeniDurum,        // yeni sistem, gerçek durum
+    onayDurumu: eskiOnayDurumu,  // eski kod için map
+  }
 }
 
 /**

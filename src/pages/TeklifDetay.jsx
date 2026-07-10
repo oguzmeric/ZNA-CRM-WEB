@@ -16,7 +16,7 @@ import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle,
 } from '../services/teklifService'
 import { supabase } from '../lib/supabase'
-import { tekliftenDurum, TEKLIF_DURUM_META } from '../lib/teklifDurumlari'
+import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
@@ -470,6 +470,28 @@ function TeklifDetay() {
 
   const revizyon = () => setForm({ ...form, revizyon: form.revizyon + 1 })
 
+  // Durum değiştirme (spec 10 durum)
+  const [durumModalAcik, setDurumModalAcik] = useState(false)
+  const durumuDegistir = async (yeniDurum) => {
+    const alanlar = durumdanDbAlanlar(yeniDurum) // { spekDurum, onayDurumu }
+    if (yeni) {
+      // Kayıt edilmemiş: sadece form state güncelle, kaydet'e basınca DB'ye yazılacak
+      setForm({ ...form, ...alanlar })
+      setDurumModalAcik(false)
+      return
+    }
+    try {
+      await teklifGuncelle(id, alanlar)
+      setForm(f => ({ ...f, ...alanlar }))
+      setMevcutTeklif(t => t ? { ...t, ...alanlar } : t)
+      toast.success(`Durum: ${TEKLIF_DURUM_META[yeniDurum]?.isim || yeniDurum}`)
+      setDurumModalAcik(false)
+    } catch (err) {
+      const detay = [err?.message, err?.details, err?.hint].filter(Boolean).join(' · ')
+      toast.error('Durum güncellenemedi: ' + (detay || 'bilinmeyen'))
+    }
+  }
+
   const faturayaDonustur = () => {
     localStorage.setItem(
       'satis_on_doldurum',
@@ -537,21 +559,25 @@ function TeklifDetay() {
             <h1 className="t-h1">{yeni ? 'Yeni teklif' : form.teklifNo}</h1>
             {!yeni && <CodeBadge>{form.teklifNo}</CodeBadge>}
             {form.revizyon > 0 && <Badge tone="beklemede">Rev. {form.revizyon}</Badge>}
-            {/* Spec 10 durum sistemi — geriye uyum mapper ile eski değerler de spec'e çevrilir */}
+            {/* Spec 10 durum sistemi — tıklanabilir, modal ile değiştirilebilir */}
             {!yeni && spekDurumMeta && (
-              <span
-                title={`Durum: ${spekDurumMeta.isim}`}
+              <button
+                type="button"
+                onClick={() => setDurumModalAcik(true)}
+                title="Durumu değiştirmek için tıkla"
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '3px 10px', borderRadius: 6,
                   fontSize: 12, fontWeight: 700,
                   color: spekDurumMeta.renk,
                   background: `${spekDurumMeta.renk}18`,
                   border: `1px solid ${spekDurumMeta.renk}55`,
+                  cursor: 'pointer',
                 }}
               >
                 {spekDurumMeta.isim}
-              </span>
+                <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+              </button>
             )}
           </div>
           {/* Bağlı Görüşme bilgi kartı — spec: "Teklif detayında hangi görüşmeden oluşturulduğu açık şekilde görünür" */}
@@ -1509,6 +1535,101 @@ function TeklifDetay() {
           />
         )
       })()}
+
+      {/* Durum değiştirme modalı — spec 10 durum */}
+      {durumModalAcik && (
+        <div
+          onClick={() => setDurumModalAcik(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface-card)', color: 'var(--text-primary)',
+              borderRadius: 12, padding: 20, maxWidth: 480, width: '100%',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 4px', fontSize: 16 }}>Teklif Durumunu Değiştir</h3>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+              Mevcut durum:{' '}
+              <strong style={{ color: spekDurumMeta?.renk }}>
+                {spekDurumMeta?.isim || spekDurumKey}
+              </strong>
+            </div>
+
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>
+              MANTIKLI SONRAKI DURUMLAR
+            </div>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+              {(() => {
+                const secenekler = sonrakiDurumlar(spekDurumKey)
+                if (secenekler.length === 0) {
+                  return (
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: 8 }}>
+                      Bu durumdan başka bir duruma geçilemiyor (terminal). Manuel geçiş için aşağıdaki tam listeyi kullan.
+                    </div>
+                  )
+                }
+                return secenekler.map(k => {
+                  const meta = TEKLIF_DURUM_META[k]
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => durumuDegistir(k)}
+                      style={{
+                        padding: '10px 12px', borderRadius: 8,
+                        background: `${meta.renk}18`, color: meta.renk,
+                        border: `1px solid ${meta.renk}55`,
+                        cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                        textAlign: 'left',
+                      }}
+                    >
+                      → {meta.isim}
+                    </button>
+                  )
+                })
+              })()}
+            </div>
+
+            <details style={{ marginBottom: 12 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.3 }}>
+                TÜM DURUMLAR (ADMIN GEÇIŞ)
+              </summary>
+              <div style={{ display: 'grid', gap: 4, marginTop: 8, gridTemplateColumns: '1fr 1fr' }}>
+                {Object.entries(TEKLIF_DURUM_META).map(([k, meta]) => {
+                  const secili = k === spekDurumKey
+                  return (
+                    <button
+                      key={k}
+                      disabled={secili}
+                      onClick={() => durumuDegistir(k)}
+                      style={{
+                        padding: '6px 10px', borderRadius: 6,
+                        background: secili ? 'var(--surface-subtle)' : `${meta.renk}10`,
+                        color: secili ? 'var(--text-tertiary)' : meta.renk,
+                        border: `1px solid ${meta.renk}30`,
+                        cursor: secili ? 'default' : 'pointer',
+                        fontSize: 11, fontWeight: 500,
+                        textAlign: 'left', opacity: secili ? 0.5 : 1,
+                      }}
+                    >
+                      {meta.isim}
+                    </button>
+                  )
+                })}
+              </div>
+            </details>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button variant="ghost" onClick={() => setDurumModalAcik(false)}>Kapat</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
 
 // Liste: satirlar/revizyon_gecmisi/aciklama (jsonb, KB'lar) detayda ayrıca çekilir
-const TEKLIF_LISTE_KOLONLARI = 'id, teklif_no, revizyon, tarih, gecerlilik_tarihi, musteri_id, firma_adi, konu, para_birimi, doviz_kuru, onay_durumu, genel_iskonto, genel_toplam, olusturma_tarih, musteri_temsilcisi, kabul_tarihi, teklif_tipi, siparis_onayi, teklif_onayi, gorusme_id, hazirlayan'
+const TEKLIF_LISTE_KOLONLARI = 'id, teklif_no, revizyon, tarih, gecerlilik_tarihi, musteri_id, firma_adi, konu, para_birimi, doviz_kuru, onay_durumu, spek_durum, genel_iskonto, genel_toplam, olusturma_tarih, musteri_temsilcisi, kabul_tarihi, teklif_tipi, siparis_onayi, teklif_onayi, gorusme_id, hazirlayan'
 
 export const teklifleriGetir = () => cached('teklifler:list', async () => {
   const hepsi = []
