@@ -18,7 +18,8 @@ import {
   bekleyenOnSiparisleriGetir, onSiparisiOnayla, onSiparisiReddet,
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
-import { kalemleriGetir as onSiparisKalemleriGetir } from '../services/onSiparisService'
+import { kalemleriGetir as onSiparisKalemleriGetir, iptalEdilenOnSiparisleriGetir } from '../services/onSiparisService'
+import { siparisleriGetir } from '../services/siparisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 import YeniOnSiparisWizard from '../components/YeniOnSiparisWizard'
@@ -44,9 +45,10 @@ const fmtTarih = (iso) => {
   } catch { return iso }
 }
 
-// Onaylı sekmesi kaldırıldı — onaylanmış siparişler /siparisler sayfasında görünür.
+// Ön sipariş odaklı 3 sekme — tüm veriler on_siparisler + siparisler tablolarından.
 const SEKMELER = [
   { id: 'bekleyen', label: 'Bekleyen',   renk: '#F59E0B' },
+  { id: 'onayli',   label: 'Onaylı',     renk: '#10B981' },
   { id: 'red',      label: 'Reddedilen', renk: '#DC2626' },
 ]
 
@@ -79,20 +81,29 @@ export default function SiparisOnaylari() {
     setYukleniyor(true)
     try {
       if (sekme === 'bekleyen') {
-        // Sadece ön siparişler — teklif onayları burada yer almaz
-        // (teklif kabul akışı ayrı; tedarik odaklı bir ekran)
+        // Ön siparişler: onay bekleyenler (tedarik odaklı)
         const onSiparisler = await bekleyenOnSiparisleriGetir().catch(() => [])
-        const birlesik = onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' }))
-          .sort((a, b) => {
-            const at = new Date(a.olusturmaTarih || 0).getTime()
-            const bt = new Date(b.olusturmaTarih || 0).getTime()
-            return bt - at
-          })
-        setListe(birlesik)
+        setListe(
+          onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' }))
+            .sort((a, b) => new Date(b.olusturmaTarih || 0) - new Date(a.olusturmaTarih || 0))
+        )
+      } else if (sekme === 'onayli') {
+        // Onaylı: ön siparişten dönmüş siparişler (ZNA-SIP-... kayıtları)
+        const tumSiparisler = await siparisleriGetir().catch(() => [])
+        setListe(
+          tumSiparisler
+            .filter(s => s.kaynakTipi === 'on_siparis' && s.durum !== 'iptal')
+            .map(s => ({ ...s, _kaynak: 'siparis' }))
+            .sort((a, b) => new Date(b.onayTarihi || 0) - new Date(a.onayTarihi || 0))
+        )
       } else {
-        const d = sekme === 'onayli' ? await onaylananSiparisleriGetir()
-                : await reddedilenSiparisleriGetir()
-        setListe((d || []).map(t => ({ ...t, _kaynak: 'teklif' })))
+        // Reddedilen: iptal edilen ön siparişler
+        const iptaller = await iptalEdilenOnSiparisleriGetir().catch(() => [])
+        setListe(
+          iptaller
+            .map(o => ({ ...o, _kaynak: 'on_siparis' }))
+            .sort((a, b) => new Date(b.guncellemeTarih || 0) - new Date(a.guncellemeTarih || 0))
+        )
       }
     } catch (e) {
       console.error('[siparis onay liste]', e)
@@ -166,24 +177,33 @@ export default function SiparisOnaylari() {
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
           ) : liste.length === 0 ? (
             <EmptyState
-              title={sekme === 'bekleyen' ? 'Bekleyen sipariş yok' : sekme === 'onayli' ? 'Onaylı sipariş yok' : 'Reddedilmiş sipariş yok'}
+              title={sekme === 'bekleyen' ? 'Bekleyen ön sipariş yok' : sekme === 'onayli' ? 'Onaylanmış sipariş yok' : 'İptal edilmiş ön sipariş yok'}
               icon={<Clock size={24} />}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {liste.map(t => {
-                const kaynak = t._kaynak || 'teklif'
-                const isOn = kaynak === 'on_siparis'
-                const s = t.siparisOnayi || {}
+                const kaynak = t._kaynak || 'on_siparis'
+                const isSip = kaynak === 'siparis'   // Onaylı → ZNA-SIP kaydı
                 const seciliMi = secili?.id === t.id && secili?._kaynak === kaynak
-                const kayitNo = isOn ? t.onSiparisNo : t.teklifNo
-                const konu = isOn ? (t.aciklama?.slice(0, 40) || 'Ön Sipariş') : (t.konu || '—')
-                const firma = isOn ? '—' : (t.firmaAdi || '—')
-                const tarih = isOn ? t.olusturmaTarih : t.tarih
+                const kayitNo = isSip ? t.siparisNo : t.onSiparisNo
+                const badgeLabel = isSip ? 'SİPARİŞ' : 'ÖN SİPARİŞ'
+                const badgeTone = isSip ? 'aktif' : 'success'
+                const tarih = isSip ? (t.onayTarihi || t.olusturmaTarih)
+                            : sekme === 'red' ? (t.guncellemeTarih || t.olusturmaTarih)
+                            : t.olusturmaTarih
+                const musteriAd = (() => {
+                  // Ön sipariş kaydında firmaAdi yok; görüşmeden çıkar
+                  const g = gorusmeMap.get(t.gorusmeId)
+                  return g?.firmaAdi || '—'
+                })()
+                const onClick = isSip
+                  ? () => navigate(`/siparisler/${t.id}`)
+                  : () => setSecili(t)
                 return (
                   <button
                     key={`${kaynak}-${t.id}`}
-                    onClick={() => setSecili(t)}
+                    onClick={onClick}
                     style={{
                       textAlign: 'left',
                       padding: '14px 16px',
@@ -197,10 +217,10 @@ export default function SiparisOnaylari() {
                     onMouseLeave={e => { if (!seciliMi) e.currentTarget.style.background = 'transparent' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{kayitNo || '—'}</strong>
-                      <Badge tone={isOn ? 'success' : 'brand'} style={{ fontSize: 10 }}>
-                        {isOn ? 'ÖN SİPARİŞ' : 'TEKLİF'}
-                      </Badge>
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: isSip ? 'monospace' : 'inherit' }}>
+                        {kayitNo || '—'}
+                      </strong>
+                      <Badge tone={badgeTone} style={{ fontSize: 10 }}>{badgeLabel}</Badge>
                       {(() => {
                         const g = gorusmeMap.get(t.gorusmeId)
                         return g?.gorusmeNo ? (
@@ -213,28 +233,29 @@ export default function SiparisOnaylari() {
                           </span>
                         ) : null
                       })()}
-                      {!isOn && <Badge tone="brand">{konu}</Badge>}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                       <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
-                      {firma}
+                      {musteriAd}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTarih(tarih)}</span>
-                      {!isOn ? (
-                        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(gerçekToplam(t), t.paraBirimi)}</strong>
+                      {isSip ? (
+                        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</strong>
+                      ) : sekme === 'red' ? (
+                        <span style={{ fontSize: 11, color: '#DC2626', fontWeight: 600 }}>iptal</span>
                       ) : (
                         <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600 }}>fiyat girilecek</span>
                       )}
                     </div>
-                    {sekme === 'onayli' && s.onaylayan_ad && (
+                    {isSip && t.onaylayanAd && (
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                        ✓ {s.onaylayan_ad} · {fmtTarih(s.onay_tarihi)}
+                        ✓ {t.onaylayanAd} · {fmtTarih(t.onayTarihi)}
                       </div>
                     )}
-                    {sekme === 'red' && s.red_nedeni && (
+                    {sekme === 'red' && t.iptalSebebi && (
                       <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>
-                        ✕ {s.red_nedeni}
+                        ✕ {t.iptalSebebi}
                       </div>
                     )}
                   </button>
@@ -268,7 +289,13 @@ export default function SiparisOnaylari() {
             <Card>
               <EmptyState
                 title="Bir kayıt seç"
-                aciklama="Soldaki listeden bir teklif veya ön sipariş seçerek detaylarını gör ve onay/red işlemi yap."
+                description={
+                  sekme === 'onayli'
+                    ? 'Soldan bir siparişe tıklayınca detay sayfasına yönlendirilirsin.'
+                    : sekme === 'red'
+                    ? 'Soldan iptal edilen bir ön siparişe tıklayınca detayları görürsün.'
+                    : 'Soldan bir ön sipariş seç, kalemlere fiyat gir ve onayla → ZNA-SIP-... otomatik oluşur.'
+                }
                 icon={<FileText size={24} />}
               />
             </Card>

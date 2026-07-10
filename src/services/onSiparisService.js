@@ -28,6 +28,17 @@ export const onSiparisleriGetir = () => cached('onSiparisler:list', async () => 
   return arrayToCamel(data || [])
 })
 
+// Reddedilen (iptal) ön siparişler — Sipariş Onayı ekranı için
+export const iptalEdilenOnSiparisleriGetir = async () => {
+  const { data, error } = await supabase
+    .from('on_siparisler')
+    .select('*')
+    .eq('durum', 'iptal')
+    .order('guncelleme_tarih', { ascending: false })
+  if (error) { console.error('iptalEdilenOnSiparisleriGetir hata:', error.message); return [] }
+  return arrayToCamel(data || [])
+}
+
 // Bir görüşmeye ait ön siparişler
 export const gorusmeninOnSiparisleri = async (gorusmeId) => {
   const { data, error } = await supabase
