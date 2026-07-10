@@ -18,7 +18,7 @@ import {
   bekleyenOnSiparisleriGetir, onSiparisiOnayla, onSiparisiReddet,
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
 } from '../services/siparisOnayService'
-import { kalemleriGetir as onSiparisKalemleriGetir, iptalEdilenOnSiparisleriGetir } from '../services/onSiparisService'
+import { kalemleriGetir as onSiparisKalemleriGetir, iptalEdilenOnSiparisleriGetir, onSiparisSil } from '../services/onSiparisService'
 import { siparisleriGetir } from '../services/siparisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
@@ -720,6 +720,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
   const [imzaPreview, setImzaPreview] = useState(null)
   const [redNedeni, setRedNedeni] = useState('')
   const [redModalAcik, setRedModalAcik] = useState(false)
+  const [silModalAcik, setSilModalAcik] = useState(false)
   const [onayGerekcesi, setOnayGerekcesi] = useState('')
   const [calisiyor, setCalisiyor] = useState(false)
   const [hata, setHata] = useState(null)
@@ -835,6 +836,19 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
       onTamamlandi()
     } catch (e) {
       setHata(e?.message || 'Red hatası.')
+    } finally { setCalisiyor(false) }
+  }
+
+  const kaliciSil = async () => {
+    setHata(null)
+    setCalisiyor(true)
+    try {
+      const ok = await onSiparisSil(os.id)
+      if (!ok) { setHata('Silme başarısız.'); return }
+      setSilModalAcik(false)
+      onTamamlandi()
+    } catch (e) {
+      setHata(e?.message || 'Silme hatası.')
     } finally { setCalisiyor(false) }
   }
 
@@ -1057,6 +1071,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
           )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="ghost" onClick={() => setSilModalAcik(true)} disabled={calisiyor} style={{ color: '#DC2626' }}>Sil</Button>
             <Button variant="ghost" onClick={() => setRedModalAcik(true)} disabled={calisiyor} style={{ color: '#DC2626' }}>Reddet</Button>
             <Button variant="primary" onClick={onayla} disabled={calisiyor}>
               {calisiyor ? 'İşleniyor…' : 'Onayla ve Sipariş Oluştur'}
@@ -1073,6 +1088,25 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <Button variant="ghost" onClick={() => setRedModalAcik(false)}>Vazgeç</Button>
               <Button variant="primary" onClick={reddet} disabled={calisiyor} style={{ background: '#DC2626' }}>Reddet</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {silModalAcik && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--surface-card)', borderRadius: 12, padding: 20, maxWidth: 480, width: '100%' }}>
+            <h3 style={{ margin: '0 0 12px', color: '#DC2626' }}>Ön Siparişi Kalıcı Sil</h3>
+            <div style={{ padding: 12, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+              <strong>{os.onSiparisNo}</strong> ön siparişi ve tüm kalemleri kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              <br/><br/>
+              Reddedip iptal etmek istiyorsanız <strong>Reddet</strong>'i kullanın — kayıt saklanır.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button variant="ghost" onClick={() => setSilModalAcik(false)} disabled={calisiyor}>Vazgeç</Button>
+              <Button variant="primary" onClick={kaliciSil} disabled={calisiyor} style={{ background: '#DC2626' }}>
+                {calisiyor ? 'Siliniyor…' : 'Evet, Sil'}
+              </Button>
             </div>
           </div>
         </div>

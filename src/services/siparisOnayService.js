@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 import { bildirimEkleDb } from './bildirimService'
+import { smsGonderVeLogla } from './smsLogService'
 
 const BUCKET = 'siparis-imzalari'
 
@@ -41,12 +42,17 @@ async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, ona
       link: `/siparisler`,
     }).catch(e => console.warn('[bildirim] onay:', e?.message))
 
-    // SMS
-    if (k.cep_telefon) {
-      const mesaj = `ZNA CRM: On siparisiniz onaylandi.\n${trAsciify(firmaAdi || '')}\nSiparis: ${siparisNo}\nOnaylayan: ${trAsciify(onaylayanAd || '')}\ntalep.znateknoloji.com`
-      supabase.functions.invoke('sms-gonder', { body: { gsm: k.cep_telefon, mesaj } })
-        .catch(e => console.warn('[sms] onay:', e?.message))
-    }
+    // SMS — log'lu gönderim
+    const mesaj = `ZNA CRM: On siparisiniz onaylandi.\n${trAsciify(firmaAdi || '')}\nSiparis: ${siparisNo}\nOnaylayan: ${trAsciify(onaylayanAd || '')}\ntalep.znateknoloji.com`
+    smsGonderVeLogla({
+      gsm: k.cep_telefon,
+      mesaj,
+      amac: 'siparis_onaylandi_bildirim',
+      refTablo: 'on_siparisler',
+      refId: onSiparisId,
+      aliciKullaniciId: k.id,
+      aliciAd: k.ad,
+    }).catch(e => console.warn('[sms] onay:', e?.message))
   } catch (e) {
     console.warn('[siparisOnaylandiBildir]', e?.message)
   }

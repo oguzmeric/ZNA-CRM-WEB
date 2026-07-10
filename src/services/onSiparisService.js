@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
 import { bildirimEkleDb } from './bildirimService'
+import { smsGonderVeLogla } from './smsLogService'
 
 // SMS-friendly TR → ASCII (smsService ile aynı desen)
 const trAsciify = (s) => String(s || '')
@@ -52,12 +53,17 @@ export async function onSiparisOnayaBildir(onSiparis, { firmaAdi, olusturanAd } 
         link: '/siparis-onaylari',
       }).catch(e => console.warn('[bildirim] ön sipariş onay:', e?.message))
 
-      // SMS
-      if (y.cep_telefon) {
-        const mesaj = `ZNA CRM: Yeni on siparis onay bekliyor.\n${trAsciify(firma)}\nNo: ${osNo}\nEkleyen: ${trAsciify(kim)}\ntalep.znateknoloji.com`
-        supabase.functions.invoke('sms-gonder', { body: { gsm: y.cep_telefon, mesaj } })
-          .catch(e => console.warn('[sms] ön sipariş onay:', e?.message))
-      }
+      // SMS — smsGonderVeLogla ile her deneme sms_gonderim_log'a yazılır
+      const mesaj = `ZNA CRM: Yeni on siparis onay bekliyor.\n${trAsciify(firma)}\nNo: ${osNo}\nEkleyen: ${trAsciify(kim)}\ntalep.znateknoloji.com`
+      smsGonderVeLogla({
+        gsm: y.cep_telefon,
+        mesaj,
+        amac: 'on_siparis_bildirim',
+        refTablo: 'on_siparisler',
+        refId: onSiparis.id,
+        aliciKullaniciId: y.id,
+        aliciAd: y.ad,
+      }).catch(e => console.warn('[sms] ön sipariş onay:', e?.message))
     }))
   } catch (e) {
     console.warn('[onSiparisOnayaBildir] hata:', e?.message)
