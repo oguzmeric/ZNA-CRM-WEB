@@ -751,7 +751,14 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
 
   const kalemGuncelle = (idx, alan, deger) => {
     const yeni = [...kalemler]
-    yeni[idx] = { ...yeni[idx], [alan]: deger }
+    const eski = yeni[idx]
+    const guncel = { ...eski, [alan]: deger }
+    // Kar% girildiğinde satışı hesapla: satış = alış × (1 + kar/100)
+    if (alan === 'karYuzde') {
+      const a = Number(eski.alisFiyat || 0)
+      if (a > 0) guncel.birimFiyat = Number((a * (1 + Number(deger || 0) / 100)).toFixed(2))
+    }
+    yeni[idx] = guncel
     setKalemler(yeni)
   }
 
@@ -922,8 +929,21 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                           placeholder="Satış"
                         />
                       </td>
-                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 700, color: karRenk }}>
-                        {karYuzde == null ? '—' : `${karYuzde >= 0 ? '+' : ''}${karYuzde.toFixed(1)}%`}
+                      <td style={{ padding: 6 }}>
+                        <input
+                          type="number" step="0.1" value={karYuzde == null ? '' : karYuzde.toFixed(1)}
+                          disabled={!(a > 0)}
+                          onChange={e => kalemGuncelle(i, 'karYuzde', Number(e.target.value) || 0)}
+                          style={{
+                            width: '100%', textAlign: 'right', padding: '4px 6px',
+                            border: '1px solid var(--border-default)', borderRadius: 4,
+                            fontSize: 12, fontWeight: 700, color: karRenk,
+                            background: a > 0 ? 'var(--surface-card)' : 'var(--surface-sunken)',
+                            cursor: a > 0 ? 'text' : 'not-allowed',
+                          }}
+                          placeholder={a > 0 ? '0' : 'Alış gir'}
+                          title={a > 0 ? 'Kar %: girildiğinde Satış otomatik hesaplanır' : 'Önce Alış girin'}
+                        />
                       </td>
                       <td style={{ padding: 6 }}>
                         <input
