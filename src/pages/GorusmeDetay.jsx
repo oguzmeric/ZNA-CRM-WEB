@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
-  BellRing, Clock, Check, X, ShoppingCart,
+  BellRing, Clock, Check, X, ShoppingCart, Receipt,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -286,6 +286,27 @@ function GorusmeDetay() {
                 </Button>
               )
             })()}
+            <Button
+              variant="secondary"
+              iconLeft={<Receipt size={14} strokeWidth={1.5} />}
+              onClick={() => {
+                // TeklifDetay onDoldurum mekanizması ile pre-fill
+                const onDoldurum = {
+                  firmaAdi: gorusme.firmaAdi || '',
+                  musteriYetkilisi: gorusme.muhatapAd || '',
+                  konu: gorusme.konu || '',
+                  aciklama: gorusme.notlar || gorusme.takipNotu || '',
+                  gorusmeId: gorusme.id,
+                  musteriId: gorusme.musteriId || null,
+                  satirlar: [],
+                }
+                localStorage.setItem('teklif_on_doldurum', JSON.stringify(onDoldurum))
+                navigate('/teklifler/yeni')
+              }}
+              title="Bu görüşmeden resmi fiyat teklifi oluştur"
+            >
+              Teklif Oluştur
+            </Button>
             <Button
               variant="secondary"
               iconLeft={<ShoppingCart size={14} strokeWidth={1.5} />}
