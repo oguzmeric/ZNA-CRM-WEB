@@ -1160,10 +1160,10 @@ function TeklifDetay() {
               <col />
               <col style={{ width: 90 }} />
               <col style={{ width: 90 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 80 }} />
+              <col style={{ width: 170 }} />{/* Birim fiyat — input + calculator ikonu için genişletildi */}
+              <col style={{ width: 100 }} />{/* İsk.% — sayı sığsın */}
               <col style={{ width: 100 }} />
-              <col style={{ width: 120 }} />
+              <col style={{ width: 130 }} />
               <col style={{ width: 50 }} />
             </colgroup>
             <THead>
