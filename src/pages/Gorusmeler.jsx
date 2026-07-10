@@ -947,14 +947,14 @@ function Gorusmeler() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                      {g.gorusmeNo ? (
+                      {g.aktNo ? (
                         <span style={{
                           fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
                           color: 'var(--brand)', letterSpacing: 0.3,
                           padding: '3px 8px', background: 'rgba(59,130,246,0.08)',
                           borderRadius: 4,
-                        }} title="Görüşme Numarası">
-                          {g.gorusmeNo}
+                        }} title={g.gorusmeNo ? `Görüşme No: ${g.gorusmeNo}` : 'Aktivite No'}>
+                          {g.aktNo}
                         </span>
                       ) : (
                         <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
