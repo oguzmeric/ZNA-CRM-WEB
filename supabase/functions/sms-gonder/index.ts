@@ -15,10 +15,29 @@
 // NOT: GSM numarasi 10 haneli olmali ('5XXXXXXXXX'), basinda 0 veya +90 olmamali.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const NETGSM_USER   = Deno.env.get('NETGSM_USER') ?? ''
 const NETGSM_PASS   = Deno.env.get('NETGSM_PASS') ?? ''
 const NETGSM_HEADER = Deno.env.get('NETGSM_HEADER') ?? 'ZNATEKNOLOJI'
+const SUPABASE_URL  = Deno.env.get('SUPABASE_URL') ?? ''
+const SERVICE_ROLE  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+
+// SMS pumping / mali suistimal koruması — dakikada max 6, saatte max 40 SMS per user.
+// In-memory sliding window (edge fn instance lifecycle ile sınırlı ama etkili).
+const smsLog = new Map<string, number[]>()
+const DAKIKA_LIMIT = 6
+const SAAT_LIMIT   = 40
+function rateLimitAsti(userId: string): { ok: boolean; hata?: string } {
+  const now = Date.now()
+  const arr = (smsLog.get(userId) ?? []).filter(t => now - t < 3600_000)
+  const sonDakika = arr.filter(t => now - t < 60_000).length
+  if (sonDakika >= DAKIKA_LIMIT) return { ok: false, hata: `Rate limit: dakikada max ${DAKIKA_LIMIT} SMS` }
+  if (arr.length >= SAAT_LIMIT)   return { ok: false, hata: `Rate limit: saatte max ${SAAT_LIMIT} SMS` }
+  arr.push(now)
+  smsLog.set(userId, arr)
+  return { ok: true }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,6 +89,38 @@ serve(async (req) => {
     if (!NETGSM_USER || !NETGSM_PASS) {
       return err(500, 'NetGSM secret eksik (NETGSM_USER veya NETGSM_PASS).')
     }
+
+    // ─── AUTH GATE ────────────────────────────────────────────────────
+    // Sadece staff (admin/personel) SMS gönderebilir — müşteri hesapları
+    // veya anon JWT bloklanır. SMS pumping / mali suistimal koruması.
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const jwt = authHeader.replace(/^Bearer\s+/i, '')
+    if (!jwt) return err(401, 'Yetkilendirme gerekli.')
+
+    // Service role key ile çağırılabilir (backend-to-backend, örn gorev-gecikme-sms)
+    const isServiceRole = SERVICE_ROLE && jwt === SERVICE_ROLE
+    let userId: string | null = null
+
+    if (!isServiceRole) {
+      // Kullanıcı JWT — gerçek user id + rol doğrulama
+      const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
+      const { data: authData, error: authErr } = await sb.auth.getUser(jwt)
+      if (authErr || !authData?.user) return err(401, 'Geçersiz oturum.')
+      userId = authData.user.id
+      const { data: profil } = await sb
+        .from('kullanicilar')
+        .select('rol, hesap_silindi')
+        .eq('auth_id', userId)
+        .maybeSingle()
+      if (!profil || profil.hesap_silindi) return err(403, 'Hesap erişimi yok.')
+      if (!['admin', 'personel'].includes(profil.rol)) {
+        return err(403, 'Bu işlem için yetkiniz yok.')
+      }
+      // Rate limit — dakikada 6, saatte 40 SMS/user
+      const rl = rateLimitAsti(userId)
+      if (!rl.ok) return err(429, rl.hata!)
+    }
+    // ──────────────────────────────────────────────────────────────────
 
     const body = await req.json()
     const gsmRaw: string = (body?.gsm ?? '').toString().trim()
