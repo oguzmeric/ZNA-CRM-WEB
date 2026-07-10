@@ -523,12 +523,61 @@ function TeklifDetay() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <h1 className="t-h1">{yeni ? 'Yeni teklif' : form.teklifNo}</h1>
-          {!yeni && <CodeBadge>{form.teklifNo}</CodeBadge>}
-          {form.revizyon > 0 && <Badge tone="beklemede">Rev. {form.revizyon}</Badge>}
-          {aktifDurum && <Badge tone={aktifDurum.tone}>{aktifDurum.isim}</Badge>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h1 className="t-h1">{yeni ? 'Yeni teklif' : form.teklifNo}</h1>
+            {!yeni && <CodeBadge>{form.teklifNo}</CodeBadge>}
+            {form.revizyon > 0 && <Badge tone="beklemede">Rev. {form.revizyon}</Badge>}
+            {aktifDurum && <Badge tone={aktifDurum.tone}>{aktifDurum.isim}</Badge>}
+          </div>
+          {/* Bağlı Görüşme bilgi kartı — spec: "Teklif detayında hangi görüşmeden oluşturulduğu açık şekilde görünür" */}
+          {(() => {
+            const bagliGorusme = form.gorusmeId && gorusmeler.find(g => String(g.id) === String(form.gorusmeId))
+            if (!bagliGorusme?.gorusmeNo) return null
+            return (
+              <button
+                type="button"
+                onClick={() => navigate(`/gorusmeler/${bagliGorusme.id}`)}
+                title="Kaynak görüşmeye git"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                  marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                  background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                  color: '#3b82f6', padding: '2px 8px',
+                  background: 'rgba(59,130,246,0.15)', borderRadius: 4,
+                }}>{bagliGorusme.gorusmeNo}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Kaynak görüşme
+                </span>
+                {bagliGorusme.tarih && (
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    · {(() => {
+                      try {
+                        const d = new Date(bagliGorusme.tarih)
+                        return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`
+                      } catch { return bagliGorusme.tarih }
+                    })()}
+                  </span>
+                )}
+                {bagliGorusme.gorusen && (
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    · {bagliGorusme.gorusen}
+                  </span>
+                )}
+                {bagliGorusme.muhatapAd && (
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    · Muhatap: {bagliGorusme.muhatapAd}
+                  </span>
+                )}
+              </button>
+            )
+          })()}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!yeni && (
