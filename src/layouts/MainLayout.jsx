@@ -507,17 +507,6 @@ function MainLayout({ children }) {
                   <Avatar name={kullanici?.ad} size="sm" onDark />
                 </span>
               )}
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  bottom: -1, right: -1,
-                  width: 10, height: 10,
-                  borderRadius: '50%',
-                  background: durumRenkleri[mevcutDurum],
-                  border: '2px solid var(--surface-sidebar)',
-                }}
-              />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <button
