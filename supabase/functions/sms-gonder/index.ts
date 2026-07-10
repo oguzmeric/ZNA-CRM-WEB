@@ -16,6 +16,7 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeadersFor } from '../_shared/cors.ts'
 
 const NETGSM_USER   = Deno.env.get('NETGSM_USER') ?? ''
 const NETGSM_PASS   = Deno.env.get('NETGSM_PASS') ?? ''
@@ -39,11 +40,7 @@ function rateLimitAsti(userId: string): { ok: boolean; hata?: string } {
   return { ok: true }
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+// corsHeaders artık request'e göre dinamik — corsHeadersFor(req) çağrılır
 
 // NetGSM "code" -> Turkce hata mesaji
 const HATA_MESAJLARI: Record<string, string> = {
@@ -75,19 +72,19 @@ function gsmNormalize(s: string): string | null {
   return num
 }
 
-function err(status: number, hata: string, extra: Record<string, unknown> = {}) {
+function err(req: Request, status: number, hata: string, extra: Record<string, unknown> = {}) {
   return new Response(
     JSON.stringify({ ok: false, hata, ...extra }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
   )
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(req) })
 
   try {
     if (!NETGSM_USER || !NETGSM_PASS) {
-      return err(500, 'NetGSM secret eksik (NETGSM_USER veya NETGSM_PASS).')
+      return err(req,500, 'NetGSM secret eksik (NETGSM_USER veya NETGSM_PASS).')
     }
 
     // ─── AUTH GATE ────────────────────────────────────────────────────
@@ -95,7 +92,7 @@ serve(async (req) => {
     // veya anon JWT bloklanır. SMS pumping / mali suistimal koruması.
     const authHeader = req.headers.get('Authorization') ?? ''
     const jwt = authHeader.replace(/^Bearer\s+/i, '')
-    if (!jwt) return err(401, 'Yetkilendirme gerekli.')
+    if (!jwt) return err(req,401, 'Yetkilendirme gerekli.')
 
     // Service role key ile çağırılabilir (backend-to-backend, örn gorev-gecikme-sms)
     const isServiceRole = SERVICE_ROLE && jwt === SERVICE_ROLE
@@ -105,20 +102,20 @@ serve(async (req) => {
       // Kullanıcı JWT — gerçek user id + rol doğrulama
       const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
       const { data: authData, error: authErr } = await sb.auth.getUser(jwt)
-      if (authErr || !authData?.user) return err(401, 'Geçersiz oturum.')
+      if (authErr || !authData?.user) return err(req,401, 'Geçersiz oturum.')
       userId = authData.user.id
       const { data: profil } = await sb
         .from('kullanicilar')
         .select('rol, hesap_silindi')
         .eq('auth_id', userId)
         .maybeSingle()
-      if (!profil || profil.hesap_silindi) return err(403, 'Hesap erişimi yok.')
+      if (!profil || profil.hesap_silindi) return err(req,403, 'Hesap erişimi yok.')
       if (!['admin', 'personel'].includes(profil.rol)) {
-        return err(403, 'Bu işlem için yetkiniz yok.')
+        return err(req,403, 'Bu işlem için yetkiniz yok.')
       }
       // Rate limit — dakikada 6, saatte 40 SMS/user
       const rl = rateLimitAsti(userId)
-      if (!rl.ok) return err(429, rl.hata!)
+      if (!rl.ok) return err(req,429, rl.hata!)
     }
     // ──────────────────────────────────────────────────────────────────
 
@@ -128,10 +125,10 @@ serve(async (req) => {
 
     const gsm = gsmNormalize(gsmRaw)
     if (!gsm) {
-      return err(400, 'Gecerli bir GSM numarasi girin (ornek: 5XXXXXXXXX).')
+      return err(req,400, 'Gecerli bir GSM numarasi girin (ornek: 5XXXXXXXXX).')
     }
     if (mesaj.length < 1 || mesaj.length > 1000) {
-      return err(400, 'Mesaj 1-1000 karakter olmali.')
+      return err(req,400, 'Mesaj 1-1000 karakter olmali.')
     }
 
     // Basic Auth header
@@ -162,16 +159,16 @@ serve(async (req) => {
     if (code === '00') {
       return new Response(
         JSON.stringify({ ok: true, jobid, gsm, mesaj: 'SMS gonderildi.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
       )
     }
 
     // Basarisiz — code'a gore mesaj
     const ngHata = HATA_MESAJLARI[code] ?? ngJson?.description ?? `NetGSM hata kodu: ${code || 'bilinmiyor'}`
     console.error('[sms-gonder] NetGSM hata:', { code, ngText })
-    return err(502, ngHata, { netgsmCode: code, raw: ngText.slice(0, 200) })
+    return err(req,502, ngHata, { netgsmCode: code, raw: ngText.slice(0, 200) })
   } catch (e) {
     console.error('[sms-gonder] beklenmedik:', e)
-    return err(500, (e as Error)?.message ?? 'bilinmeyen hata')
+    return err(req,500, (e as Error)?.message ?? 'bilinmeyen hata')
   }
 })

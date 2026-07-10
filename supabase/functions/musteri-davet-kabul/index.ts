@@ -10,29 +10,24 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeadersFor } from '../_shared/cors.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE)
 
-function err(status: number, hata: string) {
+function err(req: Request, status: number, hata: string) {
   return new Response(
     JSON.stringify({ ok: false, hata }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
   )
 }
 
-function ok(body: Record<string, unknown>) {
+function ok(req: Request, body: Record<string, unknown>) {
   return new Response(
     JSON.stringify({ ok: true, ...body }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
   )
 }
 
@@ -47,20 +42,20 @@ async function davetiBul(token: string) {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(req) })
 
   try {
     const body = await req.json()
     const action: string = (body?.action ?? '').toString()
     const token: string = (body?.token ?? '').toString().trim()
 
-    if (!token || token.length < 16) return err(400, 'Geçersiz davet linki.')
+    if (!token || token.length < 16) return err(req,400, 'Geçersiz davet linki.')
 
     const davet = await davetiBul(token)
-    if (!davet) return err(404, 'Davet bulunamadı veya geçersiz.')
-    if (davet.kullanildi) return err(410, 'Bu davet daha önce kullanılmış. Giriş yapmayı deneyin.')
+    if (!davet) return err(req,404, 'Davet bulunamadı veya geçersiz.')
+    if (davet.kullanildi) return err(req,410, 'Bu davet daha önce kullanılmış. Giriş yapmayı deneyin.')
     if (new Date(davet.son_kullanma).getTime() < Date.now()) {
-      return err(410, 'Bu davetin süresi dolmuş. Lütfen ZNA ekibinden yeni bir davet isteyin.')
+      return err(req,410, 'Bu davetin süresi dolmuş. Lütfen ZNA ekibinden yeni bir davet isteyin.')
     }
 
     // Musteri firma adi
@@ -71,7 +66,7 @@ serve(async (req) => {
       .maybeSingle()
 
     if (action === 'dogrula') {
-      return ok({
+      return ok(req,{
         email: davet.email,
         ad: davet.ad,
         firma: musteri?.firma ?? '',
@@ -81,7 +76,7 @@ serve(async (req) => {
 
     if (action === 'kabul') {
       const sifre: string = (body?.sifre ?? '').toString()
-      if (sifre.length < 8) return err(400, 'Şifre en az 8 karakter olmalı.')
+      if (sifre.length < 8) return err(req,400, 'Şifre en az 8 karakter olmalı.')
 
       // Bu email icin auth user var mi? Varsa update, yoksa create.
       const { data: mevcutKullanici } = await supa
@@ -101,7 +96,7 @@ serve(async (req) => {
         })
         if (authErr || !authData?.user) {
           console.error('[musteri-davet-kabul] auth.createUser:', authErr?.message)
-          return err(502, 'Hesap oluşturulamadı: ' + (authErr?.message ?? 'bilinmeyen'))
+          return err(req,502, 'Hesap oluşturulamadı: ' + (authErr?.message ?? 'bilinmeyen'))
         }
         authUserId = authData.user.id
       } else {
@@ -111,7 +106,7 @@ serve(async (req) => {
         })
         if (updErr) {
           console.error('[musteri-davet-kabul] auth.update:', updErr.message)
-          return err(502, 'Şifre güncellenemedi: ' + updErr.message)
+          return err(req,502, 'Şifre güncellenemedi: ' + updErr.message)
         }
       }
 
@@ -139,7 +134,7 @@ serve(async (req) => {
           .single()
         if (insertErr) {
           console.error('[musteri-davet-kabul] kullanicilar.insert:', insertErr.message)
-          return err(502, 'Kullanıcı profili oluşturulamadı: ' + insertErr.message)
+          return err(req,502, 'Kullanıcı profili oluşturulamadı: ' + insertErr.message)
         }
         kullaniciId = yeni.id
       } else {
@@ -161,16 +156,16 @@ serve(async (req) => {
         .update({ kullanildi: true, kullanildi_tarih: new Date().toISOString() })
         .eq('id', davet.id)
 
-      return ok({
+      return ok(req,{
         email: davet.email,
         kullanici_id: kullaniciId,
         mesaj: 'Hesabınız hazır. Şimdi giriş yapabilirsiniz.',
       })
     }
 
-    return err(400, "Bilinmeyen action. 'dogrula' veya 'kabul' kullanın.")
+    return err(req,400, "Bilinmeyen action. 'dogrula' veya 'kabul' kullanın.")
   } catch (e) {
     console.error('[musteri-davet-kabul] beklenmedik:', e)
-    return err(500, (e as Error)?.message ?? 'bilinmeyen hata')
+    return err(req,500, (e as Error)?.message ?? 'bilinmeyen hata')
   }
 })

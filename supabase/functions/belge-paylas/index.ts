@@ -25,6 +25,7 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeadersFor } from '../_shared/cors.ts'
 
 const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -32,11 +33,7 @@ const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY') ?? ''
 const PUBLIC_BASE_URL = Deno.env.get('PUBLIC_BASE_URL') ?? 'https://talep.znateknoloji.com'
 const FROM            = 'ZNA Destek <noreply@znateknoloji.com.tr>'  // znateknoloji.com.tr Resend dogrulamasi tamamlandi
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+// corsHeaders artık request bazlı — corsHeadersFor(req) çağrılır
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE)
 
@@ -57,10 +54,10 @@ function gsmGecerli(s: string): boolean {
   return /\d{10,}/.test(s.replace(/[^\d]/g, ''))
 }
 
-function err(status: number, hata: string, extra: Record<string, unknown> = {}) {
+function err(req: Request, status: number, hata: string, extra: Record<string, unknown> = {}) {
   return new Response(
     JSON.stringify({ ok: false, hata, ...extra }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
   )
 }
 
@@ -192,7 +189,7 @@ async function smsGonderFn(gsm: string, mesaj: string) {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(req) })
 
   try {
     // Caller'in kullanici_id'sini cek (audit/olusturan_id)
@@ -212,14 +209,14 @@ serve(async (req) => {
         if (krow) {
           // Sadece personel kullanabilir (musteri tipi bu fn'i cagiramamali)
           if (krow.tip === 'musteri') {
-            return err(403, 'Bu islemi sadece personel yapabilir.')
+            return err(req,403, 'Bu islemi sadece personel yapabilir.')
           }
           olusturanId = krow.id
         }
       }
     } catch (_) { /* unauth -> reject below */ }
 
-    if (!olusturanId) return err(401, 'Oturum gerekli.')
+    if (!olusturanId) return err(req,401, 'Oturum gerekli.')
 
     const body = await req.json()
     const belgeTipi: string = (body?.belge_tipi ?? '').toString()
@@ -236,15 +233,15 @@ serve(async (req) => {
     const sirketRaw: string = (body?.sirket ?? '').toString().toLowerCase()
     const sirket: string | null = sirketRaw === 'anadolunet' ? 'anadolunet' : null
 
-    if (!['teklif', 'servis_raporu'].includes(belgeTipi)) return err(400, 'Gecersiz belge tipi.')
-    if (!belgeId || belgeId < 1) return err(400, 'Gecersiz belge id.')
-    if (!['mail', 'sms', 'her_ikisi'].includes(kanal)) return err(400, 'Gecersiz kanal.')
+    if (!['teklif', 'servis_raporu'].includes(belgeTipi)) return err(req,400, 'Gecersiz belge tipi.')
+    if (!belgeId || belgeId < 1) return err(req,400, 'Gecersiz belge id.')
+    if (!['mail', 'sms', 'her_ikisi'].includes(kanal)) return err(req,400, 'Gecersiz kanal.')
 
     const mailGonderilecek = kanal === 'mail' || kanal === 'her_ikisi'
     const smsGonderilecek  = kanal === 'sms'  || kanal === 'her_ikisi'
 
-    if (mailGonderilecek && !emailGecerli(email)) return err(400, 'Gecerli bir e-posta girin.')
-    if (smsGonderilecek && !gsmGecerli(gsm)) return err(400, 'Gecerli bir GSM numarasi girin.')
+    if (mailGonderilecek && !emailGecerli(email)) return err(req,400, 'Gecerli bir e-posta girin.')
+    if (smsGonderilecek && !gsmGecerli(gsm)) return err(req,400, 'Gecerli bir GSM numarasi girin.')
 
     // Belge gercekten var mi?
     const tablo = belgeTipi === 'teklif' ? 'teklifler' : 'servis_talepleri'
@@ -253,7 +250,7 @@ serve(async (req) => {
       .select('id')
       .eq('id', belgeId)
       .maybeSingle()
-    if (belgeErr || !belgeRow) return err(404, 'Belge bulunamadi.')
+    if (belgeErr || !belgeRow) return err(req,404, 'Belge bulunamadi.')
 
     // Token uret + DB'ye yaz
     const token = tokenUret()
@@ -276,7 +273,7 @@ serve(async (req) => {
 
     if (insertErr || !linkRow) {
       console.error('[belge-paylas] DB insert:', insertErr)
-      return err(500, 'Paylasim kaydedilemedi.')
+      return err(req,500, 'Paylasim kaydedilemedi.')
     }
 
     // Query param'lar: teklif sablonu (?t=karel) ve/veya servis sirketi (?s=anadolunet)
@@ -324,7 +321,7 @@ serve(async (req) => {
     const mailOk = !mailGonderilecek || mailDurum === 'gonderildi'
     const smsOk  = !smsGonderilecek  || smsDurum  === 'gonderildi'
     if (!mailOk && !smsOk) {
-      return err(502, 'Gonderim basarisiz oldu. Mail: ' + (mailDurum ?? '-') + ' / SMS: ' + (smsDurum ?? '-'))
+      return err(req,502, 'Gonderim basarisiz oldu. Mail: ' + (mailDurum ?? '-') + ' / SMS: ' + (smsDurum ?? '-'))
     }
 
     return new Response(
@@ -337,10 +334,10 @@ serve(async (req) => {
         sms_durumu: smsDurum,
         kismi: !mailOk || !smsOk,   // bir kanal basarili digeri hatali
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
     )
   } catch (e) {
     console.error('[belge-paylas] beklenmedik:', e)
-    return err(500, (e as Error)?.message ?? 'bilinmeyen hata')
+    return err(req,500, (e as Error)?.message ?? 'bilinmeyen hata')
   }
 })
