@@ -118,6 +118,8 @@ function TeklifDetay() {
   const [hizliMusteriAcik, setHizliMusteriAcik] = useState(false)
   // Seçili müşterinin yetkili kişileri (kayıtlıysa dropdown'a düşer)
   const [musteriKisileri, setMusteriKisileri] = useState([])
+  // Durum değiştirme modal (spec 10 durum) — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
+  const [durumModalAcik, setDurumModalAcik] = useState(false)
 
   // useState initializer: sadece MOUNT'ta bir kez okunur, sonraki render'larda null olsa da persist eder.
   // Önceki const-based versiyonda her render'da yeniden hesaplanıyor + localStorage boşaltıldığı için
@@ -470,8 +472,7 @@ function TeklifDetay() {
 
   const revizyon = () => setForm({ ...form, revizyon: form.revizyon + 1 })
 
-  // Durum değiştirme (spec 10 durum)
-  const [durumModalAcik, setDurumModalAcik] = useState(false)
+  // Durum değiştirme (spec 10 durum) — durumModalAcik state yukarıda Rules of Hooks uyumlu
   const durumuDegistir = async (yeniDurum) => {
     const alanlar = durumdanDbAlanlar(yeniDurum) // { spekDurum, onayDurumu }
     if (yeni) {
