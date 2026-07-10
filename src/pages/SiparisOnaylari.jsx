@@ -740,6 +740,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         setKalemler((k || []).map(x => ({
           ...x,
           birimFiyat: Number(x.birimFiyat || 0),
+          alisFiyat: Number(x.alisFiyat || 0),
           iskontoOrani: Number(x.iskontoOrani || 0),
           kdvOrani: Number(x.kdvOrani || 20),
         })))
@@ -756,16 +757,21 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
 
   const toplamlar = useMemo(() => {
     const araToplam = kalemler.reduce((s, k) => {
-      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0)
-      return s + m * f * (1 - i / 100)
+      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0)
+      return s + m * f
     }, 0)
     const kdvToplam = kalemler.reduce((s, k) => {
-      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0), kd = Number(k.kdvOrani || 0)
-      return s + m * f * (1 - i / 100) * (kd / 100)
+      const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), kd = Number(k.kdvOrani || 0)
+      return s + m * f * (kd / 100)
     }, 0)
-    const iskontolu = araToplam - Number(genelIskonto || 0)
-    return { araToplam, kdvToplam, iskontolu, genelToplam: iskontolu + kdvToplam }
-  }, [kalemler, genelIskonto])
+    const toplamAlis = kalemler.reduce((s, k) => {
+      const m = Number(k.miktar || 0), a = Number(k.alisFiyat || 0)
+      return s + m * a
+    }, 0)
+    const toplamKar = araToplam - toplamAlis
+    const karYuzde = toplamAlis > 0 ? (toplamKar / toplamAlis) * 100 : null
+    return { araToplam, kdvToplam, toplamAlis, toplamKar, karYuzde, genelToplam: araToplam + kdvToplam }
+  }, [kalemler])
 
   const imzaSec = (e) => {
     const f = e.target.files?.[0]
@@ -799,7 +805,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         fiyatliKalemler: kalemler,
         paraBirimi,
         dovizKuru: 1,
-        genelIskonto: Number(genelIskonto) || 0,
+        genelIskonto: 0,
       })
       alert(`Sipariş oluştu: ${siparisNo}`)
       onTamamlandi()
@@ -874,16 +880,23 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                 <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>
                   <th style={{ textAlign: 'left', padding: 6, fontWeight: 500 }}>Ürün</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>Miktar</th>
-                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Birim ₺</th>
-                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>İsk %</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Alış ₺</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Satış ₺</th>
+                  <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 70 }}>Kar %</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 60 }}>KDV %</th>
                   <th style={{ textAlign: 'right', padding: 6, fontWeight: 500, width: 100 }}>Ara Toplam</th>
                 </tr>
               </thead>
               <tbody>
                 {kalemler.map((k, i) => {
-                  const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), isk = Number(k.iskontoOrani || 0)
-                  const at = m * f * (1 - isk / 100)
+                  const m = Number(k.miktar || 0)
+                  const f = Number(k.birimFiyat || 0)
+                  const a = Number(k.alisFiyat || 0)
+                  const at = m * f
+                  const karYuzde = a > 0 ? ((f - a) / a) * 100 : null
+                  const karRenk = karYuzde == null
+                    ? 'var(--text-tertiary)'
+                    : karYuzde < 0 ? '#dc2626' : karYuzde < 15 ? '#f59e0b' : '#10b981'
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                       <td style={{ padding: 6 }}>
@@ -895,18 +908,22 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
                       <td style={{ padding: 6, textAlign: 'right' }}>{m}</td>
                       <td style={{ padding: 6 }}>
                         <input
-                          type="number" step="0.01" min="0" value={f || ''}
-                          onChange={e => kalemGuncelle(i, 'birimFiyat', Number(e.target.value) || 0)}
+                          type="number" step="0.01" min="0" value={a || ''}
+                          onChange={e => kalemGuncelle(i, 'alisFiyat', Number(e.target.value) || 0)}
                           style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 12 }}
-                          placeholder="Fiyat"
+                          placeholder="Alış"
                         />
                       </td>
                       <td style={{ padding: 6 }}>
                         <input
-                          type="number" step="0.01" min="0" value={isk || ''}
-                          onChange={e => kalemGuncelle(i, 'iskontoOrani', Number(e.target.value) || 0)}
+                          type="number" step="0.01" min="0" value={f || ''}
+                          onChange={e => kalemGuncelle(i, 'birimFiyat', Number(e.target.value) || 0)}
                           style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 12 }}
+                          placeholder="Satış"
                         />
+                      </td>
+                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 700, color: karRenk }}>
+                        {karYuzde == null ? '—' : `${karYuzde >= 0 ? '+' : ''}${karYuzde.toFixed(1)}%`}
                       </td>
                       <td style={{ padding: 6 }}>
                         <input
@@ -928,17 +945,28 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         {kalemler.length > 0 && (
           <div style={{ marginTop: 12, padding: 12, background: 'var(--surface-subtle)', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Ara Toplam</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Toplam Alış</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtPara(toplamlar.toplamAlis, paraBirimi)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Ara Toplam (Satış)</div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtPara(toplamlar.araToplam, paraBirimi)}</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Genel İskonto</div>
-              <input
-                type="number" step="0.01" min="0" value={genelIskonto || ''}
-                onChange={e => setGenelIskonto(Number(e.target.value) || 0)}
-                style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--border-default)', borderRadius: 4, fontSize: 13 }}
-                placeholder="0"
-              />
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Toplam Kar</div>
+              <div style={{
+                fontSize: 14, fontWeight: 700,
+                color: toplamlar.karYuzde == null
+                  ? 'var(--text-tertiary)'
+                  : toplamlar.karYuzde < 0 ? '#dc2626' : toplamlar.karYuzde < 15 ? '#f59e0b' : '#10b981',
+              }}>
+                {fmtPara(toplamlar.toplamKar, paraBirimi)}
+                {toplamlar.karYuzde != null && (
+                  <span style={{ fontSize: 11, marginLeft: 6 }}>
+                    ({toplamlar.karYuzde >= 0 ? '+' : ''}{toplamlar.karYuzde.toFixed(1)}%)
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>KDV Toplamı</div>

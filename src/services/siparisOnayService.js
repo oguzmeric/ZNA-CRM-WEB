@@ -262,6 +262,7 @@ export async function onSiparisiOnayla(onSiparisId, {
       birim: k.birim || 'Adet',
       miktar: Number(k.miktar || 0),
       birim_fiyat: Number(k.birimFiyat || 0),
+      alis_fiyat: Number(k.alisFiyat || 0),
       iskonto_orani: Number(k.iskontoOrani || 0),
       kdv_orani: Number(k.kdvOrani || 20),
       ara_toplam:
