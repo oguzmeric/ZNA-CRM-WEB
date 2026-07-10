@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { Clock, Download, FileSpreadsheet, FileText } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
+import SiparisAnalizTab from '../components/SiparisAnalizTab'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
@@ -84,6 +85,7 @@ function Raporlar() {
     { id: 'gorusmeler', isim: 'Görüşmeler' },
     { id: 'gorevler',   isim: 'Görevler' },
     { id: 'stok',       isim: 'Stok' },
+    ...(yonetimGorur ? [{ id: 'siparis_analiz', isim: 'Sipariş Analizi' }] : []),
     ...(yonetimGorur ? [{ id: 'mesai', isim: 'Mesai' }] : []),
     ...(yonetimGorur ? [{ id: 'arac_foto', isim: 'Araç Foto' }] : []),
   ]
@@ -662,6 +664,7 @@ function Raporlar() {
         </div>
       )}
 
+      {aktifSekme === 'siparis_analiz' && <SiparisAnalizTab />}
       {aktifSekme === 'mesai' && <MesaiRaporTab />}
       {aktifSekme === 'arac_foto' && <AracFotoRaporTab />}
     </div>
