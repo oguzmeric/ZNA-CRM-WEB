@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
+  ChevronUp, ChevronDown,
 } from 'lucide-react'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import { siparisOnayNotuKaydet, siparisOnayGeriAl } from '../services/siparisOnayService'
@@ -336,6 +337,15 @@ function TeklifDetay() {
   const satirSil = (index) => {
     const yeniSatirlar = form.satirlar.filter((_, i) => i !== index)
     setForm({ ...form, satirlar: yeniSatirlar })
+  }
+
+  // Satırı yukarı/aşağı taşı (yer değiştirme)
+  const satirTasi = (index, yon) => {
+    const hedef = index + yon
+    if (hedef < 0 || hedef >= form.satirlar.length) return
+    const yeni = [...form.satirlar]
+    ;[yeni[index], yeni[hedef]] = [yeni[hedef], yeni[index]]
+    setForm({ ...form, satirlar: yeni })
   }
 
   const satirToplamHesapla = (satir) => {
@@ -1164,7 +1174,7 @@ function TeklifDetay() {
               <col style={{ width: 100 }} />{/* İsk.% — sayı sığsın */}
               <col style={{ width: 100 }} />
               <col style={{ width: 130 }} />
-              <col style={{ width: 50 }} />
+              <col style={{ width: 90 }} />{/* Aksiyon: ↑ ↓ 🗑 */}
             </colgroup>
             <THead>
               <TR>
@@ -1274,15 +1284,47 @@ function TeklifDetay() {
                       </span>
                     </TD>
                     <TD align="right">
-                      <button
-                        aria-label="Satırı sil"
-                        onClick={() => satirSil(index)}
-                        style={iconBtnStyle}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                      >
-                        <Trash2 size={12} strokeWidth={1.5} />
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: 2 }}>
+                        <button
+                          aria-label="Yukarı taşı"
+                          onClick={() => satirTasi(index, -1)}
+                          disabled={index === 0}
+                          title="Yukarı taşı"
+                          style={{
+                            ...iconBtnStyle,
+                            opacity: index === 0 ? 0.35 : 1,
+                            cursor: index === 0 ? 'not-allowed' : 'pointer',
+                          }}
+                          onMouseEnter={e => { if (index !== 0) { e.currentTarget.style.background = 'var(--brand-soft, rgba(59,130,246,0.1))'; e.currentTarget.style.color = 'var(--brand, #3b82f6)' } }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <ChevronUp size={13} strokeWidth={1.7} />
+                        </button>
+                        <button
+                          aria-label="Aşağı taşı"
+                          onClick={() => satirTasi(index, +1)}
+                          disabled={index === form.satirlar.length - 1}
+                          title="Aşağı taşı"
+                          style={{
+                            ...iconBtnStyle,
+                            opacity: index === form.satirlar.length - 1 ? 0.35 : 1,
+                            cursor: index === form.satirlar.length - 1 ? 'not-allowed' : 'pointer',
+                          }}
+                          onMouseEnter={e => { if (index !== form.satirlar.length - 1) { e.currentTarget.style.background = 'var(--brand-soft, rgba(59,130,246,0.1))'; e.currentTarget.style.color = 'var(--brand, #3b82f6)' } }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <ChevronDown size={13} strokeWidth={1.7} />
+                        </button>
+                        <button
+                          aria-label="Satırı sil"
+                          onClick={() => satirSil(index)}
+                          style={iconBtnStyle}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <Trash2 size={12} strokeWidth={1.5} />
+                        </button>
+                      </div>
                     </TD>
                   </TR>
                 )
