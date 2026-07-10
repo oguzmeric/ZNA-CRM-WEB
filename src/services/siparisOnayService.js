@@ -5,8 +5,52 @@
 
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
+import { bildirimEkleDb } from './bildirimService'
 
 const BUCKET = 'siparis-imzalari'
+
+// TR karakter → ASCII (SMS-friendly)
+const trAsciify = (s) => String(s || '')
+  .replace(/İ/g, 'I').replace(/ı/g, 'i')
+  .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+  .replace(/Ş/g, 'S').replace(/ş/g, 's')
+  .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+  .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+  .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+
+/**
+ * Sipariş onaylandı → ön siparişi oluşturana bildirim + SMS.
+ * Best-effort — telefon yoksa veya SMS fail olursa akış bozulmaz.
+ */
+async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, onaylayanAd, firmaAdi }) {
+  if (!olusturanId) return
+  try {
+    const { data: k } = await supabase
+      .from('kullanicilar')
+      .select('id, ad, cep_telefon')
+      .eq('id', olusturanId)
+      .maybeSingle()
+    if (!k) return
+
+    // Sistem bildirimi
+    bildirimEkleDb({
+      aliciId: k.id,
+      baslik: 'Ön Sipariş Onaylandı — Siparişe Dönüştü',
+      mesaj: `${firmaAdi || 'Firma'} için oluşturduğunuz ön sipariş, ${onaylayanAd || 'yönetici'} tarafından onaylandı. Sipariş No: ${siparisNo}`,
+      tip: 'siparis',
+      link: `/siparisler`,
+    }).catch(e => console.warn('[bildirim] onay:', e?.message))
+
+    // SMS
+    if (k.cep_telefon) {
+      const mesaj = `ZNA CRM: On siparisiniz onaylandi.\n${trAsciify(firmaAdi || '')}\nSiparis: ${siparisNo}\nOnaylayan: ${trAsciify(onaylayanAd || '')}\ntalep.znateknoloji.com`
+      supabase.functions.invoke('sms-gonder', { body: { gsm: k.cep_telefon, mesaj } })
+        .catch(e => console.warn('[sms] onay:', e?.message))
+    }
+  } catch (e) {
+    console.warn('[siparisOnaylandiBildir]', e?.message)
+  }
+}
 
 /**
  * Onay bekleyen siparişler — yetkili sayfasında listelenir.
@@ -280,6 +324,15 @@ export async function onSiparisiOnayla(onSiparisId, {
     .from('on_siparisler')
     .update({ durum: 'siparise_donustu', siparis_id: siparis.id })
     .eq('id', onSiparisId)
+
+  // Ön siparişi oluşturana bildirim + SMS (best-effort)
+  siparisOnaylandiBildir({
+    siparisNo: siparis.siparis_no,
+    onSiparisId,
+    olusturanId: os.olusturan_id,
+    onaylayanAd,
+    firmaAdi: os.firma_adi || null,
+  })
 
   return siparis.siparis_no
 }
