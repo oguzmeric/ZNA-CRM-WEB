@@ -953,7 +953,7 @@ function Gorusmeler() {
                           color: 'var(--brand)', letterSpacing: 0.3,
                           padding: '3px 8px', background: 'rgba(59,130,246,0.08)',
                           borderRadius: 4,
-                        }} title={g.gorusmeNo ? `Görüşme No: ${g.gorusmeNo}` : 'Aktivite No'}>
+                        }} title="Aktivite No">
                           {g.aktNo}
                         </span>
                       ) : (

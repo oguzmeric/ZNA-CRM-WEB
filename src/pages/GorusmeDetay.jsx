@@ -240,17 +240,16 @@ function GorusmeDetay() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-              {gorusme.gorusmeNo && (
+              {gorusme.aktNo && (
                 <span style={{
                   fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
                   color: 'var(--brand)', padding: '3px 8px',
                   background: 'var(--brand-soft, rgba(59,130,246,0.12))',
                   borderRadius: 6, letterSpacing: 0.3,
-                }} title="Görüşme Numarası">
-                  {gorusme.gorusmeNo}
+                }} title="Aktivite Numarası">
+                  {gorusme.aktNo}
                 </span>
               )}
-              {gorusme.aktNo && <CodeBadge>{gorusme.aktNo}</CodeBadge>}
               {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
             </div>
             <h1 className="t-h1">{gorusme.firmaAdi}</h1>

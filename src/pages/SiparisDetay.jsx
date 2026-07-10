@@ -101,7 +101,7 @@ export default function SiparisDetay() {
               {isTeklif ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'}
             </span>
           </div>
-          {gorusme?.gorusmeNo && (
+          {gorusme?.aktNo && (
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
               <button
                 onClick={() => navigate(`/gorusmeler/${gorusme.id}`)}
@@ -112,7 +112,7 @@ export default function SiparisDetay() {
                   border: 'none', cursor: 'pointer',
                 }}
                 title="Kaynak görüşmeye git"
-              >{gorusme.gorusmeNo}</button>
+              >{gorusme.aktNo}</button>
               <span>Kaynak görüşme</span>
               {gorusme.tarih && <>· {fmtSadeceTarih(gorusme.tarih)}</>}
               {gorusme.gorusen && <>· {gorusme.gorusen}</>}

@@ -611,7 +611,7 @@ function TeklifDetay() {
           {/* Bağlı Görüşme bilgi kartı — spec: "Teklif detayında hangi görüşmeden oluşturulduğu açık şekilde görünür" */}
           {(() => {
             const bagliGorusme = form.gorusmeId && gorusmeler.find(g => String(g.id) === String(form.gorusmeId))
-            if (!bagliGorusme?.gorusmeNo) return null
+            if (!bagliGorusme?.aktNo) return null
             return (
               <button
                 type="button"
@@ -628,7 +628,7 @@ function TeklifDetay() {
                   fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
                   color: '#3b82f6', padding: '2px 8px',
                   background: 'rgba(59,130,246,0.15)', borderRadius: 4,
-                }}>{bagliGorusme.gorusmeNo}</span>
+                }}>{bagliGorusme.aktNo}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   Kaynak görüşme
                 </span>

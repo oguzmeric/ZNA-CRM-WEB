@@ -261,7 +261,7 @@ export default function SiparisYazdir() {
                       ['Sipariş No', siparis.siparisNo],
                       ['Onay Tarihi', fmtTarihSaat(siparis.onayTarihi || siparis.olusturmaTarih)],
                       ['Onaylayan', siparis.onaylayanAd || '—'],
-                      gorusme?.gorusmeNo ? ['Kaynak Görüşme', gorusme.gorusmeNo] : null,
+                      gorusme?.aktNo ? ['Kaynak Görüşme', gorusme.aktNo] : null,
                       siparis.paraBirimi && siparis.paraBirimi !== 'TL' ? ['Para Birimi', siparis.paraBirimi] : null,
                     ].filter(Boolean).map(([k, v]) => (
                       <tr key={k}>

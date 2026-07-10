@@ -192,7 +192,7 @@ function Adim1MusteriSec({ musteriler, kullanicilar, kullanici, onKapat, onDevam
         </div>
 
         <div style={{ padding: 10, borderRadius: 6, background: 'rgba(59,130,246,0.08)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          "Devam" tuşuyla görüşme kaydı oluşturulacak (GRS-2026-...), sonra ön sipariş formu açılacak.
+          "Devam" tuşuyla görüşme kaydı oluşturulacak, sonra ön sipariş formu açılacak.
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

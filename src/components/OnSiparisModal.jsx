@@ -188,7 +188,7 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
               {mevcutOnSiparis ? 'Ön Siparişi Düzenle' : 'Ön Sipariş Oluştur'}
             </h2>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {gorusme?.gorusmeNo && <span style={{ fontFamily: 'monospace', color: 'var(--brand)' }}>{gorusme.gorusmeNo}</span>}
+              {gorusme?.aktNo && <span style={{ fontFamily: 'monospace', color: 'var(--brand)' }}>{gorusme.aktNo}</span>}
               <span>{gorusme?.firmaAdi}</span>
               {gorusme?.muhatapAd && <span>· {gorusme.muhatapAd}</span>}
             </div>

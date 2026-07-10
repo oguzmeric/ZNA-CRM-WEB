@@ -237,12 +237,12 @@ export default function Siparisler() {
                     </span>
                     {(() => {
                       const g = gorusmeMap.get(s.gorusmeId)
-                      return g?.gorusmeNo ? (
+                      return g?.aktNo ? (
                         <span style={{
                           fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
                           color: '#3b82f6', padding: '2px 6px',
                           background: 'rgba(59,130,246,0.10)', borderRadius: 4,
-                        }}>{g.gorusmeNo}</span>
+                        }}>{g.aktNo}</span>
                       ) : null
                     })()}
                   </div>

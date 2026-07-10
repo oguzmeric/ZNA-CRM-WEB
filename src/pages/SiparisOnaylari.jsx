@@ -223,13 +223,13 @@ export default function SiparisOnaylari() {
                       <Badge tone={badgeTone} style={{ fontSize: 10 }}>{badgeLabel}</Badge>
                       {(() => {
                         const g = gorusmeMap.get(t.gorusmeId)
-                        return g?.gorusmeNo ? (
+                        return g?.aktNo ? (
                           <span style={{
                             fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
                             color: '#3b82f6', padding: '2px 6px',
                             background: 'rgba(59,130,246,0.10)', borderRadius: 4,
                           }} title="Kaynak görüşme">
-                            {g.gorusmeNo}
+                            {g.aktNo}
                           </span>
                         ) : null
                       })()}
@@ -420,13 +420,13 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi, gorusme }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-            {gorusme?.gorusmeNo && (
+            {gorusme?.aktNo && (
               <span style={{
                 fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
                 color: '#3b82f6', padding: '3px 8px',
                 background: 'rgba(59,130,246,0.10)', borderRadius: 6,
               }} title="Kaynak görüşme">
-                {gorusme.gorusmeNo}
+                {gorusme.aktNo}
               </span>
             )}
             <Badge tone="brand" style={{ fontSize: 10 }}>TEKLİF</Badge>
@@ -827,13 +827,13 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        {gorusme?.gorusmeNo && (
+        {gorusme?.aktNo && (
           <span style={{
             fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
             color: '#3b82f6', padding: '3px 8px',
             background: 'rgba(59,130,246,0.10)', borderRadius: 6,
           }} title="Kaynak görüşme">
-            {gorusme.gorusmeNo}
+            {gorusme.aktNo}
           </span>
         )}
         <Badge tone="success" style={{ fontSize: 10 }}>ÖN SİPARİŞ</Badge>
