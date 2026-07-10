@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer } from 'lucide-react'
-import { Card, CardTitle, Button, Badge, EmptyState } from '../components/ui'
+import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle } from 'lucide-react'
+import { Card, CardTitle, Button, Badge, EmptyState, Textarea } from '../components/ui'
 import {
-  siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam,
+  siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam, siparisIptalEt,
 } from '../services/siparisService'
 import { musteriGetir } from '../services/musteriService'
 import { gorusmeGetir } from '../services/gorusmeService'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 const fmtPara = (n, pb = 'TL') => {
   const num = Number(n || 0)
@@ -36,11 +38,16 @@ const fmtSadeceTarih = (iso) => {
 export default function SiparisDetay() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { kullanici } = useAuth()
+  const { toast } = useToast()
   const [siparis, setSiparis] = useState(null)
   const [kalemler, setKalemler] = useState([])
   const [musteri, setMusteri] = useState(null)
   const [gorusme, setGorusme] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [iptalModalAcik, setIptalModalAcik] = useState(false)
+  const [iptalSebebi, setIptalSebebi] = useState('')
+  const [iptalIsleniyor, setIptalIsleniyor] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -79,12 +86,41 @@ export default function SiparisDetay() {
   const durumObj = SIPARIS_DURUMLARI.find(d => d.id === siparis.durum)
   const isTeklif = siparis.kaynakTipi === 'teklif'
 
+  const iptalOnayla = async () => {
+    setIptalIsleniyor(true)
+    try {
+      await siparisIptalEt(siparis.id, {
+        iptalSebebi: iptalSebebi.trim() || null,
+        kullaniciAd: kullanici?.ad || null,
+      })
+      toast.success('Sipariş iptal edildi. Kaynak ' + (isTeklif ? 'teklif' : 'ön sipariş') + ' yeniden onaya açıldı.')
+      setIptalModalAcik(false)
+      // Detayı tazele
+      const g = await siparisGetir(siparis.id)
+      if (g) setSiparis(g)
+    } catch (e) {
+      toast.error('İptal edilemedi: ' + (e?.message || 'hata'))
+    } finally {
+      setIptalIsleniyor(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       {/* Üst bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/siparisler')}>Geri</Button>
         <Button variant="secondary" iconLeft={<Printer size={14} />} onClick={() => window.open(`/siparisler/${siparis.id}/yazdir`, '_blank')}>PDF / Yazdır</Button>
+        {siparis.durum === 'aktif' && (
+          <Button
+            variant="danger"
+            iconLeft={<XCircle size={14} />}
+            onClick={() => { setIptalSebebi(''); setIptalModalAcik(true) }}
+            title="Siparişi iptal et — kaynak teklif/ön sipariş yeniden onaylanabilir"
+          >
+            İptal Et
+          </Button>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'monospace' }}>{siparis.siparisNo}</h1>
@@ -250,6 +286,57 @@ export default function SiparisDetay() {
           )}
         </div>
       </div>
+
+      {/* İptal Modal */}
+      {iptalModalAcik && (
+        <div
+          onClick={() => !iptalIsleniyor && setIptalModalAcik(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface-card)', borderRadius: 12,
+              padding: 20, width: '100%', maxWidth: 480,
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <AlertTriangle size={22} color="#ef4444" />
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Siparişi İptal Et</h3>
+            </div>
+            <div style={{
+              padding: 12, background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8,
+              fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5,
+            }}>
+              <strong style={{ color: '#dc2626' }}>{siparis.siparisNo}</strong> iptal edilecek.<br/>
+              Kaynak <strong>{isTeklif ? 'teklif' : 'ön sipariş'}</strong> yeniden onaya açılacak — hatalar düzeltilip tekrar onaylanabilir.
+            </div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+              İptal sebebi (opsiyonel)
+            </label>
+            <Textarea
+              value={iptalSebebi}
+              onChange={e => setIptalSebebi(e.target.value)}
+              rows={3}
+              placeholder="Örn: Fiyat hatası, yanlış müşteri, revize teklif geldi…"
+              disabled={iptalIsleniyor}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+              <Button variant="ghost" onClick={() => setIptalModalAcik(false)} disabled={iptalIsleniyor}>Vazgeç</Button>
+              <Button variant="danger" onClick={iptalOnayla} disabled={iptalIsleniyor}>
+                {iptalIsleniyor ? 'İptal ediliyor…' : 'Evet, İptal Et'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

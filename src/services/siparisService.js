@@ -93,6 +93,55 @@ export const siparisSil = async (id) => {
   return true
 }
 
+/**
+ * Siparişi iptal et — durum='iptal' + kaynağa geri döner.
+ * - kaynak='on_siparis' → on_sipariş 'onay_bekliyor'a döner (yeniden onaylanabilir)
+ * - kaynak='teklif'     → teklif 'musteri_onayladi' state'e döner (spek_durum + eski onay_durumu)
+ * Bu sayede yanlış onaylanan sipariş düzeltilip yeniden onaylanabilir.
+ */
+export const siparisIptalEt = async (id, { iptalSebebi, kullaniciAd } = {}) => {
+  // Siparişi çek
+  const { data: siparis, error: eGet } = await supabase
+    .from('siparisler')
+    .select('id, kaynak_tipi, teklif_id, on_siparis_id, durum')
+    .eq('id', id)
+    .single()
+  if (eGet || !siparis) throw eGet || new Error('Sipariş bulunamadı')
+  if (siparis.durum === 'iptal') throw new Error('Sipariş zaten iptal.')
+
+  // Siparişi iptal et
+  const { error: eU } = await supabase
+    .from('siparisler')
+    .update({
+      durum: 'iptal',
+      iptal_sebebi: iptalSebebi || null,
+      iptal_eden_ad: kullaniciAd || null,
+      iptal_tarih: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (eU) throw eU
+
+  // Kaynak on_siparişi bekliyor'a döndür
+  if (siparis.kaynak_tipi === 'on_siparis' && siparis.on_siparis_id) {
+    await supabase
+      .from('on_siparisler')
+      .update({ durum: 'onay_bekliyor' })
+      .eq('id', siparis.on_siparis_id)
+  }
+
+  // Kaynak teklifi 'musteri_onayladi' state'e döndür
+  // (yönetici tekrar onayladığında yeniden siparişe geçebilir)
+  if (siparis.kaynak_tipi === 'teklif' && siparis.teklif_id) {
+    await supabase
+      .from('teklifler')
+      .update({ spek_durum: 'musteri_onayladi', onay_durumu: 'kabul' })
+      .eq('id', siparis.teklif_id)
+  }
+
+  invalidate('siparisler:list', `siparis:${id}`)
+  return true
+}
+
 // ==================== KALEMLER ====================
 export const kalemleriGetir = (siparisId) => cached(`siparis-kalem:${siparisId}`, async () => {
   const { data, error } = await supabase
