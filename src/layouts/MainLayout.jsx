@@ -611,11 +611,11 @@ function MainLayout({ children }) {
                   title={entry.kapali ? 'Grubu aç' : 'Grubu kapat'}
                 >
                   <span style={{
-                    font: '600 10px/14px var(--font-sans)',
+                    font: '700 12px/16px var(--font-sans)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.1em',
                     borderBottom: '1px solid rgba(255,255,255,0.12)',
-                    paddingBottom: 4,
+                    paddingBottom: 5,
                     flex: 1,
                   }}>
                     {entry.baslik}
