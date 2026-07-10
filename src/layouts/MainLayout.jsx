@@ -249,6 +249,21 @@ function MainLayout({ children }) {
   const [musteriAcik, setMusteriAcik] = useState(
     location.pathname.startsWith('/musteri') || location.pathname.startsWith('/firma')
   )
+
+  // Grup kapalı/açık state — localStorage'da kalıcı. Varsayılan: hepsi açık.
+  const [grupKapali, setGrupKapali] = useState(() => {
+    try {
+      const raw = localStorage.getItem('sidebarGrupKapali')
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  })
+  const grupToggle = (id) => {
+    setGrupKapali(prev => {
+      const yeni = { ...prev, [id]: !prev[id] }
+      try { localStorage.setItem('sidebarGrupKapali', JSON.stringify(yeni)) } catch {}
+      return yeni
+    })
+  }
   const [stokAcik, setStokAcik] = useState(location.pathname.startsWith('/stok'))
   const [teklifAcik, setTeklifAcik] = useState(
     location.pathname.startsWith('/teklif') || location.pathname.startsWith('/satis')
@@ -437,8 +452,9 @@ function MainLayout({ children }) {
     })).filter(g => g.items.length > 0)
     const result = []
     gruplu.forEach(g => {
-      result.push({ type: 'header', id: `__hdr_${g.grup.id}`, baslik: g.grup.baslik })
-      g.items.forEach(item => result.push({ type: 'item', id: item.id, data: item }))
+      const kapali = !!grupKapali[g.grup.id]
+      result.push({ type: 'header', id: `__hdr_${g.grup.id}`, grupId: g.grup.id, baslik: g.grup.baslik, kapali })
+      if (!kapali) g.items.forEach(item => result.push({ type: 'item', id: item.id, data: item }))
     })
     return result
   })()
@@ -579,21 +595,43 @@ function MainLayout({ children }) {
           {menuEntries.map((entry, entryIdx) => {
             if (entry.type === 'header') {
               return (
-                <div key={entry.id} style={{
-                  padding: entryIdx === 0 ? '2px 12px 6px' : '14px 12px 6px',
-                }}>
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => grupToggle(entry.grupId)}
+                  aria-expanded={!entry.kapali}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 8, width: '100%',
+                    padding: entryIdx === 0 ? '2px 12px 6px' : '14px 12px 6px',
+                    background: 'transparent', border: 'none',
+                    color: 'var(--text-on-dark-muted)',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                  title={entry.kapali ? 'Grubu aç' : 'Grubu kapat'}
+                >
                   <span style={{
                     font: '600 10px/14px var(--font-sans)',
-                    color: 'var(--text-on-dark-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.1em',
                     borderBottom: '1px solid rgba(255,255,255,0.12)',
                     paddingBottom: 4,
-                    display: 'inline-block',
+                    flex: 1,
                   }}>
                     {entry.baslik}
                   </span>
-                </div>
+                  <ChevronRight
+                    size={12}
+                    strokeWidth={2}
+                    style={{
+                      color: 'var(--text-on-dark-muted)',
+                      opacity: 0.7,
+                      transform: entry.kapali ? 'rotate(0deg)' : 'rotate(90deg)',
+                      transition: 'transform 160ms ease',
+                      flexShrink: 0,
+                    }}
+                  />
+                </button>
               )
             }
             const item = entry.data
