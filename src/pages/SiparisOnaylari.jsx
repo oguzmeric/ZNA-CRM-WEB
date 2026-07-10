@@ -23,6 +23,7 @@ import { siparisleriGetir } from '../services/siparisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 import YeniOnSiparisWizard from '../components/YeniOnSiparisWizard'
+import OnSiparisModal from '../components/OnSiparisModal'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
@@ -722,6 +723,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
   const [redNedeni, setRedNedeni] = useState('')
   const [redModalAcik, setRedModalAcik] = useState(false)
   const [silModalAcik, setSilModalAcik] = useState(false)
+  const [duzenleModalAcik, setDuzenleModalAcik] = useState(false)
   const [onayGerekcesi, setOnayGerekcesi] = useState('')
   const [calisiyor, setCalisiyor] = useState(false)
   const [hata, setHata] = useState(null)
@@ -1161,12 +1163,22 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button variant="ghost" onClick={() => setSilModalAcik(true)} disabled={calisiyor} style={{ color: '#DC2626' }}>Sil</Button>
+            <Button variant="ghost" onClick={() => setDuzenleModalAcik(true)} disabled={calisiyor}>Düzenle</Button>
             <Button variant="ghost" onClick={() => setRedModalAcik(true)} disabled={calisiyor} style={{ color: '#DC2626' }}>Reddet</Button>
             <Button variant="primary" onClick={onayla} disabled={calisiyor}>
               {calisiyor ? 'İşleniyor…' : 'Onayla ve Sipariş Oluştur'}
             </Button>
           </div>
         </>
+      )}
+
+      {duzenleModalAcik && (
+        <OnSiparisModal
+          gorusme={gorusme || { firmaAdi: os.firmaAdi }}
+          mevcutOnSiparis={os}
+          onKapat={() => setDuzenleModalAcik(false)}
+          onKaydedildi={() => { setDuzenleModalAcik(false); onTamamlandi() }}
+        />
       )}
 
       {redModalAcik && (
