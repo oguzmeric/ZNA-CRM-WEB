@@ -368,9 +368,25 @@ function Gorusmeler() {
     setYeniDosyalar([]); setMevcutDosyalar([])
   }
 
-  const gorusenler = [...new Set(gorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+  // Kullanıcı kısıtı: Burak Kurtcebe sadece kendisinin "görüşen" olarak yer aldığı
+  // görüşmeleri görür. gorusen virgülle ayrılmış çoklu isim tutabildiği için split-check.
+  const kullaniciAdiKucuk = (kullanici?.ad || '').toLocaleLowerCase('tr')
+  const sadeceKendisi = /burak.*kurtcebe/i.test(kullaniciAdiKucuk)
+  const gorusendeGecerMi = (gorusen) => {
+    if (!sadeceKendisi) return true
+    if (!gorusen) return false
+    return gorusen
+      .split(',')
+      .map(s => s.trim().toLocaleLowerCase('tr'))
+      .some(ad => ad === kullaniciAdiKucuk)
+  }
+  const bazGorusmeler = sadeceKendisi
+    ? gorusmeler.filter(g => gorusendeGecerMi(g.gorusen))
+    : gorusmeler
 
-  const gorunenGorusmeler = [...gorusmeler]
+  const gorusenler = [...new Set(bazGorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+
+  const gorunenGorusmeler = [...bazGorusmeler]
     .filter(g => filtre === 'hepsi' || g.durum === filtre)
     .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
@@ -390,10 +406,10 @@ function Gorusmeler() {
   useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu])
 
   const sayilari = {
-    hepsi: gorusmeler.length,
-    acik: gorusmeler.filter(g => g.durum === 'acik').length,
-    beklemede: gorusmeler.filter(g => g.durum === 'beklemede').length,
-    kapali: gorusmeler.filter(g => g.durum === 'kapali').length,
+    hepsi: bazGorusmeler.length,
+    acik: bazGorusmeler.filter(g => g.durum === 'acik').length,
+    beklemede: bazGorusmeler.filter(g => g.durum === 'beklemede').length,
+    kapali: bazGorusmeler.filter(g => g.durum === 'kapali').length,
   }
 
   if (yukleniyor) {
@@ -408,7 +424,7 @@ function Gorusmeler() {
         <div>
           <h1 className="t-h1">Görüşmeler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{gorusmeler.length}</span> aktivite
+            <span className="tabular-nums">{bazGorusmeler.length}</span> aktivite
           </p>
         </div>
         <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={formAc}>
