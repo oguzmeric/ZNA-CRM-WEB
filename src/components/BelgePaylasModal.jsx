@@ -47,6 +47,7 @@ export default function BelgePaylasModal({
   baslangicGsm   = '',
   baslangicSablon = 'standart',   // teklifin kayitli sablonu — default secim
   belgeBaslik    = '',
+  onGonderildi,     // başarılı paylaşım sonrası callback — teklif durumu güncelleme için
 }) {
   const [kanal, setKanal] = useState('mail')
   const [email, setEmail] = useState('')
@@ -103,6 +104,7 @@ export default function BelgePaylasModal({
         ozel_mesaj: ozelMesaj.trim() || undefined,
       })
       setSonuc(res)
+      try { onGonderildi?.(res) } catch (cbErr) { console.warn('[BelgePaylasModal] onGonderildi callback hata:', cbErr) }
     } catch (e) {
       setHata(e.message)
     } finally {

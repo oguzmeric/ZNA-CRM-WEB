@@ -676,15 +676,32 @@ function TeklifDetay() {
               PDF
             </Button>
           )}
-          {!yeni && (
-            <Button
-              variant="primary"
-              iconLeft={<Send size={14} strokeWidth={1.5} />}
-              onClick={() => setPaylasimModalAcik(true)}
-            >
-              Müşteriye Gönder
-            </Button>
-          )}
+          {!yeni && (() => {
+            // Spec: "Yönetici tarafından onaylanmayan teklif müşteriye gönderilemez"
+            // Yön.Onayladı, Müşteriye Gönderildi, Müşteri Onayı Bekliyor, Müşteri Onayladı,
+            // Müşteri Reddetti veya Siparişe Aktarıldı durumlarında gönderime izin ver.
+            const gonderimeUygun = [
+              'yon_onayladi', 'musteriye_gonderildi', 'musteri_onay_bekliyor',
+              'musteri_onayladi', 'musteri_reddetti', 'siparise_aktarildi',
+            ].includes(spekDurumKey)
+            return (
+              <Button
+                variant="primary"
+                iconLeft={<Send size={14} strokeWidth={1.5} />}
+                onClick={() => {
+                  if (!gonderimeUygun) {
+                    toast.error('Yönetici onayı olmayan teklif müşteriye gönderilemez.')
+                    return
+                  }
+                  setPaylasimModalAcik(true)
+                }}
+                title={gonderimeUygun ? 'Müşteriye e-posta / WhatsApp / SMS ile gönder' : 'Önce yönetici onayı gerekli'}
+                style={!gonderimeUygun ? { opacity: 0.6 } : undefined}
+              >
+                Müşteriye Gönder
+              </Button>
+            )
+          })()}
           {!yeni && ilgiliFatura && (
             <Button
               variant="secondary"
@@ -1538,6 +1555,21 @@ function TeklifDetay() {
             baslangicGsm={seciliMusteri?.telefon || ''}
             baslangicSablon={form.teklifTipi || 'standart'}
             belgeBaslik={`${form.teklifNo || '#' + id} — ${form.firmaAdi || ''}`}
+            onGonderildi={async () => {
+              // Spec: gönderim sonrası "Müşteriye Gönderildi" durumuna geçer.
+              // Durum ilerde ise (müşteri onayladı / reddetti / siparişe aktarıldı)
+              // üzerine yazmayalım — yeniden gönderim durumu bozmasın.
+              const ileriDurumlar = ['musteri_onayladi', 'musteri_reddetti', 'siparise_aktarildi', 'musteri_onay_bekliyor']
+              if (ileriDurumlar.includes(spekDurumKey)) return
+              try {
+                const alanlar = durumdanDbAlanlar('musteriye_gonderildi')
+                await teklifGuncelle(id, alanlar)
+                setForm(f => ({ ...f, ...alanlar }))
+                setMevcutTeklif(t => t ? { ...t, ...alanlar } : t)
+              } catch (e) {
+                console.warn('[TeklifDetay] gönderim sonrası durum güncellenemedi:', e?.message)
+              }
+            }}
           />
         )
       })()}
