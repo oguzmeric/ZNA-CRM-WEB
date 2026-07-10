@@ -16,6 +16,7 @@ import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle,
 } from '../services/teklifService'
 import { supabase } from '../lib/supabase'
+import { tekliftenDurum, TEKLIF_DURUM_META } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
@@ -495,7 +496,12 @@ function TeklifDetay() {
     navigate('/satislar/yeni')
   }
 
-  const aktifDurum = onayDurumlari.find(d => d.id === form.onayDurumu)
+  // Spec sistem durumu (10 durum) — mevcut onayDurumu + teklif_onayi jsonb'den map edilir
+  const spekDurumKey = tekliftenDurum({
+    onayDurumu: form.onayDurumu,
+    teklifOnayi: mevcutTeklif?.teklifOnayi,
+  })
+  const spekDurumMeta = TEKLIF_DURUM_META[spekDurumKey]
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
@@ -531,7 +537,22 @@ function TeklifDetay() {
             <h1 className="t-h1">{yeni ? 'Yeni teklif' : form.teklifNo}</h1>
             {!yeni && <CodeBadge>{form.teklifNo}</CodeBadge>}
             {form.revizyon > 0 && <Badge tone="beklemede">Rev. {form.revizyon}</Badge>}
-            {aktifDurum && <Badge tone={aktifDurum.tone}>{aktifDurum.isim}</Badge>}
+            {/* Spec 10 durum sistemi — geriye uyum mapper ile eski değerler de spec'e çevrilir */}
+            {!yeni && spekDurumMeta && (
+              <span
+                title={`Durum: ${spekDurumMeta.isim}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 10px', borderRadius: 6,
+                  fontSize: 12, fontWeight: 700,
+                  color: spekDurumMeta.renk,
+                  background: `${spekDurumMeta.renk}18`,
+                  border: `1px solid ${spekDurumMeta.renk}55`,
+                }}
+              >
+                {spekDurumMeta.isim}
+              </span>
+            )}
           </div>
           {/* Bağlı Görüşme bilgi kartı — spec: "Teklif detayında hangi görüşmeden oluşturulduğu açık şekilde görünür" */}
           {(() => {
