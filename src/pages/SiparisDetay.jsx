@@ -171,7 +171,7 @@ export default function SiparisDetay() {
                     <th style={{ textAlign: 'left', padding: 8, fontWeight: 500 }}>Ürün</th>
                     <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 70 }}>Miktar</th>
                     <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 100 }}>Birim ₺</th>
-                    <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 60 }}>İsk %</th>
+                    <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 70 }}>Kar %</th>
                     <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 60 }}>KDV %</th>
                     <th style={{ textAlign: 'right', padding: 8, fontWeight: 500, width: 110 }}>Ara Toplam</th>
                   </tr>
@@ -179,6 +179,12 @@ export default function SiparisDetay() {
                 <tbody>
                   {kalemler.map(k => {
                     const at = kalemAraToplam(k)
+                    const f = Number(k.birimFiyat || 0)
+                    const a = Number(k.alisFiyat || 0)
+                    const karYuzde = (a > 0 && f > 0) ? ((f - a) / a) * 100 : null
+                    const karRenk = karYuzde == null
+                      ? 'var(--text-tertiary)'
+                      : karYuzde < 0 ? '#dc2626' : karYuzde < 15 ? '#f59e0b' : '#10b981'
                     return (
                       <tr key={k.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td style={{ padding: 8 }}>
@@ -196,7 +202,9 @@ export default function SiparisDetay() {
                         </td>
                         <td style={{ padding: 8, textAlign: 'right' }}>{Number(k.miktar || 0)} {k.birim}</td>
                         <td style={{ padding: 8, textAlign: 'right' }}>{fmtPara(k.birimFiyat, siparis.paraBirimi)}</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{Number(k.iskontoOrani || 0)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', fontWeight: 700, color: karRenk }}>
+                          {karYuzde == null ? '—' : `${karYuzde >= 0 ? '+' : ''}${karYuzde.toFixed(1).replace('.', ',')}%`}
+                        </td>
                         <td style={{ padding: 8, textAlign: 'right' }}>{Number(k.kdvOrani || 0)}</td>
                         <td style={{ padding: 8, textAlign: 'right', fontWeight: 600 }}>{fmtPara(at, siparis.paraBirimi)}</td>
                       </tr>
@@ -214,12 +222,6 @@ export default function SiparisDetay() {
                 <span style={{ color: 'var(--text-tertiary)' }}>Ara Toplam</span>
                 <span>{fmtPara(toplam.araToplam, siparis.paraBirimi)}</span>
               </div>
-              {Number(siparis.genelIskonto) > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Genel İskonto</span>
-                  <span>−{fmtPara(siparis.genelIskonto, siparis.paraBirimi)}</span>
-                </div>
-              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                 <span style={{ color: 'var(--text-tertiary)' }}>KDV Toplamı</span>
                 <span>{fmtPara(toplam.kdvToplam, siparis.paraBirimi)}</span>
