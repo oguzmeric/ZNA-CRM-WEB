@@ -24,6 +24,22 @@ const hareketTurleri = [
   { id: 'cikis',           isim: 'Müşteri Çıkışı',     tone: 'kayip',     gc: 'C' },
 ]
 
+// Görüntüleme türü — hareket_tipi tek başına yetmiyor: SN silme/kayıp
+// hareketleri de 'cikis' tipiyle yazılır ama "Müşteri Çıkışı" DEĞİLDİR.
+// Depo v3 türleri (ariza/rma_*) da burada isimlendirilir.
+const turBul = (h) => {
+  if (!h) return null
+  if (h.hareketTipi === 'cikis' && /SN silindi|kayıp|kayip/i.test(h.aciklama || ''))
+    return { id: 'stok_dusum', isim: 'Stok Düşümü', tone: 'pasif', gc: 'C' }
+  if (h.hareketTipi === 'ariza')      return { id: 'ariza',      isim: 'Arıza',             tone: 'beklemede', gc: 'C' }
+  if (h.hareketTipi === 'rma_cikis')  return { id: 'rma_cikis',  isim: 'Servise Gönderim',  tone: 'lead',      gc: 'C' }
+  if (h.hareketTipi === 'rma_giris')  return { id: 'rma_giris',  isim: 'Servisten Dönüş',   tone: 'aktif',     gc: 'G' }
+  return hareketTurleri.find(t => t.id === h.hareketTipi)
+    || { id: h.hareketTipi, isim: h.hareketTipi || '—', tone: 'neutral', gc: 'C' }
+}
+
+const SAYFA_BOYUT = 50
+
 const tarihSaat = (iso) => {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -55,6 +71,12 @@ export default function StokHareketleri() {
   const [goster, setGoster] = useState(false)
   const [filtre, setFiltre] = useState('hepsi')
   const [arama, setArama] = useState('')
+  // Kalabalık liste çözümü: varsayılan son 30 gün + sayfalama
+  const [tarihAralik, setTarihAralik] = useState('30') // 'bugun' | '7' | '30' | 'hepsi'
+  const [sayfa, setSayfa] = useState(1)
+
+  // Filtre değişince ilk sayfaya dön
+  useEffect(() => { setSayfa(1) }, [filtre, arama, tarihAralik])
   const [detayHareket, setDetayHareket] = useState(null)
   const [acikGruplar, setAcikGruplar] = useState(new Set())  // expand olan grup ID'leri
 
@@ -121,7 +143,14 @@ export default function StokHareketleri() {
 
   const iptal = () => { setForm(bosForm); setGoster(false) }
 
+  const tarihEsigi = (() => {
+    if (tarihAralik === 'hepsi') return null
+    if (tarihAralik === 'bugun') { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() }
+    return Date.now() - Number(tarihAralik) * 24 * 60 * 60 * 1000
+  })()
+
   const gorunenHareketler = [...hareketler]
+    .filter(h => !tarihEsigi || new Date(h.olusturmaTarih || h.tarih || 0).getTime() >= tarihEsigi)
     .filter(h => filtre === 'hepsi' || h.hareketTipi === filtre)
     .filter(h => trContains(`${h.stokKodu || ''} ${h.stokAdi || ''} ${h.aciklama || ''}`, arama))
 
@@ -141,6 +170,11 @@ export default function StokHareketleri() {
     return Array.from(gruplar.values())
   }
   const gruplananlar = grupla(gorunenHareketler)
+
+  // Sayfalama — gruplar üzerinden (50 grup/sayfa)
+  const toplamSayfa = Math.max(1, Math.ceil(gruplananlar.length / SAYFA_BOYUT))
+  const guvenliSayfa = Math.min(sayfa, toplamSayfa)
+  const sayfaliGruplar = gruplananlar.slice((guvenliSayfa - 1) * SAYFA_BOYUT, guvenliSayfa * SAYFA_BOYUT)
 
   // Filtrelenmiş hareketleri Excel'e aktar (gruplama olmadan, ham satırlar)
   const excelIndir = () => {
@@ -163,7 +197,7 @@ export default function StokHareketleri() {
   }
 
   const h = detayHareket
-  const modalTur = h ? hareketTurleri.find(t => t.id === h.hareketTipi) : null
+  const modalTur = h ? turBul(h) : null
   const modalUrun = h ? urunler.find(u => u.stokKodu === h.stokKodu) : null
   const modalBakiye = h ? anaBakiye(h.stokKodu) : 0
   const modalKritik = modalUrun?.minStok && modalBakiye <= Number(modalUrun.minStok)
@@ -176,7 +210,10 @@ export default function StokHareketleri() {
         <div>
           <h1 className="t-h1">Stok Hareketleri</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{hareketler.length}</span> hareket
+            <span className="tabular-nums">{gorunenHareketler.length}</span> hareket gösteriliyor
+            {tarihAralik !== 'hepsi' && (
+              <span> (toplam <span className="tabular-nums">{hareketler.length}</span> — {tarihAralik === 'bugun' ? 'bugün' : `son ${tarihAralik} gün`} filtresi aktif)</span>
+            )}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -208,6 +245,16 @@ export default function StokHareketleri() {
           ]}
           value={filtre}
           onChange={setFiltre}
+        />
+        <SegmentedControl
+          options={[
+            { value: 'bugun', label: 'Bugün' },
+            { value: '7', label: '7 Gün' },
+            { value: '30', label: '30 Gün' },
+            { value: 'hepsi', label: 'Tüm Zamanlar' },
+          ]}
+          value={tarihAralik}
+          onChange={setTarihAralik}
         />
       </div>
 
@@ -329,9 +376,9 @@ export default function StokHareketleri() {
                 </tr>
               </thead>
               <tbody>
-                {gruplananlar.map(grup => {
+                {sayfaliGruplar.map(grup => {
                   const ilkHareket = grup.hareketler[0]
-                  const tur = hareketTurleri.find(t => t.id === ilkHareket.hareketTipi)
+                  const tur = turBul(ilkHareket)
                   const urun = urunler.find(u => u.stokKodu === ilkHareket.stokKodu)
                   const giris = tur?.gc === 'G'
                   const cokluMu = grup.hareketler.length > 1
@@ -420,6 +467,34 @@ export default function StokHareketleri() {
                 })}
               </tbody>
             </table>
+            {/* Sayfalama — 50 grup/sayfa; filtre değişince başa döner */}
+            {toplamSayfa > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 14px', borderTop: '1px solid var(--border-default)',
+                flexWrap: 'wrap', gap: 8,
+              }}>
+                <span className="t-caption">
+                  {gruplananlar.length} kayıt · Sayfa {guvenliSayfa}/{toplamSayfa}
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <Button
+                    variant="secondary" size="sm"
+                    disabled={guvenliSayfa <= 1}
+                    onClick={() => setSayfa(s => Math.max(1, s - 1))}
+                  >
+                    ← Önceki
+                  </Button>
+                  <Button
+                    variant="secondary" size="sm"
+                    disabled={guvenliSayfa >= toplamSayfa}
+                    onClick={() => setSayfa(s => Math.min(toplamSayfa, s + 1))}
+                  >
+                    Sonraki →
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Card>
