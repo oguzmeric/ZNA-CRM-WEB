@@ -67,8 +67,33 @@ export default function SiparisOnaylari() {
   const [secili, setSecili] = useState(null)
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
   const [wizardAcik, setWizardAcik] = useState(false)
+  // Teklifler sekmesi: firma/teklif no arama + tarih sıralama
+  const [teklifAra, setTeklifAra] = useState('')
+  const [teklifSirala, setTeklifSirala] = useState('yeni') // 'yeni' | 'eski'
 
   const yetkili = kullanici?.siparisOnayYetkilisi === true || kullanici?.siparis_onay_yetkilisi === true
+
+  // Teklifler sekmesinde görünen liste: arama filtresi + tarih sıralaması.
+  // "Onaya hazır" grubu her zaman üstte kalır (aksiyon bekleyenler kaybolmasın),
+  // grup içi sıralama seçime göre en yeni/en eski.
+  const gorunenListe = useMemo(() => {
+    if (sekme !== 'teklifler') return liste
+    const q = teklifAra.trim().toLocaleLowerCase('tr')
+    let l = liste
+    if (q) {
+      l = l.filter(t =>
+        (t.firmaAdi || '').toLocaleLowerCase('tr').includes(q) ||
+        (t.teklifNo || '').toLocaleLowerCase('tr').includes(q) ||
+        (t.konu || '').toLocaleLowerCase('tr').includes(q)
+      )
+    }
+    const yon = teklifSirala === 'yeni' ? -1 : 1
+    const ts = (t) => new Date(t.tarih || t.olusturmaTarih || 0).getTime()
+    return [...l].sort((a, b) => {
+      if (a._grup !== b._grup) return a._grup === 'hazir' ? -1 : 1
+      return (ts(a) - ts(b)) * yon
+    })
+  }, [liste, sekme, teklifAra, teklifSirala])
 
   // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping.
   // yetkili state async değişebiliyor (kullanici auth sonrası oturur); dep array'e
@@ -193,16 +218,62 @@ export default function SiparisOnaylari() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) 1fr', gap: 16 }}>
         {/* Liste */}
         <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Teklifler sekmesi: arama + sıralama araç çubuğu */}
+          {sekme === 'teklifler' && (
+            <div style={{
+              display: 'flex', gap: 8, alignItems: 'center',
+              padding: '10px 12px', borderBottom: '1px solid var(--border-default)',
+              background: 'var(--surface-subtle, #F4F6F8)',
+            }}>
+              <input
+                type="text"
+                value={teklifAra}
+                onChange={e => setTeklifAra(e.target.value)}
+                placeholder="Firma, teklif no veya konu ara…"
+                style={{
+                  flex: 1, minWidth: 0,
+                  padding: '7px 10px',
+                  font: '400 12px/16px var(--font-sans)',
+                  background: 'var(--surface-card, #fff)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 6, outline: 'none',
+                  color: 'var(--text-primary)',
+                }}
+              />
+              <button
+                onClick={() => setTeklifSirala(s => s === 'yeni' ? 'eski' : 'yeni')}
+                title="Tarih sıralamasını değiştir"
+                style={{
+                  flexShrink: 0, padding: '7px 10px',
+                  font: '600 11px/16px var(--font-sans)',
+                  background: 'var(--surface-card, #fff)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 6, cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {teklifSirala === 'yeni' ? '↓ En yeni önce' : '↑ En eski önce'}
+              </button>
+            </div>
+          )}
           {yukleniyor ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
-          ) : liste.length === 0 ? (
+          ) : gorunenListe.length === 0 ? (
             <EmptyState
-              title={sekme === 'bekleyen' ? 'Bekleyen ön sipariş yok' : sekme === 'teklifler' ? 'Sipariş onayı bekleyen teklif yok' : sekme === 'onayli' ? 'Onaylanmış sipariş yok' : 'İptal edilmiş ön sipariş yok'}
+              title={
+                sekme === 'teklifler' && teklifAra.trim()
+                  ? 'Aramayla eşleşen teklif yok'
+                  : sekme === 'bekleyen' ? 'Bekleyen ön sipariş yok'
+                  : sekme === 'teklifler' ? 'Sipariş onayı bekleyen teklif yok'
+                  : sekme === 'onayli' ? 'Onaylanmış sipariş yok'
+                  : 'İptal edilmiş ön sipariş yok'
+              }
               icon={<Clock size={24} />}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {liste.map(t => {
+              {gorunenListe.map(t => {
                 const kaynak = t._kaynak || 'on_siparis'
                 const isSip = kaynak === 'siparis'   // Onaylı → ZNA-SIP kaydı
                 const isTeklif = kaynak === 'teklif'
