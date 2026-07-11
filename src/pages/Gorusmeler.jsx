@@ -28,7 +28,7 @@ import {
 } from '../components/ui'
 
 const varsayilanKonular = [
-  'CCTV', 'NVR-ANALİZ', 'Network', 'Teklif', 'Demo',
+  'CCTV', 'NVR-ANALİZ', 'Network', 'Teklif', 'Keşif', 'Demo',
   'Fuar', 'Access Kontrol', 'Mobiltek', 'Donanım', 'Yazılım', 'Diğer',
 ]
 
