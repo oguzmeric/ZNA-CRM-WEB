@@ -558,6 +558,13 @@ function TeklifDetay() {
           // Kayıt başarılı — otomatik taslağı temizle (yoksa bir sonraki yeni
           // teklifte "taslak bulundu" banner'ı yanlış çıkar)
           localStorage.removeItem('teklif_taslak_yeni')
+          // Keşiften geldiyse keşfe geri bağla (KesifDetay "Teklife Aktar" akışı)
+          if (onDoldurum?.kesifId) {
+            supabase.from('kesifler')
+              .update({ teklif_id: yeniTeklif.id })
+              .eq('id', onDoldurum.kesifId)
+              .then(({ error }) => { if (error) console.warn('[TeklifDetay] keşif bağlanamadı:', error.message) })
+          }
           if (hatirlatmaGun > 0) {
             hatirlatmaEkle(yeniTeklif, hatirlatmaGun)
             const etiket = hatirlatmaGun === 3 ? '3 gün' : hatirlatmaGun === 7 ? '1 hafta' : hatirlatmaGun === 14 ? '2 hafta' : `${hatirlatmaGun} gün`

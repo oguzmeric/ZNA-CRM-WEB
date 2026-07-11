@@ -104,6 +104,7 @@ const menuItems = [
     modul: 'musteriler',
     grup: 'satis',
     altMenu: [
+      { id: 'kesif-liste', isim: 'Keşifler', yol: '/kesifler' },
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
@@ -225,6 +226,7 @@ const sayfaIsimleri = {
   '/teklifler': 'Teklifler',
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
+  '/kesifler': 'Keşifler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
   '/raporlar': 'Raporlar',
@@ -289,7 +291,7 @@ function MainLayout({ children }) {
   }
   const [stokAcik, setStokAcik] = useState(location.pathname.startsWith('/stok'))
   const [teklifAcik, setTeklifAcik] = useState(
-    location.pathname.startsWith('/teklif') || location.pathname.startsWith('/satis')
+    location.pathname.startsWith('/teklif') || location.pathname.startsWith('/satis') || location.pathname.startsWith('/kesif')
   )
   const [raporlarAcik, setRaporlarAcik] = useState(
     location.pathname.startsWith('/raporlar') || location.pathname.startsWith('/rapor-')
