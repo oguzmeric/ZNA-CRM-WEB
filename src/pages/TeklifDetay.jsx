@@ -1177,15 +1177,15 @@ function TeklifDetay() {
           <Table style={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: 26 }} />{/* Grip — drag handle */}
-              <col style={{ width: 140 }} />
-              <col />
-              <col style={{ width: 110 }} />{/* Miktar — sayı sığsın (10, 100 vs.) */}
-              <col style={{ width: 100 }} />{/* Birim — "ADET" kesilmesin */}
-              <col style={{ width: 170 }} />{/* Birim fiyat — input + calculator ikonu için genişletildi */}
-              <col style={{ width: 100 }} />{/* İsk.% — sayı sığsın */}
-              <col style={{ width: 100 }} />
-              <col style={{ width: 130 }} />
-              <col style={{ width: 50 }} />{/* Sil */}
+              <col style={{ width: 120 }} />{/* Stok — 'STK01605' yeter */}
+              <col />{/* Ürün adı — auto (kalan alan, en geniş) */}
+              <col style={{ width: 80 }} />{/* Miktar — 3 basamak yeter */}
+              <col style={{ width: 78 }} />{/* Birim — 'Adet' yeter */}
+              <col style={{ width: 150 }} />{/* Birim fiyat — input + calculator ikonu */}
+              <col style={{ width: 72 }} />{/* İsk.% */}
+              <col style={{ width: 76 }} />{/* KDV% */}
+              <col style={{ width: 118 }} />{/* Toplam */}
+              <col style={{ width: 44 }} />{/* Sil */}
             </colgroup>
             <THead>
               <TR>
