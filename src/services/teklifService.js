@@ -61,6 +61,48 @@ export const teklifSil = async (id) => {
   invalidate('teklifler:list', `teklif:${id}`)
 }
 
+// Bir stok kodunun geçmiş tekliflerdeki son birim fiyatları (fiyat geçmişi popover'ı).
+// satirlar jsonb'si camelCase key'lerle saklanır (toSnake shallow — nested objelere
+// dokunmaz) → jsonb containment sorgusu stokKodu key'i ile yapılır.
+export const stokFiyatGecmisi = async (stokKodu, haricTeklifId = null) => {
+  if (!stokKodu) return []
+  const { data, error } = await supabase
+    .from('teklifler')
+    .select('id, teklif_no, firma_adi, tarih, para_birimi, satirlar')
+    .contains('satirlar', JSON.stringify([{ stokKodu }]))
+    .order('tarih', { ascending: false })
+    .limit(10)
+  if (error) { console.warn('stokFiyatGecmisi hata:', error.message); return [] }
+  const sonuc = []
+  for (const t of (data || [])) {
+    if (haricTeklifId && String(t.id) === String(haricTeklifId)) continue
+    const satir = (t.satirlar || []).find(s => s?.stokKodu === stokKodu && Number(s?.birimFiyat) > 0)
+    if (!satir) continue
+    sonuc.push({
+      teklifId: t.id,
+      teklifNo: t.teklif_no,
+      firma: t.firma_adi,
+      tarih: t.tarih,
+      paraBirimi: t.para_birimi || 'TL',
+      birimFiyat: Number(satir.birimFiyat),
+    })
+    if (sonuc.length >= 3) break
+  }
+  return sonuc
+}
+
+// Paylaşım linki açılma istatistiği — "Müşteri açtı mı?" rozeti.
+// SECURITY DEFINER RPC (migration 136): token sızdırmadan sadece istatistik döner.
+export const paylasimDurumOzet = async (belgeTipi, belgeId) => {
+  const { data, error } = await supabase.rpc('paylasim_durum_ozet', {
+    in_belge_tipi: belgeTipi,
+    in_belge_id: Number(belgeId),
+  })
+  if (error) { console.warn('paylasimDurumOzet hata:', error.message); return null }
+  const satir = Array.isArray(data) ? data[0] : data
+  return satir ? toCamel(satir) : null
+}
+
 export const musteriTalepleriniGetir = async () => {
   const { data } = await supabase.from('musteri_teklif_talepleri').select('*').order('tarih', { ascending: false })
   return arrayToCamel(data)

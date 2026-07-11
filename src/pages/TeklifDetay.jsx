@@ -1,10 +1,11 @@
 // build-cache-buster 1782976128315
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
-  GripVertical,
+  GripVertical, Percent, Copy, History, LayoutTemplate, Eye,
 } from 'lucide-react'
 // Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -18,8 +19,9 @@ import { useHatirlatma } from '../context/HatirlatmaContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
-  teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle,
+  teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle, stokFiyatGecmisi, paylasimDurumOzet,
 } from '../services/teklifService'
+import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
 import { supabase } from '../lib/supabase'
 import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
@@ -127,6 +129,19 @@ function TeklifDetay() {
   const [durumModalAcik, setDurumModalAcik] = useState(false)
   // Satış Fiyatı Hesapla modal — satır index + alış/katsayı state
   const [hesaplaModal, setHesaplaModal] = useState(null) // null | { idx, alis, katsayi }
+  // Toplu iskonto modal — tüm satırlara aynı % uygula
+  const [topluIskonto, setTopluIskonto] = useState(null) // null | { deger: string }
+  // Teklif şablonları modal + liste (lazy — modal ilk açılınca çekilir)
+  const [sablonModalAcik, setSablonModalAcik] = useState(false)
+  const [sablonlar, setSablonlar] = useState(null) // null = henüz yüklenmedi
+  const [sablonAd, setSablonAd] = useState('')
+  // "Müşteri açtı mı?" rozeti — paylaşım linki açılma istatistiği
+  const [paylasimDurum, setPaylasimDurum] = useState(null)
+
+  useEffect(() => {
+    if (yeni) return
+    paylasimDurumOzet('teklif', id).then(setPaylasimDurum).catch(() => setPaylasimDurum(null))
+  }, [id, yeni])
   // Drag & drop sensors — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -190,17 +205,17 @@ function TeklifDetay() {
         musteriYetkilisi: onDoldurum?.musteriYetkilisi || '',
         hazirlayan: kullanici?.ad,
         konu: onDoldurum?.konu || '',
-        odemeSecenegi: 'Peşin',
-        paraBirimi: 'TL',
+        odemeSecenegi: onDoldurum?.odemeSecenegi || 'Peşin',
+        paraBirimi: onDoldurum?.paraBirimi || 'TL',
         dovizKuru: '',
         onayDurumu: 'takipte',
         gorusmeId: onDoldurum?.gorusmeId || '',
         aciklama: onDoldurum?.aciklama || '',
         satirlar: onDoldurum?.satirlar || [],
-        genelIskonto: 0,
+        genelIskonto: onDoldurum?.genelIskonto || 0,
         musteriTalepId: onDoldurum?.musteriTalepId || null,
         musteriTalepNo: onDoldurum?.musteriTalepNo || '',
-        teklifTipi: 'standart',
+        teklifTipi: onDoldurum?.teklifTipi || 'standart',
       })
     } else if (mevcutTeklif) {
       setForm({
@@ -253,6 +268,33 @@ function TeklifDetay() {
       setForm((prev) => ({ ...prev, dovizKuru: '' }))
     }
   }, [form?.paraBirimi, kurlar])
+
+  // ── Otomatik taslak (yeni teklif) ──────────────────────────────────
+  // Sekme kazayla kapanırsa girilen veriler kaybolmasın: form 2sn debounce ile
+  // localStorage'a yazılır; mount'ta taslak varsa "Devam Et / Yoksay" banner'ı çıkar.
+  const [taslakBanner, setTaslakBanner] = useState(null) // null | { form, ts }
+
+  useEffect(() => {
+    if (!yeni || onDoldurum) return
+    try {
+      const t = JSON.parse(localStorage.getItem('teklif_taslak_yeni') || 'null')
+      const dolu = t?.form && (t.form.firmaAdi || t.form.konu || (t.form.satirlar || []).length > 0)
+      if (dolu) setTaslakBanner(t)
+    } catch { /* bozuk taslak — yoksay */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!yeni || !form) return
+    // Banner cevaplanmadan otomatik kayıt eski taslağın üzerine yazmasın
+    if (taslakBanner) return
+    const timer = setTimeout(() => {
+      const dolu = form.firmaAdi || form.konu || (form.satirlar || []).length > 0
+      if (!dolu) return
+      try { localStorage.setItem('teklif_taslak_yeni', JSON.stringify({ form, ts: Date.now() })) } catch { /* quota — sessiz geç */ }
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [yeni, form, taslakBanner])
 
   if (!veriYuklendi) {
     return <SkeletonDetay />
@@ -337,6 +379,22 @@ function TeklifDetay() {
     const yeniSatirlar = [...form.satirlar]
     yeniSatirlar[index] = { ...yeniSatirlar[index], [alan]: deger }
     setForm({ ...form, satirlar: yeniSatirlar })
+  }
+
+  // Birden fazla alanı tek seferde güncelle (hesapla modalı: birimFiyat + alisFiyat)
+  const satirGuncelleCoklu = (index, alanlar) => {
+    const yeniSatirlar = [...form.satirlar]
+    yeniSatirlar[index] = { ...yeniSatirlar[index], ...alanlar }
+    setForm({ ...form, satirlar: yeniSatirlar })
+  }
+
+  // Kar% — alış fiyatı girilmişse (hesapla modalından) net satış üzerinden hesapla.
+  // İskonto sonrası birim fiyat baz alınır; alış yoksa null → gösterge çizilmez.
+  const satirKarYuzde = (satir) => {
+    const alis = Number(satir.alisFiyat || 0)
+    if (!(alis > 0)) return null
+    const netSatis = Number(satir.birimFiyat || 0) * (1 - Number(satir.iskonto || 0) / 100)
+    return ((netSatis - alis) / alis) * 100
   }
 
   const satirEkle = () => {
@@ -474,6 +532,9 @@ function TeklifDetay() {
           olusturmaTarih: new Date().toISOString(),
         })
         if (yeniTeklif) {
+          // Kayıt başarılı — otomatik taslağı temizle (yoksa bir sonraki yeni
+          // teklifte "taslak bulundu" banner'ı yanlış çıkar)
+          localStorage.removeItem('teklif_taslak_yeni')
           if (hatirlatmaGun > 0) {
             hatirlatmaEkle(yeniTeklif, hatirlatmaGun)
             const etiket = hatirlatmaGun === 3 ? '3 gün' : hatirlatmaGun === 7 ? '1 hafta' : hatirlatmaGun === 14 ? '2 hafta' : `${hatirlatmaGun} gün`
@@ -498,6 +559,77 @@ function TeklifDetay() {
   }
 
   const revizyon = () => setForm({ ...form, revizyon: form.revizyon + 1 })
+
+  // ── Teklif şablonları ──────────────────────────────────────────────
+  const sablonModaliAc = async () => {
+    setSablonModalAcik(true)
+    if (sablonlar === null) {
+      const d = await sablonlariGetir()
+      setSablonlar(d)
+    }
+  }
+
+  const sablonUygula = (s) => {
+    const eklenecek = (s.satirlar || []).map(x => ({ ...x, id: crypto.randomUUID() }))
+    if (eklenecek.length === 0) { toast.warning('Şablonda satır yok.'); return }
+    setForm(f => ({ ...f, satirlar: [...f.satirlar, ...eklenecek] }))
+    setSablonModalAcik(false)
+    toast.success(`"${s.ad}" şablonu eklendi — ${eklenecek.length} satır.`)
+  }
+
+  const sablonKaydet = async () => {
+    const ad = sablonAd.trim()
+    if (!ad) { toast.warning('Şablon adı girin.'); return }
+    if (!form.satirlar.length) { toast.warning('Şablona kaydedilecek satır yok.'); return }
+    try {
+      const yeniSablon = await sablonEkle({
+        ad,
+        satirlar: form.satirlar,
+        teklifTipi: form.teklifTipi || 'standart',
+        olusturan: kullanici?.ad || '',
+      })
+      setSablonlar(prev => [yeniSablon, ...(prev || [])])
+      setSablonAd('')
+      toast.success(`"${ad}" şablonu kaydedildi.`)
+    } catch (e) {
+      toast.error('Şablon kaydedilemedi: ' + (e?.message || 'bilinmeyen hata'))
+    }
+  }
+
+  const sablonuSil = async (s) => {
+    const onay = await confirm({
+      baslik: 'Şablonu Sil',
+      mesaj: `"${s.ad}" şablonu silinsin mi? Bu işlem geri alınamaz.`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await sablonSil(s.id)
+      setSablonlar(prev => (prev || []).filter(x => x.id !== s.id))
+      toast.success('Şablon silindi.')
+    } catch (e) {
+      toast.error('Şablon silinemedi: ' + (e?.message || 'bilinmeyen hata'))
+    }
+  }
+
+  // Mevcut teklifi kopyalayarak yeni teklif başlat. localStorage ön-doldurum
+  // mekanizması useState initializer'da (sadece MOUNT'ta) okunduğu için aynı
+  // component'te route param değişimi yetmez — full reload ile temiz mount alırız.
+  const teklifKopyala = () => {
+    localStorage.setItem('teklif_on_doldurum', JSON.stringify({
+      musteriId: form.musteriId,
+      firmaAdi: form.firmaAdi,
+      musteriYetkilisi: form.musteriYetkilisi,
+      konu: form.konu,
+      aciklama: form.aciklama,
+      satirlar: (form.satirlar || []).map(s => ({ ...s, id: crypto.randomUUID() })),
+      teklifTipi: form.teklifTipi,
+      paraBirimi: form.paraBirimi,
+      odemeSecenegi: form.odemeSecenegi,
+      genelIskonto: form.genelIskonto,
+    }))
+    window.location.assign('/teklifler/yeni')
+  }
 
   // Durum değiştirme (spec 10 durum) — durumModalAcik state yukarıda Rules of Hooks uyumlu
   const durumuDegistir = async (yeniDurum) => {
@@ -570,6 +702,43 @@ function TeklifDetay() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Tekliflere dön
       </button>
 
+      {/* Kaydedilmemiş taslak banner'ı — yeni teklifte yarım kalan form varsa */}
+      {yeni && taslakBanner && (
+        <Alert variant="info" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div className="t-body-strong">Kaydedilmemiş taslak bulundu</div>
+              <div className="t-caption" style={{ marginTop: 2 }}>
+                {taslakBanner.form?.firmaAdi ? `${taslakBanner.form.firmaAdi} — ` : ''}
+                {(taslakBanner.form?.satirlar || []).length} satır
+                {taslakBanner.ts ? ` · ${new Date(taslakBanner.ts).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  localStorage.removeItem('teklif_taslak_yeni')
+                  setTaslakBanner(null)
+                }}
+              >
+                Yoksay
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setForm(f => ({ ...f, ...taslakBanner.form }))
+                  setTaslakBanner(null)
+                  toast.success('Taslak geri yüklendi.')
+                }}
+              >
+                Devam Et
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}
+
       {/* Müşteri talep bildirimi */}
       {form.musteriTalepNo && (
         <Alert variant="info" style={{ marginBottom: 16 }}>
@@ -607,6 +776,38 @@ function TeklifDetay() {
                 <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
               </button>
             )}
+            {/* Müşteri açtı rozeti — paylaşım linki açılma istatistiği */}
+            {!yeni && paylasimDurum && (() => {
+              const acildi = !!paylasimDurum.ilkAcilma
+              const renk = acildi ? '#059669' : '#94A3B8'
+              const zamanOnce = (t) => {
+                if (!t) return ''
+                const dk = Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 60000))
+                if (dk < 60) return `${dk} dk önce`
+                const saat = Math.round(dk / 60)
+                if (saat < 24) return `${saat} saat önce`
+                return `${Math.round(saat / 24)} gün önce`
+              }
+              return (
+                <span
+                  title={acildi
+                    ? `İlk açılma: ${new Date(paylasimDurum.ilkAcilma).toLocaleString('tr-TR')} — toplam ${paylasimDurum.acilmaSayisi} görüntüleme`
+                    : `Link gönderildi (${new Date(paylasimDurum.gonderimTarihi).toLocaleString('tr-TR')}), müşteri henüz açmadı`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 10px', borderRadius: 6,
+                    fontSize: 12, fontWeight: 600,
+                    color: renk, background: `${renk}18`, border: `1px solid ${renk}55`,
+                    cursor: 'help',
+                  }}
+                >
+                  <Eye size={12} strokeWidth={2} />
+                  {acildi
+                    ? `Müşteri açtı · ${zamanOnce(paylasimDurum.sonAcilma)}${paylasimDurum.acilmaSayisi > 1 ? ` (${paylasimDurum.acilmaSayisi}×)` : ''}`
+                    : 'Henüz açılmadı'}
+                </span>
+              )
+            })()}
           </div>
           {/* Bağlı Görüşme bilgi kartı — spec: "Teklif detayında hangi görüşmeden oluşturulduğu açık şekilde görünür" */}
           {(() => {
@@ -660,6 +861,16 @@ function TeklifDetay() {
           {!yeni && (
             <Button variant="secondary" iconLeft={<RefreshCw size={14} strokeWidth={1.5} />} onClick={revizyon}>
               Revizyon
+            </Button>
+          )}
+          {!yeni && (
+            <Button
+              variant="secondary"
+              iconLeft={<Copy size={14} strokeWidth={1.5} />}
+              onClick={teklifKopyala}
+              title="Bu teklifin satırları ve bilgileriyle yeni bir teklif başlat"
+            >
+              Kopyala
             </Button>
           )}
           {!yeni && (
@@ -743,6 +954,9 @@ function TeklifDetay() {
           <Button variant="primary" onClick={kaydet}>Kaydet</Button>
         </div>
       </div>
+
+      {/* Zaman çizelgesi — teklifin süreçte nerede olduğu tek bakışta */}
+      {!yeni && <TeklifZamanCizelgesi durum={spekDurumKey} />}
 
       {/* Konu */}
       <Card style={{ marginBottom: 16 }}>
@@ -1160,9 +1374,29 @@ function TeklifDetay() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <h2 className="t-h2" style={{ margin: 0 }}>Ürün / hizmet satırları</h2>
-          <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={satirEkle}>
-            Satır ekle
-          </Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              iconLeft={<LayoutTemplate size={14} strokeWidth={1.5} />}
+              onClick={sablonModaliAc}
+              title="Kayıtlı ürün seti şablonlarını listele / mevcut satırları şablon olarak kaydet"
+            >
+              Şablonlar
+            </Button>
+            {form.satirlar.length > 1 && (
+              <Button
+                variant="secondary"
+                iconLeft={<Percent size={14} strokeWidth={1.5} />}
+                onClick={() => setTopluIskonto({ deger: '' })}
+                title="Tüm satırlara aynı iskonto oranını uygula"
+              >
+                Toplu İskonto
+              </Button>
+            )}
+            <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={satirEkle}>
+              Satır ekle
+            </Button>
+          </div>
         </div>
 
         {form.satirlar.length === 0 ? (
@@ -1181,7 +1415,7 @@ function TeklifDetay() {
               <col />{/* Ürün adı — auto (kalan alan, en geniş) */}
               <col style={{ width: 80 }} />{/* Miktar — 3 basamak yeter */}
               <col style={{ width: 100 }} />{/* Birim — dropdown ('Adet', 'Lisans' vb) */}
-              <col style={{ width: 150 }} />{/* Birim fiyat — input + calculator ikonu */}
+              <col style={{ width: 176 }} />{/* Birim fiyat — input + hesapla + fiyat geçmişi ikonları */}
               <col style={{ width: 72 }} />{/* İsk.% */}
               <col style={{ width: 76 }} />{/* KDV% */}
               <col style={{ width: 118 }} />{/* Toplam */}
@@ -1272,7 +1506,7 @@ function TeklifDetay() {
                         />
                         <button
                           type="button"
-                          onClick={() => setHesaplaModal({ idx: index, alis: 0, katsayi: 1.4 })}
+                          onClick={() => setHesaplaModal({ idx: index, alis: satir.alisFiyat || 0, katsayi: 1.4 })}
                           title="Alış × Katsayı ile satış fiyatı hesapla"
                           style={{
                             width: 28, height: 28, padding: 0, flexShrink: 0,
@@ -1287,6 +1521,11 @@ function TeklifDetay() {
                         >
                           <Calculator size={13} strokeWidth={1.7} />
                         </button>
+                        <FiyatGecmisiButon
+                          stokKodu={satir.stokKodu}
+                          haricTeklifId={yeni ? null : id}
+                          onUygula={(fiyat) => satirGuncelle(index, 'birimFiyat', fiyat)}
+                        />
                       </div>
                     </TD>
                     <TD align="right">
@@ -1308,9 +1547,26 @@ function TeklifDetay() {
                       </CustomSelect>
                     </TD>
                     <TD align="right">
-                      <span className="tabular-nums" style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                        {fmtPara(toplam)}
-                      </span>
+                      {(() => {
+                        const kar = satirKarYuzde(satir)
+                        const karRenk = kar === null ? null : kar < 0 ? '#DC2626' : kar < 15 ? '#F59E0B' : '#10B981'
+                        return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            {kar !== null && (
+                              <span
+                                title={`Kar: %${kar.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} — alış ${fmtPara(Number(satir.alisFiyat))}`}
+                                style={{
+                                  width: 4, height: 16, borderRadius: 2, flexShrink: 0,
+                                  background: karRenk, cursor: 'help',
+                                }}
+                              />
+                            )}
+                            <span className="tabular-nums" style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                              {fmtPara(toplam)}
+                            </span>
+                          </span>
+                        )
+                      })()}
                     </TD>
                     <TD align="right">
                       <button
@@ -1616,6 +1872,8 @@ function TeklifDetay() {
             baslangicSablon={form.teklifTipi || 'standart'}
             belgeBaslik={`${form.teklifNo || '#' + id} — ${form.firmaAdi || ''}`}
             onGonderildi={async () => {
+              // "Müşteri açtı mı?" rozeti tazelensin (yeni link → "Henüz açılmadı")
+              paylasimDurumOzet('teklif', id).then(setPaylasimDurum).catch(() => {})
               // Spec: gönderim sonrası "Müşteriye Gönderildi" durumuna geçer.
               // Durum ilerde ise (müşteri onayladı / reddetti / siparişe aktarıldı)
               // üzerine yazmayalım — yeniden gönderim durumu bozmasın.
@@ -1645,8 +1903,9 @@ function TeklifDetay() {
             toast.warning('Geçerli alış fiyatı ve katsayı girin.')
             return
           }
-          // Kuruş hassasiyeti — 2 haneye yuvarla
-          satirGuncelle(hesaplaModal.idx, 'birimFiyat', Number(satis.toFixed(2)))
+          // Kuruş hassasiyeti — 2 haneye yuvarla. Alış fiyatı da satıra kaydedilir
+          // (kar% renk göstergesi + modal tekrar açılınca hatırlansın diye).
+          satirGuncelleCoklu(hesaplaModal.idx, { birimFiyat: Number(satis.toFixed(2)), alisFiyat: alis })
           setHesaplaModal(null)
         }
         return (
@@ -1720,6 +1979,165 @@ function TeklifDetay() {
                     disabled={!Number.isFinite(satis) || satis <= 0}
                   >
                     Hesapla ve Uygula
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Teklif şablonları modalı — listele/uygula/sil + mevcut satırları kaydet */}
+      <Modal
+        open={sablonModalAcik}
+        onClose={() => setSablonModalAcik(false)}
+        title="Teklif Şablonları"
+        width={560}
+        footer={
+          <Button variant="secondary" onClick={() => setSablonModalAcik(false)}>Kapat</Button>
+        }
+      >
+        <div style={{ display: 'grid', gap: 16 }}>
+          {/* Mevcut satırları şablon olarak kaydet */}
+          {form.satirlar.length > 0 && (
+            <div style={{
+              padding: 12, borderRadius: 8,
+              background: 'var(--brand-primary-soft, rgba(30,90,168,0.08))',
+              border: '1px solid var(--border-default)',
+            }}>
+              <p className="t-body-strong" style={{ marginBottom: 8 }}>
+                Mevcut {form.satirlar.length} satırı şablon olarak kaydet
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Input
+                  value={sablonAd}
+                  onChange={e => setSablonAd(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') sablonKaydet() }}
+                  placeholder='Şablon adı — örn. "Trassir 8 Kanal Set"'
+                  style={{ flex: 1 }}
+                />
+                <Button variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} onClick={sablonKaydet}>
+                  Kaydet
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Kayıtlı şablonlar */}
+          {sablonlar === null ? (
+            <p className="t-caption" style={{ textAlign: 'center', padding: 12 }}>Yükleniyor…</p>
+          ) : sablonlar.length === 0 ? (
+            <EmptyState
+              icon={<LayoutTemplate size={22} strokeWidth={1.5} />}
+              title="Henüz şablon yok"
+              description="Satırları doldurup yukarıdan bir isimle kaydedin — sonraki tekliflerde tek tıkla eklensin."
+            />
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {sablonlar.map(s => (
+                <div
+                  key={s.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid var(--border-default)',
+                    background: 'var(--surface-card)',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="t-body-strong" style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.ad}
+                    </p>
+                    <p className="t-caption" style={{ margin: '2px 0 0' }}>
+                      {(s.satirlar || []).length} satır
+                      {s.olusturan ? ` · ${s.olusturan}` : ''}
+                      {s.olusturmaTarih ? ` · ${new Date(s.olusturmaTarih).toLocaleDateString('tr-TR')}` : ''}
+                    </p>
+                    <p className="t-caption" style={{ margin: '2px 0 0', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(s.satirlar || []).slice(0, 3).map(x => x.stokAdi || x.stokKodu).filter(Boolean).join(', ')}
+                      {(s.satirlar || []).length > 3 ? '…' : ''}
+                    </p>
+                  </div>
+                  <Button variant="primary" size="sm" onClick={() => sablonUygula(s)}>
+                    Uygula
+                  </Button>
+                  <button
+                    aria-label="Şablonu sil"
+                    onClick={() => sablonuSil(s)}
+                    style={iconBtnStyle}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Toplu iskonto modalı — tüm satırlara aynı % */}
+      {topluIskonto && (() => {
+        // TR virgül desteği: "7,5" → 7.5
+        const oran = Number(String(topluIskonto.deger).replace(',', '.'))
+        const gecerli = Number.isFinite(oran) && oran >= 0 && oran <= 100
+        const kapat = () => setTopluIskonto(null)
+        const uygula = () => {
+          if (!gecerli) { toast.warning('0–100 arası bir oran girin.'); return }
+          setForm(f => ({ ...f, satirlar: f.satirlar.map(s => ({ ...s, iskonto: oran })) }))
+          toast.success(`${form.satirlar.length} satıra %${oran.toLocaleString('tr-TR')} iskonto uygulandı.`)
+          setTopluIskonto(null)
+        }
+        return (
+          <div
+            onClick={kapat}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--surface-card)', color: 'var(--text-primary)',
+                borderRadius: 10, width: '100%', maxWidth: 340,
+                border: '1px solid var(--border-default)', overflow: 'hidden',
+              }}
+            >
+              <div style={{
+                background: 'var(--brand-primary, #1E5AA8)', color: '#fff',
+                padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                  <Percent size={16} strokeWidth={2} /> Toplu İskonto
+                </div>
+                <button onClick={kapat}
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}>
+                  <XCircle size={18} strokeWidth={1.8} />
+                </button>
+              </div>
+              <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+                <p className="t-caption" style={{ margin: 0 }}>
+                  {form.satirlar.length} satırın tamamına aynı iskonto oranı uygulanır.
+                  Mevcut satır iskontolarının üzerine yazar.
+                </p>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>İskonto Oranı (%)</label>
+                  <Input
+                    type="text" inputMode="decimal"
+                    value={topluIskonto.deger}
+                    onChange={e => setTopluIskonto({ deger: e.target.value })}
+                    onKeyDown={e => { if (e.key === 'Enter') uygula() }}
+                    autoFocus
+                    placeholder="örn. 5 veya 7,5"
+                    style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                  <Button variant="ghost" onClick={kapat}>Vazgeç</Button>
+                  <Button variant="primary" onClick={uygula} disabled={!gecerli || topluIskonto.deger === ''}>
+                    Uygula
                   </Button>
                 </div>
               </div>
@@ -1974,6 +2392,204 @@ const iconBtnStyle = {
 
 // Kalem satırı — drag+drop sortable wrapper.
 // İlk hücre olarak grip handle render eder, sonra parent'tan gelen children (diğer TD'ler).
+// Teklif zaman çizelgesi — 5 kilometre taşlı yatay stepper.
+// Duruma göre aktif adım renklenir; olumsuz durumlar (revizyon/red/süre) kendi
+// rengiyle işaretlenir. Salt görsel — tıklanmaz, durum değişimi header badge'inden.
+function TeklifZamanCizelgesi({ durum }) {
+  const meta = TEKLIF_DURUM_META[durum]
+  if (!meta) return null
+  const ADIMLAR = ['Taslak', 'Yönetici Onayı', 'Müşteriye Gönderim', 'Müşteri Kararı', 'Sipariş']
+  const asama = meta.asama ?? 1
+  const aktifIdx = asama <= 1 ? 0 : asama <= 4 ? 1 : asama === 5 ? 2 : asama <= 8 ? 3 : 4
+  const tamamlandi = durum === 'siparise_aktarildi'
+  return (
+    <Card padding={0} style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', padding: '14px 20px 12px', overflowX: 'auto' }}>
+        {ADIMLAR.map((label, i) => {
+          const gecti = i < aktifIdx || tamamlandi
+          const aktif = !tamamlandi && i === aktifIdx
+          const renk = gecti ? '#10B981' : aktif ? meta.renk : 'var(--border-default, #D9DFE5)'
+          return (
+            <div key={label} style={{ display: 'flex', alignItems: 'flex-start', flex: i < ADIMLAR.length - 1 ? 1 : 'none', minWidth: i < ADIMLAR.length - 1 ? 96 : 64 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: 64, flexShrink: 0 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  display: 'grid', placeItems: 'center',
+                  background: gecti ? '#10B981' : aktif ? meta.renk : 'transparent',
+                  border: `2px solid ${renk}`,
+                  color: '#fff',
+                }}>
+                  {gecti ? (
+                    <CheckCircle2 size={12} strokeWidth={2.5} />
+                  ) : aktif ? (
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                  ) : null}
+                </div>
+                <span style={{
+                  font: `${aktif ? 600 : 400} 10px/13px var(--font-sans)`,
+                  color: aktif ? meta.renk : gecti ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                  textAlign: 'center',
+                }}>
+                  {aktif ? meta.isim : label}
+                </span>
+              </div>
+              {i < ADIMLAR.length - 1 && (
+                <div style={{
+                  flex: 1, height: 2, marginTop: 9, borderRadius: 1,
+                  background: (i < aktifIdx || tamamlandi) ? '#10B981' : 'var(--border-default, #D9DFE5)',
+                }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+// Fiyat geçmişi popover'ı — stok seçili satırda History butonuna basınca o ürünün
+// son 3 tekliften birim fiyatlarını gösterir; satıra tıklayınca fiyat uygulanır.
+const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
+function FiyatGecmisiButon({ stokKodu, haricTeklifId, onUygula }) {
+  const [acik, setAcik] = useState(false)
+  const [kayitlar, setKayitlar] = useState(null) // null = yükleniyor
+  const [pos, setPos] = useState(null)
+  const btnRef = useRef(null)
+  const cacheRef = useRef({})
+
+  const ac = async () => {
+    if (!stokKodu || !btnRef.current) return
+    const rect = btnRef.current.getBoundingClientRect()
+    const width = 320
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 12))
+    const asagidaBosluk = window.innerHeight - rect.bottom
+    setPos({
+      left, width,
+      top: asagidaBosluk > 240 ? rect.bottom + 6 : undefined,
+      bottom: asagidaBosluk > 240 ? undefined : window.innerHeight - rect.top + 6,
+    })
+    setAcik(true)
+    if (cacheRef.current[stokKodu]) { setKayitlar(cacheRef.current[stokKodu]); return }
+    setKayitlar(null)
+    const d = await stokFiyatGecmisi(stokKodu, haricTeklifId)
+    cacheRef.current[stokKodu] = d
+    setKayitlar(d)
+  }
+
+  useEffect(() => {
+    if (!acik) return
+    const kapat = (e) => {
+      if (btnRef.current?.contains(e.target)) return
+      if (e.target.closest?.('[data-fiyat-gecmisi-panel]')) return
+      setAcik(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setAcik(false) }
+    document.addEventListener('mousedown', kapat)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', kapat)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [acik])
+
+  const fmtTarih = (t) => {
+    try {
+      const d = new Date(t)
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
+    } catch { return t || '' }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={ac}
+        disabled={!stokKodu}
+        title={stokKodu ? 'Bu ürünün geçmiş teklif fiyatları' : 'Önce stok seçin'}
+        style={{
+          width: 28, height: 28, padding: 0, flexShrink: 0,
+          background: 'var(--surface-subtle)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 4, cursor: stokKodu ? 'pointer' : 'not-allowed',
+          display: 'grid', placeItems: 'center',
+          color: 'var(--text-secondary)', opacity: stokKodu ? 1 : 0.4,
+        }}
+        onMouseEnter={e => { if (stokKodu) { e.currentTarget.style.background = 'rgba(245,158,11,0.12)'; e.currentTarget.style.color = '#B45309' } }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+      >
+        <History size={13} strokeWidth={1.7} />
+      </button>
+      {acik && pos && createPortal(
+        <div
+          data-fiyat-gecmisi-panel
+          style={{
+            position: 'fixed', ...pos, zIndex: 10000,
+            background: 'var(--surface-card, #fff)',
+            border: '1px solid var(--border-default, #D9DFE5)',
+            borderRadius: 8,
+            boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12))',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{
+            padding: '8px 12px', borderBottom: '1px solid var(--border-default)',
+            display: 'flex', alignItems: 'center', gap: 6,
+            font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+          }}>
+            <History size={12} strokeWidth={1.7} /> Fiyat geçmişi — {stokKodu}
+          </div>
+          {kayitlar === null ? (
+            <div style={{ padding: 14, textAlign: 'center', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              Yükleniyor…
+            </div>
+          ) : kayitlar.length === 0 ? (
+            <div style={{ padding: 14, textAlign: 'center', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              Bu ürün daha önce teklif edilmemiş.
+            </div>
+          ) : (
+            <div>
+              {kayitlar.map((k, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { onUygula(k.birimFiyat); setAcik(false) }}
+                  title="Bu fiyatı satıra uygula"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    width: '100%', padding: '8px 12px', textAlign: 'left',
+                    background: 'transparent', border: 'none',
+                    borderBottom: i < kayitlar.length - 1 ? '1px solid var(--border-default)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken, #EDF0F3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', font: '500 12px/16px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {k.firma || '—'}
+                    </span>
+                    <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                      {k.teklifNo} · {fmtTarih(k.tarih)}
+                    </span>
+                  </span>
+                  <span className="tabular-nums" style={{ font: '700 13px/18px var(--font-sans)', color: 'var(--brand-primary)', flexShrink: 0 }}>
+                    {PARA_SEMBOL[k.paraBirimi] || ''}{k.birimFiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </span>
+                </button>
+              ))}
+              <div style={{ padding: '6px 12px', font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', background: 'var(--surface-sunken, #EDF0F3)' }}>
+                Fiyata tıklayınca satıra uygulanır
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
+
 function SortableSatirTR({ index, children }) {
   const id = `satir-${index}`
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
