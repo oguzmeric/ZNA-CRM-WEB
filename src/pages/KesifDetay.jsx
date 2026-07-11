@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
-  Plus, Trash2, Save, Upload, ExternalLink, X,
+  Plus, Trash2, Save, Upload, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -112,11 +112,11 @@ export default function KesifDetay() {
         projeAdi: kesif.projeAdi,
         kesifBasligi: kesif.kesifBasligi,
         lokasyon: kesif.lokasyon,
-        haritaKonumu: kesif.haritaKonumu,
         musteriYetkilisi: kesif.musteriYetkilisi,
         yetkiliTelefon: kesif.yetkiliTelefon,
         yetkiliEmail: kesif.yetkiliEmail,
         satisPersoneli: kesif.satisPersoneli,
+        // haritaKonumu + rakipFirma UI'dan kaldırıldı (kullanılmıyor) — kolonlar DB'de duruyor
         oncelik: kesif.oncelik || 'normal',
         kesifTarihi: kesif.kesifTarihi,
         tahminiProjeTarihi: kesif.tahminiProjeTarihi || null,
@@ -124,7 +124,6 @@ export default function KesifDetay() {
         genelNot: kesif.genelNot,
         ozelTalepler: kesif.ozelTalepler,
         mevcutSistem: kesif.mevcutSistem,
-        rakipFirma: kesif.rakipFirma,
         icNotlar: kesif.icNotlar,
         turler: kesif.turler || [],
         teknikDetaylar: kesif.teknikDetaylar || {},
@@ -412,24 +411,6 @@ export default function KesifDetay() {
               <Label>Keşif adresi</Label>
               <Input value={kesif.lokasyon || ''} onChange={e => setKesif(k => ({ ...k, lokasyon: e.target.value }))} placeholder="Saha adresi" />
             </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <Label>Harita konumu</Label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Input style={{ flex: 1 }} value={kesif.haritaKonumu || ''}
-                  onChange={e => setKesif(k => ({ ...k, haritaKonumu: e.target.value }))}
-                  placeholder="Google Maps linki veya koordinat (41.01, 28.97)" />
-                {kesif.haritaKonumu && (
-                  <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
-                    onClick={() => {
-                      const v = kesif.haritaKonumu.trim()
-                      const url = v.startsWith('http') ? v : `https://www.google.com/maps?q=${encodeURIComponent(v)}`
-                      window.open(url, '_blank', 'noopener,noreferrer')
-                    }}>
-                    Aç
-                  </Button>
-                )}
-              </div>
-            </div>
             <div>
               <Label>Müşteri yetkilisi</Label>
               <Input value={kesif.musteriYetkilisi || ''} onChange={e => setKesif(k => ({ ...k, musteriYetkilisi: e.target.value }))} />
@@ -474,15 +455,10 @@ export default function KesifDetay() {
               <Textarea rows={2} value={kesif.ozelTalepler || ''} onChange={e => setKesif(k => ({ ...k, ozelTalepler: e.target.value }))}
                 placeholder="Müşterinin özellikle istediği şeyler…" />
             </div>
-            <div>
+            <div style={{ gridColumn: 'span 2' }}>
               <Label>Mevcut sistem bilgisi</Label>
               <Textarea rows={2} value={kesif.mevcutSistem || ''} onChange={e => setKesif(k => ({ ...k, mevcutSistem: e.target.value }))}
                 placeholder="Sahada kurulu sistem…" />
-            </div>
-            <div>
-              <Label>Rakip firma bilgisi</Label>
-              <Textarea rows={2} value={kesif.rakipFirma || ''} onChange={e => setKesif(k => ({ ...k, rakipFirma: e.target.value }))}
-                placeholder="Teklif veren diğer firmalar…" />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <Label>İç notlar (müşteri görmez)</Label>
