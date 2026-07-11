@@ -52,6 +52,20 @@ function GorevDetay() {
   const [duzenleYorumId, setDuzenleYorumId] = useState(null)
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
   const [devamSebepModal, setDevamSebepModal] = useState(false)
+  // Sebep seçilirse yeni bitiş tarihi ZORUNLU (kullanıcı kuralı) —
+  // sebep butonuna basınca hemen kaydetmek yerine iki adım: seç → tarih → Kaydet
+  const [secilenSebep, setSecilenSebep] = useState(null)
+  const [devamYeniTarih, setDevamYeniTarih] = useState('')
+  const [devamKaydediliyor, setDevamKaydediliyor] = useState(false)
+
+  // Modal her açılışta mevcut sebeple başlasın, tarih boş gelsin
+  useEffect(() => {
+    if (devamSebepModal) {
+      setSecilenSebep(gorev?.devamSebep || null)
+      setDevamYeniTarih('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devamSebepModal])
 
   useEffect(() => {
     gorevGetir(id)
@@ -477,20 +491,16 @@ function GorevDetay() {
             <p style={{
               margin: 0, marginBottom: 18, fontSize: 12, color: '#64748b', lineHeight: 1.5,
             }}>
-              Seçim zorunlu değil, atlamak için "Belirtme" butonuna basabilirsin.
+              Sebep seçersen <strong>yeni bitiş tarihi zorunludur</strong> (ek süre).
+              Atlamak için "Belirtme" butonuna basabilirsin.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {DEVAM_SEBEPLERI.map(s => {
-                const secili = gorev.devamSebep === s.id
+                const secili = secilenSebep === s.id
                 return (
                   <button
                     key={s.id}
-                    onClick={async () => {
-                      await gorevGuncelle(gorev.id, { devamSebep: s.id })
-                      setGorev(prev => ({ ...prev, devamSebep: s.id }))
-                      setDevamSebepModal(false)
-                      toast.success(`Sebep: ${s.isim}`)
-                    }}
+                    onClick={() => setSecilenSebep(s.id)}
                     style={{
                       padding: '16px 10px',
                       border: secili ? '2px solid #2563eb' : '1px solid #cbd5e1',
@@ -513,6 +523,33 @@ function GorevDetay() {
                 )
               })}
             </div>
+            {/* Sebep seçildiyse yeni bitiş tarihi ZORUNLU (ek süre) */}
+            {secilenSebep && (
+              <div style={{
+                marginTop: 16, padding: 14, borderRadius: 10,
+                background: '#fffbeb', border: '1px solid #fcd34d',
+              }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>
+                  📅 Yeni bitiş tarihi (zorunlu)
+                </label>
+                {gorev.bitisTarihi && (
+                  <p style={{ margin: '0 0 8px', fontSize: 12, color: '#a16207' }}>
+                    Mevcut bitiş: {new Date(gorev.bitisTarihi).toLocaleDateString('tr-TR')}
+                  </p>
+                )}
+                <input
+                  type="date"
+                  value={devamYeniTarih}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => setDevamYeniTarih(e.target.value)}
+                  style={{
+                    width: '100%', padding: '9px 12px', borderRadius: 8,
+                    border: '1px solid #cbd5e1', background: '#ffffff',
+                    color: '#0f172a', fontSize: 14, boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
             <div style={{
               display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end',
             }}>
@@ -543,6 +580,39 @@ function GorevDetay() {
               >
                 Belirtme
               </button>
+              {secilenSebep && (
+                <button
+                  disabled={!devamYeniTarih || devamKaydediliyor}
+                  onClick={async () => {
+                    if (!devamYeniTarih) { toast.warning('Yeni bitiş tarihi zorunlu.'); return }
+                    setDevamKaydediliyor(true)
+                    try {
+                      const g = await gorevGuncelle(gorev.id, {
+                        devamSebep: secilenSebep,
+                        bitisTarihi: devamYeniTarih,
+                      })
+                      if (!g) throw new Error('Kaydedilemedi.')
+                      setGorev(prev => ({ ...prev, devamSebep: secilenSebep, bitisTarihi: devamYeniTarih }))
+                      setDevamSebepModal(false)
+                      const s = DEVAM_SEBEPLERI.find(x => x.id === secilenSebep)
+                      toast.success(`${s?.isim || 'Sebep'} — yeni bitiş: ${new Date(devamYeniTarih).toLocaleDateString('tr-TR')}`)
+                    } catch (e) {
+                      toast.error('Kaydedilemedi: ' + (e?.message || 'bilinmeyen hata'))
+                    } finally {
+                      setDevamKaydediliyor(false)
+                    }
+                  }}
+                  style={{
+                    background: devamYeniTarih ? '#2563eb' : '#93c5fd',
+                    border: 'none', color: '#fff',
+                    padding: '9px 18px', borderRadius: 8,
+                    fontSize: 13, fontWeight: 700,
+                    cursor: devamYeniTarih ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {devamKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+              )}
             </div>
           </div>
         </div>,
