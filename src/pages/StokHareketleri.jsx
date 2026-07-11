@@ -151,7 +151,9 @@ export default function StokHareketleri() {
 
   const gorunenHareketler = [...hareketler]
     .filter(h => !tarihEsigi || new Date(h.olusturmaTarih || h.tarih || 0).getTime() >= tarihEsigi)
-    .filter(h => filtre === 'hepsi' || h.hareketTipi === filtre)
+    // Filtre görüntüleme türüyle eşleşir (turBul): "Müşteri Çıkışı" sekmesinde
+    // kayıp/SN silme düşümleri görünmez — onların kendi "Stok Düşümü" sekmesi var
+    .filter(h => filtre === 'hepsi' || turBul(h).id === filtre)
     .filter(h => trContains(`${h.stokKodu || ''} ${h.stokAdi || ''} ${h.aciklama || ''}`, arama))
 
   // Aynı dakika + stok_kodu + hareket_tipi olan satırları grupla
@@ -242,6 +244,7 @@ export default function StokHareketleri() {
           options={[
             { value: 'hepsi', label: 'Tümü' },
             ...hareketTurleri.map(t => ({ value: t.id, label: t.isim })),
+            { value: 'stok_dusum', label: 'Stok Düşümü' },
           ]}
           value={filtre}
           onChange={setFiltre}
