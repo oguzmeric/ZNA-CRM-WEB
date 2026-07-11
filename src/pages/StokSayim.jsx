@@ -1,16 +1,22 @@
 // Stok sayım modu — sayım oluştur, SN taratıp tikle, eksik/fazla raporu.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ClipboardCheck, ScanLine, Play, CheckSquare, X, Trash2 } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { ClipboardCheck, ScanLine, Play, CheckSquare, X, Trash2, Download, AlertTriangle } from 'lucide-react'
 import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar, sayimSil } from '../services/depoService'
-import { Card, Button, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge } from '../components/ui'
+import { snSil } from '../services/stokService'
+import { Card, Button, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge, Input } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function StokSayim() {
   const { toast } = useToast()
+  const { confirm } = useConfirm()
+  const [baslatModal, setBaslatModal] = useState(false)
+  const [baslatAciklama, setBaslatAciklama] = useState('')
   const [aktifSayim, setAktifSayim] = useState(null)
   const [ozet, setOzet] = useState(null)
   const [taramaBuf, setTaramaBuf] = useState('')
@@ -49,11 +55,16 @@ export default function StokSayim() {
   }
 
   const sayimBaslatAksiyon = async () => {
-    const aciklama = prompt('Sayım açıklaması (opsiyonel):') || ''
-    const s = await sayimBaslat(aciklama)
-    setAktifSayim(s)
-    await ozetYukle(s.id)
-    inputRef.current?.focus()
+    try {
+      const s = await sayimBaslat(baslatAciklama.trim())
+      setBaslatModal(false)
+      setBaslatAciklama('')
+      setAktifSayim(s)
+      await ozetYukle(s.id)
+      inputRef.current?.focus()
+    } catch (e) {
+      toast.error('Sayım başlatılamadı: ' + (e?.message || 'bilinmeyen hata'))
+    }
   }
 
   const taramaOku = async (e) => {
@@ -77,11 +88,20 @@ export default function StokSayim() {
   }
 
   const sayimBitirAksiyon = async () => {
-    if (!confirm(`Sayım bitirilsin mi? ${ozet.tarandi}/${ozet.toplam} tarandı, ${ozet.eksik.length} eksik.`)) return
-    await sayimBitir(aktifSayim.id)
-    toast.success('Sayım kapatıldı.')
-    setAktifSayim(null); setOzet(null)
-    await gecmisiYukle()
+    const onay = await confirm({
+      baslik: 'Sayımı Bitir',
+      mesaj: `${ozet.tarandi}/${ozet.toplam} tarandı, ${ozet.eksik.length} eksik. Sayım kapatılsın mı? Fark raporu kalıcı olarak kaydedilir.`,
+      onayMetin: 'Sayımı Bitir', iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    try {
+      await sayimBitir(aktifSayim.id)
+      toast.success('Sayım kapatıldı — fark raporu kaydedildi.')
+      setAktifSayim(null); setOzet(null)
+      await gecmisiYukle()
+    } catch (e) {
+      toast.error('Sayım kapatılamadı: ' + (e?.message || 'bilinmeyen hata'))
+    }
   }
 
   if (yukleniyor) return <SkeletonList />
@@ -94,11 +114,45 @@ export default function StokSayim() {
           <h1 className="t-h2" style={{ margin: 0 }}>Stok Sayım</h1>
         </div>
         {!aktifSayim && (
-          <Button variant="primary" iconLeft={<Play size={13} />} onClick={sayimBaslatAksiyon}>
+          <Button variant="primary" iconLeft={<Play size={13} />} onClick={() => setBaslatModal(true)}>
             Yeni Sayım Başlat
           </Button>
         )}
       </div>
+
+      {/* Sayım başlat modalı — eski native prompt() yerine */}
+      {baslatModal && createPortal(
+        <div
+          onClick={() => setBaslatModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--surface-card)', color: 'var(--text-primary)',
+            borderRadius: 12, padding: 24, maxWidth: 420, width: '100%',
+            border: '1px solid var(--border-default)',
+          }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>Yeni Sayım Başlat</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 14px' }}>
+              Depodaki tüm aktif SN'ler beklenen listeye eklenir.
+            </p>
+            <Input
+              value={baslatAciklama}
+              onChange={e => setBaslatAciklama(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') sayimBaslatAksiyon() }}
+              placeholder='Açıklama (opsiyonel) — örn. "Temmuz ay sonu sayımı"'
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <Button variant="secondary" onClick={() => setBaslatModal(false)}>Vazgeç</Button>
+              <Button variant="primary" iconLeft={<Play size={13} />} onClick={sayimBaslatAksiyon}>Başlat</Button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {!aktifSayim && (
         <Card style={{ marginBottom: 16, background: 'var(--surface-sunken)' }}>
@@ -185,7 +239,7 @@ export default function StokSayim() {
           <EmptyState icon={<ClipboardCheck size={40} strokeWidth={1.5} />} title="Henüz sayım yok" description="Yukarıdaki butonla başlat." />
         ) : (
           <Table>
-            <THead><TR><TH>#</TH><TH>Başlangıç</TH><TH>Bitiş</TH><TH>Açıklama</TH><TH>Durum</TH></TR></THead>
+            <THead><TR><TH>#</TH><TH>Başlangıç</TH><TH>Bitiş</TH><TH>Açıklama</TH><TH style={{ textAlign: 'right' }}>Fark</TH><TH>Durum</TH></TR></THead>
             <TBody>
               {gecmis.map(s => (
                 <TR key={s.id} onClick={() => detayAc(s)} style={{ cursor: 'pointer' }}>
@@ -193,6 +247,16 @@ export default function StokSayim() {
                   <TD>{fmtTarih(s.olusturuldu)}</TD>
                   <TD>{s.tamamlanma_tarihi ? fmtTarih(s.tamamlanma_tarihi) : '—'}</TD>
                   <TD>{s.aciklama || '—'}</TD>
+                  <TD style={{ textAlign: 'right' }}>
+                    {s.toplam_kalem != null ? (
+                      <span className="tabular-nums" style={{ fontSize: 12 }}>
+                        {s.tarandi_kalem}/{s.toplam_kalem}
+                        {s.eksik_kalem > 0 && (
+                          <strong style={{ color: 'var(--danger)', marginLeft: 6 }}>−{s.eksik_kalem}</strong>
+                        )}
+                      </span>
+                    ) : '—'}
+                  </TD>
                   <TD>{s.tamamlandi
                     ? <Badge tone="aktif">Kapalı</Badge>
                     : <Badge tone="brand">Açık</Badge>}
@@ -211,7 +275,12 @@ export default function StokSayim() {
           yukleniyor={detayYukleniyor}
           onKapat={() => setDetayModal(null)}
           onSil={async () => {
-            if (!confirm(`Sayım #${detayModal.sayim.id} kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`)) return
+            const onay = await confirm({
+              baslik: 'Sayımı Sil',
+              mesaj: `Sayım #${detayModal.sayim.id} kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+              onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+            })
+            if (!onay) return
             try {
               await sayimSil(detayModal.sayim.id)
               toast.success('Sayım silindi.')
@@ -221,15 +290,59 @@ export default function StokSayim() {
               toast.error('Silme hatası: ' + (e?.message || 'bilinmeyen'))
             }
           }}
+          onKayipIsaretle={async (eksikler) => {
+            const onay = await confirm({
+              baslik: 'Eksikleri Kayıp Olarak İşaretle',
+              mesaj: `${eksikler.length} SN "Kayıp / Bulunamadı" sebebiyle silinecek (soft delete — audit kaydıyla, geri getirilebilir). Devam?`,
+              onayMetin: 'Kayıp İşaretle', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+            })
+            if (!onay) return
+            let ok = 0, hata = 0
+            for (const e of eksikler) {
+              try {
+                await snSil(e.stok_kalem_id, { sebep: 'kayip', not: `Sayım #${detayModal.sayim.id} eksik listesi` })
+                ok++
+              } catch { hata++ }
+            }
+            if (ok) toast.success(`${ok} SN kayıp olarak işaretlendi.`)
+            if (hata) toast.error(`${hata} SN işaretlenemedi.`)
+            // Detayı tazele
+            try {
+              const o = await sayimOzet(detayModal.sayim.id)
+              setDetayModal({ sayim: detayModal.sayim, ozet: o })
+            } catch { setDetayModal(null) }
+          }}
         />
       )}
     </div>
   )
 }
 
-function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil }) {
+function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil, onKayipIsaretle }) {
   const [sekme, setSekme] = useState('tarandi')
   const liste = sekme === 'tarandi' ? (ozet?.tarandiList || []) : (ozet?.eksik || [])
+
+  // Sayım sonucunu Excel'e aktar — Tarandı + Eksik iki sayfa
+  const excelIndir = () => {
+    if (!ozet) return
+    const satirYap = (s) => ({
+      'Seri No': s.kalem?.seri_no || '',
+      'Stok Kodu': s.kalem?.stok_kodu || '',
+      'Marka': s.kalem?.marka || '',
+      'Model': s.kalem?.model || '',
+      'Durum': s.kalem?.durum || '',
+      'Tarama Zamanı': s.tarama_zamani ? new Date(s.tarama_zamani).toLocaleString('tr-TR') : '',
+    })
+    const wb = XLSX.utils.book_new()
+    const wsT = XLSX.utils.json_to_sheet((ozet.tarandiList || []).map(satirYap))
+    const wsE = XLSX.utils.json_to_sheet((ozet.eksik || []).map(satirYap))
+    const cols = [{ wch: 20 }, { wch: 12 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 18 }]
+    wsT['!cols'] = cols; wsE['!cols'] = cols
+    XLSX.utils.book_append_sheet(wb, wsT, 'Tarandı')
+    XLSX.utils.book_append_sheet(wb, wsE, 'Eksik')
+    XLSX.writeFile(wb, `ZNA_Sayim_${sayim.id}.xlsx`)
+  }
+
   return createPortal(
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000,
@@ -243,6 +356,30 @@ function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <h3 style={{ margin: 0, fontSize: 18 }}>Sayım #{sayim.id} Detayı</h3>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {ozet && (
+              <button onClick={excelIndir}
+                title="Sayım sonucunu Excel olarak indir"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 10px', borderRadius: 6,
+                  background: 'transparent', color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-default)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>
+                <Download size={12} strokeWidth={1.5} /> Excel
+              </button>
+            )}
+            {ozet && sayim.tamamlandi && onKayipIsaretle && (ozet.eksik || []).length > 0 && (
+              <button onClick={() => onKayipIsaretle(ozet.eksik)}
+                title="Eksik listesindeki tüm SN'leri kayıp olarak işaretle (soft delete)"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 10px', borderRadius: 6,
+                  background: 'transparent', color: '#B45309',
+                  border: '1px solid #B45309', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>
+                <AlertTriangle size={12} strokeWidth={1.5} /> Eksikleri Kayıp İşaretle
+              </button>
+            )}
             {onSil && (
               <button onClick={onSil}
                 title="Bu sayımı sil"

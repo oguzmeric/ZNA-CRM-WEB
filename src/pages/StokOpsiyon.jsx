@@ -4,9 +4,15 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
+import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { stokUrunleriniGetir, stokHareketleriniGetir } from '../services/stokService'
+import {
+  opsiyonlariGetir, opsiyonEkle, opsiyonDurumGuncelle,
+  opsiyonSil as dbOpsiyonSil, localStorageOpsiyonlariTasi,
+} from '../services/stokOpsiyonService'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, KPICard, EmptyState, SegmentedControl,
@@ -27,19 +33,37 @@ const bosForm = {
 function StokOpsiyon() {
   const { kullanici, kullanicilar } = useAuth()
   const { bildirimEkle } = useBildirim()
+  const { toast } = useToast()
+  const { confirm } = useConfirm()
 
-  const [opsiyonlar, setOpsiyonlar] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('stokOpsiyonlar') || '[]') }
-    catch { return [] }
-  })
+  // Opsiyonlar artık DB'de (mig 137) — localStorage sadece tek seferlik
+  // taşıma kaynağı olarak okunur (localStorageOpsiyonlariTasi).
+  const [opsiyonlar, setOpsiyonlar] = useState([])
   const [stokUrunler, setStokUrunler] = useState([])
   const [hareketler, setHareketler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
 
   useEffect(() => {
-    Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir()])
-      .then(([u, h]) => { setStokUrunler(u || []); setHareketler(h || []); setYukleniyor(false) })
-      .catch(() => setYukleniyor(false))
+    const yukle = async () => {
+      try {
+        // Eski tarayıcı verisi varsa önce DB'ye taşı (idempotent, marker'lı)
+        const tasinan = await localStorageOpsiyonlariTasi()
+        const [u, h, ops] = await Promise.all([
+          stokUrunleriniGetir(), stokHareketleriniGetir(), opsiyonlariGetir(),
+        ])
+        setStokUrunler(u || [])
+        setHareketler(h || [])
+        setOpsiyonlar(ops || [])
+        if (tasinan > 0) toast.success(`${tasinan} opsiyon tarayıcıdan veritabanına taşındı.`)
+      } catch (e) {
+        console.error('[StokOpsiyon yükle]', e)
+        toast.error('Opsiyonlar yüklenemedi: ' + (e?.message || 'bilinmeyen hata'))
+      } finally {
+        setYukleniyor(false)
+      }
+    }
+    yukle()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [form, setForm] = useState(bosForm)
@@ -63,56 +87,79 @@ function StokOpsiyon() {
     setForm({ ...form, stokKodu: kod, stokAdi: u?.stokAdi || '' })
   }
 
-  const kaydet = () => {
+  const kaydet = async () => {
     if (!form.stokKodu || !form.miktar || !form.satisciId || !form.bitisTarih) {
-      alert('Stok, miktar, satışçı ve bitiş tarihi zorunludur.')
+      toast.warning('Stok, miktar, satışçı ve bitiş tarihi zorunludur.')
       return
     }
     const bakiye = stokBakiye(form.stokKodu)
     const mevcut = opsiyonluMiktar(form.stokKodu)
     const kullanilabilir = bakiye - mevcut
     if (Number(form.miktar) > kullanilabilir) {
-      alert(`Yetersiz stok. Kullanılabilir: ${kullanilabilir} adet (${bakiye} toplam − ${mevcut} opsiyonlu)`)
+      toast.error(`Yetersiz stok. Kullanılabilir: ${kullanilabilir} adet (${bakiye} toplam − ${mevcut} opsiyonlu)`)
       return
     }
     const satisci = kullanicilar.find(k => k.id?.toString() === form.satisciId)
-    const yeni = {
-      ...form, id: crypto.randomUUID(), durum: 'aktif',
-      olusturanId: kullanici?.id?.toString(), olusturanAd: kullanici?.ad,
-      satisciAd: satisci?.ad || '',
-      olusturmaTarih: new Date().toISOString(),
-      opsiyonNo: `OPS-${String(opsiyonlar.length + 1).padStart(4, '0')}`,
+    try {
+      const yeni = await opsiyonEkle({
+        stokKodu: form.stokKodu,
+        stokAdi: form.stokAdi,
+        miktar: Number(form.miktar),
+        satisciId: Number(form.satisciId),
+        satisciAd: satisci?.ad || '',
+        musteriAdi: form.musteriAdi,
+        aciklama: form.aciklama,
+        bitisTarih: form.bitisTarih,
+        durum: 'aktif',
+        olusturanId: kullanici?.id ? Number(kullanici.id) : null,
+        olusturanAd: kullanici?.ad || '',
+      })
+      setOpsiyonlar(prev => [yeni, ...prev])
+      bildirimEkle(form.satisciId, 'Stok Opsiyonu Oluşturuldu',
+        `${form.miktar} adet ${form.stokAdi} ürünü için opsiyon oluşturuldu. Bitiş: ${form.bitisTarih}`,
+        'bilgi', '/stok-opsiyon')
+      toast.success(`Opsiyon oluşturuldu (${yeni.opsiyonNo}).`)
+      setForm(bosForm); setGoster(false)
+    } catch (e) {
+      toast.error('Opsiyon kaydedilemedi: ' + (e?.message || 'bilinmeyen hata'))
     }
-    const g = [...opsiyonlar, yeni]
-    setOpsiyonlar(g)
-    localStorage.setItem('stokOpsiyonlar', JSON.stringify(g))
-    bildirimEkle(form.satisciId, 'Stok Opsiyonu Oluşturuldu',
-      `${form.miktar} adet ${form.stokAdi} ürünü için opsiyon oluşturuldu. Bitiş: ${form.bitisTarih}`,
-      'bilgi', '/stok-opsiyon')
-    setForm(bosForm); setGoster(false)
   }
 
-  const durumGuncelle = (id, yeniDurum) => {
+  const durumGuncelle = async (id, yeniDurum) => {
     const o = opsiyonlar.find(x => x.id === id)
-    const g = opsiyonlar.map(x => x.id === id ? { ...x, durum: yeniDurum } : x)
-    setOpsiyonlar(g)
-    localStorage.setItem('stokOpsiyonlar', JSON.stringify(g))
-    if (yeniDurum === 'onaylandi' && o) {
-      bildirimEkle(o.satisciId, 'Opsiyon Onaylandı',
-        `${o.miktar} adet ${o.stokAdi} opsiyonunuz onaylandı.`,
-        'basari', '/stok-opsiyon')
-    }
-    if (yeniDurum === 'iptal' && o) {
-      bildirimEkle(o.satisciId, 'Opsiyon İptal Edildi',
-        `${o.miktar} adet ${o.stokAdi} opsiyonunuz iptal edildi.`,
-        'uyari', '/stok-opsiyon')
+    try {
+      await opsiyonDurumGuncelle(id, yeniDurum)
+      setOpsiyonlar(prev => prev.map(x => x.id === id ? { ...x, durum: yeniDurum } : x))
+      if (yeniDurum === 'onaylandi' && o) {
+        bildirimEkle(o.satisciId, 'Opsiyon Onaylandı',
+          `${o.miktar} adet ${o.stokAdi} opsiyonunuz onaylandı.`,
+          'basari', '/stok-opsiyon')
+      }
+      if (yeniDurum === 'iptal' && o) {
+        bildirimEkle(o.satisciId, 'Opsiyon İptal Edildi',
+          `${o.miktar} adet ${o.stokAdi} opsiyonunuz iptal edildi.`,
+          'uyari', '/stok-opsiyon')
+      }
+    } catch (e) {
+      toast.error('Durum güncellenemedi: ' + (e?.message || 'bilinmeyen hata'))
     }
   }
 
-  const opsiyonSil = (id) => {
-    const g = opsiyonlar.filter(o => o.id !== id)
-    setOpsiyonlar(g)
-    localStorage.setItem('stokOpsiyonlar', JSON.stringify(g))
+  const opsiyonSil = async (id) => {
+    const o = opsiyonlar.find(x => x.id === id)
+    const onay = await confirm({
+      baslik: 'Opsiyonu Sil',
+      mesaj: `${o?.opsiyonNo || ''} — ${o?.stokAdi || ''} opsiyonu kalıcı olarak silinecek. Emin misin?`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await dbOpsiyonSil(id)
+      setOpsiyonlar(prev => prev.filter(x => x.id !== id))
+      toast.success('Opsiyon silindi.')
+    } catch (e) {
+      toast.error('Silinemedi: ' + (e?.message || 'bilinmeyen hata'))
+    }
   }
 
   const bugun = new Date()

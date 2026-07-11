@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { Printer, X, Square, CheckSquare } from 'lucide-react'
 import { Button } from './ui'
+import { useToast } from '../context/ToastContext'
 
 // SN → SVG barkod (component)
 function Barkod({ deger, height = 40 }) {
@@ -25,6 +26,7 @@ function Barkod({ deger, height = 40 }) {
 }
 
 export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat }) {
+  const { toast } = useToast()
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
   const hicbiri = () => setSeciliIdler(new Set())
@@ -36,7 +38,7 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat 
   const seciliKalemler = kalemler.filter(k => seciliIdler.has(k.id))
 
   const yazdir = () => {
-    if (seciliKalemler.length === 0) { alert('En az bir SN seçin.'); return }
+    if (seciliKalemler.length === 0) { toast.warning('En az bir SN seçin.'); return }
     // window.print browser-native — CSS'te print class'ları etiketleri düzenler
     window.print()
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-if (typeof window !== 'undefined') window.__MODEL_DETAY_VERSION__ = 'sn-ekle-v3'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
   ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus, User, PackageOpen,
@@ -79,6 +80,8 @@ const tarihKisa = (iso) => {
 function ModelDetay() {
   const { stokKodu } = useParams()
   const navigate = useNavigate()
+  const { toast } = useToast()
+  const { confirm } = useConfirm()
   const [kalemler, setKalemler] = useState([])
   const [urun, setUrun] = useState(null)
   const [hareketler, setHareketler] = useState([])
@@ -120,8 +123,9 @@ function ModelDetay() {
         const tmap = new Map()
         kullanicilar.forEach(kul => tmap.set(kul.id, kul))
         setTeknisyenMap(tmap)
-        // Personel: yönetim (Oğuz/Ali/Ferdi) hariç herkes teknisyen olabilir
-        setPersonelListe(kullanicilar.filter(k => !/\b(oğuz|oguz|ali|ferdi)\b/i.test(k.ad || '')))
+        // Personel: yönetim (rol='admin') hariç herkes teknisyen olabilir.
+        // Eski hali isim regex'iydi (oğuz|ali|ferdi) — yeni yönetici atanınca bozuluyordu.
+        setPersonelListe(kullanicilar.filter(k => k.rol !== 'admin'))
       })
       .catch(err => console.error('[ModelDetay yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -455,7 +459,8 @@ function ModelDetay() {
                                 ) : (
                                   <button
                                     onClick={async () => {
-                                      if (!confirm(`${k.seriNo} rezervi kaldırılsın mı?`)) return
+                                      const onay = await confirm({ baslik: 'Rezervi Kaldır', mesaj: `${k.seriNo} rezervi kaldırılsın mı?`, onayMetin: 'Kaldır', iptalMetin: 'Vazgeç' })
+                                      if (!onay) return
                                       await snRezerveBirak(k.id); setYenile(y => y + 1)
                                     }}
                                     title="Rezervi kaldır"
@@ -477,7 +482,8 @@ function ModelDetay() {
                               <>
                                 <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
                                   onClick={async () => {
-                                    if (!confirm(`${k.seriNo} depoya çekilsin mi?`)) return
+                                    const onay = await confirm({ baslik: 'Depoya Çek', mesaj: `${k.seriNo} depoya çekilsin mi?`, onayMetin: 'Depoya Çek', iptalMetin: 'Vazgeç' })
+                                    if (!onay) return
                                     await snDepoyaCek(k.id)
                                     setYenile(y => y + 1)
                                   }}>
@@ -500,7 +506,8 @@ function ModelDetay() {
                                 </Button>
                                 <button
                                   onClick={async () => {
-                                    if (!confirm(`${k.seriNo} onarıldı olarak işaretlensin ve depoya alınsın mı?`)) return
+                                    const onay = await confirm({ baslik: 'Onarıldı', mesaj: `${k.seriNo} onarıldı olarak işaretlensin ve depoya alınsın mı?`, onayMetin: 'Onarıldı, Depoya Al', iptalMetin: 'Vazgeç' })
+                                    if (!onay) return
                                     // Açık arıza kaydını çöz
                                     const list = await kalemArizaGecmisi(k.id)
                                     const acik = list.find(x => !x.cozuldu_tarih)
@@ -518,7 +525,8 @@ function ModelDetay() {
                             {!k.silindi && k.durum === 'arizada' && (
                               <Button size="sm" variant="secondary" iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
                                 onClick={async () => {
-                                  if (!confirm(`${k.seriNo} depoya (arızalı depoda) alınsın mı?`)) return
+                                  const onay = await confirm({ baslik: 'Arızalı Depoya Al', mesaj: `${k.seriNo} depoya (arızalı depoda) alınsın mı?`, onayMetin: 'Depoya Al', iptalMetin: 'Vazgeç' })
+                                  if (!onay) return
                                   await snArizaliIsaretle(k.id, { yeniDurum: 'arizali_depoda', sebep: 'diger', aciklama: 'Teknisyenden arızalı geri geldi' })
                                   setYenile(y => y + 1)
                                 }}>
@@ -530,7 +538,7 @@ function ModelDetay() {
                                 onClick={async () => {
                                   const list = await kalemRMAGecmisi(k.id)
                                   const acik = list.find(x => !x.geri_donus_tarih)
-                                  if (!acik) return alert('Serviste bekleyen kayıt bulunamadı.')
+                                  if (!acik) return toast.warning('Serviste bekleyen kayıt bulunamadı.')
                                   setRmaDonusModal({ kalem: k, rma: acik })
                                 }}>
                                 Servisten Döndü
@@ -589,7 +597,8 @@ function ModelDetay() {
                               /* Silindi ise geri getir */
                               <button
                                 onClick={async () => {
-                                  if (!confirm(`${k.seriNo} geri getirilsin mi?`)) return
+                                  const onay = await confirm({ baslik: 'Geri Getir', mesaj: `${k.seriNo} geri getirilsin mi?`, onayMetin: 'Geri Getir', iptalMetin: 'Vazgeç' })
+                                  if (!onay) return
                                   await snGeriGetir(k.id)
                                   setYenile(y => y + 1)
                                 }}
@@ -955,13 +964,14 @@ function ArizaModal({ kalem, yeniDurum, personel, musteriMap, onKapat, onKaydet 
 // RMAModal — tedarikçiye/servise gönder
 // ─────────────────────────────────────────────────────────────
 function RMAModal({ kalem, onKapat, onKaydet }) {
+  const { toast } = useToast()
   const [tedarikci, setTedarikci] = useState(kalem.marka || '')
   const [kargoNo, setKargoNo] = useState('')
   const [tahminiDonus, setTahminiDonus] = useState('')
   const [notlar, setNotlar] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const kaydet = async () => {
-    if (!tedarikci.trim()) return alert('Tedarikçi adı zorunlu.')
+    if (!tedarikci.trim()) return toast.warning('Tedarikçi adı zorunlu.')
     setKaydediliyor(true)
     try {
       await onKaydet({
@@ -1190,6 +1200,7 @@ function SnGecmisModal({ seriNo, kayitlar, onKapat }) {
 }
 
 function SnSilModal({ kalem, onKapat, onSil }) {
+  const { toast } = useToast()
   const [sebep, setSebep] = useState('')
   const [not, setNot] = useState('')
   const [yukleniyor, setYukleniyor] = useState(false)
@@ -1251,7 +1262,7 @@ function SnSilModal({ kalem, onKapat, onSil }) {
             onClick={async () => {
               setYukleniyor(true)
               try { await onSil({ sebep, not: not.trim() }) }
-              catch (e) { alert('Silme hatası: ' + (e?.message || e)) }
+              catch (e) { toast.error('Silme hatası: ' + (e?.message || e)) }
               finally { setYukleniyor(false) }
             }}
             style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
@@ -1265,6 +1276,7 @@ function SnSilModal({ kalem, onKapat, onSil }) {
 }
 
 function SnDuzenleModal({ kalem, onKapat, onKaydet }) {
+  const { toast } = useToast()
   const [form, setForm] = useState({
     seriNo: kalem.seriNo || '',
     marka: kalem.marka || '',
@@ -1317,7 +1329,7 @@ function SnDuzenleModal({ kalem, onKapat, onKaydet }) {
                   barkod: form.barkod.trim() || null,
                 })
               } catch (e) {
-                alert('Güncelleme hatası: ' + (e?.message || e))
+                toast.error('Güncelleme hatası: ' + (e?.message || e))
               } finally { setYukleniyor(false) }
             }}>
             {yukleniyor ? 'Kaydediliyor…' : 'Kaydet'}

@@ -46,7 +46,9 @@ export const RMA_SONUCLARI = [
   { id: 'iptal',         ad: 'İptal',           renk: '#6b7280' },
 ]
 
-// SN'i "arızalı depoda" olarak işaretle + kayıt aç
+// SN'i "arızalı depoda" olarak işaretle + kayıt aç.
+// ATOMİK: mig 138 RPC — durum + arıza kaydı + hareket tek transaction
+// (eskiden 3 ayrı sorguydu, ortada patlarsa yarım kalıyordu).
 export async function snArizaliIsaretle(stokKalemId, {
   yeniDurum = 'arizali_depoda', // veya 'arizada' (teknisyende bozuldu)
   sebep = 'diger',
@@ -55,32 +57,18 @@ export async function snArizaliIsaretle(stokKalemId, {
   geldigi_musteri_id = null,
 }) {
   const uid = await oturumKullaniciId()
-  const { data: kalem, error: e1 } = await supabase
-    .from('stok_kalemleri')
-    .update({ durum: yeniDurum })
-    .eq('id', stokKalemId)
-    .select('id, seri_no, stok_kodu, marka, model')
-    .single()
-  if (e1) throw e1
-  const { data: kayit, error: e2 } = await supabase
-    .from('stok_ariza_kayitlari')
-    .insert({
-      stok_kalem_id: stokKalemId,
-      sebep,
-      aciklama: aciklama || null,
-      geldigi_teknisyen_id,
-      geldigi_musteri_id,
-      olusturan_id: uid,
-    })
-    .select().single()
-  if (e2) throw e2
-  await hareket({
-    stokKodu: kalem.stok_kodu,
-    stokAdi: kalem.marka || kalem.model,
-    tip: 'ariza',
-    aciklama: `SN arızalı: ${kalem.seri_no} — ${(ARIZA_SEBEPLERI.find(s => s.id === sebep) || {}).ad || sebep}`,
+  const { data, error } = await supabase.rpc('sn_ariza_isaretle_atomik', {
+    in_kalem_id: stokKalemId,
+    in_yeni_durum: yeniDurum,
+    in_sebep: sebep,
+    in_sebep_ad: (ARIZA_SEBEPLERI.find(s => s.id === sebep) || {}).ad || sebep,
+    in_aciklama: aciklama || null,
+    in_teknisyen_id: geldigi_teknisyen_id,
+    in_musteri_id: geldigi_musteri_id,
+    in_olusturan_id: uid,
   })
-  return { kalem, kayit }
+  if (error) throw error
+  return { kalem: data?.kalem, kayit: data?.kayit }
 }
 
 // SN arızası çözüldü — kayda not düş, kalem durumunu isteğe göre değiştir
@@ -115,59 +103,34 @@ export async function kalemArizaGecmisi(stokKalemId) {
 // RMA — tedarikçiye/servise gönderme
 // ─────────────────────────────────────────────────────────────
 
+// ATOMİK: mig 138 RPC — kalem durumu + RMA kaydı + hareket tek transaction
 export async function rmaOlustur(stokKalemId, { tedarikci_ad, kargo_no = '', tahmini_donus = null, notlar = '' }) {
   const uid = await oturumKullaniciId()
-  const { data: kalem, error: e1 } = await supabase
-    .from('stok_kalemleri')
-    .update({ durum: 'tamirde' })
-    .eq('id', stokKalemId)
-    .select('id, seri_no, stok_kodu, marka').single()
-  if (e1) throw e1
-  const { data: rma, error: e2 } = await supabase
-    .from('stok_rma_kayitlari')
-    .insert({
-      stok_kalem_id: stokKalemId,
-      tedarikci_ad,
-      kargo_no: kargo_no || null,
-      tahmini_donus,
-      notlar: notlar || null,
-      olusturan_id: uid,
-    })
-    .select().single()
-  if (e2) throw e2
-  await hareket({
-    stokKodu: kalem.stok_kodu, stokAdi: kalem.marka,
-    tip: 'rma_cikis',
-    aciklama: `Servise gönderildi: ${kalem.seri_no} → ${tedarikci_ad}${kargo_no ? ` (kargo: ${kargo_no})` : ''}`,
+  const { data, error } = await supabase.rpc('sn_rma_olustur_atomik', {
+    in_kalem_id: stokKalemId,
+    in_tedarikci_ad: tedarikci_ad,
+    in_kargo_no: kargo_no || null,
+    in_tahmini_donus: tahmini_donus,
+    in_notlar: notlar || null,
+    in_olusturan_id: uid,
   })
-  return { kalem, rma }
+  if (error) throw error
+  return { kalem: data?.kalem, rma: data?.rma }
 }
 
+// ATOMİK: mig 138 RPC — RMA sonucu + kalem durumu + hareket tek transaction
 export async function rmaGeriDondu(rmaId, { sonuc, notlar = '', yeniDurum = null }) {
-  const { data: rma, error: e1 } = await supabase
-    .from('stok_rma_kayitlari')
-    .update({
-      sonuc,
-      notlar: notlar || null,
-      geri_donus_tarih: new Date().toISOString(),
-    })
-    .eq('id', rmaId)
-    .select('stok_kalem_id').single()
-  if (e1) throw e1
-  // Sonuca göre otomatik durum
-  const donusDurum = yeniDurum || (sonuc === 'red' ? 'hurda' : 'depoda')
-  const { data: kalem } = await supabase.from('stok_kalemleri')
-    .update({ durum: donusDurum })
-    .eq('id', rma.stok_kalem_id)
-    .select('seri_no, stok_kodu, marka').single()
-  if (kalem) {
-    await hareket({
-      stokKodu: kalem.stok_kodu, stokAdi: kalem.marka,
-      tip: 'rma_giris',
-      aciklama: `Servisten döndü: ${kalem.seri_no} — ${(RMA_SONUCLARI.find(s => s.id === sonuc) || {}).ad || sonuc}`,
-    })
-  }
-  return { rma, kalem }
+  const uid = await oturumKullaniciId()
+  const { data, error } = await supabase.rpc('sn_rma_donus_atomik', {
+    in_rma_id: rmaId,
+    in_sonuc: sonuc,
+    in_sonuc_ad: (RMA_SONUCLARI.find(s => s.id === sonuc) || {}).ad || sonuc,
+    in_notlar: notlar || null,
+    in_yeni_durum: yeniDurum,
+    in_olusturan_id: uid,
+  })
+  if (error) throw error
+  return { rma: data?.rma, kalem: data?.kalem }
 }
 
 // Bir kalemin RMA geçmişi
@@ -397,11 +360,21 @@ export async function sayimOzet(sayimId) {
 }
 
 export async function sayimBitir(sayimId) {
+  // Fark snapshot'ı kalıcı kaydedilir (mig 137: toplam/tarandi/eksik kolonları) —
+  // sayım kapandıktan sonra denetim izinde "o gün kaç eksik vardı" sorusu cevaplanabilsin.
+  const ozet = await sayimOzet(sayimId)
   const { error } = await supabase
     .from('stok_sayimlar')
-    .update({ tamamlandi: true, tamamlanma_tarihi: new Date().toISOString() })
+    .update({
+      tamamlandi: true,
+      tamamlanma_tarihi: new Date().toISOString(),
+      toplam_kalem: ozet.toplam,
+      tarandi_kalem: ozet.tarandi,
+      eksik_kalem: ozet.eksik.length,
+    })
     .eq('id', sayimId)
   if (error) throw error
+  return ozet
 }
 
 // Sayımı sil — cascade ile stok_sayim_kalemleri de siler

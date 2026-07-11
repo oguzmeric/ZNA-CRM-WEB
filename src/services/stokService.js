@@ -4,7 +4,7 @@ import { pagedFetch } from '../lib/pagedFetch'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
 // Liste kolonları — aciklama listede lazım değil (3762 ürün × free text = büyük)
-const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet'
+const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf'
 
 export const stokUrunleriniGetir = () => cached('stokUrunler:list', async () => {
   const data = await pagedFetch((off, size) =>
@@ -23,6 +23,7 @@ const KABUL_EDILEN_KOLONLAR = [
   'stokKodu', 'stokAdi', 'birim', 'minStok', 'aciklama',
   'marka', 'grupKodu', 'gorselUrl', 'katalogdaGoster', 'birimFiyat',
   'seriTakipli', 'beklenenAdet', 'kategori', 'stokMiktari', 'kdvOrani',
+  'alisFiyat', 'raf',
 ]
 
 // Eski tablolarda olmayan kolonlar varsa fallback — burada da grupKodu dahil
@@ -37,9 +38,11 @@ const tumAlanlarTemizle = (urun) => {
   // Boş string → null (numeric/url alanlar için)
   if (temiz.minStok === '' || temiz.minStok === undefined) temiz.minStok = null
   if (temiz.birimFiyat === '' || temiz.birimFiyat === undefined) temiz.birimFiyat = null
+  if (temiz.alisFiyat === '' || temiz.alisFiyat === undefined) temiz.alisFiyat = null
   if (temiz.gorselUrl === '') temiz.gorselUrl = null
   if (temiz.marka === '') temiz.marka = null
   if (temiz.grupKodu === '') temiz.grupKodu = null
+  if (temiz.raf === '') temiz.raf = null
   return temiz
 }
 

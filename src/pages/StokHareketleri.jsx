@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import {
   Plus, Package, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, X,
-  ArrowRight, ChevronRight, ChevronDown,
+  ArrowRight, ChevronRight, ChevronDown, Download,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -141,6 +142,26 @@ export default function StokHareketleri() {
   }
   const gruplananlar = grupla(gorunenHareketler)
 
+  // Filtrelenmiş hareketleri Excel'e aktar (gruplama olmadan, ham satırlar)
+  const excelIndir = () => {
+    const satirlar = gorunenHareketler.map(x => ({
+      'Tarih': x.tarih || '',
+      'Stok Kodu': x.stokKodu || '',
+      'Stok Adı': x.stokAdi || '',
+      'Tip': x.hareketTipi || '',
+      'Miktar': Number(x.miktar) || 0,
+      'Açıklama': x.aciklama || '',
+      'Kullanıcı': x.kullaniciAd || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(satirlar)
+    ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 8 }, { wch: 50 }, { wch: 18 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Hareketler')
+    const bugun = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(wb, `ZNA_StokHareketleri_${bugun}.xlsx`)
+    toast.success(`${satirlar.length} hareket Excel'e aktarıldı.`)
+  }
+
   const h = detayHareket
   const modalTur = h ? hareketTurleri.find(t => t.id === h.hareketTipi) : null
   const modalUrun = h ? urunler.find(u => u.stokKodu === h.stokKodu) : null
@@ -159,6 +180,9 @@ export default function StokHareketleri() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={excelIndir}>
+            Excel indir
+          </Button>
           <Button variant="secondary" iconLeft={<Package size={14} strokeWidth={1.5} />} onClick={() => navigate('/stok')}>
             Stok kartları
           </Button>

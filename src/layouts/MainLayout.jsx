@@ -15,6 +15,7 @@ import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
 import FloatingZeynaButton from '../components/FloatingZeynaButton'
 import GlobalBarkodAra from '../components/GlobalBarkodAra'
+import { kritikSeviyeSayisi } from '../services/depoService'
 import { Avatar } from '../components/ui'
 import { useMenuSiralama } from '../hooks/useMenuSiralama'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -140,6 +141,9 @@ const menuItems = [
       { id: 'stok-kartlar', isim: 'Stok Kartları', yol: '/stok' },
       { id: 'stok-hareketler', isim: 'Stok Hareketleri', yol: '/stok-hareketleri' },
       { id: 'stok-opsiyon', isim: 'Stok Opsiyonları', yol: '/stok-opsiyon' },
+      { id: 'stok-kritik', isim: 'Kritik Seviye', yol: '/stok-kritik' },
+      { id: 'stok-sayim', isim: 'Sayım', yol: '/stok-sayim' },
+      { id: 'depo-raporlar', isim: 'Depo Raporları', yol: '/depo-raporlar' },
     ],
   },
   { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar', grup: 'operasyon' },
@@ -215,6 +219,9 @@ const sayfaIsimleri = {
   '/stok': 'Stok Kartları',
   '/stok-hareketleri': 'Stok Hareketleri',
   '/stok-opsiyon': 'Stok Opsiyonları',
+  '/stok-kritik': 'Kritik Seviye',
+  '/stok-sayim': 'Sayım',
+  '/depo-raporlar': 'Depo Raporları',
   '/teklifler': 'Teklifler',
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
@@ -245,6 +252,22 @@ function MainLayout({ children }) {
   const gorevOkunmamis = gorevBildirimleri.length
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Kritik stok rozeti — min_stok altına düşen ürün sayısı. Mount'ta + 5 dk'da
+  // bir tazelenir; stok sayfalarından çıkınca da tazelenir (düzeltme yapılmıştır).
+  const [kritikStokSayi, setKritikStokSayi] = useState(0)
+  useEffect(() => {
+    let iptal = false
+    const tazele = () => {
+      kritikSeviyeSayisi()
+        .then(n => { if (!iptal) setKritikStokSayi(n || 0) })
+        .catch(() => {})
+    }
+    tazele()
+    const timer = setInterval(tazele, 5 * 60 * 1000)
+    return () => { iptal = true; clearInterval(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname.startsWith('/stok')])
 
   const [musteriAcik, setMusteriAcik] = useState(
     location.pathname.startsWith('/musteri') || location.pathname.startsWith('/firma')
@@ -402,6 +425,9 @@ function MainLayout({ children }) {
     if (location.pathname === '/stok') return 'Stok Kartları'
     if (location.pathname === '/stok-hareketleri') return 'Stok Hareketleri'
     if (location.pathname === '/stok-opsiyon') return 'Stok Opsiyonları'
+    if (location.pathname === '/stok-kritik') return 'Kritik Seviye'
+    if (location.pathname === '/stok-sayim') return 'Sayım'
+    if (location.pathname === '/depo-raporlar') return 'Depo Raporları'
     if (location.pathname === '/trassir-lisanslar') return 'Trassir Lisanslar'
     if (location.pathname === '/teklifler') return 'Teklifler'
     if (location.pathname.startsWith('/teklifler/')) return 'Teklif Detayı'
@@ -683,7 +709,8 @@ function MainLayout({ children }) {
                         // Kaynak bazli rozet: personel → Servis Talepleri, musteri → Musteri Talepleri
                         const rozetSayi =
                           alt.id === 'servis_talepleri'   ? personelTalepOkunmamis :
-                          alt.id === 'musteri_talepleri'  ? musteriTalepOkunmamis  : 0
+                          alt.id === 'musteri_talepleri'  ? musteriTalepOkunmamis  :
+                          alt.id === 'stok-kritik'        ? kritikStokSayi         : 0
                         const rozet = rozetSayi > 0
                           ? (rozetSayi > 99 ? '99+' : String(rozetSayi))
                           : null

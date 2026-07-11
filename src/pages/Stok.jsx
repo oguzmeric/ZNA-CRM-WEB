@@ -9,6 +9,8 @@ import {
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
+import { useBildirim } from '../context/BildirimContext'
+import { opsiyonEkle, aktifOpsiyonToplamlari } from '../services/stokOpsiyonService'
 import {
   stokUrunleriniGetir, stokUrunEkle, stokUrunGuncelle, stokUrunSil,
   stokHareketleriniGetir, stokHareketEkle, gorselYukle,
@@ -35,6 +37,8 @@ const bosForm = {
   model: '',
   grupKodu: '',
   minStok: '',
+  alisFiyat: '',  // Stok değeri raporu için (mig 137)
+  raf: '',        // Depo lokasyonu, örn. "A-3" (mig 137)
   aciklama: '',
   ilkStok: '',
   gorselUrl: '',
@@ -61,7 +65,8 @@ function Stok() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { confirm } = useConfirm()
-  const { kullanicilar } = useAuth()
+  const { kullanici, kullanicilar } = useAuth()
+  const { bildirimEkle } = useBildirim()
   const dosyaRef = useRef(null)
 
   const [urunler, setUrunler] = useState([])
@@ -100,18 +105,23 @@ function Stok() {
     }
   }, [form.seriTakipli, duzenleId])
 
+  // Aktif opsiyon toplamları (stokKodu → miktar) — DB'den (mig 137)
+  const [opsiyonToplam, setOpsiyonToplam] = useState(new Map())
+
   useEffect(() => {
     Promise.all([
       stokUrunleriniGetir(),
       stokHareketleriniGetir(),
       stokKalemOzetleriniGetir(),
       tumSeriNumaralariniGetir(),
+      aktifOpsiyonToplamlari(),
     ])
-      .then(([urunData, hareketData, kalemOzet, snMap]) => {
+      .then(([urunData, hareketData, kalemOzet, snMap, opsMap]) => {
         setUrunler(urunData || [])
         setHareketler(hareketData || [])
         setKalemOzetleri(kalemOzet || new Map())
         setGlobalSN(snMap || new Map())
+        setOpsiyonToplam(opsMap || new Map())
       })
       .catch(err => console.error('[Stok yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -138,12 +148,8 @@ function Stok() {
       }, 0)
   }
 
-  const opsiyonluMiktar = (stokKodu) => {
-    const opsiyonlar = JSON.parse(localStorage.getItem('stokOpsiyonlar') || '[]')
-    return opsiyonlar
-      .filter((o) => o.stokKodu === stokKodu && o.durum === 'aktif')
-      .reduce((sum, o) => sum + Number(o.miktar), 0)
-  }
+  // Opsiyonlar DB'de (mig 137) — localStorage okuma kaldırıldı
+  const opsiyonluMiktar = (stokKodu) => opsiyonToplam.get(stokKodu) || 0
 
   const sablonIndir = () => {
     const sablon = [
@@ -176,6 +182,42 @@ function Stok() {
       { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 30 },
     ]
     XLSX.writeFile(wb, 'ZNA_Stok_Sablonu.xlsx')
+  }
+
+  // Mevcut stok listesini Excel'e aktar — bakiye + opsiyon + değer dahil
+  const excelIndir = () => {
+    const satirlar = urunler.map(u => {
+      const bakiye = stokBakiye(u.stokKodu)
+      const opsiyonlu = opsiyonluMiktar(u.stokKodu)
+      const alis = Number(u.alisFiyat || 0)
+      return {
+        'Stok Kodu': u.stokKodu,
+        'Stok Adı': u.stokAdi,
+        'Birim': u.birim || 'Adet',
+        'Marka': u.marka || '',
+        'Grup Kodu': u.grupKodu || '',
+        'Raf': u.raf || '',
+        'Bakiye': bakiye,
+        'Opsiyonlu': opsiyonlu,
+        'Satılabilir': bakiye - opsiyonlu,
+        'Min Stok': u.minStok || '',
+        'Alış Fiyatı (₺)': alis || '',
+        'Stok Değeri (₺)': alis > 0 ? Number((bakiye * alis).toFixed(2)) : '',
+        'S/N Takipli': u.seriTakipli ? 'Evet' : '',
+        'Açıklama': u.aciklama || '',
+      }
+    })
+    const ws = XLSX.utils.json_to_sheet(satirlar)
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 34 }, { wch: 8 }, { wch: 16 }, { wch: 12 }, { wch: 8 },
+      { wch: 9 }, { wch: 10 }, { wch: 11 }, { wch: 9 }, { wch: 13 }, { wch: 14 },
+      { wch: 10 }, { wch: 30 },
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Stok')
+    const bugun = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(wb, `ZNA_Stok_${bugun}.xlsx`)
+    toast.success(`${satirlar.length} ürün Excel'e aktarıldı.`)
   }
 
   const excelOku = (e) => {
@@ -271,7 +313,7 @@ function Stok() {
     setOpsiyonForm(bosOpsiyonForm)
   }
 
-  const opsiyonKaydet = () => {
+  const opsiyonKaydet = async () => {
     if (!opsiyonForm.satisciId || !opsiyonForm.miktar || !opsiyonForm.bitisTarih) {
       toast.error('Satışçı, miktar ve bitiş tarihi zorunludur.')
       return
@@ -284,33 +326,35 @@ function Stok() {
       return
     }
     const satisci = kullanicilar.find((k) => k.id?.toString() === opsiyonForm.satisciId)
-    const mevcutOpsiyonlar = JSON.parse(localStorage.getItem('stokOpsiyonlar') || '[]')
-    const yeni = {
-      ...opsiyonForm,
-      id: crypto.randomUUID(),
-      stokKodu: opsiyonModal.stokKodu,
-      stokAdi: opsiyonModal.stokAdi,
-      durum: 'aktif',
-      satisciAd: satisci?.ad || '',
-      olusturmaTarih: new Date().toISOString(),
-      opsiyonNo: `OPS-${String(mevcutOpsiyonlar.length + 1).padStart(4, '0')}`,
+    try {
+      // Opsiyonlar DB'de (mig 137) — opsiyon_no trigger üretir
+      const yeni = await opsiyonEkle({
+        stokKodu: opsiyonModal.stokKodu,
+        stokAdi: opsiyonModal.stokAdi,
+        miktar: Number(opsiyonForm.miktar),
+        satisciId: Number(opsiyonForm.satisciId),
+        satisciAd: satisci?.ad || '',
+        musteriAdi: opsiyonForm.musteriAdi,
+        aciklama: opsiyonForm.aciklama,
+        bitisTarih: opsiyonForm.bitisTarih,
+        durum: 'aktif',
+        olusturanId: kullanici?.id ? Number(kullanici.id) : null,
+        olusturanAd: kullanici?.ad || '',
+      })
+      setOpsiyonToplam(prev => {
+        const m = new Map(prev)
+        m.set(opsiyonModal.stokKodu, (m.get(opsiyonModal.stokKodu) || 0) + Number(opsiyonForm.miktar))
+        return m
+      })
+      bildirimEkle(opsiyonForm.satisciId, 'Stok Opsiyonu Oluşturuldu',
+        `${opsiyonForm.miktar} adet ${opsiyonModal.stokAdi} ürünü için opsiyon oluşturuldu.`,
+        'bilgi', '/stok-opsiyon')
+      toast.success(`Opsiyon oluşturuldu (${yeni.opsiyonNo}).`)
+      setOpsiyonModal(null)
+      setOpsiyonForm(bosOpsiyonForm)
+    } catch (e) {
+      toast.error('Opsiyon kaydedilemedi: ' + (e?.message || 'bilinmeyen hata'))
     }
-    localStorage.setItem('stokOpsiyonlar', JSON.stringify([...mevcutOpsiyonlar, yeni]))
-    const bildirimler = JSON.parse(localStorage.getItem('bildirimler') || '[]')
-    bildirimler.unshift({
-      id: crypto.randomUUID(),
-      aliciId: opsiyonForm.satisciId,
-      baslik: 'Stok Opsiyonu Oluşturuldu',
-      mesaj: `${opsiyonForm.miktar} adet ${opsiyonModal.stokAdi} ürünü için opsiyon oluşturuldu.`,
-      tip: 'bilgi',
-      link: '/stok-opsiyon',
-      tarih: new Date().toISOString(),
-      okundu: false,
-    })
-    localStorage.setItem('bildirimler', JSON.stringify(bildirimler))
-    toast.success(`Opsiyon oluşturuldu (${yeni.opsiyonNo}).`)
-    setOpsiyonModal(null)
-    setOpsiyonForm(bosOpsiyonForm)
   }
 
   const formAc = () => {
@@ -329,6 +373,8 @@ function Stok() {
       marka: u.marka || '',
       grupKodu: u.grupKodu || '',
       minStok: u.minStok || '',
+      alisFiyat: u.alisFiyat || '',
+      raf: u.raf || '',
       aciklama: u.aciklama || '',
       ilkStok: '',
       gorselUrl: u.gorselUrl || '',
@@ -565,6 +611,7 @@ function Stok() {
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={sablonIndir}>Şablon</Button>
+          <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={excelIndir}>Excel indir</Button>
           <Button variant="tertiary" size="sm" iconLeft={<Upload size={13} strokeWidth={1.5} />} onClick={() => dosyaRef.current?.click()}>Excel aktar</Button>
           <input ref={dosyaRef} type="file" accept=".xlsx,.xls" onChange={excelOku} style={{ display: 'none' }} />
           <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>Opsiyonlar</Button>
@@ -737,6 +784,28 @@ function Stok() {
                 onChange={(e) => setForm({ ...form, minStok: e.target.value })}
                 placeholder="0"
                 min="0"
+              />
+            </div>
+            <div>
+              <Label>Alış fiyatı (₺)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.alisFiyat}
+                onChange={(e) => setForm({ ...form, alisFiyat: e.target.value })}
+                placeholder="0,00"
+                min="0"
+              />
+              <p className="t-caption" style={{ marginTop: 4 }}>
+                Depo Raporları'ndaki stok değeri hesabında kullanılır.
+              </p>
+            </div>
+            <div>
+              <Label>Raf / Lokasyon</Label>
+              <Input
+                value={form.raf}
+                onChange={(e) => setForm({ ...form, raf: e.target.value })}
+                placeholder="örn. A-3"
               />
             </div>
             {!duzenleId ? (

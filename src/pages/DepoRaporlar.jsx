@@ -1,12 +1,15 @@
-// Teknisyen aylık depo raporu + servisteki ürünler.
-import { useEffect, useState } from 'react'
+// Stok değeri (₺) + teknisyen aylık depo raporu + servisteki ürünler.
+import { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, Truck, PackageCheck, XCircle } from 'lucide-react'
+import { BarChart3, Truck, PackageCheck, XCircle, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { teknisyenAylikRapor, acikRMAlar, rmaGeriDondu, RMA_SONUCLARI } from '../services/depoService'
+import { stokUrunleriniGetir, stokHareketleriniGetir, stokKalemOzetleriniGetir } from '../services/stokService'
 import { Button, Card, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+
+const fmtTL = (n) => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const buAy = () => {
   const d = new Date()
@@ -29,20 +32,78 @@ export default function DepoRaporlar() {
 
   const rmalariYenile = () => acikRMAlar().then(setRmalar).catch(e => console.error(e))
 
+  // Stok değeri raporu verileri (bakiye hesabı Stok.jsx ile aynı mantık)
+  const [urunler, setUrunler] = useState([])
+  const [hareketler, setHareketler] = useState([])
+  const [kalemOzetleri, setKalemOzetleri] = useState(new Map())
+
   useEffect(() => {
     Promise.all([
       supabase.from('kullanicilar').select('id, ad, rol').order('ad'),
       acikRMAlar(),
+      stokUrunleriniGetir(),
+      stokHareketleriniGetir(),
+      stokKalemOzetleriniGetir(),
     ])
-      .then(([r1, r2]) => {
-        const list = (r1?.data || []).filter(k => !/\b(oğuz|oguz|ali|ferdi)\b/i.test(k.ad || ''))
+      .then(([r1, r2, u, h, ko]) => {
+        // Yöneticiler teknisyen listesine girmesin — isim regex'i yerine rol
+        // (eski hardcoded 'oğuz|ali|ferdi' filtresi yeni yönetici atanınca bozuluyordu)
+        const list = (r1?.data || []).filter(k => k.rol !== 'admin')
         setPersonel(list)
         setRmalar(r2 || [])
+        setUrunler(u || [])
+        setHareketler(h || [])
+        setKalemOzetleri(ko || new Map())
         if (list.length) setSeciliId(list[0].id)
       })
-      .catch(e => console.error('[DepoRaporlar]', e))
+      .catch(e => {
+        console.error('[DepoRaporlar]', e)
+        toast.error('Rapor verileri yüklenemedi: ' + (e?.message || 'bilinmeyen hata'))
+      })
       .finally(() => setYukleniyor(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Stok değeri: bakiye × alış fiyatı. SN'li üründe bakiye = kalem sayısı
+  // (hurda hariç), değilse hareket bazlı — Stok.jsx stokBakiye ile birebir.
+  const stokDegeri = useMemo(() => {
+    const bakiyeHesapla = (u) => {
+      if (u.seriTakipli) {
+        const ko = kalemOzetleri.get(u.stokKodu)
+        return Math.max(0, (Number(ko?.toplam) || 0) - (Number(ko?.hurda) || 0))
+      }
+      return hareketler
+        .filter(h => h.stokKodu === u.stokKodu)
+        .reduce((t, h) => {
+          if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return t + Number(h.miktar)
+          if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return t - Number(h.miktar)
+          return t
+        }, 0)
+    }
+    let toplam = 0
+    let fiyatsizUrun = 0
+    const gruplar = new Map() // grupKodu → { deger, urunSayisi }
+    const detay = []
+    for (const u of urunler) {
+      const bakiye = bakiyeHesapla(u)
+      if (bakiye <= 0) continue
+      const alis = Number(u.alisFiyat || 0)
+      if (!(alis > 0)) { fiyatsizUrun++; continue }
+      const deger = bakiye * alis
+      toplam += deger
+      const grup = u.grupKodu || 'GRUPSUZ'
+      const g = gruplar.get(grup) || { deger: 0, urunSayisi: 0 }
+      g.deger += deger
+      g.urunSayisi++
+      gruplar.set(grup, g)
+      detay.push({ ...u, bakiye, deger })
+    }
+    detay.sort((a, b) => b.deger - a.deger)
+    const grupListe = [...gruplar.entries()]
+      .map(([grup, g]) => ({ grup, ...g }))
+      .sort((a, b) => b.deger - a.deger)
+    return { toplam, fiyatsizUrun, grupListe, detay }
+  }, [urunler, hareketler, kalemOzetleri])
 
   useEffect(() => {
     if (!seciliId || !ay) return
@@ -57,6 +118,71 @@ export default function DepoRaporlar() {
         <BarChart3 size={22} strokeWidth={1.5} />
         <h1 className="t-h2" style={{ margin: 0 }}>Depo Raporları</h1>
       </div>
+
+      {/* Stok Değeri (₺) — bakiye × alış fiyatı */}
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <Wallet size={16} strokeWidth={1.5} />
+          <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Stok Değeri</h3>
+          {stokDegeri.fiyatsizUrun > 0 && (
+            <span style={{ fontSize: 11, color: 'var(--warning, #B45309)' }}>
+              ⚠ {stokDegeri.fiyatsizUrun} üründe alış fiyatı girilmemiş (hesaba dahil değil)
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 24, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>TOPLAM STOK DEĞERİ</div>
+            <div style={{ fontWeight: 700, fontSize: 26, color: 'var(--brand-primary, #1E5AA8)', fontVariantNumeric: 'tabular-nums' }}>
+              {fmtTL(stokDegeri.toplam)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>DEĞERLİ ÜRÜN</div>
+            <div style={{ fontWeight: 700, fontSize: 26 }}>{stokDegeri.detay.length}</div>
+          </div>
+        </div>
+        {stokDegeri.grupListe.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, marginBottom: 14 }}>
+            {stokDegeri.grupListe.slice(0, 8).map(g => (
+              <div key={g.grup} style={{
+                padding: '10px 12px', borderRadius: 8,
+                border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+              }}>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{g.grup}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{fmtTL(g.deger)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{g.urunSayisi} ürün</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {stokDegeri.detay.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: 8 }}>
+            Değer hesabı için stok kartlarına alış fiyatı girin (Stok Kartları → düzenle → Alış fiyatı).
+          </div>
+        ) : (
+          <Table>
+            <THead><TR><TH>Stok</TH><TH>Ürün</TH><TH>Grup</TH><TH style={{ textAlign: 'right' }}>Bakiye</TH><TH style={{ textAlign: 'right' }}>Alış ₺</TH><TH style={{ textAlign: 'right' }}>Değer ₺</TH></TR></THead>
+            <TBody>
+              {stokDegeri.detay.slice(0, 15).map(u => (
+                <TR key={u.id}>
+                  <TD><CodeBadge>{u.stokKodu}</CodeBadge></TD>
+                  <TD>{u.stokAdi}</TD>
+                  <TD>{u.grupKodu || '—'}</TD>
+                  <TD style={{ textAlign: 'right' }} className="tabular-nums">{u.bakiye}</TD>
+                  <TD style={{ textAlign: 'right' }} className="tabular-nums">{fmtTL(u.alisFiyat)}</TD>
+                  <TD style={{ textAlign: 'right', fontWeight: 700 }} className="tabular-nums">{fmtTL(u.deger)}</TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        )}
+        {stokDegeri.detay.length > 15 && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
+            En değerli 15 ürün gösteriliyor — tam liste için Stok Kartları'ndan "Excel indir".
+          </div>
+        )}
+      </Card>
 
       {/* Açık RMA */}
       <Card style={{ marginBottom: 20 }}>
