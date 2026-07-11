@@ -7,6 +7,7 @@ import {
   ClipboardCheck, BarChart3,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import {
   stokUrunleriniGetir, stokUrunEkle, stokUrunGuncelle, stokUrunSil,
@@ -59,6 +60,7 @@ function stokKoduOlustur(mevcutlar) {
 function Stok() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { confirm } = useConfirm()
   const { kullanicilar } = useAuth()
   const dosyaRef = useRef(null)
 
@@ -453,7 +455,7 @@ function Stok() {
       const yeniUrun = await stokUrunEkle(insertForm)
       if (yeniUrun) {
         setUrunler(prev => [...prev, yeniUrun])
-        if (seriTakipli && seriKalemleri.length > 0) {
+        if (form.seriTakipli && seriKalemleri.length > 0) {
           const gecerli = seriKalemleri.filter(k => k.seriNo?.trim())
           if (gecerli.length > 0) {
             try {
@@ -462,7 +464,7 @@ function Stok() {
                 seriNo: k.seriNo.trim(),
                 barkod: k.barkod?.trim() || null,
                 marka: form.marka || null,
-                model: model || form.stokAdi,
+                model: form.model || form.stokAdi,
                 durum: 'depoda',
                 notlar: k.notlar?.trim() || null,
               }))
@@ -503,6 +505,14 @@ function Stok() {
   }
 
   const urunSil = async (id) => {
+    // HARD delete — onaysız silme çok tehlikeliydi (tek tıkla stok kartı gidiyordu)
+    const u = urunler.find(x => x.id === id)
+    const onay = await confirm({
+      baslik: 'Stok Kartını Sil',
+      mesaj: `"${u?.stokKodu || ''} — ${u?.stokAdi || ''}" kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misin?`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
     await stokUrunSil(id)
     setUrunler(prev => prev.filter(u => u.id !== id))
     toast.success('Ürün silindi.')
