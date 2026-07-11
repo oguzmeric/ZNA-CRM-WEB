@@ -17,6 +17,7 @@ import {
   bekleyenSiparisleriGetir, onaylananSiparisleriGetir, reddedilenSiparisleriGetir,
   bekleyenOnSiparisleriGetir, onSiparisiOnayla, onSiparisiReddet,
   imzaYukle, siparisOnayla, siparisReddet, siparisOnayGeriAl,
+  teklifSiparisKuyrugu, teklifErkenOnayaAl,
 } from '../services/siparisOnayService'
 import { kalemleriGetir as onSiparisKalemleriGetir, iptalEdilenOnSiparisleriGetir, onSiparisSil } from '../services/onSiparisService'
 import { siparisleriGetir } from '../services/siparisService'
@@ -47,11 +48,14 @@ const fmtTarih = (iso) => {
   } catch { return iso }
 }
 
-// Ön sipariş odaklı 3 sekme — tüm veriler on_siparisler + siparisler tablolarından.
+// Ön sipariş odaklı 3 sekme (on_siparisler + siparisler tabloları) +
+// Teklifler sekmesi: teklif kaynaklı sipariş onay kuyruğu (yönetici onaylı
+// teklifler baştan izlenir, müşteri kabul edince onaylanabilir olur).
 const SEKMELER = [
-  { id: 'bekleyen', label: 'Bekleyen',   renk: '#F59E0B' },
-  { id: 'onayli',   label: 'Onaylı',     renk: '#10B981' },
-  { id: 'red',      label: 'Reddedilen', renk: '#DC2626' },
+  { id: 'bekleyen',  label: 'Bekleyen',   renk: '#F59E0B' },
+  { id: 'teklifler', label: 'Teklifler',  renk: '#8B5CF6' },
+  { id: 'onayli',    label: 'Onaylı',     renk: '#10B981' },
+  { id: 'red',       label: 'Reddedilen', renk: '#DC2626' },
 ]
 
 export default function SiparisOnaylari() {
@@ -90,23 +94,36 @@ export default function SiparisOnaylari() {
           onSiparisler.map(o => ({ ...o, _kaynak: 'on_siparis' }))
             .sort((a, b) => new Date(b.olusturmaTarih || 0) - new Date(a.olusturmaTarih || 0))
         )
+      } else if (sekme === 'teklifler') {
+        // Teklif kaynaklı kuyruk: onaya hazır olanlar üstte, müşteri kabulü
+        // bekleyenler (izleme) altta
+        const k = await teklifSiparisKuyrugu()
+        setListe([
+          ...k.hazir.map(t => ({ ...t, _kaynak: 'teklif', _grup: 'hazir' })),
+          ...k.izleme.map(t => ({ ...t, _kaynak: 'teklif', _grup: 'izleme' })),
+        ])
       } else if (sekme === 'onayli') {
-        // Onaylı: ön siparişten dönmüş siparişler (ZNA-SIP-... kayıtları)
+        // Onaylı: hem ön siparişten hem tekliften dönmüş siparişler (ZNA-SIP-...)
         const tumSiparisler = await siparisleriGetir().catch(() => [])
         setListe(
           tumSiparisler
-            .filter(s => s.kaynakTipi === 'on_siparis' && s.durum !== 'iptal')
+            .filter(s => (s.kaynakTipi === 'on_siparis' || s.kaynakTipi === 'teklif') && s.durum !== 'iptal')
             .map(s => ({ ...s, _kaynak: 'siparis' }))
             .sort((a, b) => new Date(b.onayTarihi || 0) - new Date(a.onayTarihi || 0))
         )
       } else {
-        // Reddedilen: iptal edilen ön siparişler
-        const iptaller = await iptalEdilenOnSiparisleriGetir().catch(() => [])
-        setListe(
-          iptaller
-            .map(o => ({ ...o, _kaynak: 'on_siparis' }))
-            .sort((a, b) => new Date(b.guncellemeTarih || 0) - new Date(a.guncellemeTarih || 0))
-        )
+        // Reddedilen: iptal edilen ön siparişler + reddedilen teklif sipariş onayları
+        const [iptaller, teklifRedleri] = await Promise.all([
+          iptalEdilenOnSiparisleriGetir().catch(() => []),
+          reddedilenSiparisleriGetir().catch(() => []),
+        ])
+        setListe([
+          ...iptaller.map(o => ({ ...o, _kaynak: 'on_siparis' })),
+          ...teklifRedleri.map(t => ({ ...t, _kaynak: 'teklif' })),
+        ].sort((a, b) =>
+          new Date(b.guncellemeTarih || b.siparisOnayi?.onay_tarihi || 0) -
+          new Date(a.guncellemeTarih || a.siparisOnayi?.onay_tarihi || 0)
+        ))
       }
     } catch (e) {
       console.error('[siparis onay liste]', e)
@@ -180,7 +197,7 @@ export default function SiparisOnaylari() {
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
           ) : liste.length === 0 ? (
             <EmptyState
-              title={sekme === 'bekleyen' ? 'Bekleyen ön sipariş yok' : sekme === 'onayli' ? 'Onaylanmış sipariş yok' : 'İptal edilmiş ön sipariş yok'}
+              title={sekme === 'bekleyen' ? 'Bekleyen ön sipariş yok' : sekme === 'teklifler' ? 'Sipariş onayı bekleyen teklif yok' : sekme === 'onayli' ? 'Onaylanmış sipariş yok' : 'İptal edilmiş ön sipariş yok'}
               icon={<Clock size={24} />}
             />
           ) : (
@@ -188,15 +205,18 @@ export default function SiparisOnaylari() {
               {liste.map(t => {
                 const kaynak = t._kaynak || 'on_siparis'
                 const isSip = kaynak === 'siparis'   // Onaylı → ZNA-SIP kaydı
+                const isTeklif = kaynak === 'teklif'
                 const seciliMi = secili?.id === t.id && secili?._kaynak === kaynak
-                const kayitNo = isSip ? t.siparisNo : t.onSiparisNo
-                const badgeLabel = isSip ? 'SİPARİŞ' : 'ÖN SİPARİŞ'
-                const badgeTone = isSip ? 'aktif' : 'success'
+                const kayitNo = isSip ? t.siparisNo : isTeklif ? t.teklifNo : t.onSiparisNo
+                const badgeLabel = isSip ? 'SİPARİŞ' : isTeklif ? 'TEKLİF' : 'ÖN SİPARİŞ'
+                const badgeTone = isSip ? 'aktif' : isTeklif ? 'brand' : 'success'
                 const tarih = isSip ? (t.onayTarihi || t.olusturmaTarih)
+                            : isTeklif ? (t.tarih || t.olusturmaTarih)
                             : sekme === 'red' ? (t.guncellemeTarih || t.olusturmaTarih)
                             : t.olusturmaTarih
                 const musteriAd = (() => {
-                  // Ön sipariş kaydında firmaAdi yok; görüşmeden çıkar
+                  // Teklifte firmaAdi doğrudan var; ön siparişte görüşmeden çıkar
+                  if (isTeklif && t.firmaAdi) return t.firmaAdi
                   const g = gorusmeMap.get(t.gorusmeId)
                   return g?.firmaAdi || '—'
                 })()
@@ -243,14 +263,27 @@ export default function SiparisOnaylari() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTarih(tarih)}</span>
-                      {isSip ? (
-                        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</strong>
+                      {isSip || isTeklif ? (
+                        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtPara(isTeklif ? gerçekToplam(t) : t.genelToplam, t.paraBirimi)}</strong>
                       ) : sekme === 'red' ? (
                         <span style={{ fontSize: 11, color: '#DC2626', fontWeight: 600 }}>iptal</span>
                       ) : (
                         <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600 }}>fiyat girilecek</span>
                       )}
                     </div>
+                    {isTeklif && sekme === 'teklifler' && (
+                      <div style={{ marginTop: 4 }}>
+                        {t._grup === 'hazir' ? (
+                          <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 700 }}>
+                            ● Onaya hazır{t.siparisOnayi?.erken ? ' (erken alındı)' : ' — müşteri kabul etti'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                            ○ Müşteri onayı bekleniyor
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {isSip && t.onaylayanAd && (
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
                         ✓ {t.onaylayanAd} · {fmtTarih(t.onayTarihi)}
@@ -282,7 +315,8 @@ export default function SiparisOnaylari() {
             ) : (
               <DetayPaneli
                 teklif={secili}
-                sekme={sekme}
+                sekme={sekme === 'teklifler' ? 'bekleyen' : sekme}
+                izleme={secili._kaynak === 'teklif' && secili._grup === 'izleme'}
                 kullanici={kullanici}
                 gorusme={gorusmeMap.get(secili.gorusmeId)}
                 onTamamlandi={() => { setSecili(null); yukle() }}
@@ -297,6 +331,8 @@ export default function SiparisOnaylari() {
                     ? 'Soldan bir siparişe tıklayınca detay sayfasına yönlendirilirsin.'
                     : sekme === 'red'
                     ? 'Soldan iptal edilen bir ön siparişe tıklayınca detayları görürsün.'
+                    : sekme === 'teklifler'
+                    ? 'Yönetici onaylı teklifler burada izlenir. Müşteri kabul edince (veya "Erken Onaya Al" ile) imzalayıp onaylarsın → ZNA-SIP-... otomatik oluşur.'
                     : 'Soldan bir ön sipariş seç, kalemlere fiyat gir ve onayla → ZNA-SIP-... otomatik oluşur.'
                 }
                 icon={<FileText size={24} />}
@@ -319,7 +355,7 @@ export default function SiparisOnaylari() {
 
 // ─── Detay paneli ──────────────────────────────────────────────────────────
 
-function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi, gorusme }) {
+function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi, gorusme }) {
   const fileRef = useRef(null)
   const [imzaDosyasi, setImzaDosyasi] = useState(null)
   const [imzaPreview, setImzaPreview] = useState(null)
@@ -439,8 +475,8 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi, gorusme }) {
             {t.firmaAdi} · {t.musteriYetkilisi || '—'}
           </div>
         </div>
-        <Badge tone={sekme === 'onayli' ? 'aktif' : sekme === 'red' ? 'kayip' : 'beklemede'}>
-          {sekme === 'onayli' ? 'Onaylı' : sekme === 'red' ? 'Reddedildi' : 'Bekliyor'}
+        <Badge tone={sekme === 'onayli' ? 'aktif' : sekme === 'red' ? 'kayip' : izleme ? 'lead' : 'beklemede'}>
+          {sekme === 'onayli' ? 'Onaylı' : sekme === 'red' ? 'Reddedildi' : izleme ? 'Müşteri Bekleniyor' : 'Bekliyor'}
         </Badge>
       </div>
 
@@ -560,8 +596,55 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi, gorusme }) {
         </div>
       )}
 
+      {/* İzleme modu — müşteri kabulü bekleniyor; onay yerine bilgi + erken alma */}
+      {izleme && (
+        <div style={{
+          border: '1px solid var(--border-default)', borderRadius: 12,
+          padding: 16, marginBottom: 14, background: 'var(--surface-subtle)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <Clock size={18} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 4 }}>
+                Müşteri onayı bekleniyor
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: '18px' }}>
+                Yönetici teklif onayı verildi{t.teklifOnayi?.onaylayan_ad ? ` (${t.teklifOnayi.onaylayan_ad})` : ''}.
+                Müşteri teklifi kabul edince bu kayıt otomatik olarak onaya hazır olur.
+                Uzun terminli tedarik gerekiyorsa müşteri kabulünü beklemeden erken onaya alabilirsin.
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <Button
+                  variant="secondary"
+                  disabled={calisiyor}
+                  onClick={async () => {
+                    const emin = window.confirm(
+                      'Bu teklif, müşteri henüz kabul etmeden sipariş onay kuyruğuna alınacak.\n\n' +
+                      'Tedarik erken başlatılabilir — müşteri vazgeçerse sorumluluk onaya alanda.\n\nDevam?'
+                    )
+                    if (!emin) return
+                    setHata(null); setCalisiyor(true)
+                    try {
+                      await teklifErkenOnayaAl(t.id, kullanici)
+                      onTamamlandi()
+                    } catch (e) {
+                      setHata(e?.message || 'Erken onaya alınamadı.')
+                    } finally {
+                      setCalisiyor(false)
+                    }
+                  }}
+                >
+                  {calisiyor ? 'İşleniyor…' : '⚡ Erken Onaya Al'}
+                </Button>
+              </div>
+            </div>
+          </div>
+          {hata && <div style={{ marginTop: 10, fontSize: 12, color: '#DC2626' }}>{hata}</div>}
+        </div>
+      )}
+
       {/* Bekleyen — imza + onay/red butonları */}
-      {sekme === 'bekleyen' && (
+      {sekme === 'bekleyen' && !izleme && (
         <>
           <div style={{
             border: '2px dashed var(--border-default)',

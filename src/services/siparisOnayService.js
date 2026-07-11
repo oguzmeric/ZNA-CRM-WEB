@@ -131,9 +131,10 @@ export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUr
     onay_gerekcesi: onayGerekcesi || null,
   }
   // 1) Mevcut geriye uyum: teklifler.siparis_onayi güncelle
+  // Spec 10-durum: sipariş onayı = teklif "Siparişe Aktarıldı" (terminal durum)
   const { error: e1 } = await supabase
     .from('teklifler')
-    .update({ siparis_onayi: onay })
+    .update({ siparis_onayi: onay, spek_durum: 'siparise_aktarildi' })
     .eq('id', teklifId)
   if (e1) throw e1
 
@@ -221,6 +222,52 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
   }
 
   return siparis.siparis_no
+}
+
+/**
+ * Teklif kaynaklı sipariş onay kuyruğu — Sipariş Onayları > Teklifler sekmesi.
+ * İki grup döner:
+ *   hazir:  müşteri kabul etmiş (onay_durumu='kabul') VEYA erken alınmış
+ *           → imza ile onaylanabilir (onay = ZNA-SIP sipariş oluşur)
+ *   izleme: yönetici teklif onayı verilmiş, müşteri kabulü bekleniyor
+ *           → salt izleme + "Erken Onaya Al" ile hazir grubuna çekilebilir
+ */
+export async function teklifSiparisKuyrugu() {
+  const { data, error } = await supabase
+    .from('teklifler')
+    .select('*')
+    .filter('siparis_onayi->>durum', 'eq', 'bekliyor')
+    .in('onay_durumu', ['takipte', 'kabul'])
+    .order('id', { ascending: false })
+  if (error) { console.warn('[teklifSiparisKuyrugu]', error.message); return { hazir: [], izleme: [] } }
+  const rows = arrayToCamel(data || [])
+  const hazirMi = (t) => t.onayDurumu === 'kabul' || t.siparisOnayi?.erken === true
+  return {
+    hazir: rows.filter(hazirMi),
+    izleme: rows.filter(t => !hazirMi(t)),
+  }
+}
+
+/**
+ * Erken onaya al — müşteri kabulünü beklemeden teklifi sipariş onay kuyruğuna çeker
+ * (uzun terminli tedarik gereken acil işler için, yetkili kararı).
+ * Müşteri onay durumu (onay_durumu) DEĞİŞMEZ — sadece siparis_onayi.erken işaretlenir.
+ */
+export async function teklifErkenOnayaAl(teklifId, kullanici) {
+  const { data: t, error: eS } = await supabase
+    .from('teklifler').select('siparis_onayi').eq('id', teklifId).single()
+  if (eS) throw eS
+  const onay = {
+    ...(t?.siparis_onayi || {}),
+    durum: 'bekliyor',
+    erken: true,
+    erken_alan: kullanici?.ad || '',
+    erken_tarih: new Date().toISOString(),
+  }
+  const { error } = await supabase
+    .from('teklifler').update({ siparis_onayi: onay }).eq('id', teklifId)
+  if (error) throw error
+  return onay
 }
 
 /**

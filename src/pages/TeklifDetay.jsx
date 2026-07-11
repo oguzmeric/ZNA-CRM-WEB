@@ -509,10 +509,13 @@ function TeklifDetay() {
       gorusmeId: form.gorusmeId || null,
       musteriTalepId: form.musteriTalepId || null,
     }
-    // Onay durumu 'kabul' değilse teklif onayı + sipariş onayı akışından düşür.
-    // Kullanıcı kabul edilmiş bir teklifi 'takipte/revizyon/vazgecildi'ye çevirirse
-    // onay kuyruğunda kalması yanlış.
-    if (!yeni && form.onayDurumu !== 'kabul') {
+    // Kabul edilmiş teklif kabul DIŞINA düşürülürse onay kuyruklarından çıkar.
+    // DİKKAT: Eski hali "kabul değilse her kayıtta sil" idi — yönetici onaylı
+    // (ama müşteri kabulü henüz gelmemiş, onay_durumu='takipte') bir teklifi
+    // herhangi biri düzenleyip kaydedince teklif_onayi + siparis_onayi
+    // SİLİNİYORDU. Artık sadece gerçek düşürme anında (kabul → başka durum)
+    // temizlenir.
+    if (!yeni && mevcutTeklif?.onayDurumu === 'kabul' && form.onayDurumu !== 'kabul') {
       kaydedilecek.teklifOnayi = null
       kaydedilecek.siparisOnayi = null
     }
