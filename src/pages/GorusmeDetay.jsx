@@ -334,7 +334,8 @@ function GorusmeDetay() {
                   }
                   const yeni = await kesifEkle({
                     gorusmeId: gorusme.id,
-                    gorusmeNo: gorusme.gorusmeNo || gorusme.aktNo || '',
+                    // UI kuralı: görüşme rozeti ACT-XXXX gösterir (GRS değil)
+                    gorusmeNo: gorusme.aktNo || gorusme.gorusmeNo || '',
                     musteriId: gorusme.musteriId || null,
                     firmaAdi: gorusme.firmaAdi || '',
                     projeAdi: gorusme.konu || '',
