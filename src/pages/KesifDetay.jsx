@@ -374,6 +374,9 @@ export default function KesifDetay() {
             </Button>
           )}
           <Button variant="danger" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={kesfiSil}>Sil</Button>
+          <Button variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} onClick={bilgiKaydet} disabled={kaydediliyor}>
+            {kaydediliyor ? 'Kaydediliyor…' : 'Keşfi Kaydet'}
+          </Button>
         </div>
       </div>
 
