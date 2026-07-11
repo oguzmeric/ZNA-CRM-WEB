@@ -73,7 +73,6 @@ export async function tumTeknisyenEnvanter() {
     .order('guncelleme_tarih', { ascending: false })
   if (error) { console.error('[zimmet] tumTeknisyenEnvanter:', error); throw error }
   const rows = data || []
-  console.log('[zimmet] tumTeknisyenEnvanter satır:', rows.length, rows)
   const [urunMap, kullaniciMap] = await Promise.all([
     urunlerToplu(rows.map(k => k.stok_kodu)),
     kullanicilarToplu(rows.map(k => k.teknisyen_id)),

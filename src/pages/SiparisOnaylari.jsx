@@ -64,7 +64,11 @@ export default function SiparisOnaylari() {
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
   const [wizardAcik, setWizardAcik] = useState(false)
 
-  // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping
+  const yetkili = kullanici?.siparisOnayYetkilisi === true || kullanici?.siparis_onay_yetkilisi === true
+
+  // Görüşmeleri bir kere yükle — id→gorusme_no+tarih+gorusen mapping.
+  // yetkili state async değişebiliyor (kullanici auth sonrası oturur); dep array'e
+  // koymak ilk render'da false ise re-fire garantiler → gorusmeMap dolmadan bug'ı biter.
   useEffect(() => {
     if (!yetkili) return
     gorusmeleriGetir()
@@ -73,11 +77,8 @@ export default function SiparisOnaylari() {
         ;(gs || []).forEach(g => m.set(g.id, g))
         setGorusmeMap(m)
       })
-      .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const yetkili = kullanici?.siparisOnayYetkilisi === true || kullanici?.siparis_onay_yetkilisi === true
+      .catch(e => console.warn('[SiparisOnaylari] görüşmeler yüklenemedi:', e?.message))
+  }, [yetkili])
 
   const yukle = async () => {
     setYukleniyor(true)

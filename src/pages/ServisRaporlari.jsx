@@ -116,7 +116,8 @@ export default function ServisRaporlari() {
         // Yeni + güncellenen fişler için arka planda detay senkronu tetikle
         const fisNolar = data.fisNolar || []
         for (const fisNo of fisNolar) {
-          supabase.functions.invoke('esn-detay-senkron', { body: { fisno: fisNo } }).catch(() => {})
+          supabase.functions.invoke('esn-detay-senkron', { body: { fisno: fisNo } })
+            .catch(e => console.warn('[ServisRaporlari] esn-detay-senkron fail:', fisNo, e?.message))
         }
         alert(`${yeni} yeni + ${guncellenen} güncelleme + ${silinen} silme. Detaylar arka planda çekiliyor.`)
         setSayfa(1)

@@ -315,7 +315,9 @@ export default function Siparisler() {
         <YeniOnSiparisWizard
           onKapat={() => setWizardAcik(false)}
           onKaydedildi={() => {
-            siparisleriGetir().then(setListe).catch(() => {})
+            siparisleriGetir()
+              .then(setListe)
+              .catch(e => console.warn('[Siparisler] liste yenilenemedi:', e?.message))
           }}
         />
       )}

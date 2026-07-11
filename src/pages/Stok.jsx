@@ -84,12 +84,17 @@ function Stok() {
   const [urunSNSet, setUrunSNSet] = useState(new Set())  // bu üründeki SN'ler
   const [globalSN, setGlobalSN] = useState(new Map())  // seri_no.lower → stok_kodu
 
-  // Yeni ürün modunda da seriTakipli açılınca globalSN yükle (duplicate kontrolü için)
+  // Yeni ürün modunda da seriTakipli açılınca globalSN yükle (duplicate kontrolü için).
+  // Fetch fail olursa kullanıcı SN girip DB unique constraint hatası yiyecek —
+  // sessiz yutmuyoruz, toast ile uyarıyoruz ki kullanıcı bilinçli devam etsin.
   useEffect(() => {
     if (form.seriTakipli && !duzenleId && globalSN.size === 0) {
       tumSeriNumaralariniGetir()
         .then(gmap => setGlobalSN(gmap || new Map()))
-        .catch(() => {})
+        .catch(e => {
+          console.warn('[Stok] Global SN yüklenemedi:', e?.message)
+          toast?.warning?.('Seri no çakışma kontrolü devre dışı — girmeden önce çakışmadığından emin olun.')
+        })
     }
   }, [form.seriTakipli, duzenleId])
 

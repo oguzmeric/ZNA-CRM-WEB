@@ -111,7 +111,9 @@ function GorusmeDetay() {
   }, [id])
 
   const onSiparisleriYenile = () => {
-    gorusmeninOnSiparisleri(id).then(setOnSiparisler).catch(() => {})
+    gorusmeninOnSiparisleri(id)
+      .then(setOnSiparisler)
+      .catch(e => console.warn('[GorusmeDetay] ön siparişler yenilenemedi:', e?.message))
   }
 
   if (yukleniyor) return <SkeletonDetay />

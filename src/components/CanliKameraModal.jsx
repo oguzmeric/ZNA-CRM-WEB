@@ -191,7 +191,7 @@ export default function CanliKameraModal({ acik, kapat, arac }) {
           const is404 = info?.code === 404 || (info?.msg || '').includes('404')
           if (is404 && fetchDenemesi < 15) {
             fetchDenemesi++
-            console.log(`[mpegts] 404 → cameras-live tekrar (deneme ${fetchDenemesi}/15)`)
+            // Debug logu kaldırıldı — prod'da çok gürültü yapıyordu
             setTimeout(async () => {
               if (iptal || playerRef.current !== player) return
               // Fresh URL al — Mobiltek DVR bu sırada uyanabilir
