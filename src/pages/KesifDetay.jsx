@@ -703,6 +703,11 @@ function GorevOlusturModal({ kesif, kalemOzet, kullanici, kullanicilar, onKapat,
     if (!baslik.trim()) { toast.warning('Başlık zorunlu.'); return }
     setKaydediliyor(true)
     try {
+      // Alan adları gorevler tablosuyla birebir eşleşmeli (GorusmeDetay çalışan
+      // pattern'i): atananId/atananAd/olusturanAd/bitisTarihi. Eski payload
+      // 'olusturan' ve 'atanan' string gönderiyordu — 'olusturan' kolonu YOK,
+      // PostgREST 400 → sessiz null → "Görev kaydedilemedi".
+      const atananKisi = (kullanicilar || []).find(k => String(k.id) === String(atanan))
       const gorev = await gorevEkle({
         baslik: baslik.trim(),
         aciklama: [
@@ -711,15 +716,16 @@ function GorevOlusturModal({ kesif, kalemOzet, kullanici, kullanicilar, onKapat,
           kalemOzet ? `Malzeme listesi:\n${kalemOzet}` : null,
           `Kaynak keşif: ${kesif.kesifNo}`,
         ].filter(Boolean).join('\n\n'),
-        atanan: atanan || '',
+        atananId: atanan ? Number(atanan) : null,
+        atananAd: atananKisi?.ad || '',
         oncelik,
         durum: 'bekliyor',
-        sonTarih: sonTarih || null,
+        bitisTarihi: sonTarih || null,
         musteriId: kesif.musteriId || null,
         firmaAdi: kesif.firmaAdi || '',
-        olusturan: kullanici?.ad || '',
+        olusturanAd: kullanici?.ad || '',
       })
-      if (!gorev) throw new Error('Görev kaydedilemedi.')
+      if (!gorev) throw new Error('Görev kaydedilemedi (konsol log\'una bakın).')
       onOlusturuldu(gorev)
     } catch (e) {
       toast.error('Görev oluşturulamadı: ' + (e?.message || 'bilinmeyen hata'))
