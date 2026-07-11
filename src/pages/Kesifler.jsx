@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, MapPin, Compass, FileText, CheckSquare, Wrench, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { kesifleriGetir, kesifEkle, KESIF_DURUMLARI } from '../services/kesifService'
+import { kesifleriGetir, kesifEkle, KESIF_DURUMLARI, KESIF_ONCELIKLERI } from '../services/kesifService'
 import { musterileriGetir } from '../services/musteriService'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -107,6 +107,15 @@ export default function Kesifler() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                   <CodeBadge>{k.kesifNo}</CodeBadge>
                   {durum && <Badge tone={durum.tone}>{durum.ad}</Badge>}
+                  {(() => {
+                    const o = KESIF_ONCELIKLERI.find(x => x.id === k.oncelik)
+                    return o && o.id !== 'normal' ? (
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700,
+                        color: o.renk, background: `${o.renk}18`, border: `1px solid ${o.renk}55`,
+                      }}>{o.ad.toUpperCase()}</span>
+                    ) : null
+                  })()}
                   {/* Dönüşüm rozetleri */}
                   {k.teklifId && <Badge tone="brand" style={{ fontSize: 9 }}><FileText size={9} style={{ display: 'inline', verticalAlign: -1 }} /> TEKLİF</Badge>}
                   {k.gorevId && <Badge tone="beklemede" style={{ fontSize: 9 }}><CheckSquare size={9} style={{ display: 'inline', verticalAlign: -1 }} /> GÖREV</Badge>}
@@ -115,6 +124,11 @@ export default function Kesifler() {
                 <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 4 }}>
                   {k.firmaAdi || '—'}
                 </div>
+                {k.kesifBasligi && (
+                  <div className="t-caption" style={{ marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {k.kesifBasligi}
+                  </div>
+                )}
                 {k.lokasyon && (
                   <div className="t-caption" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
                     <MapPin size={11} strokeWidth={1.5} style={{ flexShrink: 0 }} />

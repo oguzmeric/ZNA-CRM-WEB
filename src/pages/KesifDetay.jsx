@@ -16,6 +16,7 @@ import {
   kesifKalemleriGetir, kesifKalemEkle, kesifKalemSil,
   kesifFotolariGetir, kesifFotoYukle, kesifFotoSil, kesifFotoUrlleri,
   KESIF_KATEGORILERI, KESIF_DURUMLARI, KESIF_FOTO_MAX_MB,
+  KESIF_ONCELIKLERI, KESIF_TURLERI,
 } from '../services/kesifService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { gorevEkle } from '../services/gorevService'
@@ -108,10 +109,25 @@ export default function KesifDetay() {
     try {
       await kesifGuncelle(id, {
         firmaAdi: kesif.firmaAdi,
+        projeAdi: kesif.projeAdi,
+        kesifBasligi: kesif.kesifBasligi,
         lokasyon: kesif.lokasyon,
+        haritaKonumu: kesif.haritaKonumu,
+        musteriYetkilisi: kesif.musteriYetkilisi,
+        yetkiliTelefon: kesif.yetkiliTelefon,
+        yetkiliEmail: kesif.yetkiliEmail,
+        satisPersoneli: kesif.satisPersoneli,
+        oncelik: kesif.oncelik || 'normal',
         kesifTarihi: kesif.kesifTarihi,
+        tahminiProjeTarihi: kesif.tahminiProjeTarihi || null,
         kesfiYapan: kesif.kesfiYapan,
         genelNot: kesif.genelNot,
+        ozelTalepler: kesif.ozelTalepler,
+        mevcutSistem: kesif.mevcutSistem,
+        rakipFirma: kesif.rakipFirma,
+        icNotlar: kesif.icNotlar,
+        turler: kesif.turler || [],
+        teknikDetaylar: kesif.teknikDetaylar || {},
         durum: kesif.durum,
       })
       toast.success('Keşif kaydedildi.')
@@ -120,6 +136,18 @@ export default function KesifDetay() {
     } finally {
       setKaydediliyor(false)
     }
+  }
+
+  const turToggle = (turId) => {
+    setKesif(k => {
+      const mevcut = k.turler || []
+      const varMi = mevcut.includes(turId)
+      return { ...k, turler: varMi ? mevcut.filter(t => t !== turId) : [...mevcut, turId] }
+    })
+  }
+
+  const teknikNotDegistir = (turId, metin) => {
+    setKesif(k => ({ ...k, teknikDetaylar: { ...(k.teknikDetaylar || {}), [turId]: metin } }))
   }
 
   const kalemKaydet = async () => {
@@ -300,6 +328,27 @@ export default function KesifDetay() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <h1 className="t-h1" style={{ margin: 0 }}>{kesif.kesifNo}</h1>
           {durum && <Badge tone={durum.tone}>{durum.ad}</Badge>}
+          {(() => {
+            const o = KESIF_ONCELIKLERI.find(x => x.id === (kesif.oncelik || 'normal'))
+            return o && o.id !== 'normal' ? (
+              <span style={{
+                padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                color: o.renk, background: `${o.renk}18`, border: `1px solid ${o.renk}55`,
+              }}>{o.ad.toUpperCase()}</span>
+            ) : null
+          })()}
+          {kesif.gorusmeNo && (
+            <button
+              onClick={() => kesif.gorusmeId && navigate(`/gorusmeler/${kesif.gorusmeId}`)}
+              title="Kaynak görüşmeye git"
+              style={{
+                fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                color: '#3b82f6', padding: '3px 8px',
+                background: 'rgba(59,130,246,0.10)', borderRadius: 6,
+                border: 'none', cursor: kesif.gorusmeId ? 'pointer' : 'default',
+              }}
+            >{kesif.gorusmeNo}</button>
+          )}
           {kesif.teklifId && (
             <Badge tone="brand" style={{ cursor: 'pointer' }} onClick={() => navigate(`/teklifler/${kesif.teklifId}`)}>
               <FileText size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />Teklif oluşturuldu →
@@ -347,25 +396,98 @@ export default function KesifDetay() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ gridColumn: 'span 2' }}>
+              <Label>Keşif başlığı</Label>
+              <Input value={kesif.kesifBasligi || ''} onChange={e => setKesif(k => ({ ...k, kesifBasligi: e.target.value }))}
+                placeholder="örn. Fabrika çevre güvenlik kamera keşfi" />
+            </div>
+            <div>
               <Label>Firma</Label>
               <Input value={kesif.firmaAdi || ''} onChange={e => setKesif(k => ({ ...k, firmaAdi: e.target.value }))} />
             </div>
+            <div>
+              <Label>Proje adı</Label>
+              <Input value={kesif.projeAdi || ''} onChange={e => setKesif(k => ({ ...k, projeAdi: e.target.value }))} />
+            </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <Label>Lokasyon / Adres</Label>
+              <Label>Keşif adresi</Label>
               <Input value={kesif.lokasyon || ''} onChange={e => setKesif(k => ({ ...k, lokasyon: e.target.value }))} placeholder="Saha adresi" />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Harita konumu</Label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Input style={{ flex: 1 }} value={kesif.haritaKonumu || ''}
+                  onChange={e => setKesif(k => ({ ...k, haritaKonumu: e.target.value }))}
+                  placeholder="Google Maps linki veya koordinat (41.01, 28.97)" />
+                {kesif.haritaKonumu && (
+                  <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
+                    onClick={() => {
+                      const v = kesif.haritaKonumu.trim()
+                      const url = v.startsWith('http') ? v : `https://www.google.com/maps?q=${encodeURIComponent(v)}`
+                      window.open(url, '_blank', 'noopener,noreferrer')
+                    }}>
+                    Aç
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Müşteri yetkilisi</Label>
+              <Input value={kesif.musteriYetkilisi || ''} onChange={e => setKesif(k => ({ ...k, musteriYetkilisi: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Yetkili telefon</Label>
+              <Input value={kesif.yetkiliTelefon || ''} onChange={e => setKesif(k => ({ ...k, yetkiliTelefon: e.target.value }))} placeholder="05xx…" />
+            </div>
+            <div>
+              <Label>Yetkili e-posta</Label>
+              <Input value={kesif.yetkiliEmail || ''} onChange={e => setKesif(k => ({ ...k, yetkiliEmail: e.target.value }))} />
+            </div>
+            <div>
+              <Label>İlgili satış personeli</Label>
+              <Input value={kesif.satisPersoneli || ''} onChange={e => setKesif(k => ({ ...k, satisPersoneli: e.target.value }))} />
             </div>
             <div>
               <Label>Keşif tarihi</Label>
               <Input type="date" value={kesif.kesifTarihi || ''} onChange={e => setKesif(k => ({ ...k, kesifTarihi: e.target.value }))} />
             </div>
             <div>
+              <Label>Tahmini proje tarihi</Label>
+              <Input type="date" value={kesif.tahminiProjeTarihi || ''} onChange={e => setKesif(k => ({ ...k, tahminiProjeTarihi: e.target.value }))} />
+            </div>
+            <div>
               <Label>Keşfi yapan</Label>
               <Input value={kesif.kesfiYapan || ''} onChange={e => setKesif(k => ({ ...k, kesfiYapan: e.target.value }))} />
             </div>
+            <div>
+              <Label>Öncelik</Label>
+              <CustomSelect value={kesif.oncelik || 'normal'} onChange={e => setKesif(k => ({ ...k, oncelik: e.target.value }))}>
+                {KESIF_ONCELIKLERI.map(o => <option key={o.id} value={o.id}>{o.ad}</option>)}
+              </CustomSelect>
+            </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <Label>Genel not</Label>
-              <Textarea rows={4} value={kesif.genelNot || ''} onChange={e => setKesif(k => ({ ...k, genelNot: e.target.value }))}
-                placeholder="Saha gözlemleri, montaj noktaları, müşteri talepleri…" />
+              <Label>Keşif açıklaması</Label>
+              <Textarea rows={3} value={kesif.genelNot || ''} onChange={e => setKesif(k => ({ ...k, genelNot: e.target.value }))}
+                placeholder="Saha gözlemleri, montaj noktaları…" />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>Müşteri özel talepleri</Label>
+              <Textarea rows={2} value={kesif.ozelTalepler || ''} onChange={e => setKesif(k => ({ ...k, ozelTalepler: e.target.value }))}
+                placeholder="Müşterinin özellikle istediği şeyler…" />
+            </div>
+            <div>
+              <Label>Mevcut sistem bilgisi</Label>
+              <Textarea rows={2} value={kesif.mevcutSistem || ''} onChange={e => setKesif(k => ({ ...k, mevcutSistem: e.target.value }))}
+                placeholder="Sahada kurulu sistem…" />
+            </div>
+            <div>
+              <Label>Rakip firma bilgisi</Label>
+              <Textarea rows={2} value={kesif.rakipFirma || ''} onChange={e => setKesif(k => ({ ...k, rakipFirma: e.target.value }))}
+                placeholder="Teklif veren diğer firmalar…" />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>İç notlar (müşteri görmez)</Label>
+              <Textarea rows={2} value={kesif.icNotlar || ''} onChange={e => setKesif(k => ({ ...k, icNotlar: e.target.value }))}
+                placeholder="Şirket içi değerlendirme…" />
             </div>
             <div>
               <Label>Durum</Label>
@@ -373,6 +495,50 @@ export default function KesifDetay() {
                 {KESIF_DURUMLARI.map(d => <option key={d.id} value={d.id}>{d.ad}</option>)}
               </CustomSelect>
             </div>
+          </div>
+
+          {/* Keşif türleri — çoklu seçim; seçilen türe teknik not alanı açılır */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-default)' }}>
+            <Label>Keşif türleri (birden fazla seçilebilir)</Label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+              {KESIF_TURLERI.map(t => {
+                const secili = (kesif.turler || []).includes(t.id)
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => turToggle(t.id)}
+                    style={{
+                      padding: '5px 11px', borderRadius: 14,
+                      border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                      background: secili ? 'var(--brand-primary)' : 'var(--surface-card)',
+                      color: secili ? '#fff' : 'var(--text-secondary)',
+                      font: `${secili ? 600 : 400} 12px/16px var(--font-sans)`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t.ad}
+                  </button>
+                )
+              })}
+            </div>
+            {(kesif.turler || []).length > 0 && (
+              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                {(kesif.turler || []).map(tid => {
+                  const t = KESIF_TURLERI.find(x => x.id === tid)
+                  return (
+                    <div key={tid}>
+                      <Label>{t?.ad || tid} — teknik detay</Label>
+                      <Textarea
+                        rows={2}
+                        value={(kesif.teknikDetaylar || {})[tid] || ''}
+                        onChange={e => teknikNotDegistir(tid, e.target.value)}
+                        placeholder={`${t?.ad || tid} için saha tespitleri — adet, mesafe, mevcut altyapı…`}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </Card>
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
-  BellRing, Clock, Check, X, ShoppingCart, Receipt,
+  BellRing, Clock, Check, X, ShoppingCart, Receipt, Compass,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -17,6 +17,8 @@ import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { musterileriGetir } from '../services/musteriService'
 import { gorusmeninOnSiparisleri, ON_SIPARIS_DURUMLARI } from '../services/onSiparisService'
+import { kesifEkle } from '../services/kesifService'
+import { supabase } from '../lib/supabase'
 import OnSiparisModal from '../components/OnSiparisModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
@@ -315,6 +317,49 @@ function GorusmeDetay() {
               title="Bu görüşmeden ön sipariş oluştur (fiyatsız kalem talebi)"
             >
               Ön Sipariş Oluştur
+            </Button>
+            <Button
+              variant="secondary"
+              iconLeft={<Compass size={14} strokeWidth={1.5} />}
+              onClick={async () => {
+                try {
+                  // Spec: görüşme bilgileri keşfe OTOMATİK aktarılır.
+                  // Muhatabın telefon/e-postası kişi kartından çekilir (varsa).
+                  let tel = '', email = ''
+                  if (gorusme.muhatapId) {
+                    const { data: kisi } = await supabase.from('musteri_kisileri')
+                      .select('telefon, email').eq('id', gorusme.muhatapId).maybeSingle()
+                    tel = kisi?.telefon || ''
+                    email = kisi?.email || ''
+                  }
+                  const yeni = await kesifEkle({
+                    gorusmeId: gorusme.id,
+                    gorusmeNo: gorusme.gorusmeNo || gorusme.aktNo || '',
+                    musteriId: gorusme.musteriId || null,
+                    firmaAdi: gorusme.firmaAdi || '',
+                    projeAdi: gorusme.konu || '',
+                    kesifBasligi: gorusme.konu ? `${gorusme.konu} keşfi` : '',
+                    musteriYetkilisi: gorusme.muhatapAd || '',
+                    yetkiliTelefon: tel,
+                    yetkiliEmail: email,
+                    satisPersoneli: gorusme.gorusen || '',
+                    genelNot: gorusme.notlar || '',
+                    ozelTalepler: gorusme.takipNotu || '',
+                    kesfiYapan: kullanici?.ad || '',
+                    durum: 'acik',
+                    oncelik: 'normal',
+                    olusturanId: kullanici?.id ? Number(kullanici.id) : null,
+                    olusturanAd: kullanici?.ad || '',
+                  })
+                  toast.success(`Keşif oluşturuldu (${yeni.kesifNo}) — görüşme bilgileri aktarıldı.`)
+                  navigate(`/kesifler/${yeni.id}`)
+                } catch (e) {
+                  toast.error('Keşif oluşturulamadı: ' + (e?.message || 'bilinmeyen hata'))
+                }
+              }}
+              title="Bu görüşmeden saha keşfi oluştur — müşteri/ilgili kişi/açıklama otomatik aktarılır"
+            >
+              Keşif Oluştur
             </Button>
             <Button
               variant={duzenleAcik ? 'secondary' : 'primary'}

@@ -24,6 +24,39 @@ export const KESIF_DURUMLARI = [
   { id: 'iptal',      ad: 'İptal',       tone: 'kayip' },
 ]
 
+export const KESIF_ONCELIKLERI = [
+  { id: 'dusuk',  ad: 'Düşük',  renk: '#94A3B8' },
+  { id: 'normal', ad: 'Normal', renk: '#3B82F6' },
+  { id: 'yuksek', ad: 'Yüksek', renk: '#F59E0B' },
+  { id: 'acil',   ad: 'Acil',   renk: '#DC2626' },
+]
+
+// Keşif türleri (spec §4) — çoklu seçim; seçilen türe göre teknik not alanı açılır
+export const KESIF_TURLERI = [
+  { id: 'cctv',              ad: 'CCTV Kamera Sistemi' },
+  { id: 'video_analitik',    ad: 'Video Analitik Sistemi' },
+  { id: 'alev_duman',        ad: 'Alev ve Duman Algılama' },
+  { id: 'plaka_tanima',      ad: 'Plaka Tanıma Sistemi' },
+  { id: 'kartli_gecis',      ad: 'Kartlı Geçiş Sistemi' },
+  { id: 'pdks',              ad: 'PDKS Sistemi' },
+  { id: 'turnike',           ad: 'Turnike Sistemi' },
+  { id: 'bariyer',           ad: 'Bariyer Sistemi' },
+  { id: 'network',           ad: 'Network Altyapısı' },
+  { id: 'kablosuz_ag',       ad: 'Kablosuz Ağ Sistemi' },
+  { id: 'fiber_optik',       ad: 'Fiber Optik Altyapı' },
+  { id: 'yapisal_kablolama', ad: 'Yapısal Kablolama' },
+  { id: 'telefon_santrali',  ad: 'Telefon Santrali' },
+  { id: 'interkom',          ad: 'İnterkom Sistemi' },
+  { id: 'hirsiz_alarm',      ad: 'Hırsız Alarm Sistemi' },
+  { id: 'yangin_algilama',   ad: 'Yangın Algılama Sistemi' },
+  { id: 'seslendirme',       ad: 'Seslendirme ve Anons' },
+  { id: 'sistem_odasi',      ad: 'Sistem Odası' },
+  { id: 'veri_merkezi',      ad: 'Veri Merkezi' },
+  { id: 'zayif_akim',        ad: 'Zayıf Akım Altyapısı' },
+  { id: 'bakim_yenileme',    ad: 'Bakım ve Sistem Yenileme' },
+  { id: 'diger',             ad: 'Diğer' },
+]
+
 // ---------- Keşifler ----------
 export const kesifleriGetir = async () => {
   const { data, error } = await supabase
