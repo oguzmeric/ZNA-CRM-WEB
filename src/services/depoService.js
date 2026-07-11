@@ -2,6 +2,7 @@
 // Ana stok akışı stokService.js'de; burası "üst düzey" depo işlemleri.
 
 import { supabase } from '../lib/supabase'
+import { invalidatePrefix } from '../lib/cache'
 
 // Oturum kullanıcısı → kullanicilar.id
 const oturumKullaniciId = async () => {
@@ -347,7 +348,7 @@ export async function sayimOzet(sayimId) {
   const kalemIdler = satirlar.map(s => s.stok_kalem_id)
   const { data: kalemler } = await supabase
     .from('stok_kalemleri')
-    .select('id, seri_no, stok_kodu, marka, model, durum')
+    .select('id, seri_no, stok_kodu, marka, model, durum, silindi, silinme_sebebi')
     .in('id', kalemIdler.length ? kalemIdler : [0])
   const map = new Map((kalemler || []).map(k => [k.id, k]))
   const enriched = satirlar.map(s => ({ ...s, kalem: map.get(s.stok_kalem_id) }))
@@ -375,6 +376,56 @@ export async function sayimBitir(sayimId) {
     .eq('id', sayimId)
   if (error) throw error
   return ozet
+}
+
+// Sayımın eksiklerini TOPLU "kayıp" işaretle.
+// Ne yapar: henüz silinmemiş eksik SN'ler tek bulk update ile soft delete
+// (silinme_sebebi='kayip', geri getirilebilir) + stok_kodu bazında toplu
+// çıkış hareketi yazılır (bakiye düşer, denetim izi kalır).
+// Neden toplu: 44 SN için tek tek snSil ~170 sorgu ve 30+ sn sürüyordu;
+// bu yol ~4 sorguda biter.
+export async function sayimEksikleriniKayipIsaretle(sayimId) {
+  const ozet = await sayimOzet(sayimId)
+  const hedef = ozet.eksik.filter(e => e.kalem && !e.kalem.silindi)
+  if (hedef.length === 0) return { isaretlenen: 0 }
+  const uid = await oturumKullaniciId()
+  const ids = hedef.map(e => e.kalem.id)
+
+  const { error } = await supabase
+    .from('stok_kalemleri')
+    .update({
+      silindi: true,
+      silindi_zamani: new Date().toISOString(),
+      silinme_sebebi: 'kayip',
+      silinme_notu: `Sayım #${sayimId} — eksik listesinden toplu kayıp işaretleme`,
+      silen_kullanici_id: uid,
+    })
+    .in('id', ids)
+  if (error) throw error
+
+  // stok_kodu bazında tek çıkış hareketi (audit + bakiye)
+  const gruplar = new Map()
+  hedef.forEach(e => {
+    const g = gruplar.get(e.kalem.stok_kodu) || { adet: 0, snler: [], marka: e.kalem.marka }
+    g.adet++
+    g.snler.push(e.kalem.seri_no)
+    gruplar.set(e.kalem.stok_kodu, g)
+  })
+  const hareketSatirlari = [...gruplar.entries()].map(([kod, g]) => ({
+    stok_kodu: kod,
+    stok_adi: g.marka || null,
+    hareket_tipi: 'cikis',
+    miktar: g.adet,
+    aciklama: `Sayım #${sayimId} kayıp: ${g.snler.slice(0, 10).join(', ')}${g.snler.length > 10 ? ` +${g.snler.length - 10} SN daha` : ''}`,
+    tarih: new Date().toISOString(),
+    kullanici_id: uid,
+  }))
+  if (hareketSatirlari.length) {
+    const { error: eH } = await supabase.from('stok_hareketleri').insert(hareketSatirlari)
+    if (eH) console.warn('[sayimKayip] hareket kaydı yazılamadı:', eH.message)
+  }
+  invalidatePrefix('stok')
+  return { isaretlenen: hedef.length }
 }
 
 // Sayımı sil — cascade ile stok_sayim_kalemleri de siler

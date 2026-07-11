@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import { ClipboardCheck, ScanLine, Play, CheckSquare, X, Trash2, Download, AlertTriangle } from 'lucide-react'
-import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar, sayimSil } from '../services/depoService'
-import { snSil } from '../services/stokService'
+import { sayimBaslat, sayimSNTara, sayimOzet, sayimBitir, sonSayimlar, sayimSil, sayimEksikleriniKayipIsaretle } from '../services/depoService'
 import { Card, Button, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge, Input } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
@@ -291,22 +290,20 @@ export default function StokSayim() {
             }
           }}
           onKayipIsaretle={async (eksikler) => {
+            const isaretlenecek = eksikler.filter(e => !e.kalem?.silindi)
             const onay = await confirm({
               baslik: 'Eksikleri Kayıp Olarak İşaretle',
-              mesaj: `${eksikler.length} SN "Kayıp / Bulunamadı" sebebiyle silinecek (soft delete — audit kaydıyla, geri getirilebilir). Devam?`,
-              onayMetin: 'Kayıp İşaretle', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+              mesaj: `${isaretlenecek.length} seri numarası stoktan düşülecek ve "Kayıp" olarak arşivlenecek. Stok bakiyesi azalır, Stok Hareketleri'ne "Sayım #${detayModal.sayim.id} kayıp" çıkış kaydı yazılır. Yanlış işaretlenen bir SN, ürün detayında "Silinenleri göster" ile bulunup geri getirilebilir.`,
+              onayMetin: `${isaretlenecek.length} SN'i Kayıp İşaretle`, iptalMetin: 'Vazgeç', tip: 'tehlikeli',
             })
             if (!onay) return
-            let ok = 0, hata = 0
-            for (const e of eksikler) {
-              try {
-                await snSil(e.stok_kalem_id, { sebep: 'kayip', not: `Sayım #${detayModal.sayim.id} eksik listesi` })
-                ok++
-              } catch { hata++ }
+            try {
+              const { isaretlenen } = await sayimEksikleriniKayipIsaretle(detayModal.sayim.id)
+              toast.success(`${isaretlenen} SN kayıp olarak işaretlendi — stoktan düşüldü, hareket kaydı yazıldı.`)
+            } catch (e) {
+              toast.error('İşaretlenemedi: ' + (e?.message || 'bilinmeyen hata'))
             }
-            if (ok) toast.success(`${ok} SN kayıp olarak işaretlendi.`)
-            if (hata) toast.error(`${hata} SN işaretlenemedi.`)
-            // Detayı tazele
+            // Detayı tazele — işaretlenenler listede "KAYIP" rozetiyle görünür
             try {
               const o = await sayimOzet(detayModal.sayim.id)
               setDetayModal({ sayim: detayModal.sayim, ozet: o })
@@ -368,9 +365,9 @@ function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil, onKayipIsare
                 <Download size={12} strokeWidth={1.5} /> Excel
               </button>
             )}
-            {ozet && sayim.tamamlandi && onKayipIsaretle && (ozet.eksik || []).length > 0 && (
+            {ozet && sayim.tamamlandi && onKayipIsaretle && (ozet.eksik || []).some(e => !e.kalem?.silindi) && (
               <button onClick={() => onKayipIsaretle(ozet.eksik)}
-                title="Eksik listesindeki tüm SN'leri kayıp olarak işaretle (soft delete)"
+                title="Eksik listesindeki SN'leri stoktan düş ve 'Kayıp' olarak arşivle (geri getirilebilir)"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '6px 10px', borderRadius: 6,
@@ -442,7 +439,14 @@ function SayimDetayModal({ sayim, ozet, yukleniyor, onKapat, onSil, onKayipIsare
                 <TBody>
                   {liste.slice(0, 500).map(s => (
                     <TR key={s.id}>
-                      <TD><CodeBadge>{s.kalem?.seri_no || '—'}</CodeBadge></TD>
+                      <TD>
+                        <CodeBadge>{s.kalem?.seri_no || '—'}</CodeBadge>
+                        {sekme === 'eksik' && s.kalem?.silindi && (
+                          <Badge tone="kayip" style={{ fontSize: 9, marginLeft: 6 }}>
+                            {s.kalem?.silinme_sebebi === 'kayip' ? 'KAYIP İŞARETLENDİ' : 'SİLİNDİ'}
+                          </Badge>
+                        )}
+                      </TD>
                       <TD>{s.kalem?.stok_kodu || '—'}</TD>
                       <TD>{[s.kalem?.marka, s.kalem?.model].filter(Boolean).join(' ') || '—'}</TD>
                       {sekme === 'tarandi' && <TD>{s.tarama_zamani ? fmtTarih(s.tarama_zamani) : '—'}</TD>}
