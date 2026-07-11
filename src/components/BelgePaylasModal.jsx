@@ -31,11 +31,11 @@ const SURE_SECENEKLERI = [
 
 const SABLON_SECENEKLERI = [
   { id: 'standart',       label: 'Standart' },
-  { id: 'standart_pacal', label: 'Standart Paçal' },
+  { id: 'standart_pacal', label: 'Standart Proje' },
   { id: 'trassir',        label: 'Trassir' },
-  { id: 'trassir_pacal',  label: 'Trassir Paçal' },
+  { id: 'trassir_pacal',  label: 'Trassir Proje' },
   { id: 'karel',          label: 'Karel' },
-  { id: 'karel_pacal',    label: 'Karel Paçal' },
+  { id: 'karel_pacal',    label: 'Karel Proje' },
 ]
 
 export default function BelgePaylasModal({

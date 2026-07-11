@@ -31,14 +31,15 @@ export const HIZMETLERIMIZ = [
 ]
 
 // Şablon tipi → görünür isim
-// Paçal = kalem birim fiyatları gizli, tek proje toplamı gösterilen versiyon
+// 'Proje' varyantı = kalem birim fiyatları gizli, tek proje toplamı gösterilen versiyon
+// (Kod içinde tip id'si backend'de _pacal olarak kalır; sadece UI'da 'Proje' gösterilir)
 export const TEKLIF_TIPI_LABEL = {
   standart: 'Standart',
-  standart_pacal: 'Standart Paçal',
+  standart_pacal: 'Standart Proje',
   trassir: 'Trassir',
-  trassir_pacal: 'Trassir Paçal',
+  trassir_pacal: 'Trassir Proje',
   karel: 'Karel',
-  karel_pacal: 'Karel Paçal',
+  karel_pacal: 'Karel Proje',
 }
 
 // tip='standart_pacal' → { baseTip: 'standart', pacal: true }
