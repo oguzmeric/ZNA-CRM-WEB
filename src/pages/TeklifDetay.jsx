@@ -142,6 +142,26 @@ function TeklifDetay() {
     if (yeni) return
     paylasimDurumOzet('teklif', id).then(setPaylasimDurum).catch(() => setPaylasimDurum(null))
   }, [id, yeni])
+
+  // Ctrl+P → tarayıcının ham sayfa yazdırması yerine antetli PDF çıktısı.
+  // (Kullanıcı refleksi: yazdırmak için Ctrl+P — ekran sayfası yazdırılabilir
+  // değil, PDF butonuyla aynı çıktıya yönlendiriyoruz.)
+  const teklifTipiRef = useRef('standart')
+  useEffect(() => { teklifTipiRef.current = form?.teklifTipi || 'standart' })
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'p') return
+      e.preventDefault()
+      if (yeni) {
+        toast.warning('Yazdırmak için önce teklifi kaydedin — PDF kayıtlı veriden üretilir.')
+        return
+      }
+      window.open(`/teklifler/${id}/yazdir?tip=${teklifTipiRef.current}`, '_blank')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, yeni])
   // Drag & drop sensors — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
