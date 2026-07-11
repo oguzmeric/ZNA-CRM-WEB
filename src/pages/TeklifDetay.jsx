@@ -1255,16 +1255,10 @@ function TeklifDetay() {
                         <option value="">—</option>
                         <option value="Adet">Adet</option>
                         <option value="Lisans">Lisans</option>
-                        <option value="Set">Set</option>
                         <option value="Paket">Paket</option>
                         <option value="Metre">Metre</option>
-                        <option value="Metretül">Metretül</option>
                         <option value="Kg">Kg</option>
                         <option value="Litre">Litre</option>
-                        <option value="Saat">Saat</option>
-                        <option value="Gün">Gün</option>
-                        <option value="Ay">Ay</option>
-                        <option value="Yıl">Yıl</option>
                       </CustomSelect>
                     </TD>
                     <TD align="right">

@@ -167,7 +167,9 @@ export default function CustomSelect({
           color: 'var(--text-primary, #0F1C2E)',
           borderRadius: 'var(--radius-sm, 4px)',
           padding: '8px 12px',
-          font: '400 13px/20px var(--font-sans)',
+          // line-height 22px (13*1.7) — Lisans/g/ğ/ş gibi descender'lı karakterler
+          // alt kenarda kırpılmasın. Overflow:hidden ile birlikte 20px sınırda kalıyordu.
+          font: '400 13px/22px var(--font-sans)',
           outline: 'none',
           ...style,
           width: '100%',
