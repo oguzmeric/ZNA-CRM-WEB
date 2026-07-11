@@ -1180,7 +1180,7 @@ function TeklifDetay() {
               <col style={{ width: 120 }} />{/* Stok — 'STK01605' yeter */}
               <col />{/* Ürün adı — auto (kalan alan, en geniş) */}
               <col style={{ width: 80 }} />{/* Miktar — 3 basamak yeter */}
-              <col style={{ width: 78 }} />{/* Birim — 'Adet' yeter */}
+              <col style={{ width: 100 }} />{/* Birim — dropdown ('Adet', 'Lisans' vb) */}
               <col style={{ width: 150 }} />{/* Birim fiyat — input + calculator ikonu */}
               <col style={{ width: 72 }} />{/* İsk.% */}
               <col style={{ width: 76 }} />{/* KDV% */}
@@ -1248,10 +1248,24 @@ function TeklifDetay() {
                       />
                     </TD>
                     <TD>
-                      <Input
-                        value={satir.birim}
+                      <CustomSelect
+                        value={satir.birim || ''}
                         onChange={(e) => satirGuncelle(index, 'birim', e.target.value)}
-                      />
+                      >
+                        <option value="">—</option>
+                        <option value="Adet">Adet</option>
+                        <option value="Lisans">Lisans</option>
+                        <option value="Set">Set</option>
+                        <option value="Paket">Paket</option>
+                        <option value="Metre">Metre</option>
+                        <option value="Metretül">Metretül</option>
+                        <option value="Kg">Kg</option>
+                        <option value="Litre">Litre</option>
+                        <option value="Saat">Saat</option>
+                        <option value="Gün">Gün</option>
+                        <option value="Ay">Ay</option>
+                        <option value="Yıl">Yıl</option>
+                      </CustomSelect>
                     </TD>
                     <TD align="right">
                       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
