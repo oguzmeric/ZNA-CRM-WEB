@@ -2,12 +2,16 @@
 // sağ tarafta sade login form. Müşteri portalı kullanıcıları da burayı görür,
 // o yüzden iç metrik/veri yok.
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, Shield, Lock, Clock, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import TurnstileWidget from '../components/TurnstileWidget'
 import { supabase } from '../lib/supabase'
+
+// Auth sayfaları — bunlardan gelinmişse redirect hedefi /dashboard'a düşürülür
+// (aksi halde login sonrası kendine loop olur → form sil baştan görünür)
+const AUTH_SAYFALARI = new Set(['/login', '/signup', '/sifremi-unuttum', '/', ''])
 
 function Login() {
   const [kullaniciAdi, setKullaniciAdi] = useState('')
@@ -17,15 +21,27 @@ function Login() {
   const [onayMesaji, setOnayMesaji] = useState('') // onay bekliyor / reddedildi — ayrı görünüm
   const [yukleniyor, setYukleniyor] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState(null)
+  const [girisYapildi, setGirisYapildi] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { girisYap } = useAuth()
+  const { girisYap, kullanici } = useAuth()
 
   const turnstileToken_yakala = useCallback((t) => setTurnstileToken(t), [])
 
-  const hedef = location.state?.from?.pathname
-    ? location.state.from.pathname + (location.state.from.search || '')
-    : '/dashboard'
+  // Redirect hedefi — auth sayfalarından geldiyse /dashboard'a düş (loop engelli)
+  const rawFrom = location.state?.from?.pathname || ''
+  const hedef = AUTH_SAYFALARI.has(rawFrom)
+    ? '/dashboard'
+    : rawFrom + (location.state?.from?.search || '')
+
+  // React state race fix: girisYap sonrası kullanici state gerçekten güncellenene
+  // kadar bekle, sonra navigate. Aksi halde App.jsx eski state ile re-render olup
+  // /login'e geri döndürebilir → form sil baştan görünür.
+  useEffect(() => {
+    if (girisYapildi && kullanici) {
+      navigate(hedef, { replace: true })
+    }
+  }, [girisYapildi, kullanici, hedef, navigate])
 
   const handleGiris = async (e) => {
     e?.preventDefault?.()
@@ -50,7 +66,9 @@ function Login() {
 
       const basarili = await girisYap(kullaniciAdi, sifre)
       if (basarili) {
-        navigate(hedef, { replace: true })
+        // Navigate'i doğrudan yapmıyoruz — useEffect ile kullanici state
+        // gerçekten güncellendikten sonra yapıyoruz (React state race önlemi)
+        setGirisYapildi(true)
       } else {
         setHata('Kullanıcı adı veya şifre hatalı.')
       }
