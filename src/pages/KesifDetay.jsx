@@ -22,6 +22,7 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import { gorevEkle } from '../services/gorevService'
 import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
 import CustomSelect from '../components/CustomSelect'
+import CokluSelect from '../components/CokluSelect'
 import { SkeletonDetay } from '../components/Skeleton'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge,
@@ -135,14 +136,6 @@ export default function KesifDetay() {
     } finally {
       setKaydediliyor(false)
     }
-  }
-
-  const turToggle = (turId) => {
-    setKesif(k => {
-      const mevcut = k.turler || []
-      const varMi = mevcut.includes(turId)
-      return { ...k, turler: varMi ? mevcut.filter(t => t !== turId) : [...mevcut, turId] }
-    })
   }
 
   const teknikNotDegistir = (turId, metin) => {
@@ -473,29 +466,16 @@ export default function KesifDetay() {
             </div>
           </div>
 
-          {/* Keşif türleri — çoklu seçim; seçilen türe teknik not alanı açılır */}
+          {/* Keşif türleri — çoklu seçim dropdown; seçilen türe teknik not alanı açılır */}
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-default)' }}>
             <Label>Keşif türleri (birden fazla seçilebilir)</Label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-              {KESIF_TURLERI.map(t => {
-                const secili = (kesif.turler || []).includes(t.id)
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => turToggle(t.id)}
-                    style={{
-                      padding: '5px 11px', borderRadius: 14,
-                      border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                      background: secili ? 'var(--brand-primary)' : 'var(--surface-card)',
-                      color: secili ? '#fff' : 'var(--text-secondary)',
-                      font: `${secili ? 600 : 400} 12px/16px var(--font-sans)`,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {t.ad}
-                  </button>
-                )
-              })}
+            <div style={{ marginTop: 6, maxWidth: 420 }}>
+              <CokluSelect
+                degerler={kesif.turler || []}
+                onChange={(arr) => setKesif(k => ({ ...k, turler: arr }))}
+                secenekler={KESIF_TURLERI.map(t => ({ id: t.id, ad: t.ad }))}
+                placeholder="Keşif türü seç…"
+              />
             </div>
             {(kesif.turler || []).length > 0 && (
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
