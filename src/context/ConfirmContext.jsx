@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const ConfirmContext = createContext(null)
@@ -21,10 +22,13 @@ function ConfirmModal({ config, onCevap }) {
 
   const tehlikeli = config.tip === 'tehlikeli'
 
-  return (
+  // zIndex 12000 + body portal: sayfa modalları 10000 kullanıyor — onay penceresi
+  // her zaman ÜSTLERİNDE açılmalı. (Eski hali 10000 + inline render'dı; modal
+  // içinden confirm çağrılınca DOM sırası yüzünden ALTINDA kalıyordu.)
+  return createPortal(
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 10000,
+        position: 'fixed', inset: 0, zIndex: 12000,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px',
@@ -122,7 +126,8 @@ function ConfirmModal({ config, onCevap }) {
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

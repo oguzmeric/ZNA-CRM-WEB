@@ -123,7 +123,9 @@ function ToastContainer({ toasts, onKapat }) {
       position: 'fixed',
       bottom: '24px',
       right: '24px',
-      zIndex: 9999,
+      // Sayfa modalları 10000, onay penceresi 12000 — toast HER ŞEYİN üstünde
+      // görünmeli (eski 9999 değeri modal açıkken toast'ları gizliyordu)
+      zIndex: 13000,
       display: 'flex',
       flexDirection: 'column-reverse',
       gap: '8px',
