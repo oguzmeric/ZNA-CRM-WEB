@@ -6,13 +6,77 @@ import { kargolariGetir } from '../services/kargoService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { gorevleriGetir } from '../services/gorevService'
 import { teklifleriGetir } from '../services/teklifService'
-import CustomSelect from '../components/CustomSelect'
 
 // Durum geçmişinden belirli bir duruma ne zaman ulaşıldığını bul
 function ilkUlasmaTarihi(durumGecmisi, hedefDurum) {
   if (!Array.isArray(durumGecmisi)) return null
   const kayit = durumGecmisi.find(d => d.durum === hedefDurum)
   return kayit?.tarih || null
+}
+
+const DURUM_TANIM = {
+  zamaninda: { isim: 'Zamanında', renk: '#10b981', aciklama: 'İş, SLA süresi içinde tamamlandı' },
+  gec:       { isim: 'Geç',       renk: '#ef4444', aciklama: 'İş tamamlandı ama SLA süresi aşıldı' },
+  acik:      { isim: 'Açık',      renk: '#3b82f6', aciklama: 'İş devam ediyor, süresi henüz dolmadı' },
+  kritik:    { isim: 'Kritik',    renk: '#f59e0b', aciklama: 'İş hâlâ açık ve SLA süresi DOLDU — acil ilgi ister' },
+}
+
+const ZAMAN_SECENEK = [
+  { id: 'bu_ay',  isim: 'Bu Ay' },
+  { id: 'gecen_ay', isim: 'Geçen Ay' },
+  { id: 'bu_yil', isim: 'Bu Yıl' },
+  { id: 'tumu',   isim: 'Tümü' },
+  { id: 'ozel',   isim: 'Özel' },
+]
+
+// Süreyi insan diliyle yaz: 4 sa · 36 sa (1,5 g) · 96 sa (4 g)
+function saatYaz(saat) {
+  if (saat == null) return '—'
+  const s = Math.round(saat)
+  if (s < 24) return `${s} sa`
+  const gun = (s / 24).toFixed(s % 24 === 0 ? 0 : 1).replace('.', ',')
+  return `${gun} gün`
+}
+
+const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) : '—'
+
+function skorRengi(skor) {
+  if (skor == null) return '#9ca3af'
+  if (skor >= 90) return '#10b981'
+  if (skor >= 75) return '#f59e0b'
+  return '#ef4444'
+}
+
+// Yüzde paylı yatay bar — zamanında/geç/kritik/açık dağılımını görselleştirir
+function DagilimBar({ r, height = 8 }) {
+  const toplam = r.toplam || 1
+  const parcalar = [
+    { n: r.zamaninda, renk: DURUM_TANIM.zamaninda.renk },
+    { n: r.gec,       renk: DURUM_TANIM.gec.renk },
+    { n: r.kritik,    renk: DURUM_TANIM.kritik.renk },
+    { n: r.acik,      renk: DURUM_TANIM.acik.renk },
+  ].filter(p => p.n > 0)
+  return (
+    <div className="flex w-full rounded-full overflow-hidden bg-gray-100" style={{ height }}>
+      {parcalar.map((p, i) => (
+        <div key={i} style={{ width: `${(p.n / toplam) * 100}%`, background: p.renk, minWidth: 4 }} />
+      ))}
+    </div>
+  )
+}
+
+function SkorRozet({ skor, buyuk = false }) {
+  if (skor == null) {
+    return <span className={`text-gray-400 ${buyuk ? 'text-lg' : 'text-xs'}`} title="Henüz tamamlanan iş yok">—</span>
+  }
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-full font-bold ${buyuk ? 'text-xl px-4 py-1.5' : 'text-sm px-3 py-1'}`}
+      style={{ background: `${skorRengi(skor)}15`, color: skorRengi(skor) }}
+    >
+      %{skor}
+    </span>
+  )
 }
 
 function Performans() {
@@ -27,11 +91,12 @@ function Performans() {
   const [yukleniyor, setYukleniyor] = useState(true)
 
   // Filtreler
-  const [aralik, setAralik] = useState('bu_ay')   // bu_ay, bu_yil, tumu, ozel
+  const [aralik, setAralik] = useState('bu_ay')
   const [ozelBas, setOzelBas] = useState('')
   const [ozelBit, setOzelBit] = useState('')
   const [modulFiltre, setModulFiltre] = useState('tumu')
   const [seciliKullanici, setSeciliKullanici] = useState(null)
+  const [aciklamaAcik, setAciklamaAcik] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +121,9 @@ function Performans() {
     if (aralik === 'bu_ay') {
       return [new Date(bugun.getFullYear(), bugun.getMonth(), 1), new Date(bugun.getFullYear(), bugun.getMonth() + 1, 0, 23, 59, 59)]
     }
+    if (aralik === 'gecen_ay') {
+      return [new Date(bugun.getFullYear(), bugun.getMonth() - 1, 1), new Date(bugun.getFullYear(), bugun.getMonth(), 0, 23, 59, 59)]
+    }
     if (aralik === 'bu_yil') {
       return [new Date(bugun.getFullYear(), 0, 1), new Date(bugun.getFullYear(), 11, 31, 23, 59, 59)]
     }
@@ -65,14 +133,13 @@ function Performans() {
     return [new Date(2000, 0, 1), new Date(2100, 0, 1)]
   }, [aralik, ozelBas, ozelBit])
 
-  const araliktaMi = (iso) => {
-    if (!iso) return false
-    const d = new Date(iso)
-    return d >= bas && d <= bit
-  }
-
   // Her iş için SLA analizi yap
   const isler = useMemo(() => {
+    const araliktaMi = (iso) => {
+      if (!iso) return false
+      const d = new Date(iso)
+      return d >= bas && d <= bit
+    }
     const hepsi = []
 
     // ═══ KARGO ═══
@@ -89,16 +156,12 @@ function Performans() {
         if (!sonuc) return
         hepsi.push({
           id: `kargo-${k.id}-${kural.id}`,
-          modul: 'kargo',
-          modulIsim: 'Kargo',
-          ikon: '🚚',
+          modul: 'kargo', modulIsim: 'Kargo', ikon: '🚚',
           baslik: k.kargoNo + ' · ' + kural.olayIsim,
           detay: (k.gonderen?.firma || k.gonderen?.ad || '?') + ' → ' + (k.alici?.firma || k.alici?.ad || '?'),
           kullaniciId: String(kullaniciId),
-          baslangic: k.olusturmaTarihi,
-          bitis: bitisTarih,
-          kural,
-          sonuc,
+          baslangic: k.olusturmaTarihi, bitis: bitisTarih,
+          kural, sonuc,
           hedef: `/kargolar/${k.id}`,
         })
       })
@@ -118,82 +181,76 @@ function Performans() {
         if (!sonuc) return
         hepsi.push({
           id: `servis-${s.id}-${kural.id}`,
-          modul: 'servis',
-          modulIsim: 'Servis',
-          ikon: '🔧',
+          modul: 'servis', modulIsim: 'Servis', ikon: '🔧',
           baslik: s.talepNo + ' · ' + kural.olayIsim,
           detay: s.firmaAdi || s.musteriAd || '?',
           kullaniciId: String(kullaniciId),
-          baslangic: s.olusturmaTarihi,
-          bitis: bitisTarih,
-          kural,
-          sonuc,
+          baslangic: s.olusturmaTarihi, bitis: bitisTarih,
+          kural, sonuc,
           hedef: `/servis-talepleri/${s.id}`,
         })
       })
     })
 
     // ═══ GÖREV ═══
+    // Not: yeni görevler atanan_id kullanır, eski kayıtlarda atanan (legacy) dolu.
     const gorevKurallari = slaKurallari.filter(k => k.modul === 'gorev')
     gorevler.forEach(g => {
       if (!araliktaMi(g.olusturmaTarih)) return
-      const kullaniciId = g.atanan
+      const kullaniciId = g.atananId ?? g.atanan
       if (!kullaniciId) return
 
       gorevKurallari.forEach(kural => {
         const bitisTarih = g.durum === kural.bitisDurum
-          ? (g.tamamlanmaTarihi || g.bitisTarihi)
+          ? (g.tamamlanmaTarihi || g.bitisTarihi || g.sonTarih)
           : null
-        // Eğer görevin kendi sonTarih'i varsa onu kullan, yoksa SLA saatini
-        const slaSaat = g.sonTarih
-          ? ((new Date(g.sonTarih) - new Date(g.olusturmaTarih)) / (1000 * 60 * 60))
+        // Görevin kendi son tarihi varsa SLA yerine onu kullan
+        const hedefTarih = g.bitisTarihi || g.sonTarih
+        const slaSaat = hedefTarih
+          ? ((new Date(hedefTarih) - new Date(g.olusturmaTarih)) / (1000 * 60 * 60))
           : kural.sureSaat
         const sonuc = slaDurumHesapla(g.olusturmaTarih, bitisTarih, slaSaat)
         if (!sonuc) return
         hepsi.push({
           id: `gorev-${g.id}-${kural.id}`,
-          modul: 'gorev',
-          modulIsim: 'Görev',
-          ikon: '✅',
+          modul: 'gorev', modulIsim: 'Görev', ikon: '✅',
           baslik: g.baslik,
-          detay: g.aciklama?.substring(0, 60) || '',
+          detay: g.firmaAdi || g.aciklama?.substring(0, 60) || '',
           kullaniciId: String(kullaniciId),
-          baslangic: g.olusturmaTarih,
-          bitis: bitisTarih,
-          kural: { ...kural, sureSaat: slaSaat },
-          sonuc,
+          baslangic: g.olusturmaTarih, bitis: bitisTarih,
+          kural: { ...kural, sureSaat: slaSaat }, sonuc,
           hedef: `/gorevler/${g.id}`,
         })
       })
     })
 
     // ═══ TEKLİF ═══
+    // Gönderim ANI kayıt edilmediği için hedefe ulaşmış teklifler ölçülemez —
+    // onları saymıyoruz (eskiden bitiş=oluşturma sayılıp herkese sahte %100
+    // yazıyordu). Hâlâ hazırlanmakta olanlar açık/kritik olarak izlenir.
     const teklifKurallari = slaKurallari.filter(k => k.modul === 'teklif')
     teklifler.forEach(t => {
       if (!araliktaMi(t.olusturmaTarih)) return
-      // Teklif yazar - 'hazirlayan' text, eşleşme: isim ile kullanıcı bul
       const kullaniciId = kullanicilar?.find(u => u.ad === t.hazirlayan || u.ad === t.musteriTemsilcisi)?.id
       if (!kullaniciId) return
 
       teklifKurallari.forEach(kural => {
-        // Hedef durum kontrol: onay_durumu ya da durum
-        const bitisTarih = (t.onayDurumu === kural.bitisDurum || t.durum === kural.bitisDurum)
-          ? t.olusturmaTarih  // basitçe olusturulma anı
-          : null
+        const hedefeUlasti = t.onayDurumu === kural.bitisDurum || t.durum === kural.bitisDurum
+        let bitisTarih = null
+        if (hedefeUlasti) {
+          if (kural.bitisDurum === 'kabul' && t.kabulTarihi) bitisTarih = t.kabulTarihi
+          else return // ulaşmış ama zamanı bilinmiyor → skora katma
+        }
         const sonuc = slaDurumHesapla(t.olusturmaTarih, bitisTarih, kural.sureSaat)
         if (!sonuc) return
         hepsi.push({
           id: `teklif-${t.id}-${kural.id}`,
-          modul: 'teklif',
-          modulIsim: 'Teklif',
-          ikon: '📋',
-          baslik: t.teklifNo + ' · ' + kural.olayIsim,
+          modul: 'teklif', modulIsim: 'Teklif', ikon: '📋',
+          baslik: (t.teklifNo || `Teklif #${t.id}`) + ' · ' + kural.olayIsim,
           detay: t.firmaAdi || '?',
           kullaniciId: String(kullaniciId),
-          baslangic: t.olusturmaTarih,
-          bitis: bitisTarih,
-          kural,
-          sonuc,
+          baslangic: t.olusturmaTarih, bitis: bitisTarih,
+          kural, sonuc,
           hedef: `/teklifler/${t.id}`,
         })
       })
@@ -217,9 +274,21 @@ function Performans() {
     })
     for (const [, r] of map.entries()) {
       const tamamlanan = r.zamaninda + r.gec
+      r.tamamlanan = tamamlanan
       r.skor = tamamlanan > 0 ? Math.round((r.zamaninda / tamamlanan) * 100) : null
     }
-    return [...map.values()].sort((a, b) => (b.skor ?? -1) - (a.skor ?? -1))
+    // Skor > iş sayısı sırası; skorsuzlar en altta
+    return [...map.values()].sort((a, b) => (b.skor ?? -1) - (a.skor ?? -1) || b.toplam - a.toplam)
+  }, [isler])
+
+  // Ekip geneli özet
+  const ozet = useMemo(() => {
+    const s = { toplam: isler.length, zamaninda: 0, gec: 0, acik: 0, kritik: 0 }
+    isler.forEach(i => { s[i.sonuc.durum]++ })
+    const tamamlanan = s.zamaninda + s.gec
+    s.skor = tamamlanan > 0 ? Math.round((s.zamaninda / tamamlanan) * 100) : null
+    s.tamamlanan = tamamlanan
+    return s
   }, [isler])
 
   if (yukleniyor) {
@@ -251,12 +320,28 @@ function Performans() {
     )
   }
 
-  // Kullanıcı detay görünümü
+  // ═══════ Kullanıcı Detay Görünümü ═══════
   if (seciliKullanici) {
     const r = rapor.find(x => x.kullaniciId === seciliKullanici)
     const kullanici = kullanicilar?.find(u => String(u.id) === seciliKullanici)
-    const isler = r?.isler || []
-    const gecIsler = isler.filter(i => i.sonuc.durum === 'gec' || i.sonuc.durum === 'kritik')
+    const kisiIsler = r?.isler || []
+    const sorunlular = kisiIsler
+      .filter(i => i.sonuc.durum === 'gec' || i.sonuc.durum === 'kritik')
+      .sort((a, b) => (b.sonuc.gecikmeSaat || 0) - (a.sonuc.gecikmeSaat || 0))
+
+    // Modül kırılımı
+    const modulKirilim = []
+    for (const m of SLA_MODULLER) {
+      const mi = kisiIsler.filter(i => i.modul === m.id)
+      if (mi.length === 0) continue
+      const mr = { zamaninda: 0, gec: 0, acik: 0, kritik: 0, toplam: mi.length }
+      mi.forEach(i => { mr[i.sonuc.durum]++ })
+      const tamam = mr.zamaninda + mr.gec
+      modulKirilim.push({
+        ...m, ...mr,
+        skor: tamam > 0 ? Math.round((mr.zamaninda / tamam) * 100) : null,
+      })
+    }
 
     return (
       <div className="p-6 max-w-5xl mx-auto">
@@ -267,68 +352,88 @@ function Performans() {
           ← Tüm Personele Dön
         </button>
 
+        {/* Kişi başlık kartı */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <div className="h-1.5" style={{ background: 'var(--primary)' }} />
+          <div className="h-1.5" style={{ background: skorRengi(r?.skor) }} />
           <div className="p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold" style={{ background: 'var(--primary)' }}>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0" style={{ background: 'var(--primary)' }}>
                 {kullanici?.ad?.charAt(0) || '?'}
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h2 className="text-2xl font-bold text-gray-800">{kullanici?.ad || '—'}</h2>
-                <p className="text-sm text-gray-400">{kullanici?.rol || ''}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="rounded-xl p-4 text-center bg-blue-50 border border-blue-100">
-                <p className="text-xs text-blue-600 font-medium">Toplam İş</p>
-                <p className="text-2xl font-bold text-blue-700 mt-1">{r?.toplam || 0}</p>
-              </div>
-              <div className="rounded-xl p-4 text-center bg-green-50 border border-green-100">
-                <p className="text-xs text-green-600 font-medium">✅ Zamanında</p>
-                <p className="text-2xl font-bold text-green-700 mt-1">{r?.zamaninda || 0}</p>
-              </div>
-              <div className="rounded-xl p-4 text-center bg-red-50 border border-red-100">
-                <p className="text-xs text-red-600 font-medium">❌ Geç</p>
-                <p className="text-2xl font-bold text-red-700 mt-1">{r?.gec || 0}</p>
-              </div>
-              <div className="rounded-xl p-4 text-center bg-amber-50 border border-amber-100">
-                <p className="text-xs text-amber-600 font-medium">⚠️ Kritik</p>
-                <p className="text-2xl font-bold text-amber-700 mt-1">{r?.kritik || 0}</p>
-              </div>
-              <div className="rounded-xl p-4 text-center bg-gray-50 border border-gray-100">
-                <p className="text-xs text-gray-600 font-medium">SKOR</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: skorRengi(r?.skor) }}>
-                  {r?.skor != null ? `%${r.skor}` : '—'}
+                <p className="text-sm text-gray-400">
+                  {r?.tamamlanan > 0
+                    ? <>Tamamlanan <strong className="text-gray-600">{r.tamamlanan}</strong> işin <strong className="text-gray-600">{r.zamaninda}</strong>'i zamanında bitirildi</>
+                    : 'Bu aralıkta tamamlanan iş yok'}
                 </p>
               </div>
+              <SkorRozet skor={r?.skor} buyuk />
+            </div>
+
+            <div className="mt-4">
+              <DagilimBar r={r || { toplam: 0 }} height={10} />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+              {[
+                { key: 'zamaninda', deger: r?.zamaninda },
+                { key: 'gec',       deger: r?.gec },
+                { key: 'kritik',    deger: r?.kritik },
+                { key: 'acik',      deger: r?.acik },
+              ].map(({ key, deger }) => (
+                <div key={key} className="rounded-xl p-3 text-center border" style={{ background: `${DURUM_TANIM[key].renk}0d`, borderColor: `${DURUM_TANIM[key].renk}33` }}>
+                  <p className="text-xs font-medium" style={{ color: DURUM_TANIM[key].renk }}>{DURUM_TANIM[key].isim}</p>
+                  <p className="text-2xl font-bold mt-1" style={{ color: DURUM_TANIM[key].renk }}>{deger || 0}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {gecIsler.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-red-100 mb-4">
-            <div className="px-5 py-4 border-b border-red-100 bg-red-50">
-              <h3 className="text-sm font-semibold text-red-700">⚠️ Geciken / Kritik İşler ({gecIsler.length})</h3>
+        {/* Modül kırılımı */}
+        {modulKirilim.length > 1 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700">Modül Bazında</h3>
             </div>
             <div className="divide-y divide-gray-50">
-              {gecIsler.map(is => (
+              {modulKirilim.map(m => (
+                <div key={m.id} className="flex items-center gap-3 px-5 py-3">
+                  <span className="text-lg w-7 text-center flex-shrink-0">{m.ikon}</span>
+                  <span className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">{m.isim.replace(' Takip', '').replace(' Talebi', '')}</span>
+                  <div className="flex-1"><DagilimBar r={m} height={6} /></div>
+                  <span className="text-xs text-gray-400 w-14 text-right flex-shrink-0">{m.toplam} iş</span>
+                  <span className="w-14 text-right flex-shrink-0"><SkorRozet skor={m.skor} /></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sorunlu işler */}
+        {sorunlular.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-red-100 mb-4">
+            <div className="px-5 py-3 border-b border-red-100 bg-red-50">
+              <h3 className="text-sm font-semibold text-red-700">⚠️ Geciken / Kritik İşler ({sorunlular.length})</h3>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {sorunlular.map(is => (
                 <div
                   key={is.id}
                   onClick={() => navigate(is.hedef)}
                   className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition cursor-pointer"
                 >
-                  <div className="text-2xl flex-shrink-0">{is.ikon}</div>
+                  <div className="text-xl flex-shrink-0">{is.ikon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{is.baslik}</p>
-                    <p className="text-xs text-gray-400 truncate">{is.detay}</p>
+                    <p className="text-xs text-gray-400 truncate">{is.detay} · {fmtTarih(is.baslangic)}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-semibold text-red-600">
-                      +{Math.round(is.sonuc.gecikmeSaat)} saat gecikme
+                    <p className="text-xs font-bold" style={{ color: DURUM_TANIM[is.sonuc.durum].renk }}>
+                      {is.sonuc.durum === 'kritik' ? 'HÂLÂ AÇIK · ' : ''}{saatYaz(is.sonuc.gecikmeSaat)} gecikme
                     </p>
-                    <p className="text-xs text-gray-400">Limit: {is.kural.sureSaat}h</p>
+                    <p className="text-xs text-gray-400">Süre limiti: {saatYaz(is.kural.sureSaat)}</p>
                   </div>
                 </div>
               ))}
@@ -336,13 +441,14 @@ function Performans() {
           </div>
         )}
 
+        {/* Tüm işler */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700">📋 Tüm İşler ({isler.length})</h3>
+          <div className="px-5 py-3 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700">📋 Tüm İşler ({kisiIsler.length})</h3>
           </div>
           <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
-            {isler.map(is => {
-              const dr = durumRengi(is.sonuc.durum)
+            {kisiIsler.map(is => {
+              const d = DURUM_TANIM[is.sonuc.durum]
               return (
                 <div
                   key={is.id}
@@ -352,9 +458,14 @@ function Performans() {
                   <div className="text-lg flex-shrink-0">{is.ikon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-800 truncate">{is.baslik}</p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {fmtTarih(is.baslangic)}
+                      {is.sonuc.kullanilanSaat != null && ` · ${saatYaz(is.sonuc.kullanilanSaat)} sürdü`}
+                      {` · limit ${saatYaz(is.kural.sureSaat)}`}
+                    </p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: dr.bg, color: dr.renk }}>
-                    {dr.isim}
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0" style={{ background: `${d.renk}15`, color: d.renk }}>
+                    {d.isim}
                   </span>
                 </div>
               )
@@ -365,155 +476,180 @@ function Performans() {
     )
   }
 
-  // ═══════ Ana Liste Görünümü ═══════
-
+  // ═══════ Ana Görünüm ═══════
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">📊 Personel Performans Raporu</h2>
-        <p className="text-sm text-gray-400 mt-1">
-          SLA kurallarına göre hesaplanan performans skorları
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">📊 Personel Performansı</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Skor = tamamlanan işlerin <strong className="text-gray-500">zamanında bitirilme</strong> oranı
+          </p>
+        </div>
+        <button
+          onClick={() => setAciklamaAcik(a => !a)}
+          className="text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 bg-blue-50 rounded-lg px-3 py-1.5"
+        >
+          {aciklamaAcik ? 'Açıklamayı Gizle' : 'ℹ️ Nasıl hesaplanır?'}
+        </button>
       </div>
+
+      {/* Nasıl hesaplanır kutusu */}
+      {aciklamaAcik && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm text-gray-600">
+          <p className="mb-3">
+            Her iş, <strong>SLA kurallarındaki</strong> süre limitiyle karşılaştırılır (örn. "Servis İlk Müdahale: 4 saat").
+            Görevlerde görevin kendi bitiş tarihi limit kabul edilir.
+            <strong> Skor</strong>, yalnızca tamamlanan işler üzerinden hesaplanır: zamanında biten ÷ toplam biten.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {Object.entries(DURUM_TANIM).map(([key, d]) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.renk }} />
+                <span className="text-xs"><strong style={{ color: d.renk }}>{d.isim}:</strong> {d.aciklama}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filtreler */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-        <div className="flex gap-3 flex-wrap items-end">
+        <div className="flex gap-4 flex-wrap items-end">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Zaman Aralığı</label>
-            <CustomSelect
-              value={aralik}
-              onChange={e => setAralik(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="bu_ay">Bu Ay</option>
-              <option value="bu_yil">Bu Yıl</option>
-              <option value="tumu">Tümü</option>
-              <option value="ozel">Özel Aralık</option>
-            </CustomSelect>
+            <label className="text-xs text-gray-500 mb-1.5 block font-medium">Zaman Aralığı</label>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              {ZAMAN_SECENEK.map(z => (
+                <button
+                  key={z.id}
+                  onClick={() => setAralik(z.id)}
+                  className={`px-3 py-2 text-sm font-medium transition ${aralik === z.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >
+                  {z.isim}
+                </button>
+              ))}
+            </div>
           </div>
 
           {aralik === 'ozel' && (
             <>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Başlangıç</label>
-                <input
-                  type="date"
-                  value={ozelBas}
-                  onChange={e => setOzelBas(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="text-xs text-gray-500 mb-1.5 block font-medium">Başlangıç</label>
+                <input type="date" value={ozelBas} onChange={e => setOzelBas(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Bitiş</label>
-                <input
-                  type="date"
-                  value={ozelBit}
-                  onChange={e => setOzelBit(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="text-xs text-gray-500 mb-1.5 block font-medium">Bitiş</label>
+                <input type="date" value={ozelBit} onChange={e => setOzelBit(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </>
           )}
 
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Modül</label>
-            <CustomSelect
-              value={modulFiltre}
-              onChange={e => setModulFiltre(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="tumu">Tümü</option>
-              {SLA_MODULLER.map(m => (
-                <option key={m.id} value={m.id}>{m.ikon} {m.isim}</option>
+            <label className="text-xs text-gray-500 mb-1.5 block font-medium">Modül</label>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setModulFiltre('tumu')}
+                className={`px-3 py-2 text-sm font-medium transition ${modulFiltre === 'tumu' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                Tümü
+              </button>
+              {SLA_MODULLER.filter(m => slaKurallari.some(k => k.modul === m.id)).map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setModulFiltre(m.id)}
+                  className={`px-3 py-2 text-sm font-medium transition ${modulFiltre === m.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  title={m.isim}
+                >
+                  {m.ikon} {m.isim.split(' ')[0]}
+                </button>
               ))}
-            </CustomSelect>
-          </div>
-
-          <div className="text-xs text-gray-400 ml-auto">
-            Toplam: <strong className="text-gray-700">{isler.length}</strong> iş · <strong className="text-gray-700">{rapor.length}</strong> personel
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Rapor Tablosu */}
+      {/* Ekip özeti */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p className="text-xs text-gray-400 font-medium">EKİP SKORU</p>
+          <p className="text-2xl font-bold mt-1" style={{ color: skorRengi(ozet.skor) }}>
+            {ozet.skor != null ? `%${ozet.skor}` : '—'}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p className="text-xs text-gray-400 font-medium">TOPLAM İŞ</p>
+          <p className="text-2xl font-bold text-gray-700 mt-1">{ozet.toplam}</p>
+        </div>
+        {['zamaninda', 'gec', 'kritik'].map(key => (
+          <div key={key} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <p className="text-xs font-medium" style={{ color: DURUM_TANIM[key].renk }}>{DURUM_TANIM[key].isim.toUpperCase()}</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: DURUM_TANIM[key].renk }}>{ozet[key]}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Personel listesi */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-              <th className="text-left py-3 px-5">Personel</th>
-              <th className="text-right py-3 px-3">Toplam</th>
-              <th className="text-right py-3 px-3">Zamanında</th>
-              <th className="text-right py-3 px-3">Geç</th>
-              <th className="text-right py-3 px-3">Açık</th>
-              <th className="text-right py-3 px-3">Kritik</th>
-              <th className="text-right py-3 px-5">Skor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rapor.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center py-10 text-gray-400">
-                  Bu aralıkta kayıt bulunmuyor.
-                </td>
-              </tr>
-            )}
-            {rapor.map(r => {
+        {rapor.length === 0 ? (
+          <div className="text-center py-14 text-gray-400 text-sm">
+            Bu aralıkta SLA'ya tabi iş kaydı bulunmuyor.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {rapor.map((r, idx) => {
               const kullanici = kullanicilar?.find(u => String(u.id) === r.kullaniciId)
+              const madalya = r.skor != null && r.tamamlanan >= 3 && idx < 3
+                ? ['🥇', '🥈', '🥉'][idx]
+                : null
               return (
-                <tr
+                <div
                   key={r.kullaniciId}
                   onClick={() => setSeciliKullanici(r.kullaniciId)}
-                  className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 cursor-pointer transition"
                 >
-                  <td className="py-3 px-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--primary)' }}>
-                        {kullanici?.ad?.charAt(0) || '?'}
-                      </div>
-                      <span className="font-medium text-gray-800">{kullanici?.ad || 'Bilinmiyor'}</span>
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--primary)' }}>
+                      {kullanici?.ad?.charAt(0) || '?'}
                     </div>
-                  </td>
-                  <td className="text-right py-3 px-3 text-gray-700 font-medium">{r.toplam}</td>
-                  <td className="text-right py-3 px-3 text-green-600 font-medium">{r.zamaninda}</td>
-                  <td className="text-right py-3 px-3 text-red-500 font-medium">{r.gec}</td>
-                  <td className="text-right py-3 px-3 text-blue-500 font-medium">{r.acik}</td>
-                  <td className="text-right py-3 px-3 text-amber-500 font-medium">{r.kritik}</td>
-                  <td className="text-right py-3 px-5">
-                    {r.skor != null ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold" style={{ background: `${skorRengi(r.skor)}15`, color: skorRengi(r.skor) }}>
-                        ● %{r.skor}
+                    {madalya && <span className="absolute -top-1.5 -right-1.5 text-sm">{madalya}</span>}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
+                      <span className="font-semibold text-gray-800 text-sm">{kullanici?.ad || 'Bilinmiyor'}</span>
+                      <span className="text-xs text-gray-400">
+                        {r.toplam} iş
+                        {r.gec > 0 && <span className="text-red-500 font-medium"> · {r.gec} geç</span>}
+                        {r.kritik > 0 && <span className="text-amber-500 font-medium"> · {r.kritik} kritik ⚠</span>}
+                        {r.acik > 0 && <span> · {r.acik} açık</span>}
                       </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                </tr>
+                    </div>
+                    <DagilimBar r={r} />
+                  </div>
+
+                  <div className="flex-shrink-0 w-20 text-right">
+                    <SkorRozet skor={r.skor} />
+                  </div>
+                  <span className="text-gray-300 flex-shrink-0">›</span>
+                </div>
               )
             })}
-          </tbody>
-        </table>
+          </div>
+        )}
+      </div>
+
+      {/* Alt lejant */}
+      <div className="flex gap-4 flex-wrap mt-3 px-1">
+        {Object.entries(DURUM_TANIM).map(([key, d]) => (
+          <span key={key} className="flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.renk }} /> {d.isim}
+          </span>
+        ))}
       </div>
     </div>
   )
-}
-
-// Helpers
-function skorRengi(skor) {
-  if (skor == null) return '#9ca3af'
-  if (skor >= 90) return '#10b981'
-  if (skor >= 75) return '#f59e0b'
-  return '#ef4444'
-}
-
-function durumRengi(durum) {
-  const map = {
-    zamaninda: { isim: '✅ Zamanında', renk: '#10b981', bg: '#10b98115' },
-    gec:       { isim: '❌ Geç',        renk: '#ef4444', bg: '#ef444415' },
-    kritik:    { isim: '⚠️ Kritik',    renk: '#f59e0b', bg: '#f59e0b15' },
-    acik:      { isim: '🔵 Açık',       renk: '#3b82f6', bg: '#3b82f615' },
-  }
-  return map[durum] || map.acik
 }
 
 export default Performans
