@@ -74,6 +74,8 @@ function MusteriDetay() {
   const [lokasyonlar, setLokasyonlar]   = useState([])
   const [lokasyonForm, setLokasyonForm] = useState(null)
   const [lokKaydediliyor, setLokKaydediliyor] = useState(false)
+  const [lokArama, setLokArama] = useState('')
+  const [lokHepsi, setLokHepsi] = useState(false)
 
   const [davetAcik, setDavetAcik] = useState(false)
 
@@ -252,7 +254,7 @@ function MusteriDetay() {
   const filtreliOlaylar = aktifSekme === 'hepsi' ? tumOlaylar : tumOlaylar.filter(o => o.tip === aktifSekme)
 
   return (
-    <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
 
       {/* Geri */}
       <button
@@ -917,69 +919,124 @@ function MusteriDetay() {
             Henüz lokasyon eklenmedi. Üstteki <b style={{ fontStyle: 'normal', color: 'var(--text-secondary)' }}>+ Lokasyon ekle</b> butonundan ekleyebilirsin.
           </div>
         ) : (
-          <div>
-            {lokasyonlar.map(lok => (
-              <div
-                key={lok.id}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  padding: '12px 20px',
-                  borderBottom: '1px solid var(--border-default)',
-                  transition: 'background 120ms',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <span style={{
-                  width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: lok.aktif ? 'var(--success-soft)' : 'var(--surface-sunken)',
-                  color: lok.aktif ? 'var(--success)' : 'var(--text-tertiary)',
-                  flexShrink: 0, marginTop: 2,
-                }}>
-                  <MapPin size={14} strokeWidth={1.5} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{lok.ad}</span>
-                    {!lok.aktif && <Badge tone="pasif">Pasif</Badge>}
-                  </div>
-                  {lok.adres  && <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>{lok.adres}</p>}
-                  {lok.notlar && <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0', fontStyle: 'italic' }}>{lok.notlar}</p>}
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  <button
-                    aria-label="Düzenle"
-                    onClick={() => setLokasyonForm({ ...lok })}
+          (() => {
+            // Çok lokasyonlu müşteride çarşaf olmasın: arama + çok kolonlu grid + ilk 9
+            const q = lokArama.trim().toLocaleLowerCase('tr')
+            const filtreli = q
+              ? lokasyonlar.filter(l => `${l.ad || ''} ${l.adres || ''} ${l.notlar || ''}`.toLocaleLowerCase('tr').includes(q))
+              : lokasyonlar
+            const LIMIT = 9
+            const gorunenLok = (lokHepsi || q) ? filtreli : filtreli.slice(0, LIMIT)
+            return (
+              <div style={{ padding: '12px 20px 16px' }}>
+                {lokasyonlar.length > LIMIT && (
+                  <input
+                    type="text"
+                    value={lokArama}
+                    onChange={e => setLokArama(e.target.value)}
+                    placeholder={`${lokasyonlar.length} lokasyonda ara…`}
                     style={{
-                      width: 28, height: 28,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                      width: '100%', maxWidth: 360, padding: '8px 12px', marginBottom: 12,
+                      background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+                      font: '400 13px/18px var(--font-sans)',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                  >
-                    <Pencil size={12} strokeWidth={1.5} />
-                  </button>
-                  <button
-                    aria-label="Sil"
-                    onClick={() => lokasyonSil(lok.id)}
-                    style={{
-                      width: 28, height: 28,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-                  >
-                    <Trash2 size={12} strokeWidth={1.5} />
-                  </button>
+                  />
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+                  {gorunenLok.map(lok => (
+                    <div
+                      key={lok.id}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                        padding: '10px 12px',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        transition: 'background 120ms',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{
+                        width: 26, height: 26, borderRadius: 'var(--radius-sm)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: lok.aktif ? 'var(--success-soft)' : 'var(--surface-sunken)',
+                        color: lok.aktif ? 'var(--success)' : 'var(--text-tertiary)',
+                        flexShrink: 0, marginTop: 1,
+                      }}>
+                        <MapPin size={13} strokeWidth={1.5} />
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span title={lok.ad} style={{
+                            font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{lok.ad}</span>
+                          {!lok.aktif && <Badge tone="pasif">Pasif</Badge>}
+                        </div>
+                        {(lok.adres || lok.notlar) && (
+                          <p title={[lok.adres, lok.notlar].filter(Boolean).join(' · ')} style={{
+                            font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', margin: '2px 0 0',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {[lok.adres, lok.notlar].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button
+                          aria-label="Düzenle"
+                          onClick={() => setLokasyonForm({ ...lok })}
+                          style={{
+                            width: 26, height: 26,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <Pencil size={12} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          aria-label="Sil"
+                          onClick={() => lokasyonSil(lok.id)}
+                          style={{
+                            width: 26, height: 26,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                        >
+                          <Trash2 size={12} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                {q && filtreli.length === 0 && (
+                  <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: '10px 0 0' }}>
+                    Aramayla eşleşen lokasyon yok.
+                  </p>
+                )}
+                {!q && filtreli.length > LIMIT && (
+                  <button
+                    onClick={() => setLokHepsi(h => !h)}
+                    style={{
+                      marginTop: 12, padding: '8px 16px', width: '100%',
+                      background: 'var(--surface-sunken)', border: '1px dashed var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--brand-primary)',
+                      font: '600 13px/18px var(--font-sans)', cursor: 'pointer',
+                    }}
+                  >
+                    {lokHepsi ? '▲ Daralt' : `▼ Tümünü göster (${filtreli.length})`}
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
+            )
+          })()
         )}
       </Card>
 
