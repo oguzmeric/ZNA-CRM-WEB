@@ -342,6 +342,25 @@ export default function Dashboard() {
           >
             <Search size={11} strokeWidth={1.5} /> ⌘K menüde ara
           </button>
+          {/* Günlük Özet kısayolu — sadece Ali Uğur (1) + Oğuz (2) */}
+          {[1, 2].includes(Number(kullanici?.id)) && (
+            <button
+              onClick={() => navigate('/gunluk-ozet')}
+              title="Günlük Özet — bekleyen işlerin tam listesi"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 10px',
+                borderRadius: 999,
+                background: 'rgba(245,158,11,0.10)',
+                border: '1px solid rgba(245,158,11,0.45)',
+                color: '#B45309',
+                font: '600 11px/16px var(--font-sans)',
+                cursor: 'pointer',
+              }}
+            >
+              ☀️ Günlük Özet
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <CurrencyBox code="USD" value={kurlar.USD ? `₺${kurlar.USD}` : '—'} onRefresh={kurCek} loading={yukleniyor} />
