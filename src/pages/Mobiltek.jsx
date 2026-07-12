@@ -49,6 +49,7 @@ export default function Mobiltek() {
 
   const [sonGuncelleme, setSonGuncelleme] = useState(null)
   const [yakinliklar, setYakinliklar] = useState([])
+  const [yakinlikPanel, setYakinlikPanel] = useState(false)
   const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste'
 
   const yukle = async () => {
@@ -131,51 +132,92 @@ export default function Mobiltek() {
             { etiket: 'Araç Sayısı', deger: araclar.length, renk: '#3b82f6' },
             { etiket: 'Aktif (kontak açık)', deger: araclar.filter(a => a.ignition).length, renk: '#10b981' },
             { etiket: 'Ortalama Hız', deger: araclar.length ? Math.round(araclar.reduce((s, a) => s + Number(a.gpsSpeed || 0), 0) / araclar.length) + ' km/s' : '—', renk: '#f59e0b' },
-            { etiket: 'Yakınlık İzleme', deger: yakinliklar.length, renk: yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#64748b' },
           ].map(k => (
             <Card key={k.etiket} style={{ padding: 12, textAlign: 'center' }}>
               <div style={{ font: '700 20px/24px var(--font-sans)', color: k.renk }}>{k.deger}</div>
               <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>{k.etiket}</div>
             </Card>
           ))}
+
+          {/* Yakınlık kartı — tıklanınca detay paneli açılır, alarmda nabız atar */}
+          {(() => {
+            const alarmSayisi = yakinliklar.filter(y => y.alarm_verildi).length
+            const renk = alarmSayisi > 0 ? '#dc2626' : yakinliklar.length > 0 ? '#f59e0b' : '#64748b'
+            return (
+              <Card
+                onClick={() => yakinliklar.length > 0 && setYakinlikPanel(p => !p)}
+                style={{
+                  padding: 12, textAlign: 'center', position: 'relative',
+                  cursor: yakinliklar.length > 0 ? 'pointer' : 'default',
+                  border: yakinlikPanel ? `1.5px solid ${renk}` : undefined,
+                }}
+              >
+                {alarmSayisi > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 8, right: 8, width: 9, height: 9,
+                    borderRadius: '50%', background: '#dc2626',
+                    animation: 'znaNabiz 1.4s ease-out infinite',
+                  }} />
+                )}
+                <div style={{ font: '700 20px/24px var(--font-sans)', color: renk }}>
+                  {alarmSayisi > 0 ? `${alarmSayisi} alarm` : yakinliklar.length || '—'}
+                </div>
+                <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  Yakınlık {alarmSayisi > 0 ? '⚠' : 'İzleme'}{yakinliklar.length > 0 ? ' · detay ▾' : ''}
+                </div>
+                <style>{'@keyframes znaNabiz{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}70%{box-shadow:0 0 0 8px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}'}</style>
+              </Card>
+            )
+          })()}
         </div>
       )}
 
-      {/* Yakınlık uyarıları */}
-      {yakinliklar.length > 0 && (
-        <Card style={{ marginBottom: 16, padding: 14, borderLeft: '4px solid ' + (yakinliklar.some(y => y.alarm_verildi) ? '#dc2626' : '#f59e0b') }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 20 }}>🕵️</span>
-            <strong style={{ font: '600 14px/18px var(--font-sans)' }}>
-              {yakinliklar.filter(y => y.alarm_verildi).length > 0
-                ? `${yakinliklar.filter(y => y.alarm_verildi).length} aktif alarm`
-                : `${yakinliklar.length} yakınlık izleniyor`}
-            </strong>
-          </div>
-          <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
-            {yakinliklar.map(y => {
-              const dk = Math.max(0, Math.round((new Date() - new Date(y.ilk_zaman)) / 60000))
-              const alarm = y.alarm_verildi
-              return (
-                <div key={y.id} style={{
-                  padding: '8px 10px',
-                  borderRadius: 6,
-                  background: alarm ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.06)',
-                  color: 'var(--text-primary)',
-                }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600 }}>{y.arac1_plaka}</span>
-                    <span style={{ opacity: 0.6 }}>+</span>
-                    <span style={{ fontWeight: 600 }}>{y.arac2_plaka}</span>
-                    <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
-                      {alarm ? '🚨 ' : ''}{dk} dk · {y.son_mesafe_m}m
-                    </span>
+      {/* Yakınlık detay paneli — sadece karta tıklanınca açılır */}
+      {yakinlikPanel && yakinliklar.length > 0 && (
+        <Card style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+          {yakinliklar.map((y, i) => {
+            const dk = Math.max(0, Math.round((new Date() - new Date(y.ilk_zaman)) / 60000))
+            const alarm = y.alarm_verildi
+            const renk = alarm ? '#dc2626' : '#f59e0b'
+            return (
+              <div
+                key={y.id}
+                onClick={() => {
+                  const a1 = araclar.find(a => a.plateNo === y.arac1_plaka)
+                  if (a1) { setGorunum('harita'); setSeciliArac(a1); setYakinlikPanel(false) }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                  borderBottom: i < yakinliklar.length - 1 ? '1px solid var(--border-default)' : 'none',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', background: renk, flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: '600 13px/17px var(--font-sans)' }}>
+                    {y.arac1_plaka} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>↔</span> {y.arac2_plaka}
                   </div>
-                  {y.son_adres && <div style={{ opacity: 0.7, marginTop: 2 }}>{y.son_adres}</div>}
+                  {y.son_adres && (
+                    <div style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {y.son_adres}
+                    </div>
+                  )}
                 </div>
-              )
-            })}
-          </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ font: '700 12px/16px var(--font-sans)', color: renk, fontVariantNumeric: 'tabular-nums' }}>
+                    {y.son_mesafe_m} m · {dk} dk
+                  </div>
+                  <div style={{ font: '400 10px/13px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                    haritada göster →
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </Card>
       )}
 
@@ -335,6 +377,7 @@ export default function Mobiltek() {
             <MobiltekHarita
               araclar={araclar}
               kameralar={kameralar}
+              yakinliklar={yakinliklar}
               seciliArac={seciliArac}
               onAracSec={aracSec}
             />

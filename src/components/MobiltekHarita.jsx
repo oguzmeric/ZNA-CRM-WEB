@@ -1,9 +1,8 @@
 // Mobiltek haritası — react-leaflet ile OSM tabanlı. Token gerekmez.
 // Araç konumlarını marker olarak yerleştirir; seçili aracın markerı vurgulanır.
 
-import { useEffect, useRef } from 'react'
-// useRef zaten yukarıda import edildi
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { useEffect, useRef, Fragment } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -30,6 +29,24 @@ const griIcon = new L.DivIcon({
     <div style="transform:rotate(45deg);color:#fff;font-size:16px;">🚚</div>
   </div>`,
   iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -30],
+})
+
+// Yakınlık rozeti — iki aracın orta noktasında mesafe/süre etiketi.
+// Alarm verilmişse kırmızı + nabız animasyonu, değilse sarı izleme etiketi.
+const yakinlikIcon = (alarm, mesafe, dk) => new L.DivIcon({
+  className: '',
+  html: `
+    <style>@keyframes znaYakinlikNabiz{0%{box-shadow:0 0 0 0 rgba(220,38,38,.45)}70%{box-shadow:0 0 0 14px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}</style>
+    <div style="
+      transform:translate(-50%,-50%);
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 10px;border-radius:999px;white-space:nowrap;
+      background:${alarm ? '#dc2626' : '#f59e0b'};color:#fff;
+      font:700 11px/14px system-ui;border:2px solid #fff;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);
+      ${alarm ? 'animation:znaYakinlikNabiz 1.6s ease-out infinite;' : ''}
+    ">${alarm ? '⚠' : '👁'} ${mesafe}m · ${dk} dk</div>`,
+  iconSize: [0, 0], iconAnchor: [0, 0],
 })
 
 const kameraIcon = new L.DivIcon({
@@ -65,7 +82,7 @@ function HepsiniGosterKontrol({ araclar, aktif }) {
   return null
 }
 
-export default function MobiltekHarita({ araclar = [], kameralar = [], seciliArac, onAracSec }) {
+export default function MobiltekHarita({ araclar = [], kameralar = [], yakinliklar = [], seciliArac, onAracSec }) {
   // Türkiye ortasını başlangıç yap
   const varsayilanMerkez = [39.0, 35.0]
   const merkez = seciliArac?.lat && seciliArac?.lng
@@ -108,6 +125,37 @@ export default function MobiltekHarita({ araclar = [], kameralar = [], seciliAra
               </div>
             </Popup>
           </Marker>
+        )
+      })}
+      {/* Yakınlık çiftleri — kesikli hat + orta noktada mesafe rozeti */}
+      {yakinliklar.map(y => {
+        const a1 = araclar.find(a => a.plateNo === y.arac1_plaka)
+        const a2 = araclar.find(a => a.plateNo === y.arac2_plaka)
+        if (!a1?.lat || !a2?.lat) return null
+        const p1 = [Number(a1.lat), Number(a1.lng)]
+        const p2 = [Number(a2.lat), Number(a2.lng)]
+        const orta = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2]
+        const alarm = !!y.alarm_verildi
+        const renk = alarm ? '#dc2626' : '#f59e0b'
+        const dk = Math.max(0, Math.round((Date.now() - new Date(y.ilk_zaman)) / 60000))
+        return (
+          <Fragment key={`y-${y.id}`}>
+            <Polyline positions={[p1, p2]} pathOptions={{ color: renk, weight: 3, dashArray: '6 8', opacity: 0.85 }} />
+            <Marker position={orta} icon={yakinlikIcon(alarm, y.son_mesafe_m, dk)}>
+              <Popup>
+                <div style={{ fontFamily: 'system-ui', minWidth: 180 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: renk }}>
+                    {alarm ? '🚨 Yakınlık Alarmı' : '👁 Yakınlık İzleniyor'}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{y.arac1_plaka} ↔ {y.arac2_plaka}</div>
+                  <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
+                    {y.son_mesafe_m} m mesafe · {dk} dakikadır birlikte
+                  </div>
+                  {y.son_adres && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{y.son_adres}</div>}
+                </div>
+              </Popup>
+            </Marker>
+          </Fragment>
         )
       })}
       {kameralar.map((k, i) => {
