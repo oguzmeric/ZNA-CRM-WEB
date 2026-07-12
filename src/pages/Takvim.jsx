@@ -449,9 +449,10 @@ export default function Takvim() {
                                 style={{
                                   font: '500 10px/16px var(--font-sans)',
                                   padding: '0 6px',
-                                  borderRadius: 2,
-                                  background: t.softBg,
-                                  color: t.fg,
+                                  borderRadius: 3,
+                                  background: 'var(--surface-sunken)',
+                                  borderLeft: `2px solid ${t.dot}`,
+                                  color: 'var(--text-secondary)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -526,14 +527,14 @@ export default function Takvim() {
                                 key={ev.id}
                                 onClick={e => { e.stopPropagation(); etkinligeTikla(ev) }}
                                 style={{
-                                  background: t.softBg,
+                                  background: 'var(--surface-sunken)',
                                   borderLeft: `3px solid ${t.dot}`,
                                   padding: '4px 6px',
-                                  borderRadius: 2,
+                                  borderRadius: 3,
                                   cursor: 'pointer',
                                 }}
                               >
-                                <div style={{ font: '500 11px/14px var(--font-sans)', color: t.fg, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {ev.baslik}
                                 </div>
                                 {ev.alt && (
@@ -628,9 +629,9 @@ export default function Takvim() {
                         onClick={() => etkinligeTikla(ev)}
                         style={{
                           textAlign: 'left',
-                          background: t.softBg,
-                          borderLeft: `3px solid ${t.dot}`,
+                          background: 'var(--surface-sunken)',
                           border: 'none',
+                          borderLeft: `3px solid ${t.dot}`,
                           padding: '8px 10px',
                           borderRadius: 'var(--radius-sm)',
                           cursor: 'pointer',
@@ -639,7 +640,7 @@ export default function Takvim() {
                       >
                         <IconC size={13} strokeWidth={1.5} style={{ color: t.fg, flexShrink: 0, marginTop: 1 }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ font: '500 12px/16px var(--font-sans)', color: t.fg, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {ev.baslik}
                           </div>
                           {ev.alt && (
