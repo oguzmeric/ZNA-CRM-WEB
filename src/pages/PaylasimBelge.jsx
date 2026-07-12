@@ -19,6 +19,7 @@ import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti  from './teklifCikti/TrassirCikti'
 import KarelCikti    from './teklifCikti/KarelCikti'
 import ServisFormu   from './servisCikti/ServisFormu'
+import DemoTutanak   from './demoCikti/DemoTutanak'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -72,12 +73,14 @@ export default function PaylasimBelge() {
   const [searchParams] = useSearchParams()
   const sablonOverride = searchParams.get('t')   // ornek: 'karel' — link icinde gelir
   const acHemen = searchParams.get('ac') === '1' // mail linki: karti atla, belgeyi direkt ac
-  const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu'
+  const [durum, setDurum] = useState('yukleniyor') // 'yukleniyor' | 'gecersiz' | 'hata' | 'teklif' | 'servis_raporu' | 'demo_tutanak'
   const [belge, setBelge] = useState(null)
   const [teklifGoster, setTeklifGoster] = useState(acHemen) // teklif: once kart, sonra cikti
   const [teklifYazdir, setTeklifYazdir] = useState(false) // cikti acilinca otomatik yazdir
   const [servisGoster, setServisGoster] = useState(acHemen) // servis raporu: once kart, sonra form
   const [servisYazdir, setServisYazdir] = useState(false)
+  const [demoGoster, setDemoGoster] = useState(acHemen) // demo tutanagi: once kart, sonra belge
+  const [demoYazdir, setDemoYazdir] = useState(false)
 
   // Cikti komponentleri A4 (~794px) genisliginde tasarlandi.
   // Telefonda viewport 'width=device-width' ise tablo kolonlari sikisip
@@ -90,13 +93,13 @@ export default function PaylasimBelge() {
     // Teklif A4 ciktisi telefonda fit-to-width olsun diye kuculuyor; servis
     // raporu / yukleniyor / hata sayfalari normal mobil genisliginde gosterilir.
     // A4 fit-to-width yalnizca teklif CIKTISI gosterilirken; kart/diger sayfalar normal
-    const a4 = (durum === 'teklif' && teklifGoster) || (durum === 'servis_raporu' && servisGoster)
+    const a4 = (durum === 'teklif' && teklifGoster) || (durum === 'servis_raporu' && servisGoster) || (durum === 'demo_tutanak' && demoGoster)
     const content = a4
       ? 'width=720, initial-scale=0.55, user-scalable=yes'
       : 'width=device-width, initial-scale=1, user-scalable=yes'
     meta.setAttribute('content', content)
     return () => { if (eski != null) meta.setAttribute('content', eski) }
-  }, [durum, teklifGoster, servisGoster])
+  }, [durum, teklifGoster, servisGoster, demoGoster])
 
   useEffect(() => {
     if (!token || token.length < 8) {
@@ -124,7 +127,9 @@ export default function PaylasimBelge() {
         }
 
         // 2. Belge verisini cek
-        const rpcAdi = link.belge_tipi === 'teklif' ? 'paylasim_teklif_oku' : 'paylasim_servis_oku'
+        const rpcAdi = link.belge_tipi === 'teklif' ? 'paylasim_teklif_oku'
+          : link.belge_tipi === 'demo_tutanak' ? 'paylasim_demo_tutanak_oku'
+          : 'paylasim_servis_oku'
         const { data: belgeData, error: belgeErr } = await supabase
           .rpc(rpcAdi, { in_token: token })
 
@@ -135,7 +140,12 @@ export default function PaylasimBelge() {
         }
 
         if (!iptal) {
-          setBelge(toCamel(belgeData))
+          const b = toCamel(belgeData)
+          // toCamel shallow — gomulu cihaz objesindeki seri_no'yu elle duzelt
+          if (link.belge_tipi === 'demo_tutanak' && b?.cihaz) {
+            b.cihaz = { ...b.cihaz, seriNo: b.cihaz.seriNo ?? b.cihaz.seri_no }
+          }
+          setBelge(b)
           setDurum(link.belge_tipi)
         }
       } catch (e) {
@@ -172,13 +182,14 @@ export default function PaylasimBelge() {
   // Teklif "Indir / Kaydet": cikti acilinca gorseller yuklensin diye bekleyip yazdir
   useEffect(() => {
     const yazdir = (durum === 'teklif' && teklifGoster && teklifYazdir) ||
-                   (durum === 'servis_raporu' && servisGoster && servisYazdir)
+                   (durum === 'servis_raporu' && servisGoster && servisYazdir) ||
+                   (durum === 'demo_tutanak' && demoGoster && demoYazdir)
     if (yazdir) {
-      setTeklifYazdir(false); setServisYazdir(false)
+      setTeklifYazdir(false); setServisYazdir(false); setDemoYazdir(false)
       const t = setTimeout(() => window.print(), 700)
       return () => clearTimeout(t)
     }
-  }, [durum, teklifGoster, teklifYazdir, servisGoster, servisYazdir])
+  }, [durum, teklifGoster, teklifYazdir, servisGoster, servisYazdir, demoGoster, demoYazdir])
 
   if (durum === 'yukleniyor') {
     return (
@@ -345,6 +356,65 @@ export default function PaylasimBelge() {
           </button>
         </div>
         <ServisFormu talep={belge} sirket={searchParams.get('s') === 'anadolunet' ? 'anadolunet' : 'zna'} />
+      </>
+    )
+  }
+
+  if (durum === 'demo_tutanak') {
+    if (!demoGoster) {
+      const linkBtn = { cursor: 'pointer', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }
+      return (
+        <div style={ekranMerkez}>
+          <div style={{ ...kart, maxWidth: 560 }}>
+            <img src="/logo.jpeg" alt="ZNA Teknoloji"
+              style={{ height: 64, objectFit: 'contain', display: 'block', margin: '0 auto 16px' }} />
+            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
+              Demo Cihaz Teslim Tutanağı
+            </h1>
+            <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>
+              {belge.tutanakNo || ''}
+            </p>
+            <div style={{
+              textAlign: 'left', background: '#F4F6F8', border: '1px solid #DEE3EC',
+              borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: '#3B4960',
+            }}>
+              <div><strong>Cihaz:</strong> {belge.cihaz?.ad || '—'}</div>
+              <div style={{ marginTop: 4 }}><strong>Beklenen İade:</strong> {belge.beklenenIadeTarihi ? new Date(belge.beklenenIadeTarihi).toLocaleDateString('tr-TR') : '—'}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+              <button onClick={() => setDemoGoster(true)}
+                style={{ ...linkBtn, background: '#1E5AA8', color: '#fff', border: 'none' }}>
+                📄 Aç
+              </button>
+              <button onClick={() => { setDemoGoster(true); setDemoYazdir(true) }}
+                style={{ ...linkBtn, background: '#fff', color: '#1E5AA8', border: '1.5px solid #1E5AA8' }}>
+                ⬇ İndir / Kaydet
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: '#6B7A93', marginTop: 4, lineHeight: 1.5 }}>
+              Tutanağı yazdırıp imzaladıktan sonra teknisyenimize teslim edebilir veya taranmış halini bize iletebilirsiniz.
+            </div>
+            <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+              © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div className="no-print" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
+          <button onClick={() => window.print()}
+            style={{
+              background: '#1E5AA8', color: '#fff', border: 'none', borderRadius: 999,
+              padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 6px 20px rgba(30,90,168,0.35)', display: 'inline-flex', alignItems: 'center', gap: 8,
+            }}>
+            🖨 Yazdır / PDF
+          </button>
+        </div>
+        <DemoTutanak zimmet={belge} />
       </>
     )
   }

@@ -59,7 +59,7 @@ export const demoBakimaAl = async (id, bakimda) =>
 export const demoZimmetGecmisi = async (cihazId) => {
   const { data, error } = await supabase
     .from('demo_zimmet_kayitlari')
-    .select('*, musteri:musteri_id (id, firma, ad, soyad), lokasyon:lokasyon_id (id, ad)')
+    .select('*, musteri:musteri_id (id, firma, ad, soyad, telefon, email), lokasyon:lokasyon_id (id, ad)')
     .eq('cihaz_id', cihazId)
     .order('veris_tarihi', { ascending: false })
   if (error) { console.error('demoZimmetGecmisi hata:', error.message); return [] }
@@ -93,13 +93,14 @@ export const demoZimmetAc = async (payload) => {
   return toCamel(data)
 }
 
-export const demoZimmetIadeAl = async (zimmetId, { gercekIadeTarihi, musteriKarari, durumNotu }) => {
+export const demoZimmetIadeAl = async (zimmetId, { gercekIadeTarihi, musteriKarari, durumNotu, almadiSebebi }) => {
   const { data, error } = await supabase
     .from('demo_zimmet_kayitlari')
     .update(toSnake({
       gercekIadeTarihi: gercekIadeTarihi || new Date().toISOString().slice(0, 10),
       musteriKarari: musteriKarari || null,
       durumNotu: durumNotu || null,
+      almadiSebebi: musteriKarari === 'almadi' ? (almadiSebebi || null) : null,
     }))
     .eq('id', zimmetId)
     .select()
@@ -133,8 +134,46 @@ export const demoZimmetUzat = async (zimmetId, yeniBeklenenTarih, neden) => {
   return toCamel(data)
 }
 
-export const zimmetUyariFlag = async (zimmetId, alanlar) => {
-  await supabase.from('demo_zimmet_kayitlari').update(toSnake(alanlar)).eq('id', zimmetId)
+// ── Teslim tutanağı ──────────────────────────────────────────────────
+// İmzalı tutanak (foto/tarama) private 'demo-tutanak' bucket'ına yüklenir;
+// DB'de PATH saklanır, gösterirken signed URL üretilir.
+export const imzaliTutanakYukle = async (zimmetId, file) => {
+  const uzanti = (file.name?.split('.').pop() || 'jpg').toLowerCase()
+  const path = `zimmet-${zimmetId}/${Date.now()}.${uzanti}`
+  const { error: upErr } = await supabase.storage
+    .from('demo-tutanak')
+    .upload(path, file, { contentType: file.type || 'image/jpeg' })
+  if (upErr) { console.error('imzaliTutanakYukle upload hata:', upErr.message); return null }
+
+  const { data, error } = await supabase
+    .from('demo_zimmet_kayitlari')
+    .update({ imzali_tutanak_url: path })
+    .eq('id', zimmetId)
+    .select()
+    .single()
+  if (error) { console.error('imzaliTutanakYukle db hata:', error.message); return null }
+  invalidate('demo:cihazlar:list', `demo:cihaz:${data.cihaz_id}`)
+  return toCamel(data)
+}
+
+export const imzaliTutanakUrl = async (path) => {
+  if (!path) return null
+  const { data, error } = await supabase.storage
+    .from('demo-tutanak')
+    .createSignedUrl(path, 3600)
+  if (error) { console.error('imzaliTutanakUrl hata:', error.message); return null }
+  return data?.signedUrl ?? null
+}
+
+// Müşteri detay sayfası — bir müşterinin tüm demo zimmetleri (aktif + geçmiş)
+export const musteriDemoZimmetleri = async (musteriId) => {
+  const { data, error } = await supabase
+    .from('demo_zimmet_kayitlari')
+    .select('*, cihaz:cihaz_id (id, ad, marka, model, seri_no)')
+    .eq('musteri_id', musteriId)
+    .order('veris_tarihi', { ascending: false })
+  if (error) { console.error('musteriDemoZimmetleri hata:', error.message); return [] }
+  return arrayToCamel(data || [])
 }
 
 // Dashboard kart kaynağı — view üzerinden

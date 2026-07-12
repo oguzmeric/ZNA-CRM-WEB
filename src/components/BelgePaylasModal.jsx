@@ -119,7 +119,9 @@ export default function BelgePaylasModal({
     } catch {}
   }
 
-  const baslik = belgeTipi === 'teklif' ? 'Teklifi Müşteriye Gönder' : 'Servis Raporunu Müşteriye Gönder'
+  const baslik = belgeTipi === 'teklif' ? 'Teklifi Müşteriye Gönder'
+    : belgeTipi === 'demo_tutanak' ? 'Teslim Tutanağını Müşteriye Gönder'
+    : 'Servis Raporunu Müşteriye Gönder'
 
   // ─── BASARILI SONUC EKRANI ─────────────────────────────────────────────
   if (sonuc) {

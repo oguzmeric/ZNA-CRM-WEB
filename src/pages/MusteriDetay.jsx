@@ -19,6 +19,7 @@ import { teklifleriGetir } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
 import { musteriSiparisleri, SIPARIS_DURUMLARI } from '../services/siparisService'
 import { gorevleriGetir } from '../services/gorevService'
+import { musteriDemoZimmetleri } from '../services/demoService'
 import {
   Button, Input, Textarea, Label,
   Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState, SegmentedControl,
@@ -81,6 +82,7 @@ function MusteriDetay() {
   const [satislar, setSatislar]     = useState([])
   const [gorevler, setGorevler]     = useState([])
   const [siparisler, setSiparisler] = useState([])
+  const [demoZimmetler, setDemoZimmetler] = useState([])
 
   useEffect(() => {
     const yukle = async () => {
@@ -96,6 +98,7 @@ function MusteriDetay() {
           gorevleriGetir(),
           musteriSiparisleri(musteriIdNum).catch(() => []),
         ])
+        musteriDemoZimmetleri(musteriIdNum).then(dz => setDemoZimmetler(dz || [])).catch(() => {})
         setMusteri(m); setKisiler(k); setLokasyonlar(l)
         // Siparişler firma bazında da toplansın (aynı firmadaki başka müşteri kayıtları da dahil)
         if (m?.firma) {
@@ -578,6 +581,77 @@ function MusteriDetay() {
         </>
         )}
       </Card>
+
+      {/* Müşterideki Demolar — aktif demo zimmetleri + geçmiş */}
+      {demoZimmetler.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <CardTitle>Demo Cihazlar</CardTitle>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {demoZimmetler.filter(z => !z.gercekIadeTarihi).length} aktif · {demoZimmetler.length} toplam
+            </span>
+          </div>
+          <div>
+            {demoZimmetler.slice(0, 6).map(z => {
+              const aktifMi = !z.gercekIadeTarihi
+              const kalan = aktifMi && z.beklenenIadeTarihi
+                ? Math.floor((new Date(z.beklenenIadeTarihi) - new Date()) / 86400000)
+                : null
+              return (
+                <div
+                  key={z.id}
+                  onClick={() => navigate(`/demolar/${z.cihazId}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>
+                      {z.cihaz?.ad || `Cihaz #${z.cihazId}`}
+                    </span>
+                    {z.cihaz?.seri_no && (
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        S.N. {z.cihaz.seri_no}
+                      </span>
+                    )}
+                    {aktifMi ? (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: kalan !== null && kalan < 0 ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.12)',
+                        color: kalan !== null && kalan < 0 ? '#DC2626' : '#3b82f6',
+                      }}>
+                        {kalan !== null && kalan < 0 ? `${-kalan} GÜN GECİKTİ` : 'MÜŞTERİDE'}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: z.musteriKarari === 'aldi' ? 'rgba(34,197,94,0.12)' : 'var(--surface-sunken)',
+                        color: z.musteriKarari === 'aldi' ? 'var(--success)' : 'var(--text-tertiary)',
+                      }}>
+                        {z.musteriKarari === 'aldi' ? 'SATIN ALDI' : z.musteriKarari === 'almadi' ? 'ALMADI' : 'İADE EDİLDİ'}
+                      </span>
+                    )}
+                    {aktifMi && !z.imzaliTutanakUrl && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: 'rgba(245,158,11,0.12)', color: '#B45309',
+                      }}>TUTANAK BEKLENİYOR</span>
+                    )}
+                  </div>
+                  <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'right' }}>
+                    {z.verisTarihi ? new Date(z.verisTarihi).toLocaleDateString('tr-TR') : ''}
+                    {aktifMi && z.beklenenIadeTarihi ? ` → ${new Date(z.beklenenIadeTarihi).toLocaleDateString('tr-TR')}` : ''}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
       <Card padding={0} style={{ marginBottom: 16 }}>

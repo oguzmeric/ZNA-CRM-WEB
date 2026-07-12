@@ -13,7 +13,6 @@ import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { lisanslariGetir } from '../services/lisansService'
 import { gecikmisDemolar, yaklasanDemolar } from '../services/demoService'
-import { demoBildirimleriniKontrolEt } from '../lib/demoBildirim'
 import {
   Button, Card, CardTitle, CardSubtitle, KPICard,
   Badge, CriticalBadge, Alert,
@@ -166,11 +165,6 @@ export default function Dashboard() {
       setVeriYukleniyor(false)
     }).catch((e) => { console.error('Dashboard veri yüklenemedi:', e); setVeriYukleniyor(false) })
   }, [])
-
-  // Demo bildirim kontrolü — oturum başına bir kez
-  useEffect(() => {
-    if (kullanici?.id) demoBildirimleriniKontrolEt(kullanici).catch(e => console.warn('[demo bildirim]', e?.message))
-  }, [kullanici?.id])
 
   // İlk yükleme
   useEffect(() => { veriYukle() }, [veriYukle])

@@ -83,7 +83,7 @@ const Duyurular = lazy(() => import('./pages/Duyurular'))
 const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
 const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
-const YeniZimmet = lazy(() => import('./pages/YeniZimmet'))
+const DemoTutanakYazdir = lazy(() => import('./pages/DemoTutanakYazdir'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 
 // Yönetim grubu erişim guard'ı — Ali, Oğuz, Ferdi.
@@ -310,7 +310,7 @@ function App() {
           <Route path="/demolar" element={<Demolar />} />
           <Route path="/demolar/yeni" element={<YeniDemoCihaz />} />
           <Route path="/demolar/:id" element={<DemoCihazDetay />} />
-          <Route path="/demolar/:id/zimmet" element={<YeniZimmet />} />
+          <Route path="/demolar/:id/tutanak" element={<DemoTutanakYazdir />} />
           <Route path="/demolar/:id/duzenle" element={<DuzenleDemoCihaz />} />
           <Route path="/servis-talepleri" element={<ServisTalepleri />} />
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />

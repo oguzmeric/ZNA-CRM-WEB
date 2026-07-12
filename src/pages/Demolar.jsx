@@ -1,6 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Boxes, Plus, AlertTriangle, Clock, CheckCircle, Wrench } from 'lucide-react'
+import {
+  Boxes, Plus, AlertTriangle, Clock, CheckCircle, Wrench,
+  FileWarning, FileCheck, ArrowUpRight,
+} from 'lucide-react'
 import {
   Button, Card, EmptyState, Badge,
   Table, THead, TBody, TR, TH, TD,
@@ -9,14 +12,7 @@ import { demoCihazlariGetir } from '../services/demoService'
 import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
 import { SkeletonList } from '../components/Skeleton'
-
-const SEKMELER = [
-  { id: 'tumu',         isim: 'Tümü',         renk: 'var(--text-secondary)' },
-  { id: 'depoda',       isim: 'Depoda',       renk: 'var(--success)' },
-  { id: 'musteride',    isim: 'Müşteride',    renk: 'var(--info)' },
-  { id: 'suresi_gecti', isim: 'Süresi Geçti', renk: 'var(--danger)' },
-  { id: 'bakimda',      isim: 'Bakımda',      renk: 'var(--text-muted)' },
-]
+import DemoZimmetAcModal from '../components/DemoZimmetAcModal'
 
 const DURUM_ETIKET = {
   depoda:       { isim: 'Depoda',       icon: CheckCircle,   tone: 'aktif' },
@@ -34,9 +30,10 @@ export default function Demolar() {
   const [musteriMap, setMusteriMap] = useState(new Map())
   const [yukleniyor, setYukleniyor] = useState(true)
   const [arama, setArama] = useState('')
+  const [zimmetCihaz, setZimmetCihaz] = useState(null) // listeden zimmet açılan cihaz
   const sekme = searchParams.get('sekme') || 'tumu'
 
-  useEffect(() => {
+  const yukle = () => {
     Promise.all([demoCihazlariGetir(), musterileriGetir()])
       .then(([c, m]) => {
         setCihazlar(c || [])
@@ -44,17 +41,35 @@ export default function Demolar() {
       })
       .catch(e => console.error('[Demolar yükle]', e))
       .finally(() => setYukleniyor(false))
-  }, [])
+  }
+
+  useEffect(() => { yukle() }, [])
+
+  // Aktif zimmet var + imzalı tutanak yok = tutanak bekleniyor
+  const tutanakBekleyen = (c) => c.aktifZimmetId && !c.aktifImzaliTutanakUrl
 
   const sayilar = useMemo(() => {
-    const s = { tumu: cihazlar.length, depoda: 0, musteride: 0, suresi_gecti: 0, bakimda: 0 }
-    for (const c of cihazlar) s[c.hesaplananDurum] = (s[c.hesaplananDurum] || 0) + 1
+    const s = { tumu: cihazlar.length, depoda: 0, musteride: 0, suresi_gecti: 0, bakimda: 0, tutanak: 0 }
+    for (const c of cihazlar) {
+      s[c.hesaplananDurum] = (s[c.hesaplananDurum] || 0) + 1
+      if (tutanakBekleyen(c)) s.tutanak++
+    }
     return s
   }, [cihazlar])
 
+  const KPI_KARTLAR = [
+    { id: 'tumu',         isim: 'Tüm Cihazlar',  icon: Boxes,         renk: 'var(--text-secondary)' },
+    { id: 'depoda',       isim: 'Depoda',        icon: CheckCircle,   renk: 'var(--success)' },
+    { id: 'musteride',    isim: 'Müşteride',     icon: Clock,         renk: 'var(--info)' },
+    { id: 'suresi_gecti', isim: 'Süresi Geçti',  icon: AlertTriangle, renk: 'var(--danger)' },
+    { id: 'bakimda',      isim: 'Bakımda',       icon: Wrench,        renk: 'var(--text-muted)' },
+    { id: 'tutanak',      isim: 'Tutanak Bekleyen', icon: FileWarning, renk: 'var(--warning, #F59E0B)' },
+  ]
+
   const filtreli = useMemo(() => {
     let liste = cihazlar
-    if (sekme !== 'tumu') liste = liste.filter(c => c.hesaplananDurum === sekme)
+    if (sekme === 'tutanak') liste = liste.filter(tutanakBekleyen)
+    else if (sekme !== 'tumu') liste = liste.filter(c => c.hesaplananDurum === sekme)
     if (arama.trim()) {
       liste = liste.filter(c => trContains(
         [c.ad, c.marka, c.model, c.seriNo].filter(Boolean).join(' '),
@@ -86,33 +101,38 @@ export default function Demolar() {
         </div>
       </div>
 
-      {/* Sekmeler */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {SEKMELER.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setSearchParams(s.id === 'tumu' ? {} : { sekme: s.id })}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-sm)',
-              background: sekme === s.id ? s.renk : 'var(--surface-card)',
-              color: sekme === s.id ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border-default)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            {s.isim}
-            <span style={{
-              background: sekme === s.id ? 'rgba(255,255,255,0.25)' : 'var(--surface-sunken)',
-              padding: '1px 8px', borderRadius: 10, fontSize: 11,
-            }}>{sayilar[s.id] ?? 0}</span>
-          </button>
-        ))}
+      {/* KPI şeridi — tıklanınca filtreler */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+        gap: 10, marginBottom: 16,
+      }}>
+        {KPI_KARTLAR.map(k => {
+          const Icon = k.icon
+          const aktif = sekme === k.id
+          return (
+            <button
+              key={k.id}
+              onClick={() => setSearchParams(k.id === 'tumu' ? {} : { sekme: k.id })}
+              style={{
+                textAlign: 'left', cursor: 'pointer',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md, 10px)',
+                background: 'var(--surface-card)',
+                border: aktif ? `2px solid ${k.renk}` : '1px solid var(--border-default)',
+                boxShadow: aktif ? `0 0 0 3px color-mix(in srgb, ${k.renk} 15%, transparent)` : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: k.renk }}>
+                <Icon size={15} strokeWidth={1.8} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{k.isim}</span>
+              </div>
+              <div className="tabular-nums" style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: (sayilar[k.id] ?? 0) > 0 ? k.renk : 'var(--text-muted)' }}>
+                {sayilar[k.id] ?? 0}
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       {/* Arama */}
@@ -147,6 +167,8 @@ export default function Demolar() {
                 <TH>Veriliş</TH>
                 <TH>Beklenen İade</TH>
                 <TH>Durum</TH>
+                <TH>Tutanak</TH>
+                <TH></TH>
               </TR>
             </THead>
             <TBody>
@@ -195,6 +217,22 @@ export default function Demolar() {
                         )}
                       </Badge>
                     </TD>
+                    <TD>
+                      {c.aktifZimmetId ? (
+                        c.aktifImzaliTutanakUrl
+                          ? <Badge tone="aktif"><FileCheck size={11} strokeWidth={1.8} /> İmzalı</Badge>
+                          : <Badge tone="beklemede"><FileWarning size={11} strokeWidth={1.8} /> Bekliyor</Badge>
+                      ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    </TD>
+                    <TD onClick={e => e.stopPropagation()}>
+                      {c.hesaplananDurum === 'depoda' && (
+                        <Button variant="secondary" size="sm"
+                          iconLeft={<ArrowUpRight size={13} strokeWidth={1.5} />}
+                          onClick={() => setZimmetCihaz(c)}>
+                          Zimmet Aç
+                        </Button>
+                      )}
+                    </TD>
                   </TR>
                 )
               })}
@@ -202,6 +240,13 @@ export default function Demolar() {
           </Table>
         </Card>
       )}
+
+      <DemoZimmetAcModal
+        acik={!!zimmetCihaz}
+        cihaz={zimmetCihaz}
+        onKapat={() => { setZimmetCihaz(null); yukle() }}
+        onZimmetAcildi={() => yukle()}
+      />
     </div>
   )
 }
