@@ -124,9 +124,9 @@ Deno.serve(async (req) => {
     const rows = ALICILAR.map(id => ({
       alici_id: id,
       tip: 'bilgi',
-      baslik: '☀️ Sabah Özeti',
+      baslik: '☀️ Günlük Özet',
       mesaj,
-      link: '/sabah-ozeti',
+      link: '/gunluk-ozet',
     }))
     const { error: bilErr } = await svc.from('bildirimler').insert(rows)
     if (bilErr) return json({ ok: false, hata: 'bildirim: ' + bilErr.message }, 500)

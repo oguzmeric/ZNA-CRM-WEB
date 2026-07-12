@@ -177,7 +177,7 @@ const menuItems = [
     ],
   },
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
-  { id: 'sabah_ozeti', isim: 'Sabah Özeti', Icon: Sun, yol: '/sabah-ozeti', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceSabahOzeti: true },
+  { id: 'sabah_ozeti', isim: 'Günlük Özet', Icon: Sun, yol: '/gunluk-ozet', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceSabahOzeti: true },
   { id: 'sozlesmeler', isim: 'Sözleşmeler', Icon: FileSignature, yol: '/sozlesmeler', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
@@ -229,7 +229,7 @@ const sayfaIsimleri = {
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
   '/kesifler': 'Keşifler',
-  '/sabah-ozeti': 'Sabah Özeti',
+  '/gunluk-ozet': 'Günlük Özet',
   '/sozlesmeler': 'Sözleşmeler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',

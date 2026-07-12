@@ -88,7 +88,7 @@ const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
 const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const DemoTutanakYazdir = lazy(() => import('./pages/DemoTutanakYazdir'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
-const SabahOzeti = lazy(() => import('./pages/SabahOzeti'))
+const GunlukOzet = lazy(() => import('./pages/GunlukOzet'))
 const Sozlesmeler = lazy(() => import('./pages/Sozlesmeler'))
 
 // Yönetim grubu erişim guard'ı — Ali, Oğuz, Ferdi.
@@ -344,7 +344,9 @@ function App() {
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
           <Route path="/mobiltek" element={<Mobiltek />} />
           <Route path="/arac-yonetimi" element={<YonetimGuard><AracYonetimi /></YonetimGuard>} />
-          <Route path="/sabah-ozeti" element={<SabahOzetiGuard><SabahOzeti /></SabahOzetiGuard>} />
+          <Route path="/gunluk-ozet" element={<SabahOzetiGuard><GunlukOzet /></SabahOzetiGuard>} />
+          {/* Eski push linkleri /sabah-ozeti'ne gidiyor — yeni adrese yönlendir */}
+          <Route path="/sabah-ozeti" element={<Navigate to="/gunluk-ozet" replace />} />
           <Route path="/sozlesmeler" element={<YonetimGuard><Sozlesmeler /></YonetimGuard>} />
           <Route path="/filo/bakim" element={<YonetimGuard><FiloBakim /></YonetimGuard>} />
           <Route path="/filo/belgeler" element={<YonetimGuard><FiloBelgeler /></YonetimGuard>} />

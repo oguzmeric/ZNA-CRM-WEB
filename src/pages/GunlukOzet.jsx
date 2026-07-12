@@ -1,4 +1,4 @@
-// Yönetici Sabah Özeti — /sabah-ozeti (sadece Ali Uğur + Oğuz, App.jsx guard).
+// Günlük Özet — /gunluk-ozet (sadece Ali Uğur + Oğuz, App.jsx guard).
 // Her sabah 08:00'de sabah-ozeti edge fn'i aynı kalemleri push olarak atar;
 // bu sayfa anlık hesaplar — gün içinde de "durum ne?" diye bakılabilir.
 
@@ -18,7 +18,7 @@ const bugunStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europ
 const fmtT = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 const gunFarki = (t) => Math.ceil((new Date(t + 'T23:59:59') - new Date()) / 86400000)
 
-export default function SabahOzeti() {
+export default function GunlukOzet() {
   const navigate = useNavigate()
   const [veri, setVeri] = useState(null)
 
@@ -146,7 +146,7 @@ export default function SabahOzeti() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
           <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Sun size={22} strokeWidth={1.75} style={{ color: '#f59e0b' }} /> Sabah Özeti
+            <Sun size={22} strokeWidth={1.75} style={{ color: '#f59e0b' }} /> Günlük Özet
           </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             {new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })} ·
