@@ -148,7 +148,6 @@ Deno.serve(async (req) => {
         mobiltek_id: m.id,
         guncel_km: m.km,
         guncel_km_zamani: m.km ? new Date().toISOString() : null,
-        not_: 'Mobiltek senkronundan otomatik eklendi',
       }).select('id, plaka, guncel_km, sonraki_bakim_km, muayene_bitis, sigorta_bitis, kasko_bitis').single()
       if (!error && eklenen) { yeniArac++; araclarSonHal.push(eklenen) }
     }
