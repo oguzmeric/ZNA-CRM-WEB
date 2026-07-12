@@ -111,6 +111,19 @@ function SabahOzetiGuard({ children }) {
   return children
 }
 
+// Onay sayfaları — SADECE onay yetkisi bayrağı olanlar (Ali/Oğuz/Ahmet).
+// Admin rolü bile bypass edemez; bayraklar Kullanıcı Yönetimi'nden verilir.
+function TeklifOnayGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!kullanici?.teklifOnayYetkilisi) return <Navigate to="/dashboard" replace />
+  return children
+}
+function SiparisOnayGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!kullanici?.siparisOnayYetkilisi) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 // Duyuru yayınlama sadece Oğuz'a — Yönetim'den bir tık daha sıkı.
 function OguzGuard({ children }) {
   const { kullanici } = useAuth()
@@ -311,10 +324,10 @@ function App() {
           <Route path="/kesifler/:id" element={<KesifDetay />} />
           <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />
           <Route path="/teklifler/:id" element={<TeklifDetay />} />
-          <Route path="/siparis-onaylari" element={<SiparisOnaylari />} />
+          <Route path="/siparis-onaylari" element={<SiparisOnayGuard><SiparisOnaylari /></SiparisOnayGuard>} />
           <Route path="/siparisler" element={<Siparisler />} />
           <Route path="/siparisler/:id" element={<SiparisDetay />} />
-          <Route path="/teklif-onaylari" element={<TeklifOnaylari />} />
+          <Route path="/teklif-onaylari" element={<TeklifOnayGuard><TeklifOnaylari /></TeklifOnayGuard>} />
           <Route path="/satislar" element={<Satislar />} />
           <Route path="/satislar/:id" element={<SatisDetay />} />
           <Route path="/raporlar" element={<YonetimGuard><Raporlar /></YonetimGuard>} />

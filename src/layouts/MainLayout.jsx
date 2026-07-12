@@ -109,6 +109,9 @@ const menuItems = [
       { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
     ],
   },
+  // Onaylar — SADECE onay yetkilisi olanlar görür (admin dahil bypass yok).
+  // Sipariş Onayı da buraya taşındı; eskiden 'musteriler' modüllü grupta
+  // olduğu için herkes menüde görüyordu.
   {
     id: 'onaylar',
     isim: 'Onaylar',
@@ -117,9 +120,10 @@ const menuItems = [
     grup: 'satis',
     altMenu: [
       { id: 'teklif_onaylari',  isim: 'Teklif Onayı',  yol: '/teklif-onaylari' },
+      { id: 'siparis_onaylari', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
     ],
   },
-  // ── Tedarik Süreçleri — Ön Sipariş → Sipariş Onayı → Sipariş takibi ──
+  // ── Tedarik Süreçleri — Sipariş takibi ──
   {
     id: 'tedarik_surecleri',
     isim: 'Sipariş Yönetimi',
@@ -127,8 +131,7 @@ const menuItems = [
     modul: 'musteriler',
     grup: 'tedarik',
     altMenu: [
-      { id: 'siparis_onaylari_tedarik', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
-      { id: 'siparisler_tedarik',       isim: 'Siparişler',    yol: '/siparisler' },
+      { id: 'siparisler_tedarik', isim: 'Siparişler', yol: '/siparisler' },
     ],
   },
   { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar', grup: 'satis' },
@@ -378,6 +381,10 @@ function MainLayout({ children }) {
     if (m.sadeceOguz) return oguzMu
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel
     if (m.sadeceSabahOzeti) return [1, 2].includes(Number(kullanici?.id))
+    // Onay menüleri: yetki bayrağı ŞART — admin rolü bile bypass edemez
+    // (Ferdi admin ama onay yetkisi yok; sadece Ali/Oğuz/Ahmet görür)
+    if (m.modul === '_onay_yetkisi') return !!(kullanici?.siparisOnayYetkilisi || kullanici?.teklifOnayYetkilisi)
+    if (m.modul === '_siparis_onay_yetkilisi') return !!kullanici?.siparisOnayYetkilisi
     if (m.grup === 'yonetim' || m.grup === 'filo') return yonetimErisimi
     return m.modul === null
       || kullanici?.rol === 'admin'
