@@ -14,11 +14,12 @@ function ilkUlasmaTarihi(durumGecmisi, hedefDurum) {
   return kayit?.tarih || null
 }
 
+// renk: metin/KPI vurgusu · bar: dağılım barındaki yumuşak ton
 const DURUM_TANIM = {
-  zamaninda: { isim: 'Zamanında', renk: '#10b981', aciklama: 'İş, SLA süresi içinde tamamlandı' },
-  gec:       { isim: 'Geç',       renk: '#ef4444', aciklama: 'İş tamamlandı ama SLA süresi aşıldı' },
-  acik:      { isim: 'Açık',      renk: '#3b82f6', aciklama: 'İş devam ediyor, süresi henüz dolmadı' },
-  kritik:    { isim: 'Kritik',    renk: '#f59e0b', aciklama: 'İş hâlâ açık ve SLA süresi DOLDU — acil ilgi ister' },
+  zamaninda: { isim: 'Zamanında', renk: '#10b981', bar: '#6ee7b7', aciklama: 'İş, SLA süresi içinde tamamlandı' },
+  gec:       { isim: 'Geç',       renk: '#ef4444', bar: '#fca5a5', aciklama: 'İş tamamlandı ama SLA süresi aşıldı' },
+  acik:      { isim: 'Açık',      renk: '#64748b', bar: '#e2e8f0', aciklama: 'İş devam ediyor, süresi henüz dolmadı' },
+  kritik:    { isim: 'Kritik',    renk: '#f59e0b', bar: '#fcd34d', aciklama: 'İş devam ediyor ama SLA süresi doldu — acil ilgi ister' },
 }
 
 const ZAMAN_SECENEK = [
@@ -48,16 +49,16 @@ function skorRengi(skor) {
 }
 
 // Yüzde paylı yatay bar — zamanında/geç/kritik/açık dağılımını görselleştirir
-function DagilimBar({ r, height = 8 }) {
+function DagilimBar({ r, height = 6 }) {
   const toplam = r.toplam || 1
   const parcalar = [
-    { n: r.zamaninda, renk: DURUM_TANIM.zamaninda.renk },
-    { n: r.gec,       renk: DURUM_TANIM.gec.renk },
-    { n: r.kritik,    renk: DURUM_TANIM.kritik.renk },
-    { n: r.acik,      renk: DURUM_TANIM.acik.renk },
+    { n: r.zamaninda, renk: DURUM_TANIM.zamaninda.bar },
+    { n: r.gec,       renk: DURUM_TANIM.gec.bar },
+    { n: r.kritik,    renk: DURUM_TANIM.kritik.bar },
+    { n: r.acik,      renk: DURUM_TANIM.acik.bar },
   ].filter(p => p.n > 0)
   return (
-    <div className="flex w-full rounded-full overflow-hidden bg-gray-100" style={{ height }}>
+    <div className="flex w-full rounded-full overflow-hidden bg-gray-100" style={{ height, gap: 1 }}>
       {parcalar.map((p, i) => (
         <div key={i} style={{ width: `${(p.n / toplam) * 100}%`, background: p.renk, minWidth: 4 }} />
       ))}
@@ -431,7 +432,7 @@ function Performans() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs font-bold" style={{ color: DURUM_TANIM[is.sonuc.durum].renk }}>
-                      {is.sonuc.durum === 'kritik' ? 'HÂLÂ AÇIK · ' : ''}{saatYaz(is.sonuc.gecikmeSaat)} gecikme
+                      {is.sonuc.durum === 'kritik' ? 'Süresi doldu · ' : ''}{saatYaz(is.sonuc.gecikmeSaat)} gecikme
                     </p>
                     <p className="text-xs text-gray-400">Süre limiti: {saatYaz(is.kural.sureSaat)}</p>
                   </div>
@@ -584,7 +585,7 @@ function Performans() {
         </div>
         {['zamaninda', 'gec', 'kritik'].map(key => (
           <div key={key} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <p className="text-xs font-medium" style={{ color: DURUM_TANIM[key].renk }}>{DURUM_TANIM[key].isim.toUpperCase()}</p>
+            <p className="text-xs font-medium" style={{ color: DURUM_TANIM[key].renk }}>{DURUM_TANIM[key].isim.toLocaleUpperCase('tr')}</p>
             <p className="text-2xl font-bold mt-1" style={{ color: DURUM_TANIM[key].renk }}>{ozet[key]}</p>
           </div>
         ))}
@@ -644,7 +645,7 @@ function Performans() {
       <div className="flex gap-4 flex-wrap mt-3 px-1">
         {Object.entries(DURUM_TANIM).map(([key, d]) => (
           <span key={key} className="flex items-center gap-1.5 text-xs text-gray-400">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.renk }} /> {d.isim}
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.bar, border: '1px solid rgba(0,0,0,0.06)' }} /> {d.isim}
           </span>
         ))}
       </div>
