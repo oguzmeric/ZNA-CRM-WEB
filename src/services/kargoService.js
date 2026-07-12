@@ -35,12 +35,12 @@ const kargoToSnake = (kargo) => {
   return result
 }
 
-export const kargolariGetir = async () => {
+export const kargolariGetir = () => cached('kargolar:list', async () => {
   const data = await pagedFetch((off, size) =>
     supabase.from('kargolar').select('*').order('id', { ascending: false }).range(off, off + size - 1)
   )
   return (data || []).map(toCamel)
-}
+})
 
 export const kargoGetir = async (id) => {
   const { data } = await supabase.from('kargolar').select('*').eq('id', id).single()
@@ -51,6 +51,7 @@ export const kargoEkle = async (kargo) => {
   const { id, olusturmaTarihi, guncellemeTarihi, ...rest } = kargo
   const { data, error } = await supabase.from('kargolar').insert(kargoToSnake(rest)).select().single()
   if (error) { console.error('kargoEkle hata:', error.message); return null }
+  invalidate('kargolar:list')
   return toCamel(data)
 }
 
@@ -61,9 +62,11 @@ export const kargoGuncelle = async (id, guncellenmis) => {
     guncelleme_tarihi: new Date().toISOString()
   }).eq('id', id).select().single()
   if (error) { console.error('kargoGuncelle hata:', error.message); return null }
+  invalidate('kargolar:list')
   return toCamel(data)
 }
 
 export const kargoSil = async (id) => {
   await supabase.from('kargolar').delete().eq('id', id)
+  invalidate('kargolar:list')
 }

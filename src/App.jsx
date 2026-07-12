@@ -157,6 +157,25 @@ function App() {
     if (kullanici) tumChunklariOnyukle()
   }, [kullanici])
 
+  // Veri ön-ısıtma: en çok gezilen listeleri login'den kısa süre sonra arka
+  // planda cache'e çek — ilk menü tıklaması bile beklemesin. Servisler dinamik
+  // import edilir (ana chunk şişmez); cache SWR olduğundan sonraki ziyaretler
+  // her zaman anlık açılır, veri arkada sessizce tazelenir.
+  useEffect(() => {
+    if (!kullanici) return
+    const t = setTimeout(() => {
+      const isit = [
+        () => import('./services/musteriService').then(m => m.musterileriGetir()),
+        () => import('./services/gorusmeService').then(m => m.gorusmeleriGetir()),
+        () => import('./services/gorevService').then(m => m.gorevleriGetir()),
+        () => import('./services/teklifService').then(m => m.teklifleriGetir()),
+        () => import('./services/satisService').then(m => m.satislariGetir()),
+      ]
+      isit.forEach((fn, i) => setTimeout(() => fn().catch(() => {}), i * 400))
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [kullanici])
+
   // Global Ctrl+K / ⌘+K listener + programatik açma eventi
   useEffect(() => {
     if (!kullanici) return

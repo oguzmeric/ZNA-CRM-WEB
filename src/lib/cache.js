@@ -29,8 +29,16 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
   const now = Date.now()
   const hit = store.get(key)
   if (hit) {
-    const effTtl = (Array.isArray(hit.value) && hit.value.length === 0) ? EMPTY_TTL : ttl
+    const bos = Array.isArray(hit.value) && hit.value.length === 0
+    const effTtl = bos ? EMPTY_TTL : ttl
     if (now - hit.at < effTtl) return hit.value
+    // STALE-WHILE-REVALIDATE: süresi dolmuş ama elimizde değer var —
+    // sayfayı BEKLETME: eski değeri anında döndür, arkada sessizce tazele.
+    // (Boş array'ler hariç — boş veri zehirlenmesi stale servis edilmez.)
+    if (!bos) {
+      arkaPlandaTazele(key, fetcher)
+      return hit.value
+    }
   }
 
   // Aynı key için yürütülen fetch varsa ona bağlan
@@ -52,6 +60,25 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
   })()
   pending.set(key, p)
   return p
+}
+
+// Arka plan tazeleme — sonucu beklenmez; epoch değiştiyse (invalidate olduysa)
+// stale değer cache'e geri yazılmaz. pending dedupe'u paylaşır.
+function arkaPlandaTazele(key, fetcher) {
+  if (pending.has(key)) return
+  const baslatildigiEpoch = epoch
+  const p = (async () => {
+    try {
+      const value = await fetcher()
+      if (epoch === baslatildigiEpoch) store.set(key, { at: Date.now(), value })
+      return value
+    } catch (_) {
+      return undefined // sessiz — eldeki stale değer zaten servis edildi
+    } finally {
+      pending.delete(key)
+    }
+  })()
+  pending.set(key, p)
 }
 
 /** Bir veya birden fazla key'i temizle. */
