@@ -39,11 +39,8 @@ export default function YeniDemoCihaz() {
     setKaydediliyor(false)
     if (!eklenen) { toast.error('Cihaz eklenemedi.'); return }
     toast.success('Cihaz havuza eklendi.')
-    if (zimmeteGec) {
-      navigate(`/demolar/${eklenen.id}/zimmet`)
-    } else {
-      navigate(`/demolar/${eklenen.id}`)
-    }
+    // Zimmet artık detay sayfasındaki modaldan açılıyor (eski /zimmet rotası kalktı)
+    navigate(`/demolar/${eklenen.id}`, zimmeteGec ? { state: { zimmetAc: true } } : undefined)
   }
 
   return (

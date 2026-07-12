@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Boxes, ArrowDownToLine, Clock, Wrench, Trash2, Pencil,
   Printer, Send, Upload, FileCheck, FileWarning, FileText, ExternalLink,
@@ -29,6 +29,7 @@ const KARAR_ROZETI = {
 export default function DemoCihazDetay() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast } = useToast()
   const { kullanici } = useAuth()
   const { confirm } = useConfirm()
@@ -49,6 +50,16 @@ export default function DemoCihazDetay() {
   }
 
   useEffect(() => { yukle() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id])
+
+  // "Kaydet ve Zimmet Aç" ile gelindiyse zimmet modalını otomatik aç
+  // (state temizlenir ki sayfa yenilenince tekrar açılmasın)
+  useEffect(() => {
+    if (location.state?.zimmetAc) {
+      setZimmetModalAcik(true)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.zimmetAc])
 
   if (yukleniyor) return <SkeletonDetay />
   if (!cihaz) return <div style={{ padding: 24 }}><EmptyState title="Cihaz bulunamadı" /></div>
