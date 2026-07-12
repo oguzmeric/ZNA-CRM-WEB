@@ -9,7 +9,7 @@ import {
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car,
-  FileCheck, Fuel, ShoppingCart,
+  FileCheck, Fuel, ShoppingCart, Sun, FileSignature,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -177,6 +177,8 @@ const menuItems = [
     ],
   },
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
+  { id: 'sabah_ozeti', isim: 'Sabah Özeti', Icon: Sun, yol: '/sabah-ozeti', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceSabahOzeti: true },
+  { id: 'sozlesmeler', isim: 'Sözleşmeler', Icon: FileSignature, yol: '/sozlesmeler', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
@@ -227,6 +229,8 @@ const sayfaIsimleri = {
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
   '/kesifler': 'Keşifler',
+  '/sabah-ozeti': 'Sabah Özeti',
+  '/sozlesmeler': 'Sözleşmeler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
   '/raporlar': 'Raporlar',
@@ -372,6 +376,8 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
+    // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel
+    if (m.sadeceSabahOzeti) return [1, 2].includes(Number(kullanici?.id))
     if (m.grup === 'yonetim' || m.grup === 'filo') return yonetimErisimi
     return m.modul === null
       || kullanici?.rol === 'admin'

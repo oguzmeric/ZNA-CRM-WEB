@@ -88,6 +88,8 @@ const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
 const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const DemoTutanakYazdir = lazy(() => import('./pages/DemoTutanakYazdir'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
+const SabahOzeti = lazy(() => import('./pages/SabahOzeti'))
+const Sozlesmeler = lazy(() => import('./pages/Sozlesmeler'))
 
 // Yönetim grubu erişim guard'ı — Ali, Oğuz, Ferdi.
 // URL'yi elle yazmayı engeller; sidebar'daki gizleme ile paralel.
@@ -96,6 +98,16 @@ function YonetimGuard({ children }) {
   const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
   const izinli = /\b(oğuz|oguz|ali|ferdi)\b/i.test(ad)
   if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// Sabah Özeti — sadece Ali Uğur (id 1) + Oğuz (id 2). İsim yerine id ile
+// kontrol ('ali' araması 'Salih' gibi adlara da uyar). Ahmet eklenecekse
+// id'sini listeye ekle (edge fn sabah-ozeti/ALICILAR ile birlikte).
+export const SABAH_OZETI_IDLER = [1, 2]
+function SabahOzetiGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!SABAH_OZETI_IDLER.includes(Number(kullanici?.id))) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -332,6 +344,8 @@ function App() {
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
           <Route path="/mobiltek" element={<Mobiltek />} />
           <Route path="/arac-yonetimi" element={<YonetimGuard><AracYonetimi /></YonetimGuard>} />
+          <Route path="/sabah-ozeti" element={<SabahOzetiGuard><SabahOzeti /></SabahOzetiGuard>} />
+          <Route path="/sozlesmeler" element={<YonetimGuard><Sozlesmeler /></YonetimGuard>} />
           <Route path="/filo/bakim" element={<YonetimGuard><FiloBakim /></YonetimGuard>} />
           <Route path="/filo/belgeler" element={<YonetimGuard><FiloBelgeler /></YonetimGuard>} />
           <Route path="/filo/yakit" element={<YonetimGuard><FiloYakit /></YonetimGuard>} />
