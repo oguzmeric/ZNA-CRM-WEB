@@ -39,6 +39,7 @@ const dbToForm = (row) => {
     durum: row.durum || 'aktif',
     kanalSayisi: row.kamera_sayisi || '',
     notlar: row.notlar || '',
+    gorselYolu: row.gorsel_yolu || '',
     olusturmaTarih: row.olusturma_tarih || '',
     demoGun: hesaplaDemoGun(row.baslangic_tarihi, row.bitis_tarihi),
   }
@@ -82,6 +83,55 @@ export const lisansGuncelle = async (id, guncellenmis) => {
 }
 
 export const lisansSil = async (id) => {
+  // Görsel varsa storage'dan da temizle
+  const { data } = await supabase.from('trassir_lisanslar').select('gorsel_yolu').eq('id', id).maybeSingle()
+  if (data?.gorsel_yolu) {
+    await supabase.storage.from(GORSEL_BUCKET).remove([data.gorsel_yolu])
+  }
   await supabase.from('trassir_lisanslar').delete().eq('id', id)
   invalidate('lisanslar:list', `lisans:${id}`)
+}
+
+// ---------- Lisans görseli (lisans özeti ekran görüntüsü) ----------
+const GORSEL_BUCKET = 'lisans-gorsel'
+export const GORSEL_MAX_MB = 8
+export const GORSEL_MAX = GORSEL_MAX_MB * 1024 * 1024
+
+// Yükle + satıra yaz; eski görsel varsa storage'dan sil. Güncel satırı döner.
+export const lisansGorselYukle = async (id, dosya, eskiYol = null) => {
+  const ext = (dosya.name.split('.').pop() || 'png').toLowerCase().slice(0, 8)
+  const yol = `${id}/${Date.now()}.${ext}`
+  const { error: upErr } = await supabase.storage.from(GORSEL_BUCKET).upload(yol, dosya, {
+    cacheControl: '3600', upsert: false,
+  })
+  if (upErr) { console.error('lisansGorselYukle upload:', upErr.message); return null }
+  const { data, error } = await supabase.from('trassir_lisanslar')
+    .update({ gorsel_yolu: yol }).eq('id', id).select().single()
+  if (error) {
+    console.error('lisansGorselYukle update:', error.message)
+    await supabase.storage.from(GORSEL_BUCKET).remove([yol])
+    return null
+  }
+  if (eskiYol && eskiYol !== yol) {
+    await supabase.storage.from(GORSEL_BUCKET).remove([eskiYol])
+  }
+  invalidate('lisanslar:list', `lisans:${id}`)
+  return dbToForm(data)
+}
+
+export const lisansGorselSil = async (id, yol) => {
+  if (yol) await supabase.storage.from(GORSEL_BUCKET).remove([yol])
+  const { data, error } = await supabase.from('trassir_lisanslar')
+    .update({ gorsel_yolu: null }).eq('id', id).select().single()
+  if (error) { console.error('lisansGorselSil hata:', error.message); return null }
+  invalidate('lisanslar:list', `lisans:${id}`)
+  return dbToForm(data)
+}
+
+// Private bucket — görüntüleme için kısa ömürlü imzalı URL
+export const lisansGorselUrl = async (yol) => {
+  if (!yol) return null
+  const { data, error } = await supabase.storage.from(GORSEL_BUCKET).createSignedUrl(yol, 3600)
+  if (error) { console.error('lisansGorselUrl hata:', error.message); return null }
+  return data?.signedUrl || null
 }

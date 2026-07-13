@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { invalidate } from '../lib/cache'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { Plus, Pencil, Trash2, MapPin, Infinity as InfIcon, AlertTriangle } from 'lucide-react'
-import { lisanslariGetir, lisansEkle, lisansGuncelle, lisansSil as dbLisansSil } from '../services/lisansService'
+import { Plus, Pencil, Trash2, MapPin, Infinity as InfIcon, AlertTriangle, Image as ImageIcon, Upload, X } from 'lucide-react'
+import {
+  lisanslariGetir, lisansEkle, lisansGuncelle, lisansSil as dbLisansSil,
+  lisansGorselYukle, lisansGorselSil, lisansGorselUrl, GORSEL_MAX, GORSEL_MAX_MB,
+} from '../services/lisansService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { trContains } from '../lib/trSearch'
@@ -63,6 +66,12 @@ function TrassirLisanslar() {
   const [filtre, setFiltre] = useState('aktif')
   const [arama, setArama] = useState('')
   const [kodModu, setKodModu] = useState('otomatik')
+  // Lisans görseli (lisans özeti ekran görüntüsü)
+  const [gorselFile, setGorselFile] = useState(null)         // yeni seçilen dosya
+  const [gorselOnizleme, setGorselOnizleme] = useState('')   // yeni dosyanın object URL'i
+  const [gorselKaldir, setGorselKaldir] = useState(false)    // düzenlemede mevcut görseli sil
+  const [mevcutGorselUrl, setMevcutGorselUrl] = useState('') // düzenlemede kayıtlı görselin imzalı URL'i
+  const [lightbox, setLightbox] = useState(null)             // { lisans, url }
 
   const veriYukle = useCallback(({ ilkYukleme = false } = {}) => {
     if (ilkYukleme) setYukleniyor(true)
@@ -93,9 +102,15 @@ function TrassirLisanslar() {
     }
   }, [veriYukle])
 
+  const gorselStateSifirla = () => {
+    if (gorselOnizleme) URL.revokeObjectURL(gorselOnizleme)
+    setGorselFile(null); setGorselOnizleme(''); setGorselKaldir(false); setMevcutGorselUrl('')
+  }
+
   const formAc = () => {
     setForm({ ...bosForm, lisansKodu: lisansKoduOlustur(lisanslar) })
     setKodModu('otomatik'); setDuzenleId(null); setGoster(true)
+    gorselStateSifirla()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -117,7 +132,27 @@ function TrassirLisanslar() {
       setMusteriLokasyonlari([])
     }
     setKodModu('manuel'); setDuzenleId(l.id); setGoster(true)
+    gorselStateSifirla()
+    if (l.gorselYolu) {
+      lisansGorselUrl(l.gorselYolu).then(url => { if (url) setMevcutGorselUrl(url) })
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const gorselSec = (e) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    if (!f.type.startsWith('image/')) { toast.error('Sadece görsel dosyası yüklenebilir (JPG/PNG/WebP).'); return }
+    if (f.size > GORSEL_MAX) { toast.error(`Görsel çok büyük (max ${GORSEL_MAX_MB} MB).`); return }
+    if (gorselOnizleme) URL.revokeObjectURL(gorselOnizleme)
+    setGorselFile(f); setGorselOnizleme(URL.createObjectURL(f)); setGorselKaldir(false)
+  }
+
+  const gorselGoruntule = async (l) => {
+    const url = await lisansGorselUrl(l.gorselYolu)
+    if (!url) { toast.error('Görsel yüklenemedi.'); return }
+    setLightbox({ lisans: l, url })
   }
 
   const handleMusteriSec = (musteriId) => {
@@ -154,18 +189,34 @@ function TrassirLisanslar() {
     if (lisansIdVarMi) { toast.error('Bu Lisans ID zaten kayıtlı.'); return }
 
     if (duzenleId) {
-      const g = await lisansGuncelle(duzenleId, form)
+      let g = await lisansGuncelle(duzenleId, form)
+      const eskiYol = lisanslar.find(l => l.id === duzenleId)?.gorselYolu || null
+      if (gorselFile) {
+        const g2 = await lisansGorselYukle(duzenleId, gorselFile, eskiYol)
+        if (g2) g = g2; else toast.error('Görsel yüklenemedi — lisans bilgileri kaydedildi.')
+      } else if (gorselKaldir && eskiYol) {
+        const g2 = await lisansGorselSil(duzenleId, eskiYol)
+        if (g2) g = g2
+      }
       if (g) setLisanslar(prev => prev.map(l => l.id === duzenleId ? g : l))
       toast.success('Lisans güncellendi.')
     } else {
-      const y = await lisansEkle({ ...form, olusturmaTarih: new Date().toISOString() })
+      let y = await lisansEkle({ ...form, olusturmaTarih: new Date().toISOString() })
+      if (y && gorselFile) {
+        const y2 = await lisansGorselYukle(y.id, gorselFile)
+        if (y2) y = y2; else toast.error('Görsel yüklenemedi — lisans kaydedildi.')
+      }
       if (y) setLisanslar(prev => [y, ...prev])
       toast.success('Lisans kaydedildi.')
     }
     setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([])
+    gorselStateSifirla()
   }
 
-  const iptal = () => { setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([]) }
+  const iptal = () => {
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([])
+    gorselStateSifirla()
+  }
 
   const lisansSil = async (id) => {
     await dbLisansSil(id)
@@ -495,6 +546,53 @@ function TrassirLisanslar() {
                 placeholder="Lisans hakkında notlar…"
               />
             </div>
+
+            <div style={{ gridColumn: 'span 3' }}>
+              <Label>Lisans görseli</Label>
+              <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
+                Trassir'deki lisans özeti ekranının görüntüsünü buraya ekleyebilirsin (JPG/PNG, max {GORSEL_MAX_MB} MB)
+              </p>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                {/* Yeni seçilen görselin önizlemesi */}
+                {gorselOnizleme && (
+                  <GorselKutu url={gorselOnizleme} etiket="Yeni görsel" onKaldir={() => {
+                    URL.revokeObjectURL(gorselOnizleme)
+                    setGorselFile(null); setGorselOnizleme('')
+                  }} />
+                )}
+                {/* Kayıtlı görsel (düzenleme) — yeni dosya seçilmediyse ve kaldırılmadıysa */}
+                {!gorselOnizleme && !gorselKaldir && mevcutGorselUrl && (
+                  <GorselKutu url={mevcutGorselUrl} etiket="Kayıtlı görsel" onKaldir={() => setGorselKaldir(true)} />
+                )}
+                {gorselKaldir && !gorselOnizleme && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+                    background: 'var(--danger-soft)', border: '1px solid var(--danger-border, var(--border-default))',
+                    color: 'var(--danger)', font: '500 13px/18px var(--font-sans)',
+                  }}>
+                    <Trash2 size={14} strokeWidth={1.5} /> Kaydedince görsel silinecek
+                    <button
+                      onClick={() => setGorselKaldir(false)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit', padding: 0 }}
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                )}
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '9px 14px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-card)', border: '1px dashed var(--border-default)',
+                  color: 'var(--text-secondary)', font: '500 13px/18px var(--font-sans)',
+                  cursor: 'pointer',
+                }}>
+                  <Upload size={14} strokeWidth={1.5} />
+                  {(gorselOnizleme || mevcutGorselUrl) ? 'Görseli değiştir…' : 'Görsel seç…'}
+                  <input type="file" accept="image/*" onChange={gorselSec} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
@@ -601,6 +699,23 @@ function TrassirLisanslar() {
                       </td>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 4 }}>
+                          {l.gorselYolu && (
+                            <button
+                              aria-label="Lisans görselini görüntüle"
+                              title="Lisans görselini görüntüle"
+                              onClick={() => gorselGoruntule(l)}
+                              style={{
+                                width: 28, height: 28,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'var(--brand-primary-soft)', border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--radius-sm)', color: 'var(--brand-primary)', cursor: 'pointer',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary)'; e.currentTarget.style.color = '#fff' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                            >
+                              <ImageIcon size={12} strokeWidth={1.5} />
+                            </button>
+                          )}
                           <button
                             aria-label="Düzenle"
                             onClick={() => duzenleAc(l)}
@@ -639,6 +754,91 @@ function TrassirLisanslar() {
           </div>
         )}
       </Card>
+
+      {/* Lisans görseli lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(6, 12, 26, 0.74)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 32, cursor: 'zoom-out',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface-card)', borderRadius: 12, padding: 14,
+              maxWidth: '92vw', maxHeight: '90vh',
+              display: 'flex', flexDirection: 'column', gap: 10, cursor: 'default',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <CodeBadge>{lightbox.lisans.lisansKodu}</CodeBadge>
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {lightbox.lisans.firmaAdi}
+                </span>
+                {lightbox.lisans.lisansId && <CodeBadge>{lightbox.lisans.lisansId}</CodeBadge>}
+              </div>
+              <button
+                aria-label="Kapat"
+                onClick={() => setLightbox(null)}
+                style={{
+                  width: 28, height: 28, flexShrink: 0,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+              >
+                <X size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+            <img
+              src={lightbox.url}
+              alt={`${lightbox.lisans.lisansKodu} lisans görseli`}
+              style={{ maxWidth: '88vw', maxHeight: '78vh', objectFit: 'contain', borderRadius: 8, background: 'var(--surface-sunken)' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GorselKutu({ url, etiket, onKaldir }) {
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <img
+        src={url}
+        alt={etiket}
+        style={{
+          height: 96, maxWidth: 220, objectFit: 'cover',
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)',
+          display: 'block',
+        }}
+      />
+      <span style={{
+        position: 'absolute', left: 6, bottom: 6,
+        padding: '2px 8px', borderRadius: 999,
+        background: 'rgba(6,12,26,0.66)', color: '#fff',
+        font: '500 10px/14px var(--font-sans)',
+      }}>{etiket}</span>
+      <button
+        aria-label="Görseli kaldır"
+        onClick={onKaldir}
+        style={{
+          position: 'absolute', top: -8, right: -8,
+          width: 22, height: 22,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--danger)', border: 'none', borderRadius: '50%',
+          color: '#fff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+        }}
+      >
+        <X size={12} strokeWidth={2} />
+      </button>
     </div>
   )
 }

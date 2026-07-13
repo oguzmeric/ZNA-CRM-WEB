@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
 const BUCKET = 'kisi-dokuman'
-export const MAX_BOYUT_MB = 5
+export const MAX_BOYUT_MB = 8
 export const MAX_BOYUT = MAX_BOYUT_MB * 1024 * 1024
 
 // ---------- Kategoriler ----------
