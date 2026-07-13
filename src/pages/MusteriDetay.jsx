@@ -6,6 +6,7 @@ import {
   CheckCircle2, Send,
 } from 'lucide-react'
 import MusteriDavetModal from '../components/MusteriDavetModal'
+import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -654,6 +655,9 @@ function MusteriDetay() {
           </div>
         </Card>
       )}
+
+      {/* Müşteri Cihaz Envanteri — SN/IP/MAC/kimlik takibi + arıza durumu */}
+      <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} />
 
       {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
       <Card padding={0} style={{ marginBottom: 16 }}>
