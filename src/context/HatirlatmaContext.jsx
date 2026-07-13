@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   hatirlatmalariGetir,
@@ -26,6 +26,9 @@ const HatirlatmaContext = createContext(null)
 
 export function HatirlatmaProvider({ children }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  // /skor ofis kiosk ekranıdır — kişisel takip hatırlatması popup'ının yeri değil
+  const kioskta = location.pathname === '/skor'
   const [hatirlatmalar, setHatirlatmalar] = useState([])
   const [gosterModal, setGosterModal] = useState(false)
   const [vadesiGelenler, setVadesiGelenler] = useState([])
@@ -207,7 +210,7 @@ export function HatirlatmaProvider({ children }) {
 
       {/* Hatırlatma Popup Modal */}
       <AnimatePresence>
-        {gosterModal && vadesiGelenler.length > 0 && (
+        {gosterModal && !kioskta && vadesiGelenler.length > 0 && (
           <motion.div
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}

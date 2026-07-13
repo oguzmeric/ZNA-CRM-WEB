@@ -2,14 +2,31 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { pagedFetch } from '../lib/pagedFetch'
 
+// Hatırlatmalar kişiseldir: teklifi/görüşmeyi hazırlayan kişiye görünür.
+// kullanici_id NULL olan eski kayıtlar (backfill eşleşmeyenler) herkese görünür.
+const mevcutKullaniciId = async () => {
+  const { data } = await supabase.auth.getUser()
+  if (!data?.user) return null
+  const { data: k } = await supabase
+    .from('kullanicilar').select('id').eq('auth_id', data.user.id).maybeSingle()
+  return k?.id ?? null
+}
+
 export const hatirlatmalariGetir = async () => {
-  const data = await pagedFetch((off, size) =>
-    supabase.from('hatirlatmalar').select('*').order('hatirlatma_tarihi').range(off, off + size - 1)
-  )
+  const kid = await mevcutKullaniciId()
+  const data = await pagedFetch((off, size) => {
+    let q = supabase.from('hatirlatmalar').select('*').order('hatirlatma_tarihi')
+    q = kid ? q.or(`kullanici_id.eq.${kid},kullanici_id.is.null`) : q.is('kullanici_id', null)
+    return q.range(off, off + size - 1)
+  })
   return arrayToCamel(data)
 }
 
 export const hatirlatmaEkleDB = async (hatirlatma) => {
+  // Sahibi ata — hatırlatmayı kuran kişi (teklifi/görüşmeyi takip eden) görür
+  if (hatirlatma.kullaniciId === undefined) {
+    hatirlatma = { ...hatirlatma, kullaniciId: await mevcutKullaniciId() }
+  }
   // Aynı kaynak için (aynı teklif veya aynı görüşme) bekleyen hatırlatmayı
   // güncelle. ÖNCE INSERT, SONRA eski sil — sıra önemli: insert fail
   // ederse kullanıcı eski hatırlatmasını kaybetmez. (Önceden delete-then-insert
