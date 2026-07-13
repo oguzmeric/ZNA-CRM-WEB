@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
 import {
@@ -26,6 +26,10 @@ export function AuthProvider({ children }) {
   const [kullanici, setKullanici] = useState(null)
   const [kullanicilar, setKullanicilar] = useState([])
   const [oturumYuklendi, setOturumYuklendi] = useState(false)
+  // Mount-effect'teki ([] deps) closure'lar güncel kullanıcıyı göremez —
+  // recovery yollarının "oturum var mı" kontrolü bu ref üzerinden yapılır.
+  const kullaniciRef = useRef(null)
+  useEffect(() => { kullaniciRef.current = kullanici }, [kullanici])
 
   useEffect(() => {
     // ÖNEMLİ: .catch + .finally ile setOturumYuklendi(true) GARANTİ altında.
@@ -93,6 +97,14 @@ export function AuthProvider({ children }) {
     const lastSoftAt = { value: 0 }
 
     const softRecovery = async (sebep) => {
+      // Oturum yokken (login ekranı) recovery'nin kurtaracağı bir şey yok:
+      // refreshSession AuthSessionMissingError döner ve reload, kullanıcı tam
+      // şifresini yazarken sayfayı sıfırlıyordu ("sabah login'e geri atıyor"
+      // bug'ı). Hiç dokunma.
+      if (!kullaniciRef.current) {
+        console.info(`[${sebep}] soft recovery skip — oturum yok`)
+        return
+      }
       const simdi = Date.now()
       if (simdi - lastSoftAt.value < SOFT_COOLDOWN) {
         console.info(`[${sebep}] soft recovery skip — cooldown`)
@@ -106,6 +118,12 @@ export function AuthProvider({ children }) {
         // Auth refresh — başarılıysa state korunur, başarısızsa reload
         const { error } = await supabase.auth.refreshSession()
         if (error) {
+          // Oturum bu arada tamamen düşmüşse reload çare değil — SIGNED_OUT
+          // akışı kullanıcıyı zaten login'e indirir, sayfayı sıfırlamaya gerek yok.
+          if (error.name === 'AuthSessionMissingError') {
+            console.warn(`[${sebep}] auth refresh: oturum yok — reload atlanıyor`)
+            return
+          }
           console.warn(`[${sebep}] auth refresh fail → reload`, error.message)
           window.location.reload()
         }
