@@ -41,47 +41,25 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Cron path — X-Cron-Secret header ile guard atla (pg_cron için)
+    // Yetki: pg_cron X-Cron-Secret ile gelir; kullanıcılar JWT ile.
     const cronSecret = req.headers.get('X-Cron-Secret')
-    const expectedSecret = Deno.env.get('ESN_CRON_SECRET')
-    const cronMode = !!(cronSecret && expectedSecret && cronSecret === expectedSecret)
-
-    if (!cronMode) {
-      // Normal kullanıcı çağrısı — auth kontrolü
+    const cronMu = !!cronSecret && cronSecret === Deno.env.get('ESN_CRON_SECRET')
+    if (!cronMu) {
       const authHeader = req.headers.get('Authorization') ?? ''
-      if (!authHeader) return json({ ok: false, hata: 'yetkisiz-header-yok' }, 401)
-
+      if (!authHeader) return json({ ok: false, hata: 'yetkisiz' }, 401)
       const usr = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_ANON_KEY')!,
         { global: { headers: { Authorization: authHeader } } },
       )
-      const { data: authRes, error: authErr } = await usr.auth.getUser()
-      if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz-jwt', jwtHata: authErr?.message }, 401)
-      // Kullanıcıyı önce auth_id, yoksa email ile bul (email auth migration için)
-      let { data: kul } = await svc
-        .from('kullanicilar').select('id, ad, rol, auth_id, email').eq('auth_id', authRes.user.id).maybeSingle()
-      if (!kul && authRes.user.email) {
-        const r = await svc.from('kullanicilar').select('id, ad, rol, auth_id, email').eq('email', authRes.user.email).maybeSingle()
-        kul = r.data
-      }
-      if (!kul) return json({
-        ok: false, hata: 'kullanici-yok',
-        debug: { authUserId: authRes.user.id, authEmail: authRes.user.email },
-      }, 403)
-      // Yönetim kontrolü — TR karakter safe (JS \b Unicode'a duyarlı değil,
-      // "OĞUZ" için \boğuz\b false döner çünkü Ğ non-word char).
-      const adLower = String(kul.ad ?? '').toLocaleLowerCase('tr')
-      const yonetim = kul.rol === 'admin'
-        || adLower.includes('oğuz') || adLower.includes('oguz')
-        || adLower.includes('ali uğur') || adLower.includes('ali ugur')
-        || adLower.includes('ferdi')
-      if (!yonetim) return json({
-        ok: false, hata: 'yetki-yok',
-        debug: { ad: kul.ad, rol: kul.rol },
-      }, 403)
+      const { data: authRes } = await usr.auth.getUser()
+      if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz' }, 401)
+      const { data: kul } = await svc
+        .from('kullanicilar').select('ad, rol').eq('auth_id', authRes.user.id).maybeSingle()
+      if (!kul) return json({ ok: false, hata: 'kullanici_yok' }, 403)
+      const yonetim = kul.rol === 'admin' || /\b(oğuz|oguz|ali|ferdi)\b/i.test(kul.ad ?? '')
+      if (!yonetim) return json({ ok: false, hata: 'yetkisiz' }, 403)
     }
-    // ---- Guard bitti (normal veya cron mode). Bundan sonra iş mantığı. ----
 
     const firmakodu = Deno.env.get('ESN_FIRMA_KODU') ?? 'AKELTELEKOM'
     const kno = Deno.env.get('ESN_KNO') ?? '99'
@@ -216,13 +194,39 @@ Deno.serve(async (req) => {
       if (es) return json({ ok: false, hata: 'db_silme: ' + es.message }, 500)
     }
 
+    const degisenFisler = [...yeniler.map((r) => r.fis_no), ...guncellenecekler.map((r) => r.fis_no)]
+
+    // Cron modunda detayları da sunucu tarafında çek (browser yok, kimse tetikleyemez).
+    // Cap + 5'li paralel gruplar: fonksiyon zaman aşımına takılmasın; artan
+    // fişler bir sonraki 10dk koşusunda yakalanır.
+    let detayCekilen = 0
+    if (body.detayCek && degisenFisler.length) {
+      const hedefler = degisenFisler.slice(0, 30)
+      const detayUrl = Deno.env.get('SUPABASE_URL') + '/functions/v1/esn-detay-senkron'
+      for (let i = 0; i < hedefler.length; i += 5) {
+        const grup = hedefler.slice(i, i + 5)
+        const sonuclar = await Promise.allSettled(grup.map((fisno) =>
+          fetch(detayUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Cron-Secret': Deno.env.get('ESN_CRON_SECRET') ?? '',
+            },
+            body: JSON.stringify({ fisno }),
+          })
+        ))
+        detayCekilen += sonuclar.filter((s) => s.status === 'fulfilled' && (s.value as Response).ok).length
+      }
+    }
+
     return json({
       ok: true,
       yeni: yeniler.length,
       guncellenen: guncellenecekler.length,
       silinen: silinecekler.length,
       taranan: fisNolar.length,
-      fisNolar: [...yeniler.map((r) => r.fis_no), ...guncellenecekler.map((r) => r.fis_no)],
+      detayCekilen,
+      fisNolar: degisenFisler,
     })
   } catch (e) {
     return json({ ok: false, hata: String((e as any)?.message ?? e) }, 500)

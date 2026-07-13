@@ -33,9 +33,6 @@ function parseTarihSaat(s: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   try {
-    const authHeader = req.headers.get('Authorization') ?? ''
-    if (!authHeader) return json({ ok: false, hata: 'yetkisiz' }, 401)
-
     const { fisno } = await req.json()
     if (!fisno) return json({ ok: false, hata: 'fisno_gerek' }, 400)
 
@@ -43,24 +40,27 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
-    const usr = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    )
-    const { data: authRes } = await usr.auth.getUser()
-    if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz' }, 401)
 
-    const { data: kul } = await svc
-      .from('kullanicilar').select('ad, rol').eq('auth_id', authRes.user.id).maybeSingle()
-    if (!kul) return json({ ok: false, hata: 'kullanici_yok' }, 403)
-    // TR karakter safe: JS \b Unicode değil, "OĞUZ" için \boğuz\b false döner (Ğ non-word)
-    const adLower = String(kul.ad ?? '').toLocaleLowerCase('tr')
-    const yonetim = kul.rol === 'admin'
-      || adLower.includes('oğuz') || adLower.includes('oguz')
-      || adLower.includes('ali uğur') || adLower.includes('ali ugur')
-      || adLower.includes('ferdi')
-    if (!yonetim) return json({ ok: false, hata: 'yetkisiz' }, 403)
+    // Yetki: esn-liste-senkron cron zinciri X-Cron-Secret ile çağırır; kullanıcılar JWT ile.
+    const cronSecret = req.headers.get('X-Cron-Secret')
+    const cronMu = !!cronSecret && cronSecret === Deno.env.get('ESN_CRON_SECRET')
+    if (!cronMu) {
+      const authHeader = req.headers.get('Authorization') ?? ''
+      if (!authHeader) return json({ ok: false, hata: 'yetkisiz' }, 401)
+      const usr = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const { data: authRes } = await usr.auth.getUser()
+      if (!authRes?.user) return json({ ok: false, hata: 'yetkisiz' }, 401)
+
+      const { data: kul } = await svc
+        .from('kullanicilar').select('ad, rol').eq('auth_id', authRes.user.id).maybeSingle()
+      if (!kul) return json({ ok: false, hata: 'kullanici_yok' }, 403)
+      const yonetim = kul.rol === 'admin' || /\b(oğuz|oguz|ali|ferdi)\b/i.test(kul.ad ?? '')
+      if (!yonetim) return json({ ok: false, hata: 'yetkisiz' }, 403)
+    }
 
     // esnweb API
     const firmakodu = Deno.env.get('ESN_FIRMA_KODU') ?? 'AKELTELEKOM'
