@@ -38,6 +38,8 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
   const [sifreGoster, setSifreGoster] = useState(false)
   const [hareketler, setHareketler] = useState([])
   const [arizaFormu, setArizaFormu] = useState(null)  // { neden } — detayda arıza bildirimi
+  const [tamirFormu, setTamirFormu] = useState(null)  // { aciklama } — arıza giderildi notu
+  const [islemde, setIslemde] = useState(false)       // arıza/tamir çift tıklama koruması
   const [hepsiGoster, setHepsiGoster] = useState(false)
 
   const yukle = useCallback(() => {
@@ -61,7 +63,7 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
   }, [musteriId, yukle])
 
   const detayAc = async (c) => {
-    setSecili(c); setSifreGoster(false); setArizaFormu(null)
+    setSecili(c); setSifreGoster(false); setArizaFormu(null); setTamirFormu(null)
     setHareketler(await cihazHareketleriGetir(c.id))
   }
 
@@ -107,24 +109,32 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
   }
 
   const arizaKaydet = async () => {
+    if (islemde) return
     if (!arizaFormu?.neden?.trim()) { toast.error('Arıza nedenini yazın.'); return }
-    const g = await cihazArizaBildir(secili.id, arizaFormu.neden.trim(), kullanici)
-    if (g) {
-      toast.success('Arıza kaydedildi.')
-      setSecili(g); setArizaFormu(null)
-      setHareketler(await cihazHareketleriGetir(g.id))
-      yukle()
-    }
+    setIslemde(true)
+    try {
+      const g = await cihazArizaBildir(secili.id, arizaFormu.neden.trim(), kullanici)
+      if (g) {
+        toast.success('Arıza kaydedildi.')
+        setSecili(g); setArizaFormu(null)
+        setHareketler(await cihazHareketleriGetir(g.id))
+        yukle()
+      }
+    } finally { setIslemde(false) }
   }
 
-  const giderildi = async () => {
-    const g = await cihazArizaGiderildi(secili.id, null, kullanici)
-    if (g) {
-      toast.success('Arıza giderildi olarak işaretlendi.')
-      setSecili(g)
-      setHareketler(await cihazHareketleriGetir(g.id))
-      yukle()
-    }
+  const tamirKaydet = async () => {
+    if (islemde) return
+    setIslemde(true)
+    try {
+      const g = await cihazArizaGiderildi(secili.id, tamirFormu?.aciklama?.trim() || null, kullanici)
+      if (g) {
+        toast.success('Arıza giderildi olarak işaretlendi.')
+        setSecili(g); setTamirFormu(null)
+        setHareketler(await cihazHareketleriGetir(g.id))
+        yukle()
+      }
+    } finally { setIslemde(false) }
   }
 
   const sil = async (c) => {
@@ -412,9 +422,11 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
                   </Button>
                 )
               ) : (
-                <Button variant="secondary" size="sm" iconLeft={<CheckCircle2 size={12} strokeWidth={1.5} />} onClick={giderildi}>
-                  Arıza Giderildi
-                </Button>
+                tamirFormu ? null : (
+                  <Button variant="secondary" size="sm" iconLeft={<CheckCircle2 size={12} strokeWidth={1.5} />} onClick={() => setTamirFormu({ aciklama: '' })}>
+                    Arıza Giderildi
+                  </Button>
+                )
               )}
             </div>
             {arizaFormu && (
@@ -422,8 +434,18 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
                 <Label required>Arıza nedeni</Label>
                 <Textarea value={arizaFormu.neden} onChange={e => setArizaFormu({ neden: e.target.value })} rows={2} placeholder="Görüntü yok, disk arızası…" />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <Button variant="primary" size="sm" onClick={arizaKaydet}>Arızayı Kaydet</Button>
+                  <Button variant="primary" size="sm" onClick={arizaKaydet} disabled={islemde}>{islemde ? 'Kaydediliyor…' : 'Arızayı Kaydet'}</Button>
                   <Button variant="secondary" size="sm" onClick={() => setArizaFormu(null)}>Vazgeç</Button>
+                </div>
+              </div>
+            )}
+            {tamirFormu && (
+              <div style={{ marginBottom: 16, padding: 12, borderRadius: 'var(--radius-sm)', background: 'var(--surface-sunken)', border: '1px solid var(--border-default)' }}>
+                <Label>Yapılan işlem (opsiyonel)</Label>
+                <Textarea value={tamirFormu.aciklama} onChange={e => setTamirFormu({ aciklama: e.target.value })} rows={2} placeholder="Disk değişti, firmware güncellendi, kablo yenilendi…" />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <Button variant="primary" size="sm" onClick={tamirKaydet} disabled={islemde}>{islemde ? 'Kaydediliyor…' : 'Giderildi Olarak Kaydet'}</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setTamirFormu(null)}>Vazgeç</Button>
                 </div>
               </div>
             )}
