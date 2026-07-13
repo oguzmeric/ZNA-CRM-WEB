@@ -72,14 +72,23 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
 
   if (authError || !authData?.user) return null
 
-  const { data: profil, error: profilError } = await supabase
-    .from('kullanicilar')
-    .select(KULLANICI_SESSION_KOLONLARI)
-    .eq('auth_id', authData.user.id)
-    .single()
-
-  if (profilError) { console.warn('[kullaniciGirisKontrol] profil hatası:', profilError.message); return null }
-  if (!profil) return null
+  // Şifre DOĞRU (signIn başarılı) — profil çekimi geçici ağ hatasına takılırsa
+  // retry et; tek timeout'ta null dönmek kullanıcıya "hatalı giriş" gibi
+  // yansıyor ve tekrar tekrar login denemesine yol açıyordu.
+  let profilCamel = null
+  try {
+    profilCamel = await profilGetirRetry(authData.user.id)
+  } catch (e) {
+    console.warn('[kullaniciGirisKontrol] profil alınamadı (retry sonrası):', e.message)
+    const err = new Error('Bağlantı sorunu: profil bilgisi alınamadı. Lütfen tekrar deneyin.')
+    err.kod = 'PROFIL_HATASI'
+    throw err
+  }
+  if (!profilCamel) return null
+  const profil = {
+    onay_durum: profilCamel.onayDurum,
+    red_nedeni: profilCamel.redNedeni,
+  }
 
   if (profil.onay_durum === 'beklemede') {
     await supabase.auth.signOut()
@@ -93,7 +102,7 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
     e.kod = 'REDDEDILDI'
     throw e
   }
-  return toCamel(profil)
+  return profilCamel
 }
 
 // Promise.race timeout helper — supabase çağrıları hanging kalırsa bypass
@@ -104,35 +113,53 @@ const ileTimeout = (promise, ms, etiket) => {
   ])
 }
 
+const bekle = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// Profili RETRY ile getir — tek seferlik geçici ağ hatası / timeout, geçerli
+// oturumu olan kullanıcıyı login'e DÜŞÜRMEMELİ. (Deploy sonrası chunk reload
+// fırtınasında her mount'ta tek zar atılıyordu; kaybeden login'e düşüyordu.)
+const profilGetirRetry = async (authId, deneme = 3) => {
+  let sonHata
+  for (let i = 0; i < deneme; i++) {
+    try {
+      const { data: profil, error } = await ileTimeout(
+        supabase.from('kullanicilar').select(KULLANICI_SESSION_KOLONLARI).eq('auth_id', authId).single(),
+        6000,
+        'profil',
+      )
+      if (error) throw new Error(error.message)
+      return profil ? toCamel(profil) : null
+    } catch (e) {
+      sonHata = e
+      console.warn(`[profilGetir] deneme ${i + 1}/${deneme}:`, e.message)
+      if (i < deneme - 1) await bekle(600 * (i + 1))
+    }
+  }
+  throw sonHata
+}
+
 // Oturum yenileme — sayfa yüklendiğinde çağır.
 // KRİTİK: getSession() ve profil sorgusu timeout olmadan hang olabilir
-// (stale session, ölmüş HTTP/2 keep-alive, vb.). Timeout race ile bypass et,
-// hata olursa null dön → App login ekranına düşer, "Yükleniyor…" sonsuza
-// kadar takılmaz.
+// (stale session, ölmüş HTTP/2 keep-alive, vb.). Timeout race + RETRY:
+// geçici hata login'e düşürmesin; ancak gerçekten oturum yoksa null dön.
 export const mevcutOturumKullanici = async () => {
-  let session
-  try {
-    const result = await ileTimeout(supabase.auth.getSession(), 6000, 'getSession')
-    session = result?.data?.session
-  } catch (e) {
-    console.warn('[mevcutOturumKullanici] getSession:', e.message)
-    return null
+  let session = null
+  for (let i = 0; i < 2; i++) {
+    try {
+      const result = await ileTimeout(supabase.auth.getSession(), 5000, 'getSession')
+      session = result?.data?.session
+      break
+    } catch (e) {
+      console.warn(`[mevcutOturumKullanici] getSession deneme ${i + 1}/2:`, e.message)
+      if (i === 0) await bekle(600)
+    }
   }
   if (!session?.user) return null
 
   try {
-    const { data: profil, error } = await ileTimeout(
-      supabase.from('kullanicilar').select(KULLANICI_SESSION_KOLONLARI).eq('auth_id', session.user.id).single(),
-      6000,
-      'profil',
-    )
-    if (error) {
-      console.warn('[mevcutOturumKullanici] profil okuma hata:', error.message)
-      return null
-    }
-    return profil ? toCamel(profil) : null
+    return await profilGetirRetry(session.user.id)
   } catch (e) {
-    console.warn('[mevcutOturumKullanici] profil timeout:', e.message)
+    console.warn('[mevcutOturumKullanici] profil alınamadı (retry sonrası):', e.message)
     return null
   }
 }

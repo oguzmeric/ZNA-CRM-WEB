@@ -44,11 +44,11 @@ export function AuthProvider({ children }) {
     let cevapGeldi = false
     const safetyTimer = setTimeout(() => {
       if (!cevapGeldi) {
-        console.warn('[auth] safety net 10sn — zorla login ekranına düş')
+        console.warn('[auth] safety net 15sn — zorla login ekranına düş')
         setKullanici(null)
         setOturumYuklendi(true)
       }
-    }, 10_000)
+    }, 15_000) // retry'lı oturum çekimine alan bırak — erken düşürme login flicker yapıyordu
 
     mevcutOturumKullanici()
       .then((k) => setKullanici(k))
@@ -145,6 +145,12 @@ export function AuthProvider({ children }) {
       // Çok kısa switch'lerde (< 5 sn) dokunma
       if (hiddenFor < 5_000) return
 
+      // Oturum yokken (login ekranı / giriş sürerken) HİÇ dokunma:
+      // kullanıcı şifreyi kopyalamak için sekme değiştirip döndüğünde
+      // devam eden signIn/profil istekleri iptal ediliyor, giriş
+      // "hatalı" gibi düşüyordu → tekrar tekrar login döngüsü.
+      if (!kullaniciRef.current) return
+
       // 5sn-10dk: soft recovery — cache temizle, eski fetch'leri iptal et
       abortAllInFlight('tab-idle-recovery')
       cacheInvalidateAll()
@@ -171,6 +177,8 @@ export function AuthProvider({ children }) {
 
       // focus event'i navigasyon değil, sadece sinyal — recovery yapma
       if (e?.type === 'focus') { sonAktivite = simdi; return }
+      // Oturum yokken abort/recovery yok — login isteklerini öldürmesin
+      if (!kullaniciRef.current) { sonAktivite = simdi; return }
 
       if (bosluk >= IDLE_ESIK_AGIR) {
         sonAktivite = simdi
@@ -188,8 +196,10 @@ export function AuthProvider({ children }) {
     // window.focus — başka uygulamadan/pencereden geri dönüş
     const onFocus = () => {
       const bosluk = Date.now() - sonAktivite
+      sonAktivite = Date.now()
+      // Oturum yokken abort/recovery yok — login isteklerini öldürmesin
+      if (!kullaniciRef.current) return
       if (bosluk >= IDLE_ESIK_AGIR) {
-        sonAktivite = Date.now()
         softRecovery(`focus ${Math.round(bosluk/1000)}sn`)
         return
       }
@@ -197,7 +207,6 @@ export function AuthProvider({ children }) {
         cacheInvalidateAll()
         abortStaleInFlight(5000, 'focus-stale')
       }
-      sonAktivite = Date.now()
     }
 
     const olaylar = ['click', 'keydown', 'touchstart']
