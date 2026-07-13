@@ -6,6 +6,7 @@ import {
   hatirlatmaEkleDB,
   hatirlatmaGuncelle,
   hatirlatmaSilDB,
+  hatirlatmaKaydiSil,
 } from '../services/hatirlatmaService'
 import { lisanslariGetir } from '../services/lisansService'
 import { teklifleriGetir } from '../services/teklifService'
@@ -45,7 +46,9 @@ export function HatirlatmaProvider({ children }) {
       const orphan = listeHam.filter(h => h.tip === 'teklif' && h.teklifId && !mevcutTeklifIds.has(h.teklifId))
       const liste = listeHam.filter(h => !orphan.includes(h))
       // Silinen teklif hatırlatmalarını arka planda DB'den sil (best-effort)
-      orphan.forEach(h => { hatirlatmaSilDB(h.id).catch(() => {}) })
+      // NOT: hatirlatmaKaydiSil PK ile siler; hatirlatmaSilDB(h.id) yanlıştı
+      // (teklif_id parametresi bekler) — yetimler hiç silinmiyordu.
+      orphan.forEach(h => { hatirlatmaKaydiSil(h.id).catch(() => {}) })
       setHatirlatmalar(liste)
       if (kontrolEdildiRef.current) return
       kontrolEdildiRef.current = true

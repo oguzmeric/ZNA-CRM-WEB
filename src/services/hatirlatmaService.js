@@ -14,12 +14,24 @@ const mevcutKullaniciId = async () => {
 
 export const hatirlatmalariGetir = async () => {
   const kid = await mevcutKullaniciId()
-  const data = await pagedFetch((off, size) => {
-    let q = supabase.from('hatirlatmalar').select('*').order('hatirlatma_tarihi')
-    q = kid ? q.or(`kullanici_id.eq.${kid},kullanici_id.is.null`) : q.is('kullanici_id', null)
-    return q.range(off, off + size - 1)
-  })
+  if (!kid) return []
+  // Yalnız KENDİ hatırlatmaların. Sahipsiz (NULL) eski kayıtlar artık kimseye
+  // gösterilmez — backfill sonrası kalan NULL'lar yetim/eşleşemeyen kayıtlardı
+  // ve herkese popup çıkarıyordu.
+  const data = await pagedFetch((off, size) =>
+    supabase.from('hatirlatmalar').select('*')
+      .eq('kullanici_id', kid)
+      .order('hatirlatma_tarihi')
+      .range(off, off + size - 1)
+  )
   return arrayToCamel(data)
+}
+
+// Tek bir hatırlatma kaydını PK ile sil (yetim temizliği için).
+// DİKKAT: hatirlatmaSilDB teklif_id ile siler — karıştırma (eski bug buydu).
+export const hatirlatmaKaydiSil = async (hatirlatmaId) => {
+  const { error } = await supabase.from('hatirlatmalar').delete().eq('id', hatirlatmaId)
+  if (error) console.error('hatirlatmaKaydiSil hata:', error.message)
 }
 
 // Teklif hatırlatmasının sahibi teklifi HAZIRLAYAN kişidir (kuran değil):
