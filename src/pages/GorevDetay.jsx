@@ -590,9 +590,13 @@ function GorevDetay() {
                       const g = await gorevGuncelle(gorev.id, {
                         devamSebep: secilenSebep,
                         bitisTarihi: devamYeniTarih,
+                        // son_tarih kanonik teslim tarihi: panel/listeler/gecikme
+                        // SMS'i buna bakar — sadece bitis_tarihi yazmak görevin
+                        // "gecikti" görünmeye devam etmesine yol açıyordu
+                        sonTarih: devamYeniTarih,
                       })
                       if (!g) throw new Error('Kaydedilemedi.')
-                      setGorev(prev => ({ ...prev, devamSebep: secilenSebep, bitisTarihi: devamYeniTarih }))
+                      setGorev(prev => ({ ...prev, devamSebep: secilenSebep, bitisTarihi: devamYeniTarih, sonTarih: devamYeniTarih }))
                       setDevamSebepModal(false)
                       const s = DEVAM_SEBEPLERI.find(x => x.id === secilenSebep)
                       toast.success(`${s?.isim || 'Sebep'} — yeni bitiş: ${new Date(devamYeniTarih).toLocaleDateString('tr-TR')}`)
