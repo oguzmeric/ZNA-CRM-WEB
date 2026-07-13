@@ -3,6 +3,7 @@
 // arıza bildir/giderildi, hareket geçmişi).
 import { useState, useEffect, useCallback } from 'react'
 import { MonitorSmartphone, Plus, Eye, EyeOff, Pencil, Trash2, X, AlertTriangle, CheckCircle2, MapPin } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -45,6 +46,19 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
   }, [musteriId])
 
   useEffect(() => { yukle() }, [yukle])
+
+  // Realtime: teknisyen telefondan SN okutup kayıt/arıza girince liste anında düşer
+  useEffect(() => {
+    if (!musteriId) return
+    const kanal = supabase
+      .channel(`musteri-cihaz-${musteriId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'musteri_cihazlari',
+        filter: `musteri_id=eq.${musteriId}`,
+      }, () => yukle())
+      .subscribe()
+    return () => { supabase.removeChannel(kanal) }
+  }, [musteriId, yukle])
 
   const detayAc = async (c) => {
     setSecili(c); setSifreGoster(false); setArizaFormu(null)
