@@ -22,10 +22,28 @@ export const hatirlatmalariGetir = async () => {
   return arrayToCamel(data)
 }
 
+// Teklif hatırlatmasının sahibi teklifi HAZIRLAYAN kişidir (kuran değil):
+// hazırlayan adını kullanicilar.ad ile eşle; bulunamazsa kurana düş.
+const teklifSahibiId = async (teklifId) => {
+  try {
+    const { data: t } = await supabase
+      .from('teklifler').select('hazirlayan').eq('id', teklifId).maybeSingle()
+    const ad = (t?.hazirlayan || '').trim()
+    if (!ad) return null
+    const { data: k } = await supabase
+      .from('kullanicilar').select('id').ilike('ad', ad).maybeSingle()
+    return k?.id ?? null
+  } catch { return null }
+}
+
 export const hatirlatmaEkleDB = async (hatirlatma) => {
-  // Sahibi ata — hatırlatmayı kuran kişi (teklifi/görüşmeyi takip eden) görür
+  // Sahibi ata: teklif tipi → teklifi hazırlayan; diğerleri → kuran kişi
   if (hatirlatma.kullaniciId === undefined) {
-    hatirlatma = { ...hatirlatma, kullaniciId: await mevcutKullaniciId() }
+    let sahip = null
+    if ((hatirlatma.tip || 'teklif') === 'teklif' && hatirlatma.teklifId) {
+      sahip = await teklifSahibiId(hatirlatma.teklifId)
+    }
+    hatirlatma = { ...hatirlatma, kullaniciId: sahip ?? await mevcutKullaniciId() }
   }
   // Aynı kaynak için (aynı teklif veya aynı görüşme) bekleyen hatırlatmayı
   // güncelle. ÖNCE INSERT, SONRA eski sil — sıra önemli: insert fail
