@@ -38,15 +38,29 @@ const haftaBasi = (d) => {
   return c
 }
 
-function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, hariciEvs) {
+// Görev bu kullanıcıya mı ait? (tekli atanan — eski 'atanan' id string'i,
+// yeni 'atanan_id' — veya ekip çoklu ataması)
+function gorevBenimMi(g, kullaniciId) {
+  if (!kullaniciId) return false
+  const id = String(kullaniciId)
+  if (String(g.atananId ?? '') === id) return true
+  if (String(g.atanan ?? '') === id) return true
+  if (Array.isArray(g.ekip) && g.ekip.map(String).includes(id)) return true
+  return false
+}
+
+function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, hariciEvs, kullaniciId) {
   const evs = []
   ;(gorusmeler || []).forEach(g => {
     if (!g.tarih) return
     evs.push({ id: `g${g.id}`, tip: 'gorusme', baslik: g.konu || 'Görüşme', alt: g.firmaAd || g.muhatapAd || '', tarih: g.tarih.slice(0,10), link: `/gorusmeler/${g.id}` })
   })
+  // Takvimde yalnız KENDİ görevlerin görünür (atanan veya ekipte olduğun) —
+  // tüm şirketin görevleri herkese dökülmesin
   ;(gorevler || []).forEach(g => {
     if (!g.sonTarih) return
-    evs.push({ id: `t${g.id}`, tip: 'gorev', baslik: g.baslik || 'Görev', alt: g.atanan || '', tarih: g.sonTarih.slice(0,10), link: `/gorevler/${g.id}` })
+    if (!gorevBenimMi(g, kullaniciId)) return
+    evs.push({ id: `t${g.id}`, tip: 'gorev', baslik: g.baslik || 'Görev', alt: g.atananAd || '', tarih: g.sonTarih.slice(0,10), link: `/gorevler/${g.id}` })
   })
   ;(servisTalepleri || []).forEach(s => {
     const t = (s.tarih || s.olusturmaTarihi || '').slice(0,10)
@@ -136,7 +150,7 @@ export default function Takvim() {
         kargolariGetir(),
         kullanici?.id ? hariciEtkinlikleriGetir(kullanici.id, baslangic, bitis) : Promise.resolve([]),
       ])
-      setEvs(etkinlikleriDonustur(g, gr, s, k, h))
+      setEvs(etkinlikleriDonustur(g, gr, s, k, h, kullanici?.id))
     } catch (e) {
       console.warn('[Takvim yükle]', e?.message)
     } finally {
