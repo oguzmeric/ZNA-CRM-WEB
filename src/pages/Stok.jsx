@@ -1337,23 +1337,23 @@ function Stok() {
                     <TD>{gosterilenMarka || '—'}</TD>
                     <TD>{u.grupKodu ? <Badge tone="neutral">{u.grupKodu}</Badge> : '—'}</TD>
                     <TD align="right">
-                      <span style={{
-                        fontWeight: 500,
-                        fontSize: 14,
-                        color: kritik ? 'var(--danger)' : 'var(--text-primary)',
-                        fontVariantNumeric: 'normal',
-                        fontFeatureSettings: 'normal',
-                      }}>
-                        {String(Math.round(Number(bakiye) || 0))}
-                      </span>
+                      {/* Rozet sayının SOLUNDA tek satırda — alt alta dizilince
+                          satır şişiyor ve sayı diğer hücrelerle hizasızdı */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                        {kritik ? <Badge tone="kayip">Kritik</Badge> : null}
+                        <span style={{
+                          fontWeight: 500,
+                          fontSize: 14,
+                          color: kritik ? 'var(--danger)' : 'var(--text-primary)',
+                          fontVariantNumeric: 'normal',
+                          fontFeatureSettings: 'normal',
+                        }}>
+                          {String(Math.round(Number(bakiye) || 0))}
+                        </span>
+                      </div>
                       {seriTakipli && u.beklenenAdet ? (
                         <div style={{ marginTop: 2, font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                           / {u.beklenenAdet} hedef
-                        </div>
-                      ) : null}
-                      {kritik ? (
-                        <div style={{ marginTop: 2 }}>
-                          <Badge tone="kayip">Kritik</Badge>
                         </div>
                       ) : null}
                     </TD>

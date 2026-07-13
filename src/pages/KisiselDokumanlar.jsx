@@ -280,7 +280,8 @@ function DokumanKarti({ dokuman: d, kategoriIsim, kullanicilar, kimId, onSil, on
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{fmtTarih(d.guncellemeTarih)}</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
+      {/* flexWrap: dar kartlarda 4 buton tek satıra sığmayıp kartın dışına taşıyordu */}
+      <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--border-default)', paddingTop: 8, flexWrap: 'wrap' }}>
         <Button size="sm" variant="secondary" iconLeft={<Eye size={12} />} onClick={onAc}>Aç</Button>
         <Button size="sm" variant="secondary" iconLeft={<Download size={12} />} onClick={onIndir}>İndir</Button>
         {sahibiBenim && (
