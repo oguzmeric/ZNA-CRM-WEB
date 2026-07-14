@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import {
   Upload, Link2, FileText, FileSpreadsheet, FileImage, File,
   Search, Eye, Download, Trash2, Edit2, Lock, Users, User as UserIcon,
-  Plus, X, RefreshCw, ClipboardList, Target, Library, Tag,
+  Plus, X, RefreshCw, ClipboardList, Target, Library, Tag, Cloud, CheckCircle2, AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -18,9 +18,13 @@ import {
   MAX_BOYUT_MB, MAX_BOYUT,
 } from '../services/kisiDokumanService'
 import {
-  Button, Input, Textarea, Label, Card, Badge, EmptyState, SearchInput,
+  Button, Input, Textarea, Label, Card, Badge, EmptyState, SearchInput, Modal,
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import { uygulamaAyarGetir, uygulamaAyarKaydet } from '../services/ayarService'
+import {
+  oneDriveSec, oneDriveDosyaIndir, ONEDRIVE_AYAR_ANAHTARI, ONEDRIVE_KURULUM_ADIMLARI,
+} from '../lib/oneDrive'
 
 const IKON_MAP = { RefreshCw, ClipboardList, Target, FileText, File, Library, Tag }
 const dosyaIkonu = (tip) => {
@@ -58,6 +62,7 @@ export default function KisiselDokumanlar() {
   const [ekleModal, setEkleModal] = useState(false)
   const [duzenle, setDuzenle] = useState(null)
   const [kategoriModal, setKategoriModal] = useState(false)
+  const [oneDriveModal, setOneDriveModal] = useState(false)
   const [arama, setArama] = useState('')
   const [kategoriFiltre, setKategoriFiltre] = useState('')
 
@@ -123,6 +128,9 @@ export default function KisiselDokumanlar() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" iconLeft={<Tag size={14} />} onClick={() => setKategoriModal(true)}>
             Kategoriler
+          </Button>
+          <Button variant="secondary" iconLeft={<Cloud size={14} />} onClick={() => setOneDriveModal(true)}>
+            OneDrive'dan Ekle
           </Button>
           <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => { setDuzenle(null); setEkleModal(true) }}>
             Yeni Doküman
@@ -226,7 +234,202 @@ export default function KisiselDokumanlar() {
           onDegisiklik={async () => { const k = await kategorileriGetir(); setKategoriler(k) }}
         />
       )}
+
+      {oneDriveModal && (
+        <OneDriveModal
+          kategoriler={kategoriler}
+          kullanici={kullanici}
+          onKapat={() => setOneDriveModal(false)}
+          onAktarildi={async () => { await yukle() }}
+        />
+      )}
     </div>
+  )
+}
+
+// ---------------- OneDrive'dan Ekle ----------------
+// Client ID uygulama_ayarlari'nda ('onedrive_client_id'). Yoksa kurulum ekranı
+// gösterilir (admin ID'yi buradan yapıştırır). Varsa Microsoft seçicisi açılır,
+// seçilen dosyalar CRM deposuna kopyalanır (8 MB üstü ise OneDrive linki olarak eklenir).
+
+function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
+  const { toast } = useToast()
+  const admin = kullanici?.rol === 'admin'
+  const [clientId, setClientId] = useState(null)      // null = yükleniyor, '' = tanımsız
+  const [yeniId, setYeniId] = useState('')
+  const [kategoriId, setKategoriId] = useState('')
+  const [gorunurluk, setGorunurluk] = useState('sadece_ben')
+  const [secilenler, setSecilenler] = useState([])    // {oge, durum: bekliyor|aktariliyor|tamam|link|hata, mesaj}
+  const [mesgul, setMesgul] = useState(false)
+
+  useEffect(() => {
+    uygulamaAyarGetir(ONEDRIVE_AYAR_ANAHTARI).then(v => setClientId(v || ''))
+  }, [])
+
+  const idKaydet = async () => {
+    const v = yeniId.trim()
+    if (!/^[0-9a-f-]{30,40}$/i.test(v)) { toast.error('Geçerli bir Application (client) ID yapıştırın.'); return }
+    const s = await uygulamaAyarKaydet(ONEDRIVE_AYAR_ANAHTARI, v, kullanici?.id)
+    if (s?._hata) { toast.error('Kaydedilemedi: ' + s._hata); return }
+    setClientId(v)
+    toast.success('OneDrive bağlantısı kaydedildi — artık seçici kullanılabilir.')
+  }
+
+  const seciciAc = async () => {
+    setMesgul(true)
+    try {
+      const ogeler = await oneDriveSec(clientId)
+      setSecilenler(ogeler.map(oge => ({ oge, durum: 'bekliyor', mesaj: '' })))
+      if (!ogeler.length) toast.info?.('Dosya seçilmedi.')
+    } catch (e) {
+      toast.error('Seçici açılamadı: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setMesgul(false)
+    }
+  }
+
+  const aktar = async () => {
+    setMesgul(true)
+    let tamam = 0
+    for (let i = 0; i < secilenler.length; i++) {
+      const { oge } = secilenler[i]
+      const durumYaz = (durum, mesaj = '') =>
+        setSecilenler(prev => prev.map((s, j) => j === i ? { ...s, durum, mesaj } : s))
+      try {
+        durumYaz('aktariliyor')
+        if (oge.size > MAX_BOYUT) {
+          // Depo limiti üstü: dosya kopyalanmaz, OneDrive linki olarak eklenir
+          if (!oge.webUrl) throw new Error(`${MAX_BOYUT_MB} MB üstü ve paylaşım linki alınamadı.`)
+          await dokumanEkle({
+            baslik: oge.name, tip: 'link', linkUrl: oge.webUrl,
+            aciklama: 'OneDrive dosyası (boyut nedeniyle link olarak eklendi)',
+            kategoriId: kategoriId || null, gorunurluk,
+          })
+          durumYaz('link')
+        } else {
+          const dosya = await oneDriveDosyaIndir(oge)
+          await dokumanEkle({
+            baslik: oge.name, tip: 'dosya', dosya,
+            aciklama: 'OneDrive üzerinden aktarıldı',
+            kategoriId: kategoriId || null, gorunurluk,
+          })
+          durumYaz('tamam')
+        }
+        tamam++
+      } catch (e) {
+        durumYaz('hata', e?.message || 'aktarılamadı')
+      }
+    }
+    setMesgul(false)
+    if (tamam) {
+      toast.success(`${tamam} dosya Dokümanlarım'a aktarıldı.`)
+      onAktarildi()
+    }
+  }
+
+  const DURUM_GOSTERIM = {
+    bekliyor:    { renk: 'var(--text-tertiary)', metin: 'Bekliyor' },
+    aktariliyor: { renk: 'var(--brand-primary)', metin: 'Aktarılıyor…' },
+    tamam:       { renk: 'var(--success)',       metin: 'Aktarıldı ✓' },
+    link:        { renk: 'var(--success)',       metin: 'Link olarak eklendi ✓' },
+    hata:        { renk: 'var(--danger)',        metin: 'Hata' },
+  }
+
+  return (
+    <Modal open onClose={onKapat} title="OneDrive'dan Ekle" width={640}>
+      {clientId === null ? (
+        <p className="t-caption">Ayarlar yükleniyor…</p>
+      ) : clientId === '' ? (
+        // ---- Kurulum ekranı ----
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ font: '400 13px/19px var(--font-sans)', color: 'var(--text-secondary)', margin: 0 }}>
+            OneDrive bağlantısı için bir kerelik Microsoft uygulama kaydı gerekir (~5 dk).
+            Kayıt sonrası tüm personel kendi Microsoft hesabıyla dosya seçebilir.
+          </p>
+          <ol style={{ margin: 0, paddingLeft: 20, font: '400 12.5px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
+            {ONEDRIVE_KURULUM_ADIMLARI.map((a, i) => <li key={i}>{a}</li>)}
+          </ol>
+          <div style={{ background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '8px 12px', font: '500 12px/18px var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+            Redirect URI (SPA): {window.location.origin}
+          </div>
+          {admin ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <Label>Application (client) ID</Label>
+                <Input value={yeniId} onChange={e => setYeniId(e.target.value)} placeholder="örn. 3f2a1b0c-...-9d8e" />
+              </div>
+              <Button variant="primary" onClick={idKaydet}>Kaydet</Button>
+            </div>
+          ) : (
+            <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--warning)', margin: 0 }}>
+              <AlertTriangle size={13} style={{ verticalAlign: '-2px' }} /> Kurulumu yalnızca yönetici yapabilir — lütfen yöneticinize iletin.
+            </p>
+          )}
+        </div>
+      ) : (
+        // ---- Seçici + aktarım ----
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <Label>Kategori</Label>
+              <CustomSelect value={kategoriId} onChange={e => setKategoriId(e.target.value)}>
+                <option value="">Kategorisiz</option>
+                {kategoriler.map(k => <option key={k.id} value={k.id}>{k.isim}</option>)}
+              </CustomSelect>
+            </div>
+            <div>
+              <Label>Görünürlük</Label>
+              <CustomSelect value={gorunurluk} onChange={e => setGorunurluk(e.target.value)}>
+                <option value="sadece_ben">Sadece ben</option>
+                <option value="herkes">Herkes</option>
+              </CustomSelect>
+            </div>
+          </div>
+
+          <Button variant="secondary" iconLeft={<Cloud size={14} />} onClick={seciciAc} disabled={mesgul}>
+            {secilenler.length ? 'Farklı Dosyalar Seç' : "OneDrive'ı Aç ve Dosya Seç"}
+          </Button>
+
+          {secilenler.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflow: 'auto' }}>
+              {secilenler.map((s, i) => {
+                const g = DURUM_GOSTERIM[s.durum]
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '8px 12px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.oge.name}
+                      </div>
+                      <div className="t-caption">
+                        {boyutFormat(s.oge.size)}{s.oge.size > MAX_BOYUT ? ` — ${MAX_BOYUT_MB} MB üstü, link olarak eklenecek` : ''}
+                        {s.mesaj ? ` · ${s.mesaj}` : ''}
+                      </div>
+                    </div>
+                    <span style={{ font: '600 12px/16px var(--font-sans)', color: g.renk, whiteSpace: 'nowrap' }}>{g.metin}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            {admin ? (
+              <button onClick={() => { setClientId(''); setYeniId(clientId) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', padding: 0 }}>
+                Bağlantı ayarını değiştir
+              </button>
+            ) : <span />}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="ghost" onClick={onKapat} disabled={mesgul}>Kapat</Button>
+              <Button variant="primary" iconLeft={<CheckCircle2 size={14} />} onClick={aktar}
+                disabled={mesgul || !secilenler.some(s => s.durum === 'bekliyor' || s.durum === 'hata')}>
+                {mesgul ? 'Aktarılıyor…' : "Dokümanlarım'a Aktar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }
 

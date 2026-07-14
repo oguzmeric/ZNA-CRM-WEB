@@ -13,3 +13,24 @@ export const sistemAyarlariKaydet = async (ayarlar) => {
     .select().single()
   return toCamel(data)
 }
+
+// ---- uygulama_ayarlari (mig 157) — anahtar/değer entegrasyon ayarları ----
+// Okuma staff, yazma admin (RLS). İlk kullanım: OneDrive Client ID.
+
+export const uygulamaAyarGetir = async (anahtar) => {
+  const { data, error } = await supabase
+    .from('uygulama_ayarlari').select('deger').eq('anahtar', anahtar).maybeSingle()
+  if (error) { console.error('uygulamaAyarGetir hata:', error.message); return null }
+  return data?.deger ?? null
+}
+
+export const uygulamaAyarKaydet = async (anahtar, deger, kullaniciId) => {
+  const { error } = await supabase.from('uygulama_ayarlari').upsert({
+    anahtar,
+    deger,
+    guncelleyen_id: kullaniciId || null,
+    guncelleme_tarih: new Date().toISOString(),
+  })
+  if (error) return { _hata: error.message }
+  return true
+}
