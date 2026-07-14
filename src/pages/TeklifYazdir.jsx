@@ -59,38 +59,10 @@ export default function TeklifYazdir() {
     return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Yükleniyor...</div>
   }
 
-  // Spec kapısı: yönetici onayı olmayan teklifin PDF/yazdırma/Excel çıktısı YOK.
-  // Buton gizlense bile URL ile doğrudan gelinebiliyor — asıl emniyet burası.
-  if (!musteriyeGonderilebilir(teklif)) {
-    const durumIsim = TEKLIF_DURUM_META[tekliftenDurum(teklif)]?.isim || 'Taslak'
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#F4F6F8', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,sans-serif', padding: 20,
-      }}>
-        <div style={{ maxWidth: 480, width: '100%', background: '#fff', borderRadius: 16, padding: '40px 32px', boxShadow: '0 4px 14px rgba(15,27,46,0.08)', textAlign: 'center' }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%', background: '#FEF3C7', color: '#B45309',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16,
-          }}>🔒</div>
-          <h1 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 700, color: '#0F1B2E' }}>
-            Çıktı alınamaz — yönetici onayı gerekli
-          </h1>
-          <p style={{ margin: '0 0 6px', fontSize: 14, lineHeight: 1.55, color: '#3B4960' }}>
-            <strong>{teklif.teklifNo || `#${teklif.id}`}</strong> numaralı teklifin durumu: <strong>{durumIsim}</strong>.
-          </p>
-          <p style={{ margin: '0 0 24px', fontSize: 13, lineHeight: 1.55, color: '#6B7A93' }}>
-            Yönetici tarafından onaylanmayan teklif PDF haline getirilemez ve müşteriye gönderilemez.
-            Teklif detayından "Yönetici Onayına Gönder" akışını tamamlayın.
-          </p>
-          <button onClick={() => { window.close(); setTimeout(() => { window.location.href = `/teklifler/${teklif.id}` }, 150) }}
-            style={{ padding: '11px 22px', borderRadius: 9, border: 'none', background: '#1E5AA8', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            Teklif Detayına Dön
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // Yönetici onayı olmayan teklif: çıktı ALINABİLİR ama her sayfada
+  // "TASLAK" filigranı basılır (müşteriye gönderim ayrıca kilitli — belge-paylas 403).
+  const onaysiz = !musteriyeGonderilebilir(teklif)
+  const durumIsim = TEKLIF_DURUM_META[tekliftenDurum(teklif)]?.isim || 'Taslak'
 
   const { baseTip, pacal } = tipCoz(seciliTip)
   const Cikti = ciktiMap[baseTip] || StandartCikti
@@ -156,7 +128,10 @@ export default function TeklifYazdir() {
       }
 
       const blob = pdf.output('blob')
-      await dosyayiKaydet(blob, teklifDosyaAdi(teklif, 'pdf'))
+      const dosyaAd = onaysiz
+        ? teklifDosyaAdi(teklif, 'pdf').replace(/\.pdf$/i, '-TASLAK.pdf')
+        : teklifDosyaAdi(teklif, 'pdf')
+      await dosyayiKaydet(blob, dosyaAd)
     } catch (err) {
       console.error('[PDF indir]', err)
       alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
@@ -249,6 +224,18 @@ export default function TeklifYazdir() {
 
         {/* Sağ: Aksiyonlar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {onaysiz && (
+            <span
+              title={`Durum: ${durumIsim} — yönetici onayı alınmadığı için çıktıya TASLAK filigranı basılır. Müşteriye gönderim onaydan sonra açılır.`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 999,
+                background: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E',
+                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              }}>
+              ⚠ ONAYSIZ — TASLAK filigranlı çıktı
+            </span>
+          )}
           <button
             onClick={() => window.print()}
             style={aksiyonBtn('#0176D3')}
@@ -298,9 +285,36 @@ export default function TeklifYazdir() {
         </div>
       </div>
 
-      <div ref={ciktiRef}>
+      {/* Filigran ciktiRef İÇİNDE: ekranda, tarayıcı yazdırmasında ve html2canvas
+          PDF indirmede aynı şekilde görünür (fixed olsaydı klonda kaybolurdu). */}
+      <div ref={ciktiRef} style={{ position: 'relative' }}>
         <Cikti teklif={teklif} pacal={pacal} />
+        {onaysiz && <TaslakFiligran />}
       </div>
     </>
+  )
+}
+
+// Çapraz, yarı saydam TASLAK filigranı — teklif görünümünü bozmadan içeriğe
+// yayılır (yüzde konumlu 8 tekrar; 1-4 sayfalık tekliflerde her sayfaya düşer).
+function TaslakFiligran() {
+  return (
+    <div aria-hidden style={{
+      position: 'absolute', inset: 0, overflow: 'hidden',
+      pointerEvents: 'none', zIndex: 40, printColorAdjust: 'exact',
+    }}>
+      {[4, 17, 30, 43, 56, 69, 82, 94].map(top => (
+        <div key={top} style={{
+          position: 'absolute', top: `${top}%`, left: '50%',
+          transform: 'translateX(-50%) rotate(-24deg)',
+          font: '800 46px/1 Arial, sans-serif',
+          letterSpacing: '0.06em', whiteSpace: 'nowrap',
+          color: 'rgba(148, 163, 184, 0.16)',
+          WebkitPrintColorAdjust: 'exact',
+        }}>
+          TASLAK — ONAYLANMAMIŞ TEKLİF
+        </div>
+      ))}
+    </div>
   )
 }

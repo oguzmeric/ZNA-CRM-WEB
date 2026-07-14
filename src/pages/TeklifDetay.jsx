@@ -977,11 +977,17 @@ function TeklifDetay() {
               variant="secondary"
               iconLeft={<Printer size={14} strokeWidth={1.5} />}
               onClick={() => {
-                // Spec: yönetici onayı olmadan PDF üretilemez — onaysız teklif
-                // müşteriye hiçbir kanaldan (PDF dahil) gidemez.
+                // Onaysız teklif: çıktı alınabilir ama önce uyar — çıktıya her
+                // sayfada "TASLAK — ONAYLANMAMIŞ TEKLİF" filigranı basılır.
+                // (Müşteriye Gönder ayrıca kilitli kalır — o gerçek gönderim kanalı.)
                 if (!GONDERIME_UYGUN_DURUMLAR.includes(spekDurumKey)) {
-                  toast.error('Yönetici onayı olmayan teklifin PDF çıktısı alınamaz. Önce "Yönetici Onayına Gönder" akışını tamamlayın.')
-                  return
+                  const devam = window.confirm(
+                    'Bu teklif henüz yönetici onayı almadı.\n\n' +
+                    'Çıktının üzerinde her sayfada "TASLAK — ONAYLANMAMIŞ TEKLİF" filigranı görünecek ' +
+                    've dosya adına -TASLAK eklenecek.\n\n' +
+                    'Taslak çıktı alınsın mı?',
+                  )
+                  if (!devam) return
                 }
                 // Form'da seçili olan tipi URL'ye geçir — kaydet zorunlu olmasın
                 const tip = form.teklifTipi || 'standart'
