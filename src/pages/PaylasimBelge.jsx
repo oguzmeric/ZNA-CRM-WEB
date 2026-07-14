@@ -21,6 +21,7 @@ import KarelCikti    from './teklifCikti/KarelCikti'
 import ServisFormu   from './servisCikti/ServisFormu'
 import DemoTutanak   from './demoCikti/DemoTutanak'
 import { bayiBelgeHtml } from '../lib/bayiSozlesmeBelge'
+import { tipCoz } from '../lib/teklifTemplates'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -233,10 +234,12 @@ export default function PaylasimBelge() {
   }
 
   if (durum === 'teklif') {
-    // Oncelik: URL'deki ?t= (gonderim aninda secilen sablon) > teklifin kayitli sablonu
-    const tip = (sablonOverride && ciktiMap[sablonOverride]) ? sablonOverride
-              : (belge?.teklifTipi || 'standart')
-    const Cikti = ciktiMap[tip] || StandartCikti
+    // Oncelik: URL'deki ?t= (gonderim aninda secilen sablon) > teklifin kayitli sablonu.
+    // '_pacal' (Proje) varyantini tipCoz ile coz: baseTip komponenti secer, pacal=true
+    // birim fiyatlari GIZLER (proje teklifi musteriye birim fiyatsiz gider).
+    const rawTip = sablonOverride || belge?.teklifTipi || 'standart'
+    const { baseTip, pacal } = tipCoz(rawTip)
+    const Cikti = ciktiMap[baseTip] || StandartCikti
 
     // Once markali kart (servis raporu ile tutarli); "Ac" cikti'yi gosterir
     if (!teklifGoster) {
@@ -304,7 +307,7 @@ export default function PaylasimBelge() {
             🖨 Yazdır / PDF
           </button>
         </div>
-        <Cikti teklif={belge} />
+        <Cikti teklif={belge} pacal={pacal} />
       </>
     )
   }

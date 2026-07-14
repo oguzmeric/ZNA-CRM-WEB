@@ -241,8 +241,14 @@ serve(async (req) => {
     const sureGun: number   = Math.min(Math.max(Number(body?.sure_gun ?? 30), 1), 365)
     const ozelMesaj: string = (body?.ozel_mesaj ?? '').toString().slice(0, 500)
     const sablonRaw: string = (body?.sablon ?? '').toString().toLowerCase()
+    // Paçal (Proje) varyantları da geçerli — müşteriye giden linkte birim fiyat
+    // gizlensin diye '_pacal' eki KORUNMALI (eskiden strip ediliyordu → müşteri
+    // proje teklifini birim fiyatlı görüyordu).
+    const GECERLI_SABLONLAR = [
+      'standart', 'standart_pacal', 'trassir', 'trassir_pacal', 'karel', 'karel_pacal',
+    ]
     const sablon: string | null =
-      ['standart', 'trassir', 'karel'].includes(sablonRaw) ? sablonRaw : null
+      GECERLI_SABLONLAR.includes(sablonRaw) ? sablonRaw : null
     // Servis raporu icin sirket/format (zna varsayilan -> param eklenmez)
     const sirketRaw: string = (body?.sirket ?? '').toString().toLowerCase()
     const sirket: string | null = sirketRaw === 'anadolunet' ? 'anadolunet' : null
