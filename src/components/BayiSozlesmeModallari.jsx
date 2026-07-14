@@ -16,42 +16,7 @@ import {
   sozlesmeUret, sozlesmeGonderildiIsaretle, sozlesmeRevize, sozlesmeGuncelleDb,
   imzaliSozlesmeYukle, bayiDosyaUrl, bayiBildirim,
 } from '../services/bayiService'
-
-// Bayi sözleşmesi belge formatı — satış sözleşmesiyle aynı görsel dil:
-// her baskı sayfasında ZNA logosu + sözleşme no üstte, kaşe/imza şeridi altta.
-// İçerik düz metin olarak saklanır; format görüntüleme/yazdırma anında giydirilir.
-export const bayiSozlesmeYazdirHtml = (sozlesme, firma, { otomatikYazdir = false } = {}) => {
-  const metin = (sozlesme.uretilenIcerik || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><base href="${origin}/">
-<title>${sozlesme.sozlesmeNo || 'Bayi Sözleşmesi'}</title>
-<style>
-  body { margin: 0; color: #111; }
-  .bs-ust { position: fixed; top: 0; left: 0; right: 0; height: 58px; display: flex;
-    align-items: center; justify-content: space-between; padding: 6px 0 4px;
-    border-bottom: 1.5px solid #1E5AA8; background: #fff; }
-  .bs-ust img { height: 40px; object-fit: contain; }
-  .bs-ust .no { font: 700 10pt/1.25 'Times New Roman', serif; color: #1E5AA8; text-align: right; }
-  .bs-ust .no span { font-weight: 400; color: #555; }
-  .bs-alt { position: fixed; bottom: 0; left: 0; right: 0; height: 52px;
-    border-top: 1px solid #999; background: #fff; display: flex; justify-content: space-between;
-    padding-top: 4px; font: 600 8.5pt/1.3 'Times New Roman', serif; color: #444; }
-  .bs-icerik { margin: 74px 0 64px; }
-  pre { white-space: pre-wrap; font: 12pt/1.55 'Times New Roman', serif; margin: 0; }
-  @page { margin: 18mm 14mm; }
-</style></head><body>
-  <div class="bs-ust">
-    <img src="/logo.jpeg" alt="ZNA Teknoloji" />
-    <div class="no">${sozlesme.sozlesmeNo || ''}<br/><span>Yetkili Dış Bayilik ve Deal Register Sözleşmesi</span></div>
-  </div>
-  <div class="bs-alt">
-    <div>ZNA TEKNOLOJİ — Kaşe / İmza:</div>
-    <div style="text-align:right">BAYİ${firma?.firmaAdi ? ` (${firma.firmaAdi})` : ''} — Kaşe / İmza:</div>
-  </div>
-  <div class="bs-icerik"><pre>${metin}</pre></div>
-  ${otomatikYazdir ? '<scr' + 'ipt>window.onload = () => setTimeout(() => window.print(), 350)</scr' + 'ipt>' : ''}
-</body></html>`
-}
+import { bayiBelgeHtml, bayiSozlesmeYazdirSayfasi } from '../lib/bayiSozlesmeBelge'
 
 const bugun = () => new Date().toISOString().slice(0, 10)
 
@@ -291,7 +256,9 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
   const yazdir = () => {
     const w = window.open('', '_blank', 'width=900,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi.'); return }
-    w.document.write(bayiSozlesmeYazdirHtml(sozlesme, firma, { otomatikYazdir: true }))
+    w.document.write(bayiSozlesmeYazdirSayfasi(sozlesme.uretilenIcerik, {
+      sozlesmeNo: sozlesme.sozlesmeNo, origin: window.location.origin,
+    }))
     w.document.close()
   }
 
@@ -378,21 +345,15 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
           {sozlesme.revizyonSebebi && <span className="t-caption">Revizyon: {sozlesme.revizyonSebebi}</span>}
         </div>
 
-        {/* Belge görünümü — yazdırma çıktısıyla aynı görsel dil (logo + Times) */}
+        {/* Belge görünümü — yazdırma çıktısıyla birebir aynı biçim (başlık/künye/tablolar/imza) */}
         <div style={{
           maxHeight: '56vh', overflow: 'auto', background: '#fff',
           border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '20px 28px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1.5px solid #1E5AA8', paddingBottom: 6, marginBottom: 16 }}>
-            <img src="/logo.jpeg" alt="ZNA Teknoloji" style={{ height: 36, objectFit: 'contain' }} />
-            <div style={{ font: "700 12px/1.3 'Times New Roman', serif", color: '#1E5AA8', textAlign: 'right' }}>
-              {sozlesme.sozlesmeNo}<br />
-              <span style={{ fontWeight: 400, color: '#555' }}>Yetkili Dış Bayilik ve Deal Register Sözleşmesi</span>
-            </div>
-          </div>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', font: "400 13.5px/1.6 'Times New Roman', Georgia, serif", color: '#111' }}>
-            {sozlesme.uretilenIcerik || 'Sözleşme içeriği bulunamadı.'}
-          </pre>
+          {/* İçerik CRM'in kendi ürettiği metinden biçimlendirilir — güvenli */}
+          <div dangerouslySetInnerHTML={{
+            __html: bayiBelgeHtml(sozlesme.uretilenIcerik, { sozlesmeNo: sozlesme.sozlesmeNo }),
+          }} />
         </div>
 
         {/* Gönderim mini formu */}

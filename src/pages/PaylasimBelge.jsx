@@ -20,6 +20,7 @@ import TrassirCikti  from './teklifCikti/TrassirCikti'
 import KarelCikti    from './teklifCikti/KarelCikti'
 import ServisFormu   from './servisCikti/ServisFormu'
 import DemoTutanak   from './demoCikti/DemoTutanak'
+import { bayiBelgeHtml } from '../lib/bayiSozlesmeBelge'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -549,38 +550,10 @@ function BayiSozlesmeGorunum({ belge }) {
         </button>
       </div>
       <div style={{ maxWidth: 794, margin: '0 auto', padding: '24px 40px 48px' }}>
-        {/* Belge başlığı — baskıda her sayfada tekrarlanır */}
-        <style>{`
-          .bayi-belge-ust { display: flex; align-items: center; justify-content: space-between;
-            border-bottom: 1.5px solid #1E5AA8; padding-bottom: 6px; margin-bottom: 18px; }
-          .bayi-belge-alt { display: none; }
-          @media print {
-            .bayi-belge-ust { position: fixed; top: 0; left: 0; right: 0; background: #fff; margin: 0; }
-            .bayi-belge-alt { display: flex; position: fixed; bottom: 0; left: 0; right: 0;
-              justify-content: space-between; border-top: 1px solid #999; background: #fff;
-              padding-top: 4px; font: 600 8.5pt/1.3 'Times New Roman', serif; color: #444; }
-            .bayi-belge-icerik { margin: 70px 0 60px; }
-          }
-        `}</style>
-        <div className="bayi-belge-ust">
-          <img src="/logo.jpeg" alt="ZNA Teknoloji" style={{ height: 40, objectFit: 'contain' }} />
-          <div style={{ font: "700 10pt/1.25 'Times New Roman', serif", color: '#1E5AA8', textAlign: 'right' }}>
-            {belge.sozlesmeNo}<br />
-            <span style={{ fontWeight: 400, color: '#555' }}>Yetkili Dış Bayilik ve Deal Register Sözleşmesi</span>
-          </div>
-        </div>
-        <div className="bayi-belge-alt">
-          <div>ZNA TEKNOLOJİ — Kaşe / İmza:</div>
-          <div>BAYİ{belge.firmaAdi ? ` (${belge.firmaAdi})` : ''} — Kaşe / İmza:</div>
-        </div>
-        <div className="bayi-belge-icerik">
-          <pre style={{
-            whiteSpace: 'pre-wrap', margin: 0,
-            font: "400 12pt/1.55 'Times New Roman', serif", color: '#111',
-          }}>
-            {belge.uretilenIcerik || 'Sözleşme içeriği bulunamadı.'}
-          </pre>
-        </div>
+        {/* İçerik CRM'in kendi ürettiği metinden biçimlendirilir — güvenli */}
+        <div dangerouslySetInnerHTML={{
+          __html: bayiBelgeHtml(belge.uretilenIcerik, { sozlesmeNo: belge.sozlesmeNo }),
+        }} />
       </div>
     </div>
   )
