@@ -532,7 +532,9 @@ function Notlarim() {
                   'font', 'size', 'header',
                   'bold', 'italic', 'underline', 'strike',
                   'color', 'background',
-                  'list', 'bullet', 'indent',
+                  // 'bullet' ayrı format değil — quill v2'de 'list' değeri
+                  // olarak gelir; ayrı yazınca konsola register uyarısı düşer
+                  'list', 'indent',
                   'align',
                   'link', 'blockquote', 'code-block',
                 ]}
