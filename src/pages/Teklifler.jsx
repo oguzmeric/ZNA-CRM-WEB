@@ -400,10 +400,23 @@ export default function Teklifler() {
             ) : (
               <>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {/* tableLayout fixed + colgroup: uzun firma/konu adları satırı bozmaz, üç nokta ile kısalır */}
+                  <table style={{ width: '100%', minWidth: 1120, tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+                    <colgroup>
+                      <col style={{ width: 112 }} />               {/* Teklif No */}
+                      <col style={{ width: '24%' }} />             {/* Müşteri */}
+                      <col style={{ width: '26%' }} />             {/* Açıklama */}
+                      <col style={{ width: 148 }} />               {/* Fatura */}
+                      <col style={{ width: 104 }} />               {/* Düzenleme */}
+                      <col style={{ width: 118 }} />               {/* Hazırlayan */}
+                      <col style={{ width: 148 }} />               {/* Toplam */}
+                      <col style={{ width: 148 }} />               {/* Aksiyonlar */}
+                    </colgroup>
                     <thead>
                       <tr>
                         {[
+                          { l: 'Teklif No' },
+                          { l: 'Müşteri' },
                           { l: 'Teklif Açıklaması' },
                           { l: 'Fatura' },
                           { l: 'Düzenleme' },
@@ -437,14 +450,15 @@ export default function Teklifler() {
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
-                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', minWidth: 280 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            {/* Teklif No */}
+                            <td style={{ padding: '12px 10px 12px 14px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                 {hatirlatma && (
                                   <span
                                     title={hatirlatmaVadesiGeldi
                                       ? 'Takip zamanı geldi!'
                                       : `Hatırlatma: ${new Date(hatirlatma.hatirlatmaTarihi).toLocaleDateString('tr-TR')}`}
-                                    style={{ display: 'inline-flex', color: hatirlatmaVadesiGeldi ? 'var(--danger)' : 'var(--warning)' }}
+                                    style={{ display: 'inline-flex', flexShrink: 0, color: hatirlatmaVadesiGeldi ? 'var(--danger)' : 'var(--warning)' }}
                                   >
                                     {hatirlatmaVadesiGeldi
                                       ? <AlertCircle size={13} strokeWidth={1.5} />
@@ -453,23 +467,52 @@ export default function Teklifler() {
                                 )}
                                 <button
                                   onClick={() => navigate(`/teklifler/${t.id}`)}
+                                  title={t.teklifNo}
                                   style={{
                                     background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                                    font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
-                                    textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 360,
+                                    fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600,
+                                    color: 'var(--brand-primary)', whiteSpace: 'nowrap',
+                                    overflow: 'hidden', textOverflow: 'ellipsis',
                                   }}
                                 >
-                                  {t.konu || t.teklifNo}
+                                  {t.teklifNo || `#${t.id}`}
+                                </button>
+                              </div>
+                              {t.revizyon > 0 && (
+                                <div style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--warning)', marginTop: 2 }}>Rev.{t.revizyon}</div>
+                              )}
+                            </td>
+                            {/* Müşteri */}
+                            <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                              <div title={t.firmaAdi || ''} style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {t.firmaAdi || '—'}
+                              </div>
+                              {t.musteriYetkilisi && (
+                                <div style={{ font: '400 11.5px/15px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                                  {t.musteriYetkilisi}
+                                </div>
+                              )}
+                            </td>
+                            {/* Teklif Açıklaması */}
+                            <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <button
+                                  onClick={() => navigate(`/teklifler/${t.id}`)}
+                                  title={t.konu || ''}
+                                  style={{
+                                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                                    font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                                    textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                    minWidth: 0, flex: '0 1 auto',
+                                  }}
+                                >
+                                  {t.konu || '—'}
                                 </button>
                                 {tipBadge[t.teklifTipi] && (
-                                  <Badge tone={tipBadge[t.teklifTipi].tone}>{tipBadge[t.teklifTipi].isim}</Badge>
+                                  <span style={{ flexShrink: 0 }}>
+                                    <Badge tone={tipBadge[t.teklifTipi].tone}>{tipBadge[t.teklifTipi].isim}</Badge>
+                                  </span>
                                 )}
-                                {t.revizyon > 0 && (
-                                  <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--warning)' }}>Rev.{t.revizyon}</span>
-                                )}
-                              </div>
-                              <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 380 }}>
-                                {t.firmaAdi}{t.musteriYetkilisi ? ` · ${t.musteriYetkilisi}` : ''}
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
