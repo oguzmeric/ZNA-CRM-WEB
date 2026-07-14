@@ -64,7 +64,9 @@ const bosForm = {
   lokasyonId: '',
 }
 
-function aktNo(mevcut) { return `ACT-${String(mevcut.length + 1).padStart(4, '0')}` }
+// Görüşme numarası (ACT-NNNN) artık DB trigger'ı atar (mig 159) — web, mobil ve her
+// giriş noktası aynı otomatik seriyi paylaşsın + istemci sayacının yarış/duplikasyonu
+// bitsin diye. Formda sadece "otomatik atanacak" bilgisi gösterilir.
 
 function Gorusmeler() {
   const { kullanici, kullanicilar } = useAuth()
@@ -277,7 +279,7 @@ function Gorusmeler() {
         setGorusmeler(prev => prev.map(x => x.id === duzenleId ? g : x))
       } else {
         const yeni = await gorusmeEkle({
-          ...form, konu: sonKonu, aktNo: aktNo(gorusmeler),
+          ...form, konu: sonKonu,
           olusturanId: kullanici.id, olusturmaTarih: new Date().toISOString(),
         })
         if (!yeni) { toast.error('Görüşme kaydedilemedi.'); return }
@@ -509,7 +511,7 @@ function Gorusmeler() {
             <h2 className="t-h2" style={{ margin: 0 }}>
               {duzenleId ? 'Görüşmeyi Düzenle' : 'Yeni Görüşme'}
             </h2>
-            {!duzenleId && <CodeBadge>{aktNo(gorusmeler)}</CodeBadge>}
+            {!duzenleId && <CodeBadge>ACT- otomatik</CodeBadge>}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
