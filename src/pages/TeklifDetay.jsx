@@ -23,6 +23,7 @@ import {
 } from '../services/teklifService'
 import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
 import { bayiTeklifKontrol } from '../services/bayiService'
+import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
 import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
@@ -159,6 +160,13 @@ function TeklifDetay() {
   // Durum değiştirme modal (spec 10 durum) — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
   const [durumModalAcik, setDurumModalAcik] = useState(false)
   const [kopyalaModalAcik, setKopyalaModalAcik] = useState(false)
+  const [ciktiLoglari, setCiktiLoglari] = useState([])
+
+  // Çıktı geçmişi (kim/ne zaman yazdırdı-indirdi) — izlenebilirlik
+  useEffect(() => {
+    if (yeni) return
+    ciktiLoglariGetir(Number(id)).then(setCiktiLoglari).catch(() => {})
+  }, [id, yeni])
   // Satış Fiyatı Hesapla modal — satır index + alış/katsayı state
   const [hesaplaModal, setHesaplaModal] = useState(null) // null | { idx, alis, katsayi }
   // Toplu iskonto modal — tüm satırlara aynı % uygula
@@ -2277,6 +2285,27 @@ function TeklifDetay() {
       })()}
 
       {/* Durum değiştirme modalı — spec 10 durum */}
+      {/* Çıktı Geçmişi — dışarıda dolaşan bir çıktının kaynağını izlemek için */}
+      {!yeni && ciktiLoglari.length > 0 && (
+        <Card style={{ marginTop: 16 }}>
+          <p className="t-label" style={{ marginBottom: 8 }}>
+            Çıktı Geçmişi <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(son {ciktiLoglari.length})</span>
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {ciktiLoglari.map(l => (
+              <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-tertiary)' }}>
+                  {new Date(l.olusturmaTarih).toLocaleDateString('tr-TR')} {new Date(l.olusturmaTarih).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <strong style={{ color: 'var(--text-primary)' }}>{l.kullaniciAd || '—'}</strong>
+                <span>{ISLEM_ISIMLERI[l.islem] || l.islem}</span>
+                {l.taslak && <Badge tone="uyari">Taslak filigranlı</Badge>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {kopyalaModalAcik && (
         <KopyalaModal
           satirlar={form.satirlar}

@@ -4,6 +4,8 @@ import { Printer, FileDown, FileSpreadsheet, X } from 'lucide-react'
 import { teklifGetir } from '../services/teklifService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { musteriyeGonderilebilir, tekliftenDurum, TEKLIF_DURUM_META } from '../lib/teklifDurumlari'
+import { useAuth } from '../context/AuthContext'
+import { ciktiLogla } from '../services/teklifCiktiLogService'
 import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
@@ -28,6 +30,7 @@ const tipSecenekleri = [
 
 export default function TeklifYazdir() {
   const { id } = useParams()
+  const { kullanici } = useAuth()
   const [searchParams] = useSearchParams()
   const tipUrl = searchParams.get('tip') // form'dan kayıt yapılmadan iletilen tip
   const [teklif, setTeklif] = useState(null)
@@ -35,6 +38,18 @@ export default function TeklifYazdir() {
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
   const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
   const ciktiRef = useRef(null)
+  const sonLogRef = useRef(0) // buton + beforeprint çift log olmasın
+
+  // Ctrl+P / tarayıcı menüsünden yazdırma da loglansın (butonu atlayan yol)
+  useEffect(() => {
+    const f = () => {
+      if (!teklif || Date.now() - sonLogRef.current < 3000) return
+      sonLogRef.current = Date.now()
+      ciktiLogla({ teklif, kullanici, islem: 'yazdir', taslak: !musteriyeGonderilebilir(teklif) })
+    }
+    window.addEventListener('beforeprint', f)
+    return () => window.removeEventListener('beforeprint', f)
+  }, [teklif, kullanici])
 
   useEffect(() => {
     Promise.all([teklifGetir(id), stokUrunleriniGetir()]).then(([data, urunler]) => {
@@ -63,6 +78,12 @@ export default function TeklifYazdir() {
   // "TASLAK" filigranı basılır (müşteriye gönderim ayrıca kilitli — belge-paylas 403).
   const onaysiz = !musteriyeGonderilebilir(teklif)
   const durumIsim = TEKLIF_DURUM_META[tekliftenDurum(teklif)]?.isim || 'Taslak'
+
+  // Çıktı logu: kim/ne zaman/hangi yolla aldı (mig 158) — fire-and-forget
+  const logla = (islem) => {
+    sonLogRef.current = Date.now()
+    ciktiLogla({ teklif, kullanici, islem, taslak: onaysiz })
+  }
 
   const { baseTip, pacal } = tipCoz(seciliTip)
   const Cikti = ciktiMap[baseTip] || StandartCikti
@@ -237,14 +258,14 @@ export default function TeklifYazdir() {
             </span>
           )}
           <button
-            onClick={() => window.print()}
+            onClick={() => { logla('yazdir'); window.print() }}
             style={aksiyonBtn('#0176D3')}
             title="Yazdır / PDF"
           >
             <Printer size={14} strokeWidth={2} /> Yazdır
           </button>
           <button
-            onClick={pdfIndir}
+            onClick={() => { logla('pdf'); pdfIndir() }}
             disabled={pdfYukleniyor}
             style={{
               ...aksiyonBtn('#dc2626'),
@@ -256,7 +277,7 @@ export default function TeklifYazdir() {
             <FileDown size={14} strokeWidth={2} /> {pdfYukleniyor ? 'Hazırlanıyor…' : 'PDF'}
           </button>
           <button
-            onClick={excelIndir}
+            onClick={() => { logla('excel'); excelIndir() }}
             disabled={excelYukleniyor}
             style={{
               ...aksiyonBtn('#0d9f6e'),
@@ -285,11 +306,21 @@ export default function TeklifYazdir() {
         </div>
       </div>
 
-      {/* Filigran ciktiRef İÇİNDE: ekranda, tarayıcı yazdırmasında ve html2canvas
-          PDF indirmede aynı şekilde görünür (fixed olsaydı klonda kaybolurdu). */}
+      {/* Filigran + kimlik damgası ciktiRef İÇİNDE: ekranda, tarayıcı yazdırmasında
+          ve html2canvas PDF indirmede aynı şekilde görünür (fixed olsaydı klonda kaybolurdu). */}
       <div ref={ciktiRef} style={{ position: 'relative' }}>
         <Cikti teklif={teklif} pacal={pacal} />
         {onaysiz && <TaslakFiligran />}
+        {/* İzlenebilirlik damgası: dışarıda görülen çıktının kaynağı belli olsun (mig 158 loguyla eş) */}
+        <div style={{
+          maxWidth: 794, margin: '0 auto', padding: '2px 24px 10px',
+          font: '400 8.5pt/1.4 Arial, sans-serif', color: '#94a3b8',
+          textAlign: 'center', background: '#fff',
+        }}>
+          Bu çıktı {kullanici?.ad || '—'} tarafından {new Date().toLocaleDateString('tr-TR')}{' '}
+          {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}'te
+          ZNA CRM üzerinden alınmıştır.{onaysiz ? ' (TASLAK — yönetici onayı alınmamıştır)' : ''}
+        </div>
       </div>
     </>
   )
