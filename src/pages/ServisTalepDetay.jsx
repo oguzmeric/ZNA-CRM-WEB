@@ -14,6 +14,7 @@ import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
+import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
 import { uygunZamanFormat } from '../lib/uygunZamanFormat'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
@@ -639,6 +640,10 @@ export default function ServisTalepDetay() {
               </div>
             </div>
           </Card>
+
+          {/* Kullanılan malzemeler (Stok v2 Faz 4) — SN'li kullanım teknisyen
+              deposundan otomatik düşer */}
+          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo} />
 
           {/* Durum geçmişi */}
           <Card>

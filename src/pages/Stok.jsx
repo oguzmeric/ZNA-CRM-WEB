@@ -19,6 +19,7 @@ import {
   tumSeriNumaralariniGetir, modelKalemleriniGetir,
   URUN_TIPLERI, PARA_BIRIMLERI, alisFiyatGorebilir,
   dokumanYukle, dokumanImzaliUrl, DOKUMAN_MAX_MB,
+  aileleriGetir, aileEkle,
 } from '../services/stokService'
 import {
   kategorileriGetir, kategoriEkle, kategoriGuncelle,
@@ -71,6 +72,7 @@ const bosForm = {
   aktif: true,
   dokumanUrl: '',
   dokumanAd: '',
+  aileId: '',   // ürün ailesi (mig 153) — TC-C32XN ↔ TC-C32GN kardeşliği
 }
 
 const bosOpsiyonForm = {
@@ -125,6 +127,10 @@ function Stok() {
   const dokumanRef = useRef(null)
   const admin = kullanici?.rol === 'admin'
   const alisFiyatGoster = alisFiyatGorebilir(kullanici)
+
+  // Stok v2 Faz 4 — ürün aileleri (mig 153)
+  const [aileler, setAileler] = useState([])
+  const [yeniAileAd, setYeniAileAd] = useState(null)  // null = kapalı; string = inline form açık
 
   // Stok v2 Faz 2 — kategori-bazlı teknik özellikler (mig 152)
   const [ozellikTanimlar, setOzellikTanimlar] = useState([])   // tüm tanımlar (pasifler dahil — yönetim için)
@@ -198,8 +204,9 @@ function Stok() {
       aktifOpsiyonToplamlari(),
       kategorileriGetir(true),      // pasifler dahil — yönetim modalında lazım
       ozellikTanimlariGetir(true),  // pasifler dahil — yönetim modalında lazım
+      aileleriGetir(),
     ])
-      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData, ozData]) => {
+      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData, ozData, aileData]) => {
         setUrunler(urunData || [])
         setHareketler(hareketData || [])
         setKalemOzetleri(kalemOzet || new Map())
@@ -207,6 +214,7 @@ function Stok() {
         setOpsiyonToplam(opsMap || new Map())
         setKategoriler(katData || [])
         setOzellikTanimlar(ozData || [])
+        setAileler(aileData || [])
       })
       .catch(err => console.error('[Stok yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -487,6 +495,7 @@ function Stok() {
       aktif: u.aktif !== false,
       dokumanUrl: u.dokumanUrl || '',
       dokumanAd: u.dokumanAd || '',
+      aileId: u.aileId || '',
     })
     setKodModu('manuel')
     setDuzenleId(u.id)
@@ -1131,6 +1140,96 @@ function Stok() {
                 placeholder="örn. 24"
                 min="0"
               />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <Label>
+                Ürün ailesi
+                <span style={{ marginLeft: 6, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                  (aynı serinin modelleri birbirine bağlanır — örn. Trassir C32 Serisi)
+                </span>
+              </Label>
+              {yeniAileAd === null ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ flex: 1 }}>
+                    <CustomSelect
+                      value={form.aileId}
+                      onChange={(e) => setForm({ ...form, aileId: e.target.value ? Number(e.target.value) : '' })}
+                    >
+                      <option value="">— Aile yok —</option>
+                      {aileler.map(a => <option key={a.id} value={a.id}>{a.ad}</option>)}
+                    </CustomSelect>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => setYeniAileAd('')}>+ Yeni aile</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <Input
+                    value={yeniAileAd}
+                    onChange={(e) => setYeniAileAd(e.target.value)}
+                    placeholder="Aile adı — örn. Trassir C32 Kamera Serisi"
+                    autoFocus
+                    onKeyDown={async (e) => {
+                      if (e.key !== 'Enter' || !yeniAileAd.trim()) return
+                      try {
+                        const a = await aileEkle(yeniAileAd)
+                        setAileler(prev => [...prev, a].sort((x, y) => x.ad.localeCompare(y.ad, 'tr')))
+                        setForm(f => ({ ...f, aileId: a.id }))
+                        setYeniAileAd(null)
+                        toast.success('Aile oluşturuldu ve seçildi.')
+                      } catch (err) { toast.error(err?.message || 'Aile eklenemedi.') }
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    variant="primary" size="sm"
+                    disabled={!yeniAileAd.trim()}
+                    onClick={async () => {
+                      try {
+                        const a = await aileEkle(yeniAileAd)
+                        setAileler(prev => [...prev, a].sort((x, y) => x.ad.localeCompare(y.ad, 'tr')))
+                        setForm(f => ({ ...f, aileId: a.id }))
+                        setYeniAileAd(null)
+                        toast.success('Aile oluşturuldu ve seçildi.')
+                      } catch (err) { toast.error(err?.message || 'Aile eklenemedi.') }
+                    }}
+                  >
+                    Oluştur
+                  </Button>
+                  <Button variant="tertiary" size="sm" onClick={() => setYeniAileAd(null)}>Vazgeç</Button>
+                </div>
+              )}
+              {/* Kardeş modeller — aynı aileden diğer ürünler */}
+              {form.aileId && (() => {
+                const kardesler = urunler.filter(u => u.aileId === Number(form.aileId) && u.id !== duzenleId)
+                if (kardesler.length === 0) return null
+                return (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ font: '600 10px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                      Aynı aileden:
+                    </span>
+                    {kardesler.slice(0, 8).map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        title={u.stokAdi}
+                        onClick={() => duzenleAc(u)}
+                        style={{
+                          padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                          font: '500 11px/16px var(--font-sans)',
+                          background: 'var(--surface-sunken)', color: 'var(--text-secondary)',
+                          border: '1px solid var(--border-default)', cursor: 'pointer',
+                          maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {u.stokKodu} — {u.stokAdi}
+                      </button>
+                    ))}
+                    {kardesler.length > 8 && (
+                      <span className="t-caption" style={{ color: 'var(--text-tertiary)' }}>+{kardesler.length - 8} daha</span>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
             {!duzenleId ? (
               <div>

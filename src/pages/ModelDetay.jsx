@@ -11,13 +11,14 @@ import {
   modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
   snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
-  SN_SILME_SEBEPLERI,
+  SN_SILME_SEBEPLERI, aileleriGetir,
 } from '../services/stokService'
 import {
   snArizaliIsaretle, snArizasiCoz, kalemArizaGecmisi,
   rmaOlustur, rmaGeriDondu, kalemRMAGecmisi,
   snRezerveEt, snRezerveBirak,
   ARIZA_SEBEPLERI, RMA_SONUCLARI,
+  depolariGetir, snDepoAta, DEPO_TIPLERI,
 } from '../services/depoService'
 import { AlertOctagon, Wrench, ShoppingCart, XCircle } from 'lucide-react'
 import SnEkleModal from '../components/SnEkleModal'
@@ -103,6 +104,11 @@ function ModelDetay() {
   const [rmaDonusModal, setRmaDonusModal] = useState(null) // kalem — RMA dönüş işle modalı
   const [rezerveModal, setRezerveModal] = useState(null)  // kalem — rezerve teklif seç modalı
   const [etiketAcik, setEtiketAcik] = useState(false)     // toplu barkod etiket yazdırma
+  // Faz 4 (mig 153): depolar + aileler
+  const [depolar, setDepolar] = useState([])
+  const [depoModal, setDepoModal] = useState(null)        // kalem — depo atama modalı
+  const [tumUrunler, setTumUrunler] = useState([])        // kardeş modeller için
+  const [aileler, setAileler] = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -111,10 +117,15 @@ function ModelDetay() {
       stokHareketleriniGetir(),
       musterileriGetir(),
       supabase.from('kullanicilar').select('id, ad, unvan, rol').order('ad'),
+      depolariGetir(),
+      aileleriGetir(),
     ])
-      .then(([k, u, h, m, kullR]) => {
+      .then(([k, u, h, m, kullR, depoData, aileData]) => {
         setKalemler(k || [])
         setUrun((u || []).find(x => x.stokKodu === stokKodu) || null)
+        setTumUrunler(u || [])
+        setDepolar(depoData || [])
+        setAileler(aileData || [])
         setHareketler((h || []).filter(x => x.stokKodu === stokKodu))
         const map = new Map()
         ;(m || []).forEach(x => map.set(x.id, x))
@@ -337,6 +348,41 @@ function ModelDetay() {
             Stok kritik seviyenin altına düştü. Min. <span className="tabular-nums">{urun.minStok}</span> {urun.birim}.
           </Alert>
         )}
+
+        {/* Ürün ailesi — aynı serinin diğer modelleri (Faz 4, mig 153) */}
+        {urun?.aileId && (() => {
+          const aile = aileler.find(a => a.id === urun.aileId)
+          const kardesler = tumUrunler.filter(u => u.aileId === urun.aileId && u.stokKodu !== stokKodu)
+          if (kardesler.length === 0) return null
+          return (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+              <div style={{ font: '600 10px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
+                {aile?.ad || 'Ürün ailesi'} — aynı seriden modeller
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {kardesler.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    title={u.stokAdi}
+                    onClick={() => u.seriTakipli
+                      ? navigate(`/stok/model/${encodeURIComponent(u.stokKodu)}`)
+                      : navigate('/stok')}
+                    style={{
+                      padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                      font: '500 12px/16px var(--font-sans)',
+                      background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                      border: '1px solid var(--brand-primary)', cursor: 'pointer',
+                      maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {u.stokKodu} — {u.stokAdi}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </Card>
 
       {/* S/N takipli kalem listesi */}
@@ -398,7 +444,12 @@ function ModelDetay() {
                           )}
                         </TD>
                         <TD>
-                          {teknisyen ? (
+                          {k.durum === 'depoda' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)', font: '500 12px/16px var(--font-sans)' }}>
+                              <Box size={12} strokeWidth={1.5} />
+                              {depolar.find(d => d.id === k.depoId)?.ad || 'Merkez Depo'}
+                            </span>
+                          ) : teknisyen ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#a855f7', fontWeight: 500 }}>
                               <User size={12} strokeWidth={1.5} /> {teknisyen.ad}
                             </span>
@@ -476,6 +527,15 @@ function ModelDetay() {
                                 >
                                   <Wrench size={12} strokeWidth={1.5} />
                                 </button>
+                                {depolar.length > 1 && (
+                                  <button
+                                    onClick={() => setDepoModal(k)}
+                                    title="Depoya ata (Araç/Proje/Geçici…)"
+                                    style={miniBtn('#0ea5e9')}
+                                  >
+                                    <Box size={12} strokeWidth={1.5} />
+                                  </button>
+                                )}
                               </>
                             )}
                             {!k.silindi && k.durum === 'teknisyende' && (
@@ -866,7 +926,59 @@ function ModelDetay() {
           }}
         />
       )}
+
+      {depoModal && (
+        <DepoAtaModal
+          kalem={depoModal}
+          depolar={depolar}
+          onKapat={() => setDepoModal(null)}
+          onKaydet={async (depoId, depoAd) => {
+            try {
+              await snDepoAta(depoModal.id, depoId, depoAd)
+              toast.success(`${depoModal.seriNo} → ${depoAd}`)
+              setDepoModal(null); setYenile(y => y + 1)
+            } catch (e) { toast.error(e?.message || 'Depo atanamadı.') }
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// DepoAtaModal — SN'in fiziksel deposunu değiştir (Faz 4, mig 153)
+// ─────────────────────────────────────────────────────────────
+function DepoAtaModal({ kalem, depolar, onKapat, onKaydet }) {
+  const merkez = depolar.find(d => d.tip === 'merkez')
+  const [depoId, setDepoId] = useState(kalem.depoId ?? merkez?.id ?? '')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+  const tipIkon = (tip) => DEPO_TIPLERI.find(t => t.id === tip)?.ikon || '📦'
+  return (
+    <ModalKutu baslik="Depoya Ata" alt={kalem.seriNo} onKapat={onKapat}>
+      <FieldLabel>Depo</FieldLabel>
+      <select value={depoId} onChange={e => setDepoId(Number(e.target.value))} style={selectStil}>
+        {depolar.map(d => (
+          <option key={d.id} value={d.id}>{tipIkon(d.tip)} {d.ad}</option>
+        ))}
+      </select>
+      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+        Depo yalnız fiziksel konumu belirtir; SN'in durumu "Depoda" olarak kalır.
+      </p>
+      <ModalAksiyonlar onKapat={onKapat}>
+        <Button
+          variant="primary" size="sm"
+          disabled={kaydediliyor || !depoId}
+          onClick={async () => {
+            setKaydediliyor(true)
+            const d = depolar.find(x => x.id === Number(depoId))
+            await onKaydet(Number(depoId), d?.ad || '')
+            setKaydediliyor(false)
+          }}
+        >
+          {kaydediliyor ? 'Kaydediliyor…' : 'Ata'}
+        </Button>
+      </ModalAksiyonlar>
+    </ModalKutu>
   )
 }
 

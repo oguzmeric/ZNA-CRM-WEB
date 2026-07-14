@@ -481,3 +481,86 @@ export async function teknisyenAylikRapor(kullaniciId, ay /* YYYY-MM */) {
     },
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// DEPOLAR (mig 153) — gerçek depo kayıtları (Merkez/Araç/Proje/Servis/Geçici)
+// SN'in İŞ durumu stok_kalemleri.durum'da; depo_id yalnız 'depoda' iken
+// fiziksel konumu söyler. depo_id NULL = Merkez Depo.
+// ─────────────────────────────────────────────────────────────
+
+export const DEPO_TIPLERI = [
+  { id: 'merkez', ad: 'Merkez',       ikon: '🏢' },
+  { id: 'arac',   ad: 'Araç Deposu',  ikon: '🚐' },
+  { id: 'proje',  ad: 'Proje Deposu', ikon: '📐' },
+  { id: 'servis', ad: 'Teknik Servis',ikon: '🔧' },
+  { id: 'gecici', ad: 'Geçici Depo',  ikon: '📦' },
+]
+
+export const depolariGetir = async (pasiflerDahil = false) => {
+  let q = supabase.from('depolar').select('*').order('tip').order('ad')
+  if (!pasiflerDahil) q = q.eq('aktif', true)
+  const { data, error } = await q
+  if (error) { console.error('[depolariGetir]', error.message); return [] }
+  return data || []
+}
+
+export const depoEkle = async ({ ad, tip = 'gecici', aciklama = null }) => {
+  const { data, error } = await supabase
+    .from('depolar')
+    .insert({ ad: ad.trim(), tip, aciklama })
+    .select()
+    .single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Bu depo adı zaten var.')
+    throw new Error(error.message)
+  }
+  return data
+}
+
+export const depoGuncelle = async (id, alanlar) => {
+  const guncel = {}
+  if (alanlar.ad !== undefined) guncel.ad = alanlar.ad.trim()
+  if (alanlar.tip !== undefined) guncel.tip = alanlar.tip
+  if (alanlar.aktif !== undefined) guncel.aktif = alanlar.aktif
+  const { data, error } = await supabase
+    .from('depolar').update(guncel).eq('id', id).select().single()
+  if (error) throw new Error(error.message)
+  return data
+}
+
+// Bir SN'i depoya ata (fiziksel konum) — durum değişmez, audit yazılır
+export const snDepoAta = async (kalemId, depoId, depoAd) => {
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({ depo_id: depoId })
+    .eq('id', kalemId)
+    .select()
+    .single()
+  if (error) { console.error('[snDepoAta]', error.message); throw new Error(error.message) }
+  if (data?.stok_kodu) {
+    await hareket({
+      stokKodu: data.stok_kodu,
+      stokAdi: data.marka || data.model,
+      tip: 'transfer_giris',
+      aciklama: `SN depoya atandı: ${data.seri_no} → ${depoAd || (depoId ? 'depo #' + depoId : 'Merkez Depo')}`,
+    })
+  }
+  invalidatePrefix('stok')
+  return data
+}
+
+// Depo bazlı SN sayıları (yalnız durum='depoda' olanlar) — Map<depoId|null, adet>
+export const depoBazliSayilar = async () => {
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .select('depo_id')
+    .eq('durum', 'depoda')
+    .eq('silindi', false)
+  if (error) { console.error('[depoBazliSayilar]', error.message); return new Map() }
+  const map = new Map()
+  for (const r of data || []) {
+    const k = r.depo_id ?? null
+    map.set(k, (map.get(k) || 0) + 1)
+  }
+  return map
+}

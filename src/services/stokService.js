@@ -4,7 +4,7 @@ import { pagedFetch } from '../lib/pagedFetch'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
 // Liste kolonları — aciklama listede lazım değil (3762 ürün × free text = büyük)
-const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf, kategori_id, urun_tipi, barkod, tedarikci, tedarikci_urun_kodu, garanti_suresi_ay, para_birimi, aktif, dokuman_url, dokuman_ad'
+const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf, kategori_id, urun_tipi, barkod, tedarikci, tedarikci_urun_kodu, garanti_suresi_ay, para_birimi, aktif, dokuman_url, dokuman_ad, aile_id'
 
 // Ürün tipleri (mig 151) — spec: stoklu/stoksuz/sarf/hizmet/demirbaş
 export const URUN_TIPLERI = [
@@ -43,6 +43,8 @@ const KABUL_EDILEN_KOLONLAR = [
   // Stok v2 Faz 1 (mig 151)
   'kategoriId', 'urunTipi', 'barkod', 'tedarikci', 'tedarikciUrunKodu',
   'garantiSuresiAy', 'paraBirimi', 'aktif', 'dokumanUrl', 'dokumanAd',
+  // Faz 4 (mig 153)
+  'aileId',
 ]
 
 // Eski tablolarda olmayan kolonlar varsa fallback — burada da grupKodu dahil
@@ -64,6 +66,7 @@ const tumAlanlarTemizle = (urun) => {
   if (temiz.raf === '') temiz.raf = null
   // Stok v2 alanları: boş string → null (numeric/FK kolonlar 22P02 vermesin)
   if (temiz.kategoriId === '') temiz.kategoriId = null
+  if (temiz.aileId === '') temiz.aileId = null
   if (temiz.garantiSuresiAy === '') temiz.garantiSuresiAy = null
   if (temiz.barkod === '') temiz.barkod = null
   if (temiz.tedarikci === '') temiz.tedarikci = null
@@ -169,6 +172,27 @@ export const dokumanImzaliUrl = async (path, saniye = 300) => {
 export const dokumanSil = async (path) => {
   if (!path) return
   await supabase.storage.from('urun-dokuman').remove([path])
+}
+
+// ── Ürün aileleri (mig 153) — TC-C32XN ↔ TC-C32GN kardeşliği ──
+export const aileleriGetir = () => cached('stokAile:list', async () => {
+  const { data, error } = await supabase.from('stok_aileler').select('*').order('ad')
+  if (error) { console.error('[aileleriGetir]', error.message); return [] }
+  return arrayToCamel(data) ?? []
+})
+
+export const aileEkle = async (ad) => {
+  const { data, error } = await supabase
+    .from('stok_aileler')
+    .insert({ ad: ad.trim() })
+    .select()
+    .single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Bu aile adı zaten var.')
+    throw new Error(error.message)
+  }
+  invalidate('stokAile:list')
+  return toCamel(data)
 }
 
 export const katalogUrunleriniGetir = async () => {

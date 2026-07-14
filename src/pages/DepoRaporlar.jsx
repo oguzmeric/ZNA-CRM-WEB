@@ -1,13 +1,18 @@
 // Stok değeri (₺) + teknisyen aylık depo raporu + servisteki ürünler.
 import { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, Truck, PackageCheck, XCircle, Wallet } from 'lucide-react'
+import { BarChart3, Truck, PackageCheck, XCircle, Wallet, Warehouse, Plus, EyeOff, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { teknisyenAylikRapor, acikRMAlar, rmaGeriDondu, RMA_SONUCLARI } from '../services/depoService'
+import {
+  teknisyenAylikRapor, acikRMAlar, rmaGeriDondu, RMA_SONUCLARI,
+  depolariGetir, depoEkle, depoGuncelle, depoBazliSayilar, DEPO_TIPLERI,
+} from '../services/depoService'
 import { stokUrunleriniGetir, stokHareketleriniGetir, stokKalemOzetleriniGetir } from '../services/stokService'
-import { Button, Card, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge } from '../components/ui'
+import { Button, Card, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge, Input } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import CustomSelect from '../components/CustomSelect'
 
 const fmtTL = (n) => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -118,6 +123,9 @@ export default function DepoRaporlar() {
         <BarChart3 size={22} strokeWidth={1.5} />
         <h1 className="t-h2" style={{ margin: 0 }}>Depo Raporları</h1>
       </div>
+
+      {/* Depolar (Faz 4, mig 153) — Araç/Proje/Geçici depo yönetimi + doluluk */}
+      <DepolarKarti />
 
       {/* Stok Değeri (₺) — bakiye × alış fiyatı */}
       <Card style={{ marginBottom: 20 }}>
@@ -341,4 +349,125 @@ const selectStil = {
   padding: '8px 12px', borderRadius: 8,
   border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
   color: 'var(--text-primary)', fontSize: 14,
+}
+
+// ─────────────────────────────────────────────────────────────
+// DepolarKarti — depo listesi + doluluk + admin ekle/pasif (Faz 4)
+// ─────────────────────────────────────────────────────────────
+function DepolarKarti() {
+  const { toast } = useToast()
+  const { kullanici } = useAuth()
+  const admin = kullanici?.rol === 'admin'
+  const [depolar, setDepolar] = useState([])
+  const [sayilar, setSayilar] = useState(new Map())
+  const [yeniAd, setYeniAd] = useState('')
+  const [yeniTip, setYeniTip] = useState('arac')
+  const [ekleAcik, setEkleAcik] = useState(false)
+  const [mesgul, setMesgul] = useState(false)
+
+  const yukle = () => {
+    Promise.all([depolariGetir(true), depoBazliSayilar()])
+      .then(([d, s]) => { setDepolar(d || []); setSayilar(s || new Map()) })
+      .catch(e => console.error('[DepolarKarti]', e))
+  }
+  useEffect(() => { yukle() }, [])
+
+  const tipBilgi = (tip) => DEPO_TIPLERI.find(t => t.id === tip) || { ad: tip, ikon: '📦' }
+  // Merkez: depo_id NULL kayıtlar + merkez deposuna atananlar
+  const depoAdet = (d) => d.tip === 'merkez'
+    ? (sayilar.get(null) || 0) + (sayilar.get(d.id) || 0)
+    : (sayilar.get(d.id) || 0)
+
+  const ekle = async () => {
+    if (!yeniAd.trim()) return
+    setMesgul(true)
+    try {
+      await depoEkle({ ad: yeniAd, tip: yeniTip })
+      setYeniAd(''); setEkleAcik(false)
+      yukle()
+      toast.success('Depo eklendi.')
+    } catch (e) { toast.error(e?.message || 'Depo eklenemedi.') }
+    finally { setMesgul(false) }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <Warehouse size={16} strokeWidth={1.5} />
+        <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Depolar</h3>
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          SN'ler ModelDetay'daki 📦 butonuyla depoya atanır; atanmayanlar Merkez'de sayılır
+        </span>
+        {admin && !ekleAcik && (
+          <Button variant="secondary" size="sm" iconLeft={<Plus size={12} strokeWidth={1.5} />}
+            onClick={() => setEkleAcik(true)} style={{ marginLeft: 'auto' }}>
+            Depo ekle
+          </Button>
+        )}
+      </div>
+
+      {admin && ekleAcik && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <Input value={yeniAd} onChange={e => setYeniAd(e.target.value)}
+              placeholder="Depo adı — örn. Vito Araç Deposu"
+              onKeyDown={e => { if (e.key === 'Enter') ekle() }} autoFocus />
+          </div>
+          <div style={{ minWidth: 160 }}>
+            <CustomSelect value={yeniTip} onChange={e => setYeniTip(e.target.value)}>
+              {DEPO_TIPLERI.filter(t => t.id !== 'merkez').map(t => (
+                <option key={t.id} value={t.id}>{t.ikon} {t.ad}</option>
+              ))}
+            </CustomSelect>
+          </div>
+          <Button variant="primary" size="sm" onClick={ekle} disabled={mesgul || !yeniAd.trim()}>Ekle</Button>
+          <Button variant="tertiary" size="sm" onClick={() => setEkleAcik(false)}>Vazgeç</Button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {depolar.map(d => {
+          const t = tipBilgi(d.tip)
+          const pasif = d.aktif === false
+          return (
+            <div key={d.id} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-sunken)',
+              opacity: pasif ? 0.55 : 1, minWidth: 200,
+            }}>
+              <span style={{ fontSize: 20 }}>{t.ikon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  {d.ad} {pasif && <Badge tone="kayip">Pasif</Badge>}
+                </div>
+                <div style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  {t.ad} · <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>{depoAdet(d)}</span> SN
+                </div>
+              </div>
+              {admin && d.tip !== 'merkez' && (
+                <button
+                  aria-label={pasif ? 'Aktifleştir' : 'Pasife al'}
+                  title={pasif ? 'Aktifleştir' : 'Pasife al'}
+                  onClick={async () => {
+                    try { await depoGuncelle(d.id, { aktif: pasif }); yukle() }
+                    catch (e) { toast.error(e?.message || 'Değiştirilemedi.') }
+                  }}
+                  style={{
+                    width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    color: pasif ? 'var(--success)' : 'var(--danger)',
+                  }}
+                >
+                  {pasif ? <Eye size={12} strokeWidth={1.5} /> : <EyeOff size={12} strokeWidth={1.5} />}
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
 }
