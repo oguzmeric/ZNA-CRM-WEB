@@ -192,14 +192,17 @@ export const sozlesmeDegerleri = (firma, form, sozlesmeNo) => ({
 
 // ---------- Sözleşmeler ----------
 
+// toCamel shallow — join'lenen firma objesini elle camel'a çevir
+const firmaJoinCamel = (kayitlar) =>
+  kayitlar.map(k => k.firma ? { ...k, firma: toCamel(k.firma) } : k)
+
 export const bayiSozlesmeleriGetir = async () => {
   const { data, error } = await supabase
     .from('bayi_sozlesmeleri')
     .select('*, firma:firma_id (id, firma_adi, kod, bayi_statusu, vade_talebi, email, yetkili_eposta)')
     .order('id', { ascending: false })
-  const kayitlar = arrayToCamel(data || [])
   if (error) console.error('bayiSozlesmeleriGetir hata:', error.message)
-  return kayitlar
+  return firmaJoinCamel(arrayToCamel(data || []))
 }
 
 export const firmaninSozlesmeleri = async (firmaId) => {
@@ -555,7 +558,7 @@ export const eksikEvrakKayitlari = async () => {
     .neq('durum', 'onaylandi')
     .order('firma_id')
   if (error) { console.error('eksikEvrakKayitlari hata:', error.message); return [] }
-  return arrayToCamel(data || [])
+  return firmaJoinCamel(arrayToCamel(data || []))
 }
 
 // Onay Bekleyenler sekmesi — tüm onay satırları (firma bilgisiyle)
@@ -564,7 +567,7 @@ export const onayKayitlariTumu = async () => {
     .select('*, firma:firma_id (id, firma_adi, kod, bayi_statusu, vade_talebi)')
     .order('firma_id')
   if (error) { console.error('onayKayitlariTumu hata:', error.message); return [] }
-  return arrayToCamel(data || [])
+  return firmaJoinCamel(arrayToCamel(data || []))
 }
 
 // ---------- Statü türetme (süreç ilerledikçe otomatik) ----------
