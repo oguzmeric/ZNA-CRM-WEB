@@ -44,7 +44,7 @@ export function YeniSozlesmeWizard({ firmalar, secilenFirmaId, sablonlar, kullan
     statuMetni: SOZLESME_VARSAYILANLARI.statuMetni,
     odemeTipi: 'pesin', vadeGunu: '', krediLimiti: '',
     teminatIstegi: false, teminatTipi: '',
-    imzaYetkilisi: kullanici?.ad || '',
+    imzaYetkilisi: 'Ali Uğur Aktepe', // sözleşme metnindeki ZNA imza yetkilisi
   })
 
   const bayiSablonlari = useMemo(() => (sablonlar || []).filter(s => s.tip === 'bayi' && s.aktif), [sablonlar])
