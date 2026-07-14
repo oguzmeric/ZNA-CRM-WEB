@@ -29,6 +29,7 @@ import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import { stokUrunleriniGetir } from '../services/stokService'
+import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
 import HizliMusteriEkleModal from '../components/HizliMusteriEkleModal'
 import CustomSelect from '../components/CustomSelect'
@@ -1484,18 +1485,14 @@ function TeklifDetay() {
                 return (
                   <SortableSatirTR key={`satir-${index}`} index={index}>
                     <TD style={{ padding: '10px 8px' }}>
-                      <CustomSelect
+                      {/* Akıllı seçici (Faz 3): "2 mp 2.8 dome" gibi özellik bazlı
+                          arama + stok durumu; model/marka/kod araması da çalışır */}
+                      <AkilliUrunSecici
+                        urunler={stokUrunler}
                         value={satir.stokKodu}
-                        selectedDisplay={(v) => v || 'Stok seç…'}
-                        panelMinWidth={520}
-                        onChange={(e) => stokSec(index, e.target.value)}
-                      >
-                        <option value="">Stok seç…</option>
-                        {stokUrunler.map((u) => (
-                          <option key={u.id} value={u.stokKodu}>{u.stokKodu} — {u.stokAdi}</option>
-                        ))}
-                        <option value="__yeni__">+ Yeni Stok Ürünü…</option>
-                      </CustomSelect>
+                        onSec={(u) => stokSec(index, u.stokKodu)}
+                        onYeni={() => stokSec(index, '__yeni__')}
+                      />
                     </TD>
                     <TD style={{ verticalAlign: 'top', padding: '10px 8px' }}>
                       {/* fieldSizing: content → uzun ürün adında kutu kendiliğinden

@@ -11,6 +11,7 @@ export const trNormalize = (s = '') =>
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
     .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/İ/gi, 'i').replace(/I/g, 'i')
+    .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u')  // zekâ, kâr…
 
 // Birden çok alanı tek string'de arar. Tokenize etmeden ortak substring arar,
 // ayrıca boşluk duyarsız alternatif: "elitgarden" → "elit garden" bulunur.

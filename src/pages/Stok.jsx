@@ -33,6 +33,7 @@ import { AlertTriangle as AlertIkon } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { trContains } from '../lib/trSearch'
+import { sorguCozumle, urunEslesiyorMu } from '../lib/stokAkilliArama'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, EmptyState, Modal, KPICard, Alert,
@@ -140,6 +141,17 @@ function Stok() {
     }
     setOzellikFiltre({})  // dal değişince eski özellik filtreleri sıfırlansın
   }, [filtreKatId])
+
+  // Akıllı arama özellik filtresi çıkarırsa da değer map'i gerekir (lazy)
+  useEffect(() => {
+    if (urunOzellikMap || arama.trim().length < 2) return
+    const c = sorguCozumle(arama, kategoriler, ozellikTanimlar)
+    if (Object.keys(c.ozellikFiltre).length > 0) {
+      tumUrunOzellikleriGetir()
+        .then(m => setUrunOzellikMap(m || new Map()))
+        .catch(() => setUrunOzellikMap(new Map()))
+    }
+  }, [arama])
 
   // id → tam yol map'i ("Güvenlik Sistemleri › Kamera Sistemleri › IP Kamera")
   // Arama ve tabloda her satırda tekrar hesaplamamak için tek sefer kurulur.
@@ -685,6 +697,11 @@ function Stok() {
   // Arama: normal metin + SN eşleşmesi (SN girildiğinde ilgili ürünü göster)
   const aramaSN = arama.trim().toLowerCase()
   const snEslesenKod = aramaSN.length >= 3 ? globalSN.get(aramaSN) : null
+  // Akıllı arama (Faz 3): "2 mp 2.8 dome kamera" → kategori + özellik filtreleri
+  const aramaCozum = arama.trim().length >= 2
+    ? sorguCozumle(arama, kategoriler, ozellikTanimlar)
+    : null
+  const akilliAktif = !!aramaCozum?.akilli
   // Kategori filtresi: seçilen dal + tüm alt dalları (örn. "Kamera Sistemleri"
   // seçilince IP/Analog/Termal/PTZ kameralar da gelir)
   const filtreKatSet = filtreKatId ? altKategoriIdleri(kategoriler, Number(filtreKatId)) : null
@@ -718,10 +735,13 @@ function Stok() {
         if (sn.includes(aramaSN) && u.stokKodu === kod) return true
       }
     }
-    return trContains(
-      `${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''} ${u.barkod || ''} ${u.tedarikciUrunKodu || ''} ${katYol.get(u.kategoriId) || ''}`,
-      arama,
+    const metinAra = (urun, sorgu) => trContains(
+      `${urun.stokKodu || ''} ${urun.stokAdi || ''} ${urun.marka || ''} ${urun.grupKodu || ''} ${urun.barkod || ''} ${urun.tedarikciUrunKodu || ''} ${katYol.get(urun.kategoriId) || ''}`,
+      sorgu,
     )
+    // Akıllı arama: "2 mp 2.8 dome kamera" → kategori dalı + özellik eşitliği + kalan metin
+    if (akilliAktif) return urunEslesiyorMu(u, aramaCozum, kategoriler, urunOzellikMap, metinAra)
+    return metinAra(u, arama)
   })
 
   const toplamSayfa = Math.max(1, Math.ceil(gorunenUrunler.length / sayfaBoyutu))
@@ -802,11 +822,34 @@ function Stok() {
           <SearchInput
             value={arama}
             onChange={(e) => setArama(e.target.value)}
-            placeholder="Stok kodu, adı, marka, barkod, kategori veya SN ara…"
+            placeholder='Akıllı ara: "2 mp 2.8 dome kamera", model, marka, barkod, SN…'
           />
           {snEslesenKod && (
             <div style={{ fontSize: 11, color: 'var(--accent-primary)', marginTop: 4 }}>
               🔎 SN eşleşti — {snEslesenKod}
+            </div>
+          )}
+          {akilliAktif && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ font: '600 10px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                Algılandı:
+              </span>
+              {aramaCozum.rozetler.map((r, i) => (
+                <span key={i} style={{
+                  padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                  font: '500 11px/16px var(--font-sans)',
+                  background: r.tip === 'kategori' ? 'var(--brand-primary)' : 'var(--brand-primary-soft)',
+                  color: r.tip === 'kategori' ? '#fff' : 'var(--brand-primary)',
+                  border: '1px solid var(--brand-primary)',
+                }}>
+                  {r.etiket}
+                </span>
+              ))}
+              {aramaCozum.kalan && (
+                <span style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  + "{aramaCozum.kalan}" metni
+                </span>
+              )}
             </div>
           )}
         </div>

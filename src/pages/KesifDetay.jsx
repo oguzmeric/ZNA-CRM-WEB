@@ -19,6 +19,7 @@ import {
   KESIF_ONCELIKLERI, KESIF_TURLERI,
 } from '../services/kesifService'
 import { stokUrunleriniGetir } from '../services/stokService'
+import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import { gorevEkle } from '../services/gorevService'
 import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
 import CustomSelect from '../components/CustomSelect'
@@ -586,11 +587,13 @@ export default function KesifDetay() {
           </div>
           <div>
             <Label>Stok (ops.)</Label>
-            <CustomSelect value={yeniKalem.stokKodu} selectedDisplay={(v) => v || '—'} panelMinWidth={420}
-              onChange={e => stokSec(e.target.value)}>
-              <option value="">Stoktan seç…</option>
-              {stokUrunler.map(u => <option key={u.id} value={u.stokKodu}>{u.stokKodu} — {u.stokAdi}</option>)}
-            </CustomSelect>
+            {/* Akıllı seçici (Faz 3): "2 mp 2.8 dome" özellik bazlı arama + stok durumu */}
+            <AkilliUrunSecici
+              urunler={stokUrunler}
+              value={yeniKalem.stokKodu}
+              placeholder="Stoktan seç…"
+              onSec={(u) => stokSec(u.stokKodu)}
+            />
           </div>
           <div>
             <Label required>Ürün adı</Label>

@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext'
 import { Button, Input, Textarea, Label } from './ui'
 import CustomSelect from './CustomSelect'
 import { stokUrunleriniGetir } from '../services/stokService'
+import AkilliUrunSecici from './AkilliUrunSecici'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import {
   onSiparisTumunuKaydet, kalemleriGetir, onSiparisSil,
@@ -28,8 +29,7 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
   const { toast } = useToast()
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [stokUrunleri, setStokUrunleri] = useState([])
-  const [stokAramaAcik, setStokAramaAcik] = useState(null) // idx | null
-  const [stokQuery, setStokQuery] = useState('')
+  // Eski satır-içi stok arama paneli AkilliUrunSecici'ye taşındı (Faz 3)
   const [musteriKisileri, setMusteriKisileri] = useState([])
   const [ilgiliManuel, setIlgiliManuel] = useState(false)
 
@@ -73,15 +73,6 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
     }
   }, [gorusme?.musteriId])
 
-  const filtreliStok = useMemo(() => {
-    if (!stokQuery.trim()) return stokUrunleri.slice(0, 20)
-    const q = stokQuery.toLocaleLowerCase('tr').trim()
-    return stokUrunleri.filter(u => {
-      const alan = `${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.kategori || ''}`.toLocaleLowerCase('tr')
-      return alan.includes(q)
-    }).slice(0, 30)
-  }, [stokUrunleri, stokQuery])
-
   const kalemGuncelle = (idx, alan, deger) => {
     const yeni = [...kalemler]
     yeni[idx] = { ...yeni[idx], [alan]: deger }
@@ -107,8 +98,6 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
       birim: urun.birim || 'Adet',
     }
     setKalemler(yeni)
-    setStokAramaAcik(null)
-    setStokQuery('')
   }
 
   const stokKaldir = (idx) => {
@@ -368,79 +357,25 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
                   </div>
                 ) : (
                   <>
+                    {/* Akıllı seçici (Faz 3): "2 mp 2.8 dome kamera" özellik bazlı
+                        arama + stok durumu; manuel serbest metin de mümkün */}
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <Button
-                        variant="secondary" size="sm"
-                        iconLeft={<Package size={13} />}
-                        onClick={() => { setStokAramaAcik(idx); setStokQuery('') }}
-                      >
-                        Stoktan Seç
-                      </Button>
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <AkilliUrunSecici
+                          urunler={stokUrunleri}
+                          value=""
+                          placeholder="Stoktan seç — akıllı arama…"
+                          onSec={(u) => stokSec(idx, u)}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <Input
                           value={k.urunAd}
                           onChange={e => kalemGuncelle(idx, 'urunAd', e.target.value)}
-                          placeholder="Manuel ürün adı yaz..."
+                          placeholder="veya manuel ürün adı yaz…"
                         />
                       </div>
                     </div>
-
-                    {/* Stok arama açıksa */}
-                    {stokAramaAcik === idx && (
-                      <div style={{
-                        border: '1px solid var(--border-default)', borderRadius: 8, padding: 8,
-                        background: 'var(--surface-card)', marginBottom: 8,
-                      }}>
-                        <div style={{ position: 'relative', marginBottom: 8 }}>
-                          <Search size={13} style={{
-                            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                            color: 'var(--text-tertiary)',
-                          }} />
-                          <Input
-                            autoFocus
-                            value={stokQuery}
-                            onChange={e => setStokQuery(e.target.value)}
-                            placeholder="Ürün kodu, adı, marka..."
-                            style={{ paddingLeft: 32 }}
-                          />
-                        </div>
-                        <div style={{ maxHeight: 200, overflow: 'auto' }}>
-                          {filtreliStok.length === 0 ? (
-                            <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
-                              Sonuç yok
-                            </div>
-                          ) : filtreliStok.map(u => (
-                            <button key={u.id}
-                              onClick={() => stokSec(idx, u)}
-                              style={{
-                                display: 'block', width: '100%', textAlign: 'left',
-                                background: 'none', border: 'none', color: 'var(--text-primary)',
-                                padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
-                                borderBottom: '1px solid var(--border-subtle)',
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                            >
-                              <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--brand)', fontWeight: 700 }}>
-                                {u.stokKodu}
-                              </div>
-                              <div style={{ fontSize: 13 }}>{u.stokAdi}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                                {u.marka || '—'} · Stok: {u.stokMiktari || 0} {u.birim || 'adet'}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                          <button
-                            onClick={() => setStokAramaAcik(null)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 11 }}
-                          >
-                            Kapat
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
 
