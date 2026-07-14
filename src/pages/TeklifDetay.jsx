@@ -69,6 +69,35 @@ const bosUrun = {
   kdv: 20,
 }
 
+// Kopyalama fiyat ayarı — saf fonksiyon (modal önizlemesi + kopyalama aynı hesabı kullanır)
+const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+const kopyaSatirlariHesapla = (satirlar, { mod, yuzde }) =>
+  (satirlar || []).map(s => {
+    const yeni = { ...s, id: crypto.randomUUID() }
+    const oran = 1 + (Number(yuzde) || 0) / 100
+    if (mod === 'zam') {
+      yeni.birimFiyat = r2((Number(s.birimFiyat) || 0) * oran)
+    } else if (mod === 'kar' && Number(s.alisFiyat) > 0) {
+      yeni.birimFiyat = r2(Number(s.alisFiyat) * oran)
+      yeni.katsayi = r2(oran) // Alış Katsayısı modalı da yeni oranı hatırlasın
+    }
+    return yeni
+  })
+
+// Satırlardan genel toplam (TeklifDetay.toplamHesapla ile aynı formül)
+const satirlardanGenelToplam = (satirlar, genelIskonto) => {
+  const araToplam = (satirlar || []).reduce((sum, s) => {
+    const ara = (Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0)
+    return sum + ara - ara * ((Number(s.iskonto) || 0) / 100)
+  }, 0)
+  const kdvToplam = (satirlar || []).reduce((sum, s) => {
+    const ara = (Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0)
+    const net = ara - ara * ((Number(s.iskonto) || 0) / 100)
+    return sum + net * ((Number(s.kdv) || 0) / 100)
+  }, 0)
+  return araToplam - araToplam * ((Number(genelIskonto) || 0) / 100) + kdvToplam
+}
+
 const gecerlilikSecenekleri = [
   { label: 'Aynı gün', gun: 0 },
   { label: '7 gün', gun: 7 },
@@ -129,6 +158,7 @@ function TeklifDetay() {
   const [musteriKisileri, setMusteriKisileri] = useState([])
   // Durum değiştirme modal (spec 10 durum) — Rules of Hooks: early return'ün ÜSTÜNDE olmalı
   const [durumModalAcik, setDurumModalAcik] = useState(false)
+  const [kopyalaModalAcik, setKopyalaModalAcik] = useState(false)
   // Satış Fiyatı Hesapla modal — satır index + alış/katsayı state
   const [hesaplaModal, setHesaplaModal] = useState(null) // null | { idx, alis, katsayi }
   // Toplu iskonto modal — tüm satırlara aynı % uygula
@@ -170,15 +200,27 @@ function TeklifDetay() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // useState initializer: sadece MOUNT'ta bir kez okunur, sonraki render'larda null olsa da persist eder.
-  // Önceki const-based versiyonda her render'da yeniden hesaplanıyor + localStorage boşaltıldığı için
-  // useEffect çalıştığında null olup form pre-fill'i kaçıyordu.
+  // Ön doldurum (kopyala / görüşmeden-keşiften teklif) — BUG GEÇMİŞİ:
+  // Okurken localStorage'ı hemen silmek, bileşen auth/route akışında yeniden
+  // mount olduğunda veriyi kaybettiriyordu (LS tüketilmiş, form boş — "kopyala
+  // hiçbir veriyi açmıyor"). Kural: OKURKEN SİLME; form'a uygulandıktan sonra
+  // sil + remount'lar için window yedeği tut. 10 dk'dan eski kayıt yok sayılır
+  // (kopyalanıp yarıda bırakılan veri günler sonra boş teklifi doldurmasın).
   const [onDoldurum] = useState(() => {
     if (!yeni) return null
     try {
       const d = JSON.parse(localStorage.getItem('teklif_on_doldurum') || 'null')
-      if (d) localStorage.removeItem('teklif_on_doldurum')
-      return d
+      if (d) {
+        if (d.__ts && Date.now() - d.__ts > 10 * 60 * 1000) {
+          localStorage.removeItem('teklif_on_doldurum')
+          return null
+        }
+        return d
+      }
+      // Aynı oturumda remount yedeği (yalnız tazeyse — eski kopya boş teklifi doldurmasın)
+      const w = window.__teklifOnDoldurum
+      if (w?.__ts && Date.now() - w.__ts < 10 * 60 * 1000) return w
+      return null
     } catch { return null }
   })
 
@@ -240,6 +282,11 @@ function TeklifDetay() {
         musteriTalepNo: onDoldurum?.musteriTalepNo || '',
         teklifTipi: onDoldurum?.teklifTipi || 'standart',
       })
+      // Ön doldurum form'a UYGULANDI — şimdi temizle; remount olursa window yedeği taşır
+      if (onDoldurum) {
+        window.__teklifOnDoldurum = { ...onDoldurum, __ts: onDoldurum.__ts || Date.now() }
+        try { localStorage.removeItem('teklif_on_doldurum') } catch { /* sessiz */ }
+      }
     } else if (mevcutTeklif) {
       setForm({
         teklifNo: mevcutTeklif.teklifNo || '',
@@ -661,14 +708,20 @@ function TeklifDetay() {
   // Mevcut teklifi kopyalayarak yeni teklif başlat. localStorage ön-doldurum
   // mekanizması useState initializer'da (sadece MOUNT'ta) okunduğu için aynı
   // component'te route param değişimi yetmez — full reload ile temiz mount alırız.
-  const teklifKopyala = () => {
+  // Kopyala — fiyat ayarıyla (KopyalaModal'dan çağrılır).
+  // ayar: { mod: 'birebir' | 'zam' | 'kar', yuzde: number }
+  //   zam → tüm birim fiyatlara % uygula (negatif = indirim)
+  //   kar → alış fiyatı olan satırlarda birimFiyat = alışFiyat × (1 + %/100)
+  const teklifKopyala = (ayar = { mod: 'birebir', yuzde: 0 }) => {
+    const satirlar = kopyaSatirlariHesapla(form.satirlar, ayar)
     localStorage.setItem('teklif_on_doldurum', JSON.stringify({
+      __ts: Date.now(),
       musteriId: form.musteriId,
       firmaAdi: form.firmaAdi,
       musteriYetkilisi: form.musteriYetkilisi,
       konu: form.konu,
       aciklama: form.aciklama,
-      satirlar: (form.satirlar || []).map(s => ({ ...s, id: crypto.randomUUID() })),
+      satirlar,
       teklifTipi: form.teklifTipi,
       paraBirimi: form.paraBirimi,
       odemeSecenegi: form.odemeSecenegi,
@@ -913,7 +966,7 @@ function TeklifDetay() {
             <Button
               variant="secondary"
               iconLeft={<Copy size={14} strokeWidth={1.5} />}
-              onClick={teklifKopyala}
+              onClick={() => setKopyalaModalAcik(true)}
               title="Bu teklifin satırları ve bilgileriyle yeni bir teklif başlat"
             >
               Kopyala
@@ -2218,6 +2271,16 @@ function TeklifDetay() {
       })()}
 
       {/* Durum değiştirme modalı — spec 10 durum */}
+      {kopyalaModalAcik && (
+        <KopyalaModal
+          satirlar={form.satirlar}
+          genelIskonto={form.genelIskonto}
+          paraSembol={paraBirimi?.sembol || ''}
+          onKapat={() => setKopyalaModalAcik(false)}
+          onKopyala={(ayar) => { setKopyalaModalAcik(false); teklifKopyala(ayar) }}
+        />
+      )}
+
       {durumModalAcik && (
         <div
           onClick={() => setDurumModalAcik(false)}
@@ -2317,6 +2380,75 @@ function TeklifDetay() {
 
 // Siparis Onay Notu — kabul edilmis ve onay bekliyor durumdaki tekliflerde gozukur.
 // Personel onaylayacak kisiye 1000 karaktere kadar not birakabilir.
+// Kopyalama seçenekleri — birebir / satış fiyatına % / alış üzerinden kâr %
+// Canlı önizleme: mevcut genel toplam → yeni genel toplam.
+function KopyalaModal({ satirlar, genelIskonto, paraSembol, onKapat, onKopyala }) {
+  const [mod, setMod] = useState('birebir')
+  const [yuzde, setYuzde] = useState(20)
+
+  const alisliSatirSayisi = (satirlar || []).filter(s => Number(s.alisFiyat) > 0).length
+  const mevcutToplam = satirlardanGenelToplam(satirlar, genelIskonto)
+  const yeniSatirlar = kopyaSatirlariHesapla(satirlar, { mod, yuzde })
+  const yeniToplam = satirlardanGenelToplam(yeniSatirlar, genelIskonto)
+  const fmt = (n) => `${paraSembol}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+
+  const SECENEKLER = [
+    ['birebir', 'Birebir kopyala', 'Fiyatlar aynen taşınır.'],
+    ['zam', 'Satış fiyatlarına % uygula', 'Tüm birim fiyatlar girilen oranda artar (eksi değer = indirim).'],
+    ['kar', 'Alış fiyatı üzerinden kâr % uygula',
+      alisliSatirSayisi
+        ? `Birim fiyat = alış fiyatı × (1 + %). ${alisliSatirSayisi}/${(satirlar || []).length} satırda alış fiyatı var; olmayanlar aynı kalır.`
+        : 'Bu teklifin satırlarında alış fiyatı kayıtlı değil — bu mod fiyatları değiştirmez.'],
+  ]
+
+  return (
+    <Modal open onClose={onKapat} title="Teklifi Kopyala" width={520}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {SECENEKLER.map(([id, baslik, aciklama]) => (
+          <label key={id} style={{
+            display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer',
+            border: `1px solid ${mod === id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+            background: mod === id ? 'var(--brand-primary-soft)' : 'transparent',
+            borderRadius: 'var(--radius-md)', padding: '10px 12px',
+          }}>
+            <input type="radio" name="kopya-mod" checked={mod === id} onChange={() => setMod(id)}
+              style={{ marginTop: 2, accentColor: 'var(--brand-primary)' }} />
+            <span>
+              <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{baslik}</span>
+              <br />
+              <span className="t-caption">{aciklama}</span>
+            </span>
+          </label>
+        ))}
+
+        {mod !== 'birebir' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 140 }}>
+              <Label>{mod === 'zam' ? 'Artış oranı (%)' : 'Kâr oranı (%)'}</Label>
+              <Input type="number" step="0.5" className="sayi-sade" value={yuzde}
+                onChange={e => setYuzde(e.target.value)} placeholder="20" />
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '10px 12px', font: '400 12.5px/19px var(--font-sans)', color: 'var(--text-secondary)' }}>
+              Genel toplam (KDV dahil):<br />
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(mevcutToplam)}</span>
+              {' → '}
+              <strong style={{ color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(yeniToplam)}</strong>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <Button variant="ghost" onClick={onKapat}>Vazgeç</Button>
+          <Button variant="primary" iconLeft={<Copy size={14} strokeWidth={1.5} />}
+            onClick={() => onKopyala({ mod, yuzde: Number(yuzde) || 0 })}>
+            Kopyala ve Aç
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function SiparisOnayNotuKart({ teklifId, mevcut, onKaydedildi }) {
   const [not, setNot] = useState(mevcut || '')
   const [kaydediliyor, setKaydediliyor] = useState(false)
