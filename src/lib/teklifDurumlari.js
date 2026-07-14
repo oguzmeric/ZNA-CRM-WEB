@@ -81,6 +81,44 @@ export const musteriyeGonderilebilir = (teklif) =>
   GONDERIME_UYGUN_DURUMLAR.includes(tekliftenDurum(teklif))
 
 /**
+ * Paylaşım kanıtından (link gönderildi / müşteri açtı) durumu İLERİ sarma.
+ *
+ * Neden: "Müşteriye Gönder" akışı durumu `musteriye_gonderildi`'ye çeker ama bu
+ * yalnız modal callback'i çalışınca olur. Eskiden gönderilmiş (callback yokken)
+ * ya da callback'i başarısız olmuş teklifler `yon_onayladi`'da takılı kalıp
+ * stepper'da "Müşteriye Gönderim"i işaretlemiyordu — oysa müşteri linki açmış.
+ * Elimizde paylaşım linki kaydı varsa teklif KESİNLİKLE gönderilmiştir; müşteri
+ * açtıysa artık kararı bekleniyordur. Durumu buna göre bir defalık ileri sarar.
+ *
+ * Yalnız İLERİ yönde ve yalnız "gönderim öncesi/gönderim" durumlarından çalışır;
+ * müşteri kararı verilmiş / revizyon / terminal durumlara DOKUNMAZ (revizyon
+ * bilinçli bir geri-adımdır, paylaşım linki iptal edilmeden durursa geçersiz).
+ *
+ * @param mevcutDurum — TEKLIF_DURUM anahtarı (tekliftenDurum çıktısı)
+ * @param paylasim — paylasim_durum_ozet RPC objesi (camelCase) ya da null
+ * @returns {string|null} yeni durum (değişiklik gerekiyorsa) ya da null
+ */
+export function paylasimdanIleriDurum(mevcutDurum, paylasim) {
+  if (!paylasim) return null
+  // Link kaydı varsa gönderilmiştir; ilkAcilma varsa müşteri açmıştır.
+  const acildi = !!(paylasim.ilkAcilma || paylasim.sonAcilma)
+  const hedef = acildi ? TEKLIF_DURUM.MUSTERI_ONAY_BEKLIYOR : TEKLIF_DURUM.MUSTERIYE_GONDERILDI
+
+  const ilerletilebilir = [
+    TEKLIF_DURUM.TASLAK,
+    TEKLIF_DURUM.YON_ONAY_BEKLIYOR,
+    TEKLIF_DURUM.YON_ONAYLADI,
+    TEKLIF_DURUM.MUSTERIYE_GONDERILDI,
+  ]
+  if (!ilerletilebilir.includes(mevcutDurum)) return null
+
+  const asamaMevcut = TEKLIF_DURUM_META[mevcutDurum]?.asama ?? 0
+  const asamaHedef = TEKLIF_DURUM_META[hedef]?.asama ?? 0
+  if (asamaHedef <= asamaMevcut) return null   // sadece ileri sar
+  return hedef
+}
+
+/**
  * Yeni durumu DB'ye yazarken hangi kolon(lar)ı güncellemeliyiz?
  * spek_durum → yeni sistem (gerçek durum)
  * onay_durumu → eski kod okumaya devam etsin diye map ile eski değere yazıyoruz

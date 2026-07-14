@@ -25,7 +25,7 @@ import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablon
 import { bayiTeklifKontrol } from '../services/bayiService'
 import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
-import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR } from '../lib/teklifDurumlari'
+import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
@@ -182,6 +182,33 @@ function TeklifDetay() {
     if (yeni) return
     paylasimDurumOzet('teklif', id).then(setPaylasimDurum).catch(() => setPaylasimDurum(null))
   }, [id, yeni])
+
+  // Durum senkronu: paylaşım linki kanıtı (gönderildi / müşteri açtı) durumun
+  // önündeyse spek_durum'u bir defalık ileri sar. Eskiden gönderilmiş (onGönderildi
+  // callback'i yokken) ya da callback'i başarısız olmuş teklifler yon_onayladi'da
+  // takılıp stepper'da "Müşteriye Gönderim"i işaretlemiyordu — müşteri açmış olsa da.
+  const durumSenkronRef = useRef(false)
+  useEffect(() => {
+    if (yeni || !paylasimDurum || !mevcutTeklif || durumSenkronRef.current) return
+    const mevcutDurum = tekliftenDurum({
+      spekDurum: mevcutTeklif.spekDurum,
+      onayDurumu: mevcutTeklif.onayDurumu,
+      teklifOnayi: mevcutTeklif.teklifOnayi,
+    })
+    const yeniDurum = paylasimdanIleriDurum(mevcutDurum, paylasimDurum)
+    if (!yeniDurum) return
+    durumSenkronRef.current = true
+    const alanlar = durumdanDbAlanlar(yeniDurum)
+    teklifGuncelle(id, alanlar)
+      .then(() => {
+        setForm(f => ({ ...f, ...alanlar }))
+        setMevcutTeklif(t => (t ? { ...t, ...alanlar } : t))
+      })
+      .catch(e => {
+        durumSenkronRef.current = false
+        console.warn('[TeklifDetay] durum senkronu yazılamadı:', e?.message)
+      })
+  }, [yeni, id, paylasimDurum, mevcutTeklif])
 
   // Ctrl+P → tarayıcının ham sayfa yazdırması yerine antetli PDF çıktısı.
   // (Kullanıcı refleksi: yazdırmak için Ctrl+P — ekran sayfası yazdırılabilir
@@ -785,8 +812,11 @@ function TeklifDetay() {
     navigate('/satislar/yeni')
   }
 
-  // Spec sistem durumu (10 durum) — mevcut onayDurumu + teklif_onayi jsonb'den map edilir
+  // Spec sistem durumu (10 durum). ÖNCELİK: spek_durum kolonu (yeni sistem, gerçek
+  // durum). O boşsa eski onayDurumu + teklif_onayi jsonb'den çıkarım yapılır.
+  // (spekDurum atlanırsa gönderim/durum ilerlemeleri görünmez kalır — stepper takılır.)
   const spekDurumKey = tekliftenDurum({
+    spekDurum: mevcutTeklif?.spekDurum,
     onayDurumu: form.onayDurumu,
     teklifOnayi: mevcutTeklif?.teklifOnayi,
   })
