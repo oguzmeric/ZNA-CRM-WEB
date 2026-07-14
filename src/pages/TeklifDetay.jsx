@@ -1440,30 +1440,33 @@ function TeklifDetay() {
           </div>
         ) : (
           <Table style={{ tableLayout: 'fixed' }}>
+            {/* Hücre bütçesi: TD dolgusu dar kolonlarda 6px'e indirildi (darHucre) —
+                eski 16px dolgu + number spinner 80px kolonda 2 haneyi bile
+                görünmez yapıyordu. Inputlar sayi-sade (spinner gizli) + 8px dolgu. */}
             <colgroup>
               <col style={{ width: 26 }} />{/* Grip — drag handle */}
-              <col style={{ width: 120 }} />{/* Stok — 'STK01605' yeter */}
+              <col style={{ width: 112 }} />{/* Stok — 'STK01605' yeter */}
               <col />{/* Ürün adı — auto (kalan alan, en geniş) */}
-              <col style={{ width: 80 }} />{/* Miktar — 3 basamak yeter */}
-              <col style={{ width: 100 }} />{/* Birim — dropdown ('Adet', 'Lisans' vb) */}
-              <col style={{ width: 176 }} />{/* Birim fiyat — input + hesapla + fiyat geçmişi ikonları */}
-              <col style={{ width: 72 }} />{/* İsk.% */}
-              <col style={{ width: 76 }} />{/* KDV% */}
-              <col style={{ width: 118 }} />{/* Toplam */}
-              <col style={{ width: 44 }} />{/* Sil */}
+              <col style={{ width: 84 }} />{/* Miktar — 4 basamak rahat */}
+              <col style={{ width: 96 }} />{/* Birim — dropdown ('Adet', 'Lisans' vb) */}
+              <col style={{ width: 186 }} />{/* Birim fiyat — input + hesapla + fiyat geçmişi ikonları */}
+              <col style={{ width: 72 }} />{/* İsk.% — 3 basamak rahat */}
+              <col style={{ width: 80 }} />{/* KDV% */}
+              <col style={{ width: 122 }} />{/* Toplam */}
+              <col style={{ width: 40 }} />{/* Sil */}
             </colgroup>
             <THead>
               <TR>
-                <TH></TH>{/* Grip */}
-                <TH>Stok</TH>
-                <TH>Ürün adı</TH>
-                <TH align="right">Miktar</TH>
-                <TH>Birim</TH>
-                <TH align="right">Birim fiyat</TH>
-                <TH align="right">İsk.%</TH>
-                <TH align="right">KDV%</TH>
-                <TH align="right">Toplam</TH>
-                <TH></TH>
+                <TH style={{ padding: '10px 4px' }}></TH>{/* Grip */}
+                <TH style={{ padding: '10px 8px' }}>Stok</TH>
+                <TH style={{ padding: '10px 8px' }}>Ürün adı</TH>
+                <TH align="right" style={{ padding: '10px 6px' }}>Miktar</TH>
+                <TH style={{ padding: '10px 6px' }}>Birim</TH>
+                <TH align="right" style={{ padding: '10px 6px' }}>Birim fiyat</TH>
+                <TH align="right" style={{ padding: '10px 6px' }}>İsk.%</TH>
+                <TH align="right" style={{ padding: '10px 6px' }}>KDV%</TH>
+                <TH align="right" style={{ padding: '10px 8px' }}>Toplam</TH>
+                <TH style={{ padding: '10px 4px' }}></TH>
               </TR>
             </THead>
             <TBody>
@@ -1480,7 +1483,7 @@ function TeklifDetay() {
                 const { toplam } = satirToplamHesapla(satir)
                 return (
                   <SortableSatirTR key={`satir-${index}`} index={index}>
-                    <TD>
+                    <TD style={{ padding: '10px 8px' }}>
                       <CustomSelect
                         value={satir.stokKodu}
                         selectedDisplay={(v) => v || 'Stok seç…'}
@@ -1494,25 +1497,32 @@ function TeklifDetay() {
                         <option value="__yeni__">+ Yeni Stok Ürünü…</option>
                       </CustomSelect>
                     </TD>
-                    <TD style={{ verticalAlign: 'top' }}>
+                    <TD style={{ verticalAlign: 'top', padding: '10px 8px' }}>
+                      {/* fieldSizing: content → uzun ürün adında kutu kendiliğinden
+                          büyür (Chrome 123+); desteklemeyen tarayıcıda resize kolu var */}
                       <Textarea
                         value={satir.stokAdi}
                         onChange={(e) => satirGuncelle(index, 'stokAdi', e.target.value)}
                         placeholder="Ürün adı"
-                        rows={2}
-                        style={{ resize: 'vertical', minHeight: 36, fontSize: 13, lineHeight: '18px', padding: '8px 12px' }}
+                        rows={1}
+                        style={{
+                          resize: 'vertical', minHeight: 38, maxHeight: 200,
+                          fontSize: 13, lineHeight: '18px', padding: '9px 10px',
+                          fieldSizing: 'content', overflowY: 'auto',
+                        }}
                       />
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 6px' }}>
                       <Input
                         type="number"
+                        className="sayi-sade"
                         value={satir.miktar}
                         onChange={(e) => satirGuncelle(index, 'miktar', Number(e.target.value))}
                         min="0"
-                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '8px 8px' }}
                       />
                     </TD>
-                    <TD>
+                    <TD style={{ padding: '10px 6px' }}>
                       <CustomSelect
                         value={satir.birim || ''}
                         onChange={(e) => satirGuncelle(index, 'birim', e.target.value)}
@@ -1526,14 +1536,15 @@ function TeklifDetay() {
                         <option value="Litre">Litre</option>
                       </CustomSelect>
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 6px' }}>
                       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                         <Input
                           type="number"
+                          className="sayi-sade"
                           value={satir.birimFiyat}
                           onChange={(e) => satirGuncelle(index, 'birimFiyat', Number(e.target.value))}
                           min="0"
-                          style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', flex: 1 }}
+                          style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', flex: 1, minWidth: 0, padding: '8px 8px' }}
                         />
                         <button
                           type="button"
@@ -1559,25 +1570,27 @@ function TeklifDetay() {
                         />
                       </div>
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 6px' }}>
                       <Input
                         type="number"
+                        className="sayi-sade"
                         value={satir.iskonto}
                         onChange={(e) => satirGuncelle(index, 'iskonto', Number(e.target.value))}
                         min="0"
                         max="100"
-                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                        style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '8px 8px' }}
                       />
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 6px' }}>
                       <CustomSelect
                         value={satir.kdv}
                         onChange={(e) => satirGuncelle(index, 'kdv', Number(e.target.value))}
+                        style={{ padding: '8px 8px' }}
                       >
                         {kdvOranlari.map((k) => <option key={k} value={k}>%{k}</option>)}
                       </CustomSelect>
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 8px' }}>
                       {(() => {
                         const kar = satirKarYuzde(satir)
                         const karRenk = kar === null ? null : kar < 0 ? '#DC2626' : kar < 15 ? '#F59E0B' : '#10B981'
@@ -1599,7 +1612,7 @@ function TeklifDetay() {
                         )
                       })()}
                     </TD>
-                    <TD align="right">
+                    <TD align="right" style={{ padding: '10px 4px' }}>
                       <button
                         aria-label="Satırı sil"
                         onClick={() => satirSil(index)}

@@ -160,3 +160,10 @@ body {
 }
 [data-theme="dark"] input::placeholder,
 [data-theme="dark"] textarea::placeholder { color: var(--text-tertiary) !important; }
+
+/* ── Sayı inputlarında spinner oklarını gizle ──
+   Dar tablo hücrelerinde (teklif kalem satırları: miktar, iskonto) ok tuşları
+   ~20px yer yiyip 2 haneli sayıyı bile görünmez yapıyordu. */
+input.sayi-sade::-webkit-outer-spin-button,
+input.sayi-sade::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.sayi-sade { -moz-appearance: textfield; appearance: textfield; }
