@@ -1,0 +1,8397 @@
+[
+ {
+  "id": 9,
+  "stok_kodu": "122(67",
+  "ad": "Cat7 ÇAKMA PENSESİ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 10,
+  "stok_kodu": "123456",
+  "ad": "Adaptör 12v5a",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 12,
+  "stok_kodu": "24 PORT CAT6 PATCH PANEL",
+  "ad": "24 PORT CAT6 PATCH PANEL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 15,
+  "stok_kodu": "4",
+  "ad": "KAMERA BUAT KUTUSU",
+  "kategori": "Buat",
+  "kid": 13,
+  "ozellikler": {}
+ },
+ {
+  "id": 16,
+  "stok_kodu": "5",
+  "ad": "KABLO KANALI 25X16 YAPIŞKANLI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 21,
+  "stok_kodu": "CAT6 UDP KABLO",
+  "ad": "NEXANS CAT6 UDP NETWORK KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 27,
+  "stok_kodu": "IPS400 Opsiyonel Lisans 30 s",
+  "ad": "IPS400 Ek 30 SIP Dış Hat lisansı",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 28,
+  "stok_kodu": "IPS411",
+  "ad": "KAREL IPS411 1 FXO/1FXS , 1 supervisor, 2 operatör, 100 IP abone (80 Karel IP + 20 SIP), 30 SIP dış hat. Lisans arttırımı ile 60 SIP Dış Hat ve 500 IP Aboneye büyüyebilir IP Santral ve Çağrı Merkezi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 29,
+  "stok_kodu": "IPS420",
+  "ad": "KAREL IPS420 2 FXO, 1 supervisor, 2 operatör, 100 IP abone (80 Karel IP + 20 SIP), 30 SIP dış hat, Lisans arttırımı ile 60 SIP Dış Hat ve 500 IP Aboneye büyüyebilir IP Santral ve Çağrı Merkezi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 30,
+  "stok_kodu": "IPS441",
+  "ad": "KAREL IPS441 4 FXO/1FXS, 1 supervisor, 2 operatör, 100 IP abone (80 Karel IP + 20 SIP), 30 SIP dış hat, Lisans arttırımı ile 60 SIP Dış Hat ve 500 IP Aboneye büyüyebilir IP Santral ve Çağrı Merkezi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 33,
+  "stok_kodu": "MS48 4/12 TAŞIMA",
+  "ad": "MS48C 4/12 SANTRAL TAŞIMA BEDELİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 34,
+  "stok_kodu": "PATCH CORD 0.3M UTP",
+  "ad": "CAT6 PATCH CORD KABLO 0.3M UTP",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 35,
+  "stok_kodu": "PS02 KAREL ADAPTÖR",
+  "ad": "PS02 SANTRAL ADAPTÖRÜ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 44,
+  "stok_kodu": "STK00006",
+  "ad": "NBO-323MD-02 KAREL 2MP Full HD IP IR Bullet Kamera •1/2,9\" Progressive Scan CMOS Sensor •25fps@1080P •2.8mm Sabit Lens •0.01 Lux @F2.0 (Renkli) Mininum Aydınlatma •30m IR Aydınlatma Mesafesi •Akıllı IR •H.265/H.264/MJPEG Üçlü Kodek •Çoklu Network Görüntül",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 46,
+  "stok_kodu": "STK00008",
+  "ad": "NBO-354MD-02 5MP Full HD IP IR Bullet Kamera •1/2,8\" Progressive Scan CMOS Sensor •25fps@5MP •2.8mm Sabit Lens •0.005 Lux @F2.0 (Renkli) Minimum Aydınlatma •30m IR Aydınlatma Mesafesi •Akıllı IR •H.265/H.264/MJPEG Üçlü Kodek •Çoklu Network Görüntüle",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 84,
+  "stok_kodu": "STK00046",
+  "ad": "RNU-141P-04 KAREL 4 Kanal H.265 PoE NVR •H.265/H.264 Video Kodek •80 Mbps Bant Genişliği •8MP'e kadar kayıt ve oynatma•1x6 TB Sata HDD •ANR •1xHDMI •1xVGA •GRID Arayüz •2xUSB •IPC UPnP •48V DC •4 Kanal PoE Desteği",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "8 MP",
+   "PoE desteği": "Evet"
+  }
+ },
+ {
+  "id": 91,
+  "stok_kodu": "STK00053",
+  "ad": "RNU-348E-64 64 Kanal 4K H.265+ Profesyonel NVR •H.265/H.264/MJPEG Üçlü Smart Video Kodek •320Mbps Kayıt Bant Genişliği •12MPe Kadar Kayıt ve Oynatma •80TB'a kadar 8 SATA HDD •Plaka Tanıma •POS Entegrasyonu •ANR •16/6x Alarm I/O •1/2x Ses I/O •2x RJ-45 •2x",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 139,
+  "stok_kodu": "STK001000",
+  "ad": "Hazır Kalın Kesit Kablolu Beyaz Bnc Konnektör",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 184,
+  "stok_kodu": "STK00145",
+  "ad": "MS26IP 2/6 Analog, 4/24 IP Kapasiteli IP Santral. Lisanssız IP Aboneler, Entegre EVM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 185,
+  "stok_kodu": "STK00146",
+  "ad": "Karel MS48 IP Santral 4 Dış 12 Dahili Abone Analog 4 Dış 8 Dahili Abone İp Dahili Abone Başlangıç Kapasitesi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 211,
+  "stok_kodu": "STK00172",
+  "ad": "IPCS EK 30 SIP KAREL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 214,
+  "stok_kodu": "STK00175",
+  "ad": "IPCS EK 10 SIP KAREL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 215,
+  "stok_kodu": "STK00176",
+  "ad": "IPCS EK 100 SIP KAREL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 228,
+  "stok_kodu": "STK00189",
+  "ad": "TM145 KAREL ANALOG TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 238,
+  "stok_kodu": "STK00199",
+  "ad": "IP310 SIP uyumlu, Grafik ekranlı, 1 Hat Desteği, HD Ses Kalitesi, Kulaklık, PoE seçeneği",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 244,
+  "stok_kodu": "STK00205",
+  "ad": "IP136G SIP Uyumlu, 4,3'' Renkli LCD ekran, 16 Hat destekli, HD Ses kalitesi, Kulaklık, 27 Adet programlanabilir tuş, USB 2.0, Kablosuz kulaklık için adaptör desteği, Gigabit, PoE, EXP43 DSS uzatma modülü desteği",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 260,
+  "stok_kodu": "STK00221",
+  "ad": "Adaptörler IP TLF 1 KAREL",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 261,
+  "stok_kodu": "STK00222",
+  "ad": "Adaptörler IP TLF 2 KAREL",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 262,
+  "stok_kodu": "STK00223",
+  "ad": "Adaptörler IP TLF 3 KAREL",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 263,
+  "stok_kodu": "STK00224",
+  "ad": "Adaptörler IP TLF 4 KAREL",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 264,
+  "stok_kodu": "STK00225",
+  "ad": "Adaptörler IP TLF 5 KAREL",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 280,
+  "stok_kodu": "STK00241",
+  "ad": "DE244 IP DECT EL ÜNİTESİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 297,
+  "stok_kodu": "STK00258",
+  "ad": "IPC-HFW1230S-S-0360B-S4 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 298,
+  "stok_kodu": "STK00259",
+  "ad": "IPC-HFW1230S-S-0280B-S4 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 299,
+  "stok_kodu": "STK00260",
+  "ad": "IPC-HFW2231S-S-0360B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 300,
+  "stok_kodu": "STK00261",
+  "ad": "IPC-HFW2231T-AS-0360B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 301,
+  "stok_kodu": "STK00262",
+  "ad": "IPC-HFW2249S-S-IL-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 302,
+  "stok_kodu": "STK00263",
+  "ad": "IPC-HFW3241E-AS-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 303,
+  "stok_kodu": "STK00264",
+  "ad": "IPC-HFW3249T1-AS-PV-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 304,
+  "stok_kodu": "STK00265",
+  "ad": "IPC-HFW5241T-ASE-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 305,
+  "stok_kodu": "STK00266",
+  "ad": "IPC-HFW1230T-ZS-2812-S5 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 306,
+  "stok_kodu": "STK00267",
+  "ad": "IPC-HFW2231T-ZS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 307,
+  "stok_kodu": "STK00268",
+  "ad": "IPC-HFW2231T-ZAS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 308,
+  "stok_kodu": "STK00269",
+  "ad": "IPC-HFW3241T-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 309,
+  "stok_kodu": "STK00270",
+  "ad": "IPC-HFW5241E-ZE-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 310,
+  "stok_kodu": "STK00271",
+  "ad": "IPC-HDW1230T-AS-0280B-S4 2MP H.265+ IR Dome Starlight Kamera (30m IR) 1/2.7'' CMOS, 2.8mm Sabit Lens, 0.005 Lux Renkli",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome",
+   "Lens tipi": "Sabit lens",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 311,
+  "stok_kodu": "STK00272",
+  "ad": "IPC-HDW2231T-AS-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 312,
+  "stok_kodu": "STK00273",
+  "ad": "IPC-HDW2231TM-AS-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 313,
+  "stok_kodu": "STK00274",
+  "ad": "IPC-HDBW1230E-S-0280B-S4 2MP H.265+ IR Dome Kamera (30m IR) 2MP, 1/2.7'' CMOS, 2.8mm Sabit Lens, 0.05 Lux",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome",
+   "Lens tipi": "Sabit lens",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 314,
+  "stok_kodu": "STK00275",
+  "ad": "IPC-HDBW2231E-S-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 315,
+  "stok_kodu": "STK00276",
+  "ad": "IPC-HDW2249T-S-IL-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 316,
+  "stok_kodu": "STK00277",
+  "ad": "IPC-HDW3241TM-AS-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 317,
+  "stok_kodu": "STK00278",
+  "ad": "IPC-HDW2231T-ZS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 318,
+  "stok_kodu": "STK00279",
+  "ad": "IPC-HDBW2231R-ZS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 319,
+  "stok_kodu": "STK00280",
+  "ad": "IPC-HDBW2231R-ZAS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 320,
+  "stok_kodu": "STK00281",
+  "ad": "IPC-HDW3241T-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 321,
+  "stok_kodu": "STK00282",
+  "ad": "IPC-HDBW3241R-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 322,
+  "stok_kodu": "STK00283",
+  "ad": "IPC-HDW3249H-AS-PV-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 323,
+  "stok_kodu": "STK00284",
+  "ad": "IPC-HDBW5241E-ZE-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 324,
+  "stok_kodu": "STK00285",
+  "ad": "IPC-HFW1431S-S-S2 4MP İP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 325,
+  "stok_kodu": "STK00286",
+  "ad": "IPC-HFW2431S-S-0360B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 326,
+  "stok_kodu": "STK00287",
+  "ad": "IPC-HFW2431T-AS-0360B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 327,
+  "stok_kodu": "STK00288",
+  "ad": "IPC-HFW2449S-S-IL-0360B 4 MP 2.8 MM LENS IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 328,
+  "stok_kodu": "STK00289",
+  "ad": "IPC-HFW3441E-SA-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 329,
+  "stok_kodu": "STK00290",
+  "ad": "4MP 2.8-12MM Motorize İp Bullet Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8–12 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Motorize lens"
+  }
+ },
+ {
+  "id": 330,
+  "stok_kodu": "STK00291",
+  "ad": "IPC-HFW2431T-ZAS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 331,
+  "stok_kodu": "STK00292",
+  "ad": "IPC-HFW3441T-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 332,
+  "stok_kodu": "STK00293",
+  "ad": "IPC-HFW5442T-ASE-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 333,
+  "stok_kodu": "STK00294",
+  "ad": "IPC-HFW7442H-Z-2712F-DC12AC24V DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 334,
+  "stok_kodu": "STK00295",
+  "ad": "IPC-HFW7442H-ZFR-2712F-DC12AC24V DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 335,
+  "stok_kodu": "STK00296",
+  "ad": "IPC-HFW5442E-ZE-2712 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 336,
+  "stok_kodu": "STK00297",
+  "ad": "IPC-HFW5442E-ZHE-2712 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 337,
+  "stok_kodu": "STK00298",
+  "ad": "IPC-HDBW1431E-0280B-S4  DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 338,
+  "stok_kodu": "STK00299",
+  "ad": "IPC-HDBW1431E-S-S2  DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 339,
+  "stok_kodu": "STK00300",
+  "ad": "IPC-HDBW2431E-S-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 340,
+  "stok_kodu": "STK00301",
+  "ad": "IPC-HDW1431T-AS-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 341,
+  "stok_kodu": "STK00302",
+  "ad": "IPC-HDW2431T-AS-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 342,
+  "stok_kodu": "STK00303",
+  "ad": "IPC-HDW2449T-S-IL-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 343,
+  "stok_kodu": "STK00304",
+  "ad": "IPC-HDBW1431R-ZS-2812-S4 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 344,
+  "stok_kodu": "STK00305",
+  "ad": "IPC-HDBW2431R-ZAS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 345,
+  "stok_kodu": "STK00306",
+  "ad": "IPC-HDBW5442R-ASE-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 346,
+  "stok_kodu": "STK00307",
+  "ad": "IPC-HDBW5442E-ZE-2712 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 347,
+  "stok_kodu": "STK00308",
+  "ad": "IPC-HFW2531S-S-0360B-S2  DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 348,
+  "stok_kodu": "STK00309",
+  "ad": "IPC-HFW3541E-AS-0360B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 349,
+  "stok_kodu": "STK00310",
+  "ad": "IPC-HFW2531T-ZS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 350,
+  "stok_kodu": "STK00311",
+  "ad": "IPC-HFW2531T-ZAS-27135-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 351,
+  "stok_kodu": "STK00312",
+  "ad": "IPC-HFW3541T-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 352,
+  "stok_kodu": "STK00313",
+  "ad": "IPC-HDBW2531E-S-0280B-S2  DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 353,
+  "stok_kodu": "STK00314",
+  "ad": "IPC-HDW2531T-AS-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 354,
+  "stok_kodu": "STK00315",
+  "ad": "IPC-HDW3541TM-AS-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 355,
+  "stok_kodu": "STK00316",
+  "ad": "IPC-HDW3541T-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 356,
+  "stok_kodu": "STK00317",
+  "ad": "IPC-HDBW3541R-ZAS-27135 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 357,
+  "stok_kodu": "STK00318",
+  "ad": "IPC-HFW7842H-Z-2712F-DC12AC24V DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 369,
+  "stok_kodu": "STK00330",
+  "ad": "IPC-HF5241E-E DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 370,
+  "stok_kodu": "STK00331",
+  "ad": "IPC-EBW8630 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 371,
+  "stok_kodu": "STK00332",
+  "ad": "IPC-PDBW5831-B360 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 373,
+  "stok_kodu": "STK00334",
+  "ad": "IPC-EBW81242-AS-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 374,
+  "stok_kodu": "STK00335",
+  "ad": "IPC-EB5541-AS DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 375,
+  "stok_kodu": "STK00336",
+  "ad": "IPC-PFW83242-A180 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 376,
+  "stok_kodu": "STK00337",
+  "ad": "IPC-PDBW8840-A180 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 377,
+  "stok_kodu": "STK00338",
+  "ad": "IPC-PFW8840-A180 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 379,
+  "stok_kodu": "STK00340",
+  "ad": "IPC-HUM4231-0280B-S2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 380,
+  "stok_kodu": "STK00341",
+  "ad": "IPC-HUM8241-L1-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 381,
+  "stok_kodu": "STK00342",
+  "ad": "IPC-HUM8241-E1 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 382,
+  "stok_kodu": "STK00343",
+  "ad": "IPC-HUM8241-E2 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 383,
+  "stok_kodu": "STK00344",
+  "ad": "IPC-HUM8441-L1-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 384,
+  "stok_kodu": "STK00345",
+  "ad": "IPC-HUM8441-E1 DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 386,
+  "stok_kodu": "STK00347",
+  "ad": "IPC-HDBW5241F-M-DAE-SA-0280B DAHUA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 510,
+  "stok_kodu": "STK00471",
+  "ad": "PFS3006-4GT-60-V2 DAHUA 4Port PoE Switch (4FE PoE + 2FE Uplink, Toplam 60W PoE ) 2*10/100/1000 Mbps Uplink port, 4*10/100/10000 Mbps PoE portAnahtarlama Kapasitesi: 14 Gbps, Paket İletme Hızı: 8.928 MbpsPaket Buffer: 1Mbit, Mac Tablosu Boyutu: 2KÇalışma S",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 518,
+  "stok_kodu": "STK00479",
+  "ad": "PFS3220-16GT-240-V2 16 Port PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "16"
+  }
+ },
+ {
+  "id": 650,
+  "stok_kodu": "STK00611",
+  "ad": "DS-7104NI-Q1/M 4 Kanal NVR 1080P | 40 Mbps | 1 SATA X 6 TB HDD | ~4MP Recording VCA | Metal | H265 | HDMI | VGA",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 660,
+  "stok_kodu": "STK00621",
+  "ad": "DS-7616NI-Q2 16 Kanal NVR - 8MP | 160 Mbps | 2 SATA X 8 TB HDD | 8MP Recording | 1-Ch RCA Ses VCA | Metal | H265+ | 1-Ch 4K HDMI & VGA",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 672,
+  "stok_kodu": "STK00633",
+  "ad": "DS-2DE4425IW-DE 4MP Speed Dome IP IR PTZ Kamera",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 786,
+  "stok_kodu": "STK00747",
+  "ad": "TELSİZ TELEFON A170 DECT SİYAH",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 787,
+  "stok_kodu": "STK00748",
+  "ad": "Lcs3 Cat6A Stp 24 Lü  Patch Panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 790,
+  "stok_kodu": "STK00751",
+  "ad": "ADRESLİ YANGIN İHBAR BUTONU GFE-MCPE-A",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 791,
+  "stok_kodu": "STK00752",
+  "ad": "ADRESLİ YANGIN ALARM KONTROL PANELİ 2 LOOP 250 ADRES GEKKO 2",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 792,
+  "stok_kodu": "STK00753",
+  "ad": "KABLO 2X2x0.80mm+0,40 JY(ST)Y YANGIN İHBAR KABLOSU(100MT)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 793,
+  "stok_kodu": "STK00754",
+  "ad": "KABLO KANALI 60X15 BALIK SIRTI YAPIŞKANLI BANTLI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 795,
+  "stok_kodu": "STK00756",
+  "ad": "PATCH CORD CAT6 UTP 1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 796,
+  "stok_kodu": "STK00757",
+  "ad": "PATCH CORD CAT6 UTP 2MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 797,
+  "stok_kodu": "STK00758",
+  "ad": "Reyee RG-ES224GC-P  24 Portlu, 10/100/1000 Gigabit, Yönetilebilir Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 798,
+  "stok_kodu": "STK00759",
+  "ad": "32 Kanal H.265 NVR (4x10TB SATA) İzleme/Kayıt Bant Genişliği: 320Mbps/320Mbps ,12 MP'ye kadar çözünürlük,  4Kanal@8MP/16Kanal@1080p Kod Çözümleme(Decoding) Çift Yönlü Konuşma, P2P, IVS, Yüz Algılama, Kişi Sayma, Isı Haritası destekli  kameralar ile uyumlu",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "8 MP"
+  }
+ },
+ {
+  "id": 799,
+  "stok_kodu": "STK00760",
+  "ad": "2 Megapiksel Starlight IR Bullet IP Kamera 2,8mm Sabit Lens , 105° ,1/2.7\" 2 MP CMOS görüntü sensörü, düşük aydınlatma,  yüksek görüntü tanımı , 25/30fps@1080P(1920x1080), H.265& H.264 dual-stream  encoding , Çoklu Network Görüntüleme,0.005 Lux@F1.6 , DWD",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens"
+  }
+ },
+ {
+  "id": 800,
+  "stok_kodu": "STK00761",
+  "ad": "ADAPTÖR KAMERA 12V 15 AH",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 801,
+  "stok_kodu": "STK00762",
+  "ad": "ADAPTÖR KAMERA 12V 20 AMP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 802,
+  "stok_kodu": "STK00763",
+  "ad": "ADAPTÖR KAMERA 12V 30AH",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 803,
+  "stok_kodu": "STK00764",
+  "ad": "ADAPTÖR KAMERA 12V 10AH",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 805,
+  "stok_kodu": "STK00766",
+  "ad": "9 Portlu, 10/100/1000 Gigabit, Yönetilebilir Switch, 8 Port PoE+ (120W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "9",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 806,
+  "stok_kodu": "STK00767",
+  "ad": "24 Portlu, 10/100/1000 Gigabit, Yönetilebilir Switch, 2 SFP, 24 Port PoE+ (370W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 807,
+  "stok_kodu": "STK00768",
+  "ad": "16 Portlu, 10/100/1000 Gigabit, Yönetilebilir Switch, 2 SFP, 16 Port PoE+ (240W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "16",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 819,
+  "stok_kodu": "STK00780",
+  "ad": "8 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 2 SFP, 8 Port PoE+ (125W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 820,
+  "stok_kodu": "STK00781",
+  "ad": "24 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4 SFP, 24 Port PoE+ (370W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 823,
+  "stok_kodu": "STK00784",
+  "ad": "FO PATCH PANEL 12PORT 19\" SC KASET DAHİL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 826,
+  "stok_kodu": "STK00787",
+  "ad": "FO PATCH CORD DUPLEX SC/LC SM 9/125µ 1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 828,
+  "stok_kodu": "STK00789",
+  "ad": "FO PATCH CORD DUPLEX SC/LC SM 9/125µ 2MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 832,
+  "stok_kodu": "STK00793",
+  "ad": "FO PATCH CORD DUPLEX SC/SC SM 9/125µ 2MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 833,
+  "stok_kodu": "STK00794",
+  "ad": "FO PATCH CORD DUPLEX LC/LC SM 9/125µ 1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 834,
+  "stok_kodu": "STK00795",
+  "ad": "FO PATCH CORD DUPLEX LC/LC SM 9/125µ 2MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 835,
+  "stok_kodu": "STK00796",
+  "ad": "FO PATCH CORD DUPLEX SC/LC MM 50/125µ 1MT OM3",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 841,
+  "stok_kodu": "STK00802",
+  "ad": "UBIQUITI UNIFI U6 LITE DB 2x2 MIMO A.POINT WIFI6 (U6-LITE) (ADAPTÖRSÜZ)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 843,
+  "stok_kodu": "STK00804",
+  "ad": "KAMERA ADAPTÖRÜ 12V 20 AMP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 847,
+  "stok_kodu": "STK00808",
+  "ad": "GİGASET A170 TELSİZ TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 853,
+  "stok_kodu": "STK00814",
+  "ad": "USB KART OKUYUCU PROXIMITY",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 856,
+  "stok_kodu": "STK00817",
+  "ad": "GENERAL MOBILE GM 21 Cep Telefonu",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 862,
+  "stok_kodu": "STK00823",
+  "ad": "INTELLIGENT ADRESLİ OPTİK DUMAN DEDEKTÖRÜ GFE-ZEOS-AS-S",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 874,
+  "stok_kodu": "STK00835",
+  "ad": "TL-SG1048 48 PORT GIGABIT RACKMOUNT SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "48",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 875,
+  "stok_kodu": "STK00836",
+  "ad": "100X50 KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 890,
+  "stok_kodu": "STK00851",
+  "ad": "5 VOLT 2 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 896,
+  "stok_kodu": "STK00857",
+  "ad": "MECLİS ODASI KAMERA AYAĞI",
+  "kategori": "Kamera Ayağı",
+  "kid": 12,
+  "ozellikler": {}
+ },
+ {
+  "id": 899,
+  "stok_kodu": "STK00860",
+  "ad": "27 ADET ARIZALI KAMERANIN ARIZALARININ GİDERİLMESİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 906,
+  "stok_kodu": "STK00867",
+  "ad": "345 Ml. Epoksi Kimyasal Dubel Yapıştırıcı",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 908,
+  "stok_kodu": "STK00869",
+  "ad": "TTEC SESLİ DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 910,
+  "stok_kodu": "STK00871",
+  "ad": "FİBER PATCH CORD SC/LC  1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 911,
+  "stok_kodu": "STK00872",
+  "ad": "FİBER PATCH CORD SC/LC OM3 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 912,
+  "stok_kodu": "STK00873",
+  "ad": "HCS CAT 6 UDP NETWORK KABLOSU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 915,
+  "stok_kodu": "STK00876",
+  "ad": "İzole Bant",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 917,
+  "stok_kodu": "STK00878",
+  "ad": "Cat6 Keystone Jack",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 919,
+  "stok_kodu": "STK00880",
+  "ad": "NVR ISN-3116B2-16P 16 KANAL POE, 2 HDD, 4K",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 922,
+  "stok_kodu": "STK00883",
+  "ad": "Elektrik Kablosu 3x2,5 mm TTR",
+  "kategori": "Enerji Kablosu",
+  "kid": 29,
+  "ozellikler": {}
+ },
+ {
+  "id": 923,
+  "stok_kodu": "STK00884",
+  "ad": "12 VOLT 3 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 926,
+  "stok_kodu": "STK00887",
+  "ad": "Reyee RG-ES218GC-P 18PORT Gigabit Poe Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "18",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 932,
+  "stok_kodu": "STK00893",
+  "ad": "GW-DAG1000-8O   8*FXO Port, Analog VoIP Ağ Geçidi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 936,
+  "stok_kodu": "STK00897",
+  "ad": "NVR ISN-3332H2-A2 32 KANAL, YÜZ TANIMA, 2X10TB HDD, 2X GB LAN, 2 X HDMI, 4K",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 937,
+  "stok_kodu": "STK00898",
+  "ad": "ISN-9524S3BL IP DOME KAMERA   2MP, 2.8MM, 20M IR, VİDEO ANALİZ, DAHİLİ MİKR, PLASTİK+METAL KASA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome",
+   "Gece görüş mesafesi": "20"
+  }
+ },
+ {
+  "id": 938,
+  "stok_kodu": "STK00899",
+  "ad": "ISN-9421S3BL IP BULLET KAMERA  2MP, 2.8MM, 20M IR, VİDEO ANALİZ, PLAST+METAL",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Gece görüş mesafesi": "20"
+  }
+ },
+ {
+  "id": 943,
+  "stok_kodu": "STK00904",
+  "ad": "5 METRE KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 946,
+  "stok_kodu": "STK00907",
+  "ad": "HCS 24 PORT FİBER PATCH PANEL,",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 949,
+  "stok_kodu": "STK00910",
+  "ad": "CAT6 NETWORK KABLOSU - DIŞ MEKAN SİYAH İZOLELİ",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 956,
+  "stok_kodu": "STK00917",
+  "ad": "UBIQUITI UNIFI U6 LITE 2x2 MIMO ACCESS POINT WIFI6 ADAPTÖRSÜZ",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 959,
+  "stok_kodu": "STK00920",
+  "ad": "3 METRE SC-SC MM PATCH CORD KABLO",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 962,
+  "stok_kodu": "STK00923",
+  "ad": "KAMERA TAMİRİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 965,
+  "stok_kodu": "STK00926",
+  "ad": "KAREL IPG1000 (0 IP Dış. + 0 PRI + 4 Ana.Dış. / 104 Ana.Ab. + 0 Say.Ab. + 0 SIP.Ab.) KONSOL TELEFON DAHİL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 966,
+  "stok_kodu": "STK00927",
+  "ad": "KAREL IPG500 (0 IP Dış. + 0 PRI + 4 Ana.Dış. / 0 Ana.Ab. + 0 Say.Ab. + 100 SIP.Ab.)  KONSOL TELEFON DAHİL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 967,
+  "stok_kodu": "STK00928",
+  "ad": "IPG500 (0 IP Dış. + 0 PRI + 4 Ana.Dış. / 96 Ana.Ab. + 0 Say.Ab. + 0 SIP.Ab.) KONSOL TELEFON DAHİL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 968,
+  "stok_kodu": "STK00929",
+  "ad": "HCS KEYSTONE JACK",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 971,
+  "stok_kodu": "STK00932",
+  "ad": "NET-LİNK PATCH PANEL 24 PORT CAT6",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 973,
+  "stok_kodu": "STK00934",
+  "ad": "PX24 mLrX Otonom IP Santral",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 983,
+  "stok_kodu": "STK00944",
+  "ad": "FT20 4 SATIR EKRANLI ÖZEL TELEFON SETİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 984,
+  "stok_kodu": "STK00945",
+  "ad": "ST26 4 SATIR EKRANLI SAYISAL TELEFON SETİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 987,
+  "stok_kodu": "STK00948",
+  "ad": "IPG500 İLETİŞİM PLATFORMU 3U (SANTRAL)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 988,
+  "stok_kodu": "STK00949",
+  "ad": "C530IP TELSİZ TELEFON (SİYAH)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1004,
+  "stok_kodu": "STK00965",
+  "ad": "KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1005,
+  "stok_kodu": "STK00966",
+  "ad": "4 KANAL ARAÇ KAMERASI MDVR",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1007,
+  "stok_kodu": "STK00968",
+  "ad": "TP-LİNK TL-WR940N WİRELESS N ROUTER",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 1010,
+  "stok_kodu": "STK00971",
+  "ad": "TP-LİNK TD-W8961N ADSL2+ MODEM ROUTER",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 1012,
+  "stok_kodu": "STK00973",
+  "ad": "RG-EW1800 GX PRO ROUTER",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 1014,
+  "stok_kodu": "STK00975",
+  "ad": "SAMSUNG SND-L6012P 2MP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1015,
+  "stok_kodu": "STK00976",
+  "ad": "TTEC IPDM-2130S-MS/S 2 MP IP SESLİ DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1016,
+  "stok_kodu": "STK00977",
+  "ad": "TTEC IPR-3020V 2MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1018,
+  "stok_kodu": "STK00979",
+  "ad": "ISEE ISA-2420-D 2MP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1019,
+  "stok_kodu": "STK00980",
+  "ad": "TTEC CAM-IDM1013 1.3 MP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1020,
+  "stok_kodu": "STK00981",
+  "ad": "TTEC CAM-IPD3020 IR DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1021,
+  "stok_kodu": "STK00982",
+  "ad": "DAHUA DH-IPG-HDW1230SP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1022,
+  "stok_kodu": "STK00983",
+  "ad": "KAREL CKB-620-A60 ANALOG BULLET KAMERA",
+  "kategori": "Analog Kamera",
+  "kid": 4,
+  "ozellikler": {}
+ },
+ {
+  "id": 1023,
+  "stok_kodu": "STK00984",
+  "ad": "ISEE ISN-9525S1 IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1024,
+  "stok_kodu": "STK00985",
+  "ad": "ISEE ISA-7520AS1L 2 MP HD KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 1025,
+  "stok_kodu": "STK00986",
+  "ad": "KAREL NBE-224RM-33 IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1026,
+  "stok_kodu": "STK00987",
+  "ad": "KAREL CCK723-PM3 3MP CMOS IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1027,
+  "stok_kodu": "STK00988",
+  "ad": "HAIKON DS-2CE16D8T-IT3 ANALOG KAMERA",
+  "kategori": "Analog Kamera",
+  "kid": 4,
+  "ozellikler": {}
+ },
+ {
+  "id": 1028,
+  "stok_kodu": "STK00989",
+  "ad": "HAIKON DS-2CD2T35FWD-I5 3 MP IP  BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1029,
+  "stok_kodu": "STK00990",
+  "ad": "TTEC IPBM-2160M-WASZ/S IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1030,
+  "stok_kodu": "STK00991",
+  "ad": "ISEE ISN-3108BQ DVR",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1031,
+  "stok_kodu": "STK00992",
+  "ad": "KAREL CKD-141-PM2 IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1032,
+  "stok_kodu": "STK00993",
+  "ad": "KAREL CBL-171YR-24 IR KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1033,
+  "stok_kodu": "STK00994",
+  "ad": "ISEE ISA-2116NS-HL DVR",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1035,
+  "stok_kodu": "STK00996",
+  "ad": "24 PORT CAT6 PATCH PANEL-BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1036,
+  "stok_kodu": "STK00997",
+  "ad": "RXU-131Z-04 4+2 KANAL XVR KAYIT CİHAZI",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1037,
+  "stok_kodu": "STK00998",
+  "ad": "RHU-131C-08 8 KANAL 720P PRO MINI 1U HDCVI DVR",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1038,
+  "stok_kodu": "STK00999",
+  "ad": "Bnc Konnektör Power Jak Kablolu",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1039,
+  "stok_kodu": "STK01001",
+  "ad": "LEGRAND FİBER PATCH PANEL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1041,
+  "stok_kodu": "STK01003",
+  "ad": "LEGRAND CAT7 PATCH PANEL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1042,
+  "stok_kodu": "STK01004",
+  "ad": "LEGRAND CAT7 KEYSTONE JACK",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1044,
+  "stok_kodu": "STK01006",
+  "ad": "LEGRAND PATCH PANEL BOŞLUK KAPAMA AKSESUARI (032129)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1046,
+  "stok_kodu": "STK01008",
+  "ad": "HCS FİBER PATCH PANEL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1053,
+  "stok_kodu": "STK01015",
+  "ad": "HCS FİBER PATCH CORD KABLO 1MT SC-LC",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1054,
+  "stok_kodu": "STK01016",
+  "ad": "HCS CAT6 PATCH CORD KABLO 1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1055,
+  "stok_kodu": "STK01017",
+  "ad": "HCS CAT6 PATCH CORD KABLO 0.30MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1056,
+  "stok_kodu": "STK01018",
+  "ad": "FİBER PATCH CORD KABLO 5MT SC-LC",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1057,
+  "stok_kodu": "STK01019",
+  "ad": "IPG1000 İLETİŞİM PLATFORMU 3U (SANTRAL)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1063,
+  "stok_kodu": "STK01025",
+  "ad": "DUMAN DEDEKTÖRÜ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1064,
+  "stok_kodu": "STK01026",
+  "ad": "YANGIN ALARM BUTONU",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1068,
+  "stok_kodu": "STK01030",
+  "ad": "YANGIN ALARM PANELİ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1070,
+  "stok_kodu": "STK01032",
+  "ad": "YANGIN ALARM KABLOSU",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1078,
+  "stok_kodu": "STK01040",
+  "ad": "YANGIN DOLABI BAĞLANTISI TESİSATI DAHİL",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1083,
+  "stok_kodu": "STK01045",
+  "ad": "YANGIN MERDİVENLERİ BASINÇLANDIRMA",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1087,
+  "stok_kodu": "STK01049",
+  "ad": "10'LUK TELEFON KABLOSU",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1088,
+  "stok_kodu": "STK01050",
+  "ad": "20'LIK TELEFON KABLOSU",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1089,
+  "stok_kodu": "STK01051",
+  "ad": "KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1091,
+  "stok_kodu": "STK01053",
+  "ad": "CAT6 PATCH CORD KABLO 0.3M UTP",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1093,
+  "stok_kodu": "STK01055",
+  "ad": "50 PORT TELEFON PATCH PANEL (ISDN)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1094,
+  "stok_kodu": "STK01056",
+  "ad": "HCS 0,25 CM CAT6 PATCH KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1095,
+  "stok_kodu": "STK01057",
+  "ad": "0,25 CM CAT6 PATCH KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1096,
+  "stok_kodu": "STK01058",
+  "ad": "TG-306OP Geçiş Kontrol Paneli (2 RS-485 Okuyucu, TCP/IP)",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1101,
+  "stok_kodu": "STK01063",
+  "ad": "\"216 PRO KOLLU BARİYER •Kol Uzunluğu : 6000 mm • K.B Geçme Alıcı Kart • 4 Kanallı Kumanda (212-216 Kollu Bariyer) • Çalışma Hızı: 5.5 saniye • Arma Fotosel • Çatal Ayak • K.B Manuel Kol Aparatı • Kol Yönü : Sağ\"",
+  "kategori": "Bariyer",
+  "kid": 24,
+  "ozellikler": {}
+ },
+ {
+  "id": 1104,
+  "stok_kodu": "STK01066",
+  "ad": "Mutlusan 21Q İzoleli Çelik Spiral Eko (Klavuz Telli)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1105,
+  "stok_kodu": "STK01067",
+  "ad": "PLAKA TANIMA SİSTEMİ BİLGİSAYARI",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1106,
+  "stok_kodu": "STK01068",
+  "ad": "Kablo Koruyucu ve Düzenleyici Spiral",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1108,
+  "stok_kodu": "STK01070",
+  "ad": "LEGRAND CAT 6 UDP NETWORK KABLOSU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1110,
+  "stok_kodu": "STK01072",
+  "ad": "PX24 mLrX Otonom IP Santral 4/16 Kapasiteli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1111,
+  "stok_kodu": "STK01073",
+  "ad": "24 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4 SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1115,
+  "stok_kodu": "STK01077",
+  "ad": "SARF MALZEME (KLİPS,BANT VS)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1117,
+  "stok_kodu": "STK01079",
+  "ad": "UYDU KONNEKTÖR",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1118,
+  "stok_kodu": "STK01080",
+  "ad": "UYDU KONNEKTÖR BİRLEŞTİRİCİ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1119,
+  "stok_kodu": "STK01081",
+  "ad": "KLEMENS",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1120,
+  "stok_kodu": "STK01082",
+  "ad": "3MT KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1121,
+  "stok_kodu": "STK01083",
+  "ad": "PLAKA TANIMA SİSTEMİ ( PC,KLAVYE,MAUSE VE MONİTÖR)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1123,
+  "stok_kodu": "STK01085",
+  "ad": "PTS KAMERASI LİSANSI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1124,
+  "stok_kodu": "STK01086",
+  "ad": "KAREL WİFİLİ TELSİZ TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1134,
+  "stok_kodu": "STK01096",
+  "ad": "Wall Plate Wi-Fi 6 (802.11ax) Access Point, standard size of 86-type faceplate, built-in antenna, dual-radio  dual-band,  support  574.5Mbps  @2.4G  and  1.2Gbps  @5G,  up  to  4  spatial  streams  and  1774.5Mbps  access  rate  per  AP,  support  concurr",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1136,
+  "stok_kodu": "STK01098",
+  "ad": "Wi-Fi 6(802.11ax) indoor wireless access point, dual-radio, dual-band, up to 4 spatial streams and maximum of 2.97Gbps wireless throughput, 1 10/100/1000M BASE-T uplink port and 1 1G/2.5G SFP uplink port, support PoE and local power supply; Bundled with R",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1137,
+  "stok_kodu": "STK01099",
+  "ad": "Wi-Fi 6(802.11ax) indoor wireless access point, dual-radio, dual-band, up to 4 spatial streams and maximum of 1.775Gbps wireless throughput, 1 10/100/1000M BASE-T uplink port, support PoE and local power supply; Bundled with Ruijie Cloud Service lifetime",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1139,
+  "stok_kodu": "STK01101",
+  "ad": "UTP Cat6 Keystone Jack, 180 Derece",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1140,
+  "stok_kodu": "STK01102",
+  "ad": "UTP Cat6 Patch Cord 1m Gri",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1143,
+  "stok_kodu": "STK01105",
+  "ad": "FULL HD PLAKA TANIMA SİSTEMİ SMART PAKET",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1146,
+  "stok_kodu": "STK01108",
+  "ad": "PLAKA TANIMA YAZILIMI ÜCRETLİ SUNUCU MODÜLÜ",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1147,
+  "stok_kodu": "STK01109",
+  "ad": "8 PORT POE GIGABIT NETWORK SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1156,
+  "stok_kodu": "STK01118",
+  "ad": "ID403 KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1168,
+  "stok_kodu": "STK01130",
+  "ad": "ODS 08-24GP2S-300 SWITCH 24 PORT POE 10/100/1000 2SFP PORT",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1171,
+  "stok_kodu": "STK01133",
+  "ad": "12V/5A Switch Mode Adaptör",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1172,
+  "stok_kodu": "STK01134",
+  "ad": "1X1 mm NYAF Kablo",
+  "kategori": "Enerji Kablosu",
+  "kid": 29,
+  "ozellikler": {}
+ },
+ {
+  "id": 1174,
+  "stok_kodu": "STK01136",
+  "ad": "NVR5432-EI 32 Kanal H.265 NVR (4x16TB SATA)",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1175,
+  "stok_kodu": "STK01137",
+  "ad": "NVR5864-EI 64 Kanal 2U 4K H.265 Pro NVR ( 8x10TB SATA )",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1177,
+  "stok_kodu": "STK01139",
+  "ad": "IPG500 (0 IP Dış. + 0 PRI + 8 Ana.Dış. / 32 Ana.Ab. + 16 Say.Ab. + 0 SIP.Ab.) OPERATÖR TELEFONU DAHİL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1179,
+  "stok_kodu": "STK01141",
+  "ad": "PX24 MLRX - 8 ANALOG DIŞ HAT 32 ANALOG İÇ HAT 15 SAYISAL ABONE (OPERATÖR TELEFONU DAHİL)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1185,
+  "stok_kodu": "STK01147",
+  "ad": "PLAKA TANIMA ÜCRET OTOMASYON YAZILIMI",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1186,
+  "stok_kodu": "STK01148",
+  "ad": "8 Port POE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 1191,
+  "stok_kodu": "STK01153",
+  "ad": "SG-211 Swing Gate Turnike (• AISI 304 satine paslanmaz çelik gövde • Alüminyum kollar ve pleksili kanat • 30 x 100 cm (kanat dahil) y: 100 cm • 80 cm kanat uzunluğu • Motorlu, otomatik açılır kanat • Acil durum modu • IP 54 koruma sınıfı • 2 yıl parça ve",
+  "kategori": "Turnike",
+  "kid": 23,
+  "ozellikler": {}
+ },
+ {
+  "id": 1194,
+  "stok_kodu": "STK01156",
+  "ad": "TG-K40 PRO PARMAKİZİ TERMİNALİ PROXIMITY (Kapasite: Parmak izi: 3.000 Kart: 3.000 Kayıt: 200.000 Standart Özellikler: TCP/IP,USB,Kapı açma veya zil)",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1197,
+  "stok_kodu": "STK01159",
+  "ad": "DS-2CD1043G2-LIUF 4 MP 2.8mm Lens IP Bullet Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1199,
+  "stok_kodu": "STK01161",
+  "ad": "DS-7632NXI-K2 32 Kanal 4K NVR Kayıt Cihazı 12MP 2 SATA 16TB HDD",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1201,
+  "stok_kodu": "STK01163",
+  "ad": "KAMERA İZLEME BİLGİSAYARI KLAVYE + MAUSE",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1207,
+  "stok_kodu": "STK01169",
+  "ad": "Tegesis Timecure Time Attendance Lite Geçiş Kontrol Yazılımı",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1210,
+  "stok_kodu": "STK01172",
+  "ad": "12V/5A Switch Mode Adaptör",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1211,
+  "stok_kodu": "STK01173",
+  "ad": "KART OKUYUCU GİRİŞ/ÇIKIŞ YAZILIMI",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1212,
+  "stok_kodu": "STK01174",
+  "ad": "8 KANAL NVR (KAYIT CİHAZI)",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1215,
+  "stok_kodu": "STK01177",
+  "ad": "IT-SWT-4P-0020 HİİTACHİ HT402N 4 PORT 10/100 POE 2 UPLİNK MEGABİT SWITCH 78W",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 1219,
+  "stok_kodu": "STK01181",
+  "ad": "26Q İzoleli Çelik Spiral",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1220,
+  "stok_kodu": "STK01182",
+  "ad": "4 METRE KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1221,
+  "stok_kodu": "STK01183",
+  "ad": "OJC SWITCH 8 PORT 10/100MB 2 UPLINK 10/100MB WITH POE",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 1222,
+  "stok_kodu": "STK01184",
+  "ad": "REÇBER CAT6 UTP PE 23 AWG DATA KABLOSU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1225,
+  "stok_kodu": "STK01187",
+  "ad": "SANTRAL SERVİS BEDELİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1226,
+  "stok_kodu": "STK01188",
+  "ad": "KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1227,
+  "stok_kodu": "STK01189",
+  "ad": "CAT6 PATCH CORD KABLO 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1243,
+  "stok_kodu": "STK01205",
+  "ad": "Reyee RG-RAP2260(G) Wifi 6 İç Ortam Access Point - Dual-band, AX1800, 1775Mbps",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1244,
+  "stok_kodu": "STK01206",
+  "ad": "ARIZALI KAMERALARIN KONTROLÜ İÇİN SERVİS ÜCRETİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1248,
+  "stok_kodu": "STK01210",
+  "ad": "TG-S2EM Standalone Proximity Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1254,
+  "stok_kodu": "STK01216",
+  "ad": "INFORM UPS GUARDIAN 800A 7-20DK KESİNTİSİZ GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1267,
+  "stok_kodu": "STK01229",
+  "ad": "INFORM UPS GUARDIAN 600A 7-20DK KESİNTİSİZ GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1268,
+  "stok_kodu": "STK01230",
+  "ad": "IR Gece Görüşlü Kamera Muhafazası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1270,
+  "stok_kodu": "STK01232",
+  "ad": "DICENTIS Audio Powering Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1284,
+  "stok_kodu": "STK01246",
+  "ad": "ARA BAĞLANTI VE KONNEKTÖR SET",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1287,
+  "stok_kodu": "STK01249",
+  "ad": "DICENTIS Powering Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1304,
+  "stok_kodu": "STK01266",
+  "ad": "Reyee RG-NBS3200-48GT4XS 48 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4*10G SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "48",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1305,
+  "stok_kodu": "STK01267",
+  "ad": "Reyee RG-NBS3100-24GT4SFP 24 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4 SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1306,
+  "stok_kodu": "STK01268",
+  "ad": "Reyee RG-NBS3100-8GT2SFP 8 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 2 SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1309,
+  "stok_kodu": "STK01271",
+  "ad": "AR-256 OP HGS GEÇİŞ KONTROL PANELİ 2'Lİ PANEL •20.000 kullanıcı 40.000 olay hafızası • Ethernet arabirimi (merkez kontrol yazılımı için) • 2 adet RFID geçiş kontrol cihazı bağlayabilme • Mifare + EM okuyucular RS485 modda • Dahili 2 röle çıkışı (yazılım v",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1315,
+  "stok_kodu": "STK01277",
+  "ad": "ARUBA 2930F 24G 4SFP SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1316,
+  "stok_kodu": "STK01278",
+  "ad": "ARUBA 2930M 24G POE + 1-SLOT SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {}
+ },
+ {
+  "id": 1320,
+  "stok_kodu": "STK01282",
+  "ad": "Gigaset A170 Telsiz Telefon (SİYAH)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1322,
+  "stok_kodu": "STK01284",
+  "ad": "KABLO KANALI 40X25 YAPIŞKANLI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1347,
+  "stok_kodu": "STK01309",
+  "ad": "LOSEN XLR RCA TRS Konnektör Seti",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1349,
+  "stok_kodu": "STK01311",
+  "ad": "FO PATCH CORD DUPLEX LC/LC SM 9/125µ 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1354,
+  "stok_kodu": "STK01316",
+  "ad": "HCS FİBER PATCH CORD KABLO 3MT SC-LC",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1363,
+  "stok_kodu": "STK01325",
+  "ad": "110x110 BEYAZ KAMERA BUATI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1365,
+  "stok_kodu": "STK01327",
+  "ad": "1,5 MT KAMERA DİREĞİ + 50CM KOL APARATI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1366,
+  "stok_kodu": "STK01328",
+  "ad": "1 AD. F.O. PATCH CORD SM 1MT + 24 AD. SM PIGTAIL + 12 AD. SC SM DUPLEX + 1 AD. KASET + 1 AD. 12 PORT SC FO PATCH PANEL",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1367,
+  "stok_kodu": "STK01329",
+  "ad": "INFORM UPS  1KVA GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1368,
+  "stok_kodu": "STK01330",
+  "ad": "INFORM UPS  6KVA MONOFAZE GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1371,
+  "stok_kodu": "STK01333",
+  "ad": "IPC-HFW1249S-S-IL 2 Megapiksel smart dual light Bullet IP Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1372,
+  "stok_kodu": "STK01334",
+  "ad": "IPC-HFW1431S-S-0360B-S2",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1378,
+  "stok_kodu": "STK01340",
+  "ad": "UBIQUITI İÇ ORTAM TAVAN ACCESS POINT",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1380,
+  "stok_kodu": "STK01342",
+  "ad": "WE105 Renkli ekranlı, Bluetooth destekli Wi-Fi Telefon. 2inç 240 x 320 renkli ekran, 1.8metre yükseklikten düşmeye dayanıklılık, Wi-Fi desteği (Çift bant 2.4G/5G), Roaming desteği, Dahili Bluetooth 5.0 desteği, Bas-konuş tuşu (PTT)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1381,
+  "stok_kodu": "STK01343",
+  "ad": "HCS CAT6A FTP LSZH KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1384,
+  "stok_kodu": "STK01346",
+  "ad": "OEM Lc-lc sm dx patchcord 1m",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1392,
+  "stok_kodu": "STK01354",
+  "ad": "IPC-HFW5442E-ZE-S3",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1404,
+  "stok_kodu": "STK01366",
+  "ad": "KESİNTİSİZ GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1407,
+  "stok_kodu": "STK01369",
+  "ad": "J6A-00826 8P8C RJ-45 FTP Toolless Keystone Jack CAT 6A",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1408,
+  "stok_kodu": "STK01370",
+  "ad": "P00-02420-1U-B 24 port Keystone Jack Blank 19\" Metal FTP Patch",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1409,
+  "stok_kodu": "STK01371",
+  "ad": "T6A-00480-101 4x2x26# S/FTP CAT 6A LS0H Patch Cord Gri 1m",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1411,
+  "stok_kodu": "STK01373",
+  "ad": "T91-M0928-10 SC-LC Dupleks zip SM 1 metre patch cord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1413,
+  "stok_kodu": "STK01375",
+  "ad": "PFO-10001-1U Fiber optik modüler patch panel, boş,19'',1U",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1414,
+  "stok_kodu": "STK01376",
+  "ad": "PFO-11222-1U Datalight, SC Fiber Optik Patch Panel Modülü Siyah",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1417,
+  "stok_kodu": "STK01379",
+  "ad": "VFO-22212 DataLight SC Dupleks Plastik Adaptör , Mavi, SM",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1428,
+  "stok_kodu": "STK01390",
+  "ad": "DS-7616NI-Q1 16 KANAL NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1430,
+  "stok_kodu": "STK01392",
+  "ad": "4MP FULL HD COLOR IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1431,
+  "stok_kodu": "STK01393",
+  "ad": "4MP FULL HD COLOR IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1432,
+  "stok_kodu": "STK01394",
+  "ad": "8MP IP COLOR BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "8 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1433,
+  "stok_kodu": "STK01395",
+  "ad": "64 LÜ KAYIT CİHAZI NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1447,
+  "stok_kodu": "STK01409",
+  "ad": "TG-K1-EM ŞİFRE + KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1449,
+  "stok_kodu": "STK01411",
+  "ad": "12V 20A Metal Kasa Adaptör",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1451,
+  "stok_kodu": "STK01413",
+  "ad": "18Q İzoleli Çelik Spiral",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1453,
+  "stok_kodu": "STK01415",
+  "ad": "Reyee RG-NBS3100-24GT4SFP 24 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4 SFP.",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1454,
+  "stok_kodu": "STK01416",
+  "ad": "Reyee RG-NBS3200-48GT4XS 48 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 4*10G SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "48",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1455,
+  "stok_kodu": "STK01417",
+  "ad": "Reyee RG-NBS3100-8GT2SFP 8 Portlu, 10/100/1000 Gigabit, L2 Yönetilebilir Switch, 2 SFP",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1456,
+  "stok_kodu": "STK01418",
+  "ad": "100x50 MM KABLO KANALI İÇTEN KAPAKLI KANAL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1465,
+  "stok_kodu": "STK01427",
+  "ad": "12 PORT SC DX F/O DUVAR TİPİ PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1468,
+  "stok_kodu": "STK01430",
+  "ad": "8 Portlu, 10/100/1000 Gigabit, Endüstriyel Switch, 4 SFP, 8 Port PoE+ (240W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1469,
+  "stok_kodu": "STK01431",
+  "ad": "8 Portlu, 10/100/1000 Gigabit, Endüstriyel Switch, 2 SFP, 8 Port PoE+ (240W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1470,
+  "stok_kodu": "STK01432",
+  "ad": "4 Portlu, 10/100/1000 Gigabit, Endüstriyel Switch, 2 SFP, 4 Port PoE+ (120W)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1473,
+  "stok_kodu": "STK01435",
+  "ad": "L:1.5 mt topraklama elektrodu + bağlantı klemensleri",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1484,
+  "stok_kodu": "STK01446",
+  "ad": "Reyee RG-NIS-PA240-48 Güç Kaynağı",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1485,
+  "stok_kodu": "STK01447",
+  "ad": "IPG1000 16 ANALOG DIŞ HAT / 80 ANALOG ABONE / 32 SAYISAL ABONE / OPERATÖR TELEFONU + MEŞGULİYET PANOSU + AKÜ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1496,
+  "stok_kodu": "STK01458",
+  "ad": "24 PORT SM LC PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1497,
+  "stok_kodu": "STK01459",
+  "ad": "12 PORT SM LC PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1511,
+  "stok_kodu": "STK01473",
+  "ad": "J06-00804\tFTP CAT 6A Plug, RJ-45, 8P8C, Yuvarlak Kablo İçin, Katı ve Esnek İletken",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1512,
+  "stok_kodu": "STK01474",
+  "ad": "NVR2116HS-S3 16 Kanal Lite 1U NVR 1/4/8/9/16 Kanal 1080p Gerçek Zamanlı Önizleme ve 1ch@4K/4ch@1080P e Kadar Kayıt, 80Mbps Band Genişliği , 1xHDMI/1xVGA Eş Zamanlı Video Çıkışı, 1/4/8 Kanal Senkronize Gerçek Zamanlı Oynatma, 1/1xSes, H.265/H.264 Codec, 1x",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1513,
+  "stok_kodu": "STK01475",
+  "ad": "DIŞ MEKAN CAT6 NETWORK KABLOSU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 1518,
+  "stok_kodu": "STK01480",
+  "ad": "NVR-3108HP/8P-LİTE NETWORK KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1522,
+  "stok_kodu": "STK01484",
+  "ad": "PFS3009-8ET1GT-96-V2 8 Port PoE Switch (8FE PoE + 1FE, Toplam 96W PoE) 1*10/100/1000 Base- T, 8*10/100 Base-T (PoE güç kaynağı)Anahtarlama Kapasitesi: 3.6Gbps, Paket İletme Hızı: 2.678 MbpsPaket Buffer: 1 Mbit, Mac Tablosu Boyutu: 2KÇalışma Sıcaklığı: -10",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1523,
+  "stok_kodu": "STK01485",
+  "ad": "PFS3010-8ET-96 8 Port PoE Switch (8FE PoE + 2GE Toplam 96W PoE) 8*10/100Mbps PoE port, 2*10/100/1000Mbps portAnahtarlama Kapasitesi: 5.6Gbps, Paket İletme Hızı: 4.17Mbps, Paket Buffer: 4Mb, Mac Tablosu Boyutu: 16KÇalışma Sıcaklığı: -10°C~55°C, Nem Aralığı",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1525,
+  "stok_kodu": "STK01487",
+  "ad": "12 PORT SM SC PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1526,
+  "stok_kodu": "STK01488",
+  "ad": "24 PORT SM SC PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1528,
+  "stok_kodu": "STK01490",
+  "ad": "TEST TELEFONU VE AKSESUARLARI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1529,
+  "stok_kodu": "STK01491",
+  "ad": "Telefon Jumper Teli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1530,
+  "stok_kodu": "STK01492",
+  "ad": "AKÜ 12V 26 AH SANTRAL AKÜSÜ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1531,
+  "stok_kodu": "STK01493",
+  "ad": "TELESİS PX24MLRX SANTRAL 4 DIŞ HAT, 6 İÇ HAT, 2 SAYISAL HAT, 4 HAT SES KAYIT LİSANSI VE 4 KANAL VOIP LİSANSI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1533,
+  "stok_kodu": "STK01495",
+  "ad": "DS-7204HGHI-F1 4 kanallı H.264 video sıkıştırma 1080p Lite 1U H.264 DVR",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1536,
+  "stok_kodu": "STK01498",
+  "ad": "SQL PANEL YAZILIMI (10 kart okuyucuya kadar ücretsiz)",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1537,
+  "stok_kodu": "STK01499",
+  "ad": "TG-304 GEÇİŞ KONTROL PANELİ (> 4 Wiegand Okuyucu > 100.000 Kullanıcı, 150.000 Olay hafızası > 2048 Geçiş Grubu Hafızası > 2 CPU'lu (32 Bit Ana CPU ve 16 Bit Co-CPU), 20MBit Flash, 8MBit SRAM > Alarm ve Yangın tetikleme girişleri > Lokal Antipassback, PC'd",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1538,
+  "stok_kodu": "STK01500",
+  "ad": "S2-R EM Wiegand Proximity Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1540,
+  "stok_kodu": "STK01502",
+  "ad": "UNV IPC3534LB-ADZK-H 4MP IP 2.8-12mm AFZ Lens H.265+ TrueWDR Dahili Mik. Dome Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8–12 mm",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1541,
+  "stok_kodu": "STK01503",
+  "ad": "NSW2020-10T-POE SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {}
+ },
+ {
+  "id": 1544,
+  "stok_kodu": "STK01506",
+  "ad": "SD6CE245GB-HNR 2MP 45x Starlight IR Network PTZ Camera",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1545,
+  "stok_kodu": "STK01507",
+  "ad": "SD49225DB-HNY 2MP 25x Starlight IR Ağ PTZ Kamera  > 1/2,8\" 2Megapiksel STARVIS™ CMOS.  > 25× optik yakınlaştırma.  > Starlight teknolojisi.  > Maksimum 25/30 fps@1080p.  > IR mesafesi 100 m'ye kadar.  > H.265 kodlaması.",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1546,
+  "stok_kodu": "STK01508",
+  "ad": "TELESİS MLRX 16 ANALOG DIŞ HAT 64 ANALOG İÇ HAT 112 IP (SIP ABONE) 4 KANAL VOIP 8 KANAL SESLİ YANIT 4 PORT SES KAYIT + İLK YIL ÜCRETSİZ BAKIM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1547,
+  "stok_kodu": "STK01509",
+  "ad": "AC1300  İç Ortam Access Point - Dual-band, 867Mbps at 5GHz + 400Mbps at 2.4GHz, 2 Fast Ethernet Port",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1557,
+  "stok_kodu": "STK01519",
+  "ad": "IPG1000 : 20 ANALOG DIŞ HAT, ANALOG İÇ HAT 112, PRI, 15 IP ABONE VE  1 AD. IP136G KONSOL TELEFON + GENİİŞLETME MODÜLÜ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1566,
+  "stok_kodu": "STK01528",
+  "ad": "MS48 SANTRAL KAPAĞI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1572,
+  "stok_kodu": "STK01534",
+  "ad": "3 KWA ONLİNE UPS KESİNTİSİZ GÜÇ KAYNAĞI",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1573,
+  "stok_kodu": "STK01535",
+  "ad": "Reyee RG-EST310 5Ghz Dış Ortam Noktadan Noktaya Access Point, Kutu İçeriği 2 Adet, 867 Mbps, Bulut Yönetilebilir",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1577,
+  "stok_kodu": "STK01539",
+  "ad": "Huawei Ekit S310-24P4S 24PORT Gigabit 4sfp 400W Poe+ Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1582,
+  "stok_kodu": "STK01544",
+  "ad": "R9W90A HPE Aruba Networking CX 8100 48x10G SFP+ 4x40/100G QSFP28 FB Airflow 3Fan 2AC PSU Switch Bundle",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1586,
+  "stok_kodu": "STK01548",
+  "ad": "JL677A HPE Aruba Networking CX 6100 24G Class4 PoE 4SFP+ 370W Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {}
+ },
+ {
+  "id": 1589,
+  "stok_kodu": "STK01551",
+  "ad": "JL728A HPE Aruba Networking 6200F 48G Class4 PoE 4SFP+ 740W Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {}
+ },
+ {
+  "id": 1596,
+  "stok_kodu": "STK01558",
+  "ad": "NVR4216-4KS3 16 KANAL NVR KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1597,
+  "stok_kodu": "STK01559",
+  "ad": "7 METRE KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1598,
+  "stok_kodu": "STK01560",
+  "ad": "1 METRE KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1599,
+  "stok_kodu": "STK01561",
+  "ad": "8 Core Fiber Optik Kablo OM2 MM",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 1601,
+  "stok_kodu": "STK01563",
+  "ad": "FO PATCH CORD DUPLEX SC/LC MM 50/125µ 1MT OM2",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1606,
+  "stok_kodu": "STK01568",
+  "ad": "Yealink T31P IP Telefon PoE Destekli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1607,
+  "stok_kodu": "STK01569",
+  "ad": "TELESİS MLRX 8 ANALOG DIŞ HAT 24 ANALOG İÇ HAT 112 IP (SIP ABONE) 4 KANAL VOIP, 8 KANAL SESLİ YANIT, 4 PORT SES KAYIT + İLK YIL ÜCRETSİZ BAKIM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1608,
+  "stok_kodu": "STK01570",
+  "ad": "PLAKA TANIMA SETİ (KAMERA VE OKUMA LİSANSI)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1609,
+  "stok_kodu": "STK01571",
+  "ad": "PLAKA TANIMA YAZILIMI (GİŞE)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1611,
+  "stok_kodu": "STK01573",
+  "ad": "OTOPARK MERKEZİ YAZILIM ( PLAKA TANIMA SİSTEMİ)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1615,
+  "stok_kodu": "STK01577",
+  "ad": "IPC-HFW2541S-S 5MP IR Sabit Odaklı Bullet WizSense Ağ Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens"
+  }
+ },
+ {
+  "id": 1616,
+  "stok_kodu": "STK01578",
+  "ad": "IPC-HDW2541T-S 5MP IR Sabit Odaklı Göz Küresi WizSense Ağ Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens tipi": "Sabit lens"
+  }
+ },
+ {
+  "id": 1618,
+  "stok_kodu": "STK01580",
+  "ad": "NVR-3104HP/4P-LİTE 4 KANAL NETWORK KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1619,
+  "stok_kodu": "STK01581",
+  "ad": "ISEE ISN-3108B1-8P 8 Kanal Poe NVR 8 KANAL POE, 1 HDD",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1620,
+  "stok_kodu": "STK01582",
+  "ad": "Telefon Zili",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1621,
+  "stok_kodu": "STK01583",
+  "ad": "PLAKA TANIMA BİLGİSAYARI İYİLEŞTİRME",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1622,
+  "stok_kodu": "STK01584",
+  "ad": "PLAKA TANIMA KAMERA OKUMA LİSANSI",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1623,
+  "stok_kodu": "STK01585",
+  "ad": "PATCH CORD CAT6 10 MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1625,
+  "stok_kodu": "STK01587",
+  "ad": "4 PORT VGA SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 1631,
+  "stok_kodu": "STK01593",
+  "ad": "YENİ NESİL AÇIK UÇLU CAT6 RJ45 JACK",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1632,
+  "stok_kodu": "STK01594",
+  "ad": "S-LINK SL-830W YENİ NESİL RJ45 RJ11 PENSE",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1635,
+  "stok_kodu": "STK01597",
+  "ad": "KABLO KANALI 25X25 YAPIŞKANLI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1638,
+  "stok_kodu": "STK01600",
+  "ad": "PX24 mLrX  2 sayısal, 6 analog iç, 4 analog dış , 112 IP (SIP) abone, 1 adet xSIP IP abone, 2 Kanal VoIP, 8 kanal (12.000 dk.) Sesli Yanıt Sistemi, 1 adet xCom, 2 adet röle, Güç ünitesi, Akü destek, Caller ID desteği,",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1640,
+  "stok_kodu": "STK01602",
+  "ad": "TELEFON/KAMERA TUTUCU TRİPOD 135 CM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1654,
+  "stok_kodu": "STK01616",
+  "ad": "F QUICK F ARA QUİCK SANTRALLERİ HIZLI BAĞLANTI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1655,
+  "stok_kodu": "STK01617",
+  "ad": "RG 11 SIKIŞTIRMALI F KONNEKTÖR",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1657,
+  "stok_kodu": "STK01619",
+  "ad": "RG 11 SIKIŞTIRMA RG 11 SIKIŞTIRMALI F KONNEKTÖR",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1659,
+  "stok_kodu": "STK01621",
+  "ad": "THTV-SRV-100 Interaktif IPTV Server",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 1666,
+  "stok_kodu": "STK01628",
+  "ad": "RG6-SK RG 6 SIKIŞTIRMALI F KONNEKTÖR",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1680,
+  "stok_kodu": "STK01642",
+  "ad": "PATCH CORD SC/APC 5MT  SC/APC Patch Cord 5 Mt",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1681,
+  "stok_kodu": "STK01643",
+  "ad": "TPS 04 SET FULL CORE FİBER SONLANDIRMA SETİ (Pigtale, patchcord, organizer, ek mufu dahil) 4 CORE",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1692,
+  "stok_kodu": "STK01654",
+  "ad": "UNIFI 2.4-5 GHZ DUAL BAND İÇ ORTAM ACCESS POINT",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1693,
+  "stok_kodu": "STK01655",
+  "ad": "UNIFI 2.4-5 GHZ DUAL BAND DIŞ ORTAM ACCESS POINT",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1703,
+  "stok_kodu": "STK01665",
+  "ad": "Hotc Hotel Çağrı Sunucusu",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 1705,
+  "stok_kodu": "STK01667",
+  "ad": "IPG500 (0 IP Dış. + 0 PRI + 4 Ana.Dış. / 32 Ana.Ab. + 16 Say.Ab. + 0 SIP.Ab.)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1706,
+  "stok_kodu": "STK01668",
+  "ad": "SD49216DB-HNY  2MP 16x Starlight IR Ağ PTZ Kamera  > 1/2,8\" 2 Megapiksel STARVIS™ CMOS.   > 16× optik yakınlaştırma.   > Starlight teknolojisi.   > Maksimum 25/30 fps@1080p.   > IR mesafesi 100 m'ye kadar.> H.265 kodlaması.> Çevre koruması.> Yüz Algılama.",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1707,
+  "stok_kodu": "STK01669",
+  "ad": "NVR4208-8P-4KS3 // 8CH 1U 8PoE 2HDD Lite Ağ Video Kaydedici  > Akıllı H.265+, H.265, Akıllı H.264+, H.264 ve MJPEG kod çözme formatlarını destekler.  > Maksimum kod çözme kapasitesi: 8 × 1080p@30 fps.  > Maksimum 160/160/80 Mbps gelen/kayıt/giden bant",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1708,
+  "stok_kodu": "STK01670",
+  "ad": "IPC-HFW2441T-AS 4MP IR Sabit Odaklı Bullet WizSense Ağ Kamerası  > 4-MP 1/2.9\" CMOS görüntü sensörü, düşük parlaklık ve yüksek çözünürlüklü görüntü.  > Maksimum 4 MP (2688 × 1520)@20 fps çıkış verir ve 2560 × 1440 (2560 × 1440)@25/30 fps'yi destekler.  >",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens"
+  }
+ },
+ {
+  "id": 1711,
+  "stok_kodu": "STK01673",
+  "ad": "24 PORT CAT6 PATCH PANEL (KEYSTONE JACK DAHİL)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1712,
+  "stok_kodu": "STK01674",
+  "ad": "CAT6 PATCH CORD KABLO 1MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1713,
+  "stok_kodu": "STK01675",
+  "ad": "50 PER ÇATILI TELEFON KUTUSU",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1714,
+  "stok_kodu": "STK01676",
+  "ad": "PX24 mLrX  4 ANALOG DIŞ HAT, 32 ANALOG İÇ HAT, 15 Sayısal Hat, 112 IP (SIP) abone, 1 adet xSIP IP abone, 2 Kanal VoIP, 8 kanal (12.000 dk.) Sesli Yanıt Sistemi, 1 adet xCom, 2 adet röle, Güç ünitesi, Akü destek, Caller ID desteği,",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1715,
+  "stok_kodu": "STK01677",
+  "ad": "IPC-HDW2431T-AS-0280B 4 MP H.265+ IR Dome Starlight SESLİ Kamera(30m IR) 1 / 2.7 \" CMOS, 3.6mm Sabit Lens, 0.008 Lüx Renkli BLC/HLC/WDR(120dB), 3DNR, AWB, AGC, ICR, SD Kart Desteği(256GB) Tripwire(Sanal Sınır),Intrusion(Alan İhlali) Analiz IP67, PoE, 20fp",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "3.6 mm",
+   "Kamera tipi": "Dome",
+   "Lens tipi": "Sabit lens",
+   "PoE desteği": "Evet",
+   "WDR": "Evet",
+   "SD kart desteği": "Evet",
+   "Gece görüş mesafesi": "30",
+   "IP koruma sınıfı": "IP67"
+  }
+ },
+ {
+  "id": 1718,
+  "stok_kodu": "STK01680",
+  "ad": "IPG1000 8 ANALOG DIŞ HAT / 624 ANALOG ABONE / 55 IP ABONE LİSANSI / OPERATÖR TELEFONU + MEŞGULİYET PANOSU + GÜÇ KAYNAĞI + AKÜ + 1 YILLIK BAKIM HEDİYE",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1719,
+  "stok_kodu": "STK01681",
+  "ad": "CAT6 PATCH CORD KABLO 5MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1720,
+  "stok_kodu": "STK01682",
+  "ad": "CAT6 PATCH CORD KABLO 0,5MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1727,
+  "stok_kodu": "STK01689",
+  "ad": "MLRX 8 ANALOG DIŞ HAT 54 ANALOG İÇ HAT 112 IP (SIP ABONE) 4 KANAL VOIP, 8 KANAL SESLİ YANIT, 5 PORT SES KAYIT + İLK YIL ÜCRETSİZ BAKIM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1728,
+  "stok_kodu": "STK01690",
+  "ad": "IPC-HFW3549T1-AS-PV > 5MP, 1/2,7” CMOS görüntü sensörü, düşük aydınlatma, yüksek görüntü tanımı  > Maksimum 5MP (2592 × 1944) @20 fps çıkış verir ve 4MP (2688 × 1520) @25/30 fps desteği sunar  > H.265 kodeği, yüksek sıkıştırma oranı, düşük bit hızı  > Dah",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP"
+  }
+ },
+ {
+  "id": 1729,
+  "stok_kodu": "STK01691",
+  "ad": "IPC-HFW1431S-S-0360B 4MP Lite IR Sabit Odaklı Bullet Network Kamera 1/3 ”4 Megapiksel progresif CMOS H.265 ve H.264 çift akışlı kodlama WDR (120dB), Gündüz / Gece (ICR ), 3DNR,HLC, BLC Çoklu network izleme: Web görüntüleyici, CMS (DSS / PSS",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens",
+   "WDR": "Evet"
+  }
+ },
+ {
+  "id": 1730,
+  "stok_kodu": "STK01692",
+  "ad": "IPC-HDW1431T-AS 4MP IP IR Dome 1/3“ CMOS Sensör ile 4MP Çözünürlük, 3.6mm Sabit Lens, 30mt. Gece Görüş Mesafesi, H-265 Sıkıştırma Formatı, BLC / HLC / WDR (120dB), 3DNR, AWB, AGC, ICR, SD Kart Desteği (256GB), IP67, PoE, 20fps@4MP (2688×1520), Metal Kasa.",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "3.6 mm",
+   "Kamera tipi": "Dome",
+   "Lens tipi": "Sabit lens",
+   "PoE desteği": "Evet",
+   "WDR": "Evet",
+   "SD kart desteği": "Evet",
+   "IP koruma sınıfı": "IP67"
+  }
+ },
+ {
+  "id": 1734,
+  "stok_kodu": "STK01696",
+  "ad": "3X4 NYY YERALTI BAKIR KABLO",
+  "kategori": "Enerji Kablosu",
+  "kid": 29,
+  "ozellikler": {}
+ },
+ {
+  "id": 1738,
+  "stok_kodu": "STK01700",
+  "ad": "SDT4E425-4F-GB-A-PV1 4MP+4MP H.265+ 25X Optik ZOOM Speed Dome Tioc Kamera( 100m IR) 1 / 2.8 \" CMOS, 0.001 lux@F1.0 (Color, 30 IRE) + 0.005 lux@F1.6 (Color, 30 IRE) BLC/HLC/WDR(120dB), 3DNR, AWB, AGC, ICR, Defog, SD-Kart Desteği(256GB) Pan: 0° ~ 360° sonsu",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1739,
+  "stok_kodu": "STK01701",
+  "ad": "IPC-HFW1230S-S-0280B-S4 2 MP H.265+ IR Bullet Kamera(30m IR)•2MP, 1/2.7” CMOS 2.8mm veya 3.6mm Sabit Lens, 0.005 Lux RenkliBLC/HLC/DWDR, 3DNR, AWB, AGC, ICR, SD Kart Desteği(256GB)Anormallik Tespiti: Hareket Tespiti, sabotaj, sd kard yok, sd kart dolu,vol",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens",
+   "WDR": "Evet",
+   "SD kart desteği": "Evet",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 1740,
+  "stok_kodu": "STK01702",
+  "ad": "DB263 IP DECT baz istasyonu",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1741,
+  "stok_kodu": "STK01703",
+  "ad": "DE255 DECT TELEFON, DB260 ve DB263 için el ünitesidir. GAP uyumlu, 64K renkli ekran, 128 x 128 piksel, Genişbant ses kalitesi, Merkezi rehber desteği (LDAP), 50 Kişilik kişisel rehber, Hava senkronizasyonuyla yazılım güncelleme ve Türkçe dil desteği",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1743,
+  "stok_kodu": "STK01705",
+  "ad": "170X190X90 Buat Kutusu",
+  "kategori": "Buat",
+  "kid": 13,
+  "ozellikler": {}
+ },
+ {
+  "id": 1748,
+  "stok_kodu": "STK01710",
+  "ad": "TELESİS PX24MLRX 8 ANALOG DIŞ HAT 22 ANALOG İÇ HAT 112 IP (SIP ABONE) 4 KANAL VOIP, 8 KANAL SESLİ YANIT",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1750,
+  "stok_kodu": "STK01712",
+  "ad": "ARŞİV 1 LOKASYONU KAMERA SİSTEMİ FİYAT TEKLİFİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1751,
+  "stok_kodu": "STK01713",
+  "ad": "ARŞİV 2 LOKASYONU KAMERA SİSTEMİ FİYAT TEKLİFİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1752,
+  "stok_kodu": "STK01714",
+  "ad": "VEREM SAVAŞ LOKASYONU KAMERA SİSTEMİ FİYAT TEKLİFİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1753,
+  "stok_kodu": "STK01715",
+  "ad": "ANA BİNA KAMERA SİSTEMİ FİYAT TEKLİFİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1754,
+  "stok_kodu": "STK01716",
+  "ad": "Hikvision DS-7232HGHI-M2 32 Kanal DVR Kayıt Cihazı",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1755,
+  "stok_kodu": "STK01717",
+  "ad": "Hikvision DS-2CE16D0T-EXIPF 2MP 2,8mm Lensli Bullet Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 1759,
+  "stok_kodu": "STK01721",
+  "ad": "SUNUCU",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 1766,
+  "stok_kodu": "STK01728",
+  "ad": "HPE iLO Advanced 1-server License with 3yr Support on iLO Licensed Features",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 1767,
+  "stok_kodu": "STK01729",
+  "ad": "Windows Server 16 core lisans",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 1769,
+  "stok_kodu": "STK01731",
+  "ad": "KAREL IPS420 2 FXO, 1 supervisor, 2 operatör, 100 IP abone (80 Karel IP + 70 SIP), 30 SIP dış hat, Lisans arttırımı ile 60 SIP Dış Hat ve 500 IP Aboneye büyüyebilir IP Santral ve Çağrı Merkezi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1778,
+  "stok_kodu": "STK01740",
+  "ad": "RG-ES124GD 24 Port 10/100/1000 Yönetilemez Rack Mount Çelik Kasa Switch 1 RG-ES124GD 24 Port 10/100/1000 Yönetilemez Rack Mount Çelik Kasa Switch 2 RG-ES124GD 24 Port 10/100/1000 Yönetilemez Rack Mount Çelik Kasa Switch 3 Ruijie RG-ES124GD 24 Port 10/100",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1779,
+  "stok_kodu": "STK01741",
+  "ad": "RG-ES124GD 24 Port 10/100/1000 Yönetilemez Rack Mount Çelik Kasa Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1786,
+  "stok_kodu": "STK01748",
+  "ad": "1 AYLIK ZAYIF AKIM SİSTEMLERİ BAKIM VE SERVİS BEDELİ ( CCTV, UYDU, SINIR VE ALAN İHLALİ, YANGIN, KOLLU BARİYER SİSTEMİ, TURNİKE SİSTEMİ, KARTLI GEÇİŞ SİSTEMİ, PLAKA TANIMA SİSTEMİ VE İNTERNETKOM SİSTEMLERİ )",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 1787,
+  "stok_kodu": "STK01749",
+  "ad": "16 Analog Dış / 16 Analog İç / 40 SIP Abone / 16 Kanal MGW / 12 Kanal IVR Kapasiteli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1791,
+  "stok_kodu": "STK01753",
+  "ad": "POWER SUPPLY 27 V 5.6 AH (GUC KAYNAGI)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1792,
+  "stok_kodu": "STK01754",
+  "ad": "POWER SUPPLY 12V 10A",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1793,
+  "stok_kodu": "STK01755",
+  "ad": "POWER SUPPLY DC24V 8A",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1801,
+  "stok_kodu": "STK01763",
+  "ad": "HYTERA SC580 YAKA KAMERASI - DAHİLİ HAFIZALI,GPRS,GSM MODÜL DAHİL",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1803,
+  "stok_kodu": "STK01765",
+  "ad": "HYTERA KAMERA LİSANSI - ANYİP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1805,
+  "stok_kodu": "STK01767",
+  "ad": "40x25 Kablo Kanalı",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1806,
+  "stok_kodu": "STK01768",
+  "ad": "40x40 Kablo Kanalı",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1808,
+  "stok_kodu": "STK01770",
+  "ad": "NeuroStation 8400R/32 INT  NeuroStation 8400R/32 INT - is a network video recorder intended for IP cameras running TRASSIR OS (Linux), with support of video analytics based on neural networks. Recording, playback up to 32 IP cameras of any supported manuf",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1812,
+  "stok_kodu": "STK01774",
+  "ad": "VİP Swing Gate Turnike (• AISI 304 paslanmaz çelik gövde • Alüminyum kollar ve pleksili kanat • 30 x 100 cm (kanat dahil) y: 100 cm • 80 cm kanat uzunluğu • Motorlu, otomatik açılır kanat • Acil durum modu • IP 54 koruma sınıfı • 2 yıl parça ve servis",
+  "kategori": "Turnike",
+  "kid": 23,
+  "ozellikler": {}
+ },
+ {
+  "id": 1813,
+  "stok_kodu": "STK01775",
+  "ad": "Turnike Küpeşte (1X1 metretül seperatör)",
+  "kategori": "Turnike",
+  "kid": 23,
+  "ozellikler": {}
+ },
+ {
+  "id": 1820,
+  "stok_kodu": "STK01782",
+  "ad": "Karel MS48 IP Santral 6 Dış 18 Dahili Abone Analog 4 Dış 8 Dahili Abone İp Dahili Abone Başlangıç Kapasitesi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1821,
+  "stok_kodu": "STK01783",
+  "ad": "YANGIN ALARM SİSTEMİ BAKIMI",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1823,
+  "stok_kodu": "STK01785",
+  "ad": "YANGIN SİSTEMİ SERVİS ÜCRETİ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1824,
+  "stok_kodu": "STK01786",
+  "ad": "OPTİK DUMAN DEDEKTÖRÜ (SOKET DAHİL)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1825,
+  "stok_kodu": "STK01787",
+  "ad": "YANGIN ALARM KABLOSU 1*2*0,6 PVC TAM BAKIR",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1830,
+  "stok_kodu": "STK01792",
+  "ad": "IPG SOFT: 60 KANAL SIP TRUNK, 150 KAREL IP ABONE, 16 KANAL IVR, 50 KMT LİSANSI, 50 KANAL SBC OTURUM KANAL LİSANSI,  50 KANAL SBC GATEWAY KANAL LİSANSI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1832,
+  "stok_kodu": "STK01794",
+  "ad": "COMFORT 550 GİGASET TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1842,
+  "stok_kodu": "STK01804",
+  "ad": "CM200 KAMERA VE ARAÇ TAKİP CİHAZI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1848,
+  "stok_kodu": "STK01810",
+  "ad": "HYBRONE WİFİ SD KARTLI KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "SD kart desteği": "Evet"
+  }
+ },
+ {
+  "id": 1850,
+  "stok_kodu": "STK01812",
+  "ad": "KAMERA SERVİS ÜCRETİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1852,
+  "stok_kodu": "STK01814",
+  "ad": "SPEED DOME L AYAK",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1853,
+  "stok_kodu": "STK01815",
+  "ad": "TİANDY TC-H326S 33X 2 MPOPTİK SPEED DOME",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 1868,
+  "stok_kodu": "STK01830",
+  "ad": "NVR 3232R AnyIP (INT) TRASSİR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1869,
+  "stok_kodu": "STK01831",
+  "ad": "NVR 3216R ANYIP (INT) TRASSİR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1875,
+  "stok_kodu": "STK01837",
+  "ad": "DAHUA 5MP İP DOME KAMERA DAHUA IPC-HDW2541T-S-0280B",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 1877,
+  "stok_kodu": "STK01839",
+  "ad": "Kartlı Geçiş Modülü",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1878,
+  "stok_kodu": "STK01840",
+  "ad": "10.1\" Güvenlik Ünitesi Dokunmatik Ekran 255 e Kadar IP Kamera Bağlantısı Kart",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1879,
+  "stok_kodu": "STK01841",
+  "ad": "A2MMEPRIAP KAMERA ONVİF ÖZELLİKLİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1880,
+  "stok_kodu": "STK01842",
+  "ad": "A2MMEPRIAP KAMERA ONVİF ÖZELLİKLİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1881,
+  "stok_kodu": "STK01843",
+  "ad": "A2MMEPRIAP KAMERA ONVİF ÖZELLİKLİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1882,
+  "stok_kodu": "STK01844",
+  "ad": "12 V 2 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1884,
+  "stok_kodu": "STK01846",
+  "ad": "Güvenlik Ünitesi Dokunmatik Ekran 255 e Kadar IP Kamera Bağlantısı Kart",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 1902,
+  "stok_kodu": "STK01864",
+  "ad": "HIKVISION 16 KANAL DVR",
+  "kategori": "DVR",
+  "kid": 9,
+  "ozellikler": {}
+ },
+ {
+  "id": 1909,
+  "stok_kodu": "STK01871",
+  "ad": "TP-OS02-IC 4,3 inç Dış Kapı Paneli - Şifreli ve Kartlı Geçiş - Butonlu Tuş Takımı IC Desteği TCP/",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1914,
+  "stok_kodu": "STK01876",
+  "ad": "TELESİS - XRX ITSX İP TELEFON SANTRAL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1915,
+  "stok_kodu": "STK01877",
+  "ad": "KAREL - IPH101 - DUVAR TİPİ İP TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1917,
+  "stok_kodu": "STK01879",
+  "ad": "DE101 DECT El Ünitesi",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1919,
+  "stok_kodu": "STK01881",
+  "ad": "NVR5832-EI 32 KANAL NVR (8X16TB)",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1924,
+  "stok_kodu": "STK01886",
+  "ad": "HIKVISION DS-7616NI-M2 16 KANAL NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 1926,
+  "stok_kodu": "STK01888",
+  "ad": "HCS 24 PORT CAT6 UTP PATCH PANEL DOLU",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 1927,
+  "stok_kodu": "STK01889",
+  "ad": "DIN rayı için endüstriyel anahtarlama güç kaynağı, NIS3100 serisi endüstriyel anahtar için 48V 240W",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1930,
+  "stok_kodu": "STK01892",
+  "ad": "IP30 Industrial 8* 1000TP + 2* 100/1000F SFP Full Managed Ethernet Switch (-40 to 75 degree C)",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Yönetim": "Yönetilebilir"
+  }
+ },
+ {
+  "id": 1932,
+  "stok_kodu": "STK01894",
+  "ad": "DELTA LYTE II Series 240W 48V 5A Industrial DIN-Rail Power Supply",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1933,
+  "stok_kodu": "STK01895",
+  "ad": "8-Port 10/100TX 802.3at PoE + 1-Port 10/100/1000T + 1-Port 100/1000X SFP Desktop Switch (120 watts)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1940,
+  "stok_kodu": "STK01902",
+  "ad": "IPX, 15 Ip Dış Hat, 50 Ip Abone Kapasiteli Yeni Nesil IP Telefon Santrali",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1941,
+  "stok_kodu": "STK01903",
+  "ad": "Karel MS48 IP Santral 4 Dış 12 Dahili Abone Analog 8 Dış 16 İp Dahili Abone",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1942,
+  "stok_kodu": "STK01904",
+  "ad": "MS48 IP Santral 6 Dış 34 Dahili Abone Analog 4 Dış 8 İp Dahili Abone",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1943,
+  "stok_kodu": "STK01905",
+  "ad": "TELEFON PRİZİ RJ-11",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1945,
+  "stok_kodu": "STK01907",
+  "ad": "24 PORT GIGABIT + 4X1GB SFP YÖNETİLEBİLİR RACKMOUNT SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1946,
+  "stok_kodu": "STK01908",
+  "ad": "48-Portlu 10/100Mbps Rackmount Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 1947,
+  "stok_kodu": "STK01909",
+  "ad": "48-Port Gigabit Rackmount Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 1950,
+  "stok_kodu": "STK01912",
+  "ad": "8 Core Multi Mode 50/125 Çelik Zırhlı Fiber Optik Kablo",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 1951,
+  "stok_kodu": "STK01913",
+  "ad": "Fiber Optik Pigtail SC/PC Multi Mode 50/125 OM3-1m",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 1952,
+  "stok_kodu": "STK01914",
+  "ad": "FO PATCH CORD DUPLEX SC/LC MM 50/125µ 2MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 1957,
+  "stok_kodu": "STK01920",
+  "ad": "DXc2 2 Loop Yangın Algılama Paneli, 6x40 LCD Gösterge, 396 Adres Kapasiteli, 2 Siren Çıkışı, 2 Bağımsız Programlanabilen Fonksiyon Tuşları, 230V AC",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1959,
+  "stok_kodu": "STK01922",
+  "ad": "Adreslenebilir Optik Duman Dedektörü - Fildişi Rengi",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1966,
+  "stok_kodu": "STK01929",
+  "ad": "Konvansiyonel flaşörlü siren (Kırmızı)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1971,
+  "stok_kodu": "STK01934",
+  "ad": "IPG1000 0 IP Dış. + 0 PRI + 8 Ana.Dış. / 152 Ana.Ab. + 0 Say.Ab. + 0 SIP.Ab.",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 1972,
+  "stok_kodu": "STK01935",
+  "ad": "TG-R1101 Proximity Wiegand Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 1974,
+  "stok_kodu": "STK01937",
+  "ad": "GEÇİŞ KONTROL PANELİ (> 8 Wiegand Okuyucu > 100.000 Kullanıcı, 150.000 Olay hafızası > 2048 Geçiş Grubu Hafızası > 2 CPU'lu (32 Bit Ana CPU ve 16 Bit Co-CPU), 20MBit Flash, 8MBit SRAM > Alarm ve Yangın tetikleme girişleri > Lokal Antipassback, PC'den bağı",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 1977,
+  "stok_kodu": "STK01940",
+  "ad": "Remote Paging Microphone, capacity is of 120 zones, DC24V power supply",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 1984,
+  "stok_kodu": "STK01947",
+  "ad": "WiFi 6 AX3000, 3x3 MU-MIMO, PoE+ (802.3at), 1x 2.5GbE port, Captive Portal, Standalone or NebulaFlex Cloud  Access Point",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 1985,
+  "stok_kodu": "STK01948",
+  "ad": "8 port 2.5GbE 2 SFP+ PoE++ 130W L2 Smart Desktop Switch Standalone or NebulaFlex Cloud",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 1998,
+  "stok_kodu": "STK01961",
+  "ad": "Karel MS48 IP Santral 6 Dış 18 Dahili Abone Analog 4 Dış 8 Dahili Abone İp Dahili Abone",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2000,
+  "stok_kodu": "STK01963",
+  "ad": "Cat6 Internet Network Ethernet Kablosu",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2003,
+  "stok_kodu": "STK01966",
+  "ad": "KART OKUYUCU KORUMA SİPERLİK",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2005,
+  "stok_kodu": "STK01968",
+  "ad": "IPC-HFW2241T-AS 2MP 3.6MM 80M IR BULLET POE KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "3.6 mm",
+   "Kamera tipi": "Bullet",
+   "PoE desteği": "Evet",
+   "Gece görüş mesafesi": "80"
+  }
+ },
+ {
+  "id": 2006,
+  "stok_kodu": "STK01969",
+  "ad": "IPC-HFW1230TC1-SA-0280B IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2007,
+  "stok_kodu": "STK01970",
+  "ad": "IPC-HDW1431T-AS-0280B-S 4MP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2008,
+  "stok_kodu": "STK01971",
+  "ad": "32 KANAL MINI NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2012,
+  "stok_kodu": "STK01976",
+  "ad": "HIKVISION DS-2CD1343G2-LIUF 4MP 2.8MM IP DOME KAMERA SMART HYBRİD LİGHT",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2014,
+  "stok_kodu": "STK01978",
+  "ad": "HIKVISION DS-2CD1063G2-LIUF 6MP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2017,
+  "stok_kodu": "STK01982",
+  "ad": "HIKVISION DS-2CD1023G2-LIUF 2MP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2019,
+  "stok_kodu": "STK01984",
+  "ad": "HIKVISION KAMERA IP KAMERA BULLET 8 MP DS-2CD2087G3-LI2UY/SL 4MM",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "8 MP",
+   "Lens ölçüsü": "4 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2020,
+  "stok_kodu": "STK01985",
+  "ad": "HIKVISION KAMERA IP KAMERA DOME 8 MP DS-2CD2387G3-LIS2UY/SL 2.8MM",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "8 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2025,
+  "stok_kodu": "STK01990",
+  "ad": "24 port Keystone Jack Blank 19\" Metal UTP Patch Panel,1U -DATA",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2026,
+  "stok_kodu": "STK01991",
+  "ad": "4x2x26# U/UTP CAT 6 LS0H Patch Cord Gray 100CM",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2027,
+  "stok_kodu": "STK01992",
+  "ad": "4x2x26# U/UTP CAT 6 LS0H Patch Cord blue 100CM",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2029,
+  "stok_kodu": "STK01994",
+  "ad": "1U 12 PORT SC RACK MOUNT FIBER PATCH PANEL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2032,
+  "stok_kodu": "STK01997",
+  "ad": "SC Dublex SM Adaptör",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2033,
+  "stok_kodu": "STK01998",
+  "ad": "SLC S/M Fiber optik patch cord 2mt",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2034,
+  "stok_kodu": "STK01999",
+  "ad": "RJ-45 Jack",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2039,
+  "stok_kodu": "STK02004",
+  "ad": "CAT6 LSZH Cable",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2040,
+  "stok_kodu": "STK02005",
+  "ad": "4 Core fiber optik cable",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 2041,
+  "stok_kodu": "STK02006",
+  "ad": "Ø18mm Spiral Pipe",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2044,
+  "stok_kodu": "STK02009",
+  "ad": "24 port Keystone Jack Blank 19\" Metal UTP Patch Panel,1U -TELEPHONE",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2046,
+  "stok_kodu": "STK02011",
+  "ad": "EXPOTECH EX-PT8020W 2 MP WİFİ IP PT KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 2048,
+  "stok_kodu": "STK02013",
+  "ad": "KODİCOM KD-9520S4L-28 SESLİ 2MP DOME IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2049,
+  "stok_kodu": "STK02014",
+  "ad": "KODICOM KD-9420S4L-28 2MP BULLET IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2050,
+  "stok_kodu": "STK02015",
+  "ad": "HİKVİSİON DS-2D1021G2-LIUF 2MP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2051,
+  "stok_kodu": "STK02016",
+  "ad": "HİKVİSİON DS-2CD1121G2-LIUF 2MP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2052,
+  "stok_kodu": "STK02017",
+  "ad": "EZVIZ KAMERA WIFI PAN/TILT 2MP H8C 4MM",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "4 mm"
+  }
+ },
+ {
+  "id": 2054,
+  "stok_kodu": "STK02019",
+  "ad": "DH-P3AE-PV 360 SPEED DOME KAMERA",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2055,
+  "stok_kodu": "STK02020",
+  "ad": "IPC-HFW1230S-S-0360B 2MP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2056,
+  "stok_kodu": "STK02021",
+  "ad": "IPC-HDW1230V-SA 2MP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2059,
+  "stok_kodu": "STK02024",
+  "ad": "Müşteri numaralarının telefon santraline işlenmesi.",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2060,
+  "stok_kodu": "STK02025",
+  "ad": "DS-7732NXI-K4 32 Kanal NVR - 8MP | 256 Mbps | 4 SATA X 10 TB HDD | 8MP Recording | 1-Ch RCA Ses Alarm 4 in / 1 Out | VCA | Metal | H265+ | 1-Ch 4K HDMI  VGA İnsan ve Araç Ayrımı | Yüz Yakalama ve Tanıma",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2061,
+  "stok_kodu": "STK02026",
+  "ad": "HIKVISION DS-8632NXI-I8/S 32KANAL NVR KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2063,
+  "stok_kodu": "STK02028",
+  "ad": "DS-3E1318P-EI 16 × 100 Mbps PoE RJ45 Port | 2 × Gigabit Combo Port | Full Duplex | 300 Metre İletişim Mesafesi | Switch Kapasitesi 9.2 Gbps | PoE Güç Kapasitesi 230 W | Maksimum Port Gücü 30 W | 240 V ~ AC | Metal",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2076,
+  "stok_kodu": "STK02041",
+  "ad": "8 Lİ Kapı Geçiş Kontrol Paneli",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2095,
+  "stok_kodu": "STK02060",
+  "ad": "MULTİ-LET 6LI PRİZ TOPR. Ç.K. KLEMENSLİ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2096,
+  "stok_kodu": "STK02061",
+  "ad": "CAT6 DATA KABLOSU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2112,
+  "stok_kodu": "STK02077",
+  "ad": "DS-7608NXI-K2/8P(D) 8 KANAL POE NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2113,
+  "stok_kodu": "STK02078",
+  "ad": "2 MP IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 2115,
+  "stok_kodu": "STK02080",
+  "ad": "KAMERA BUAT",
+  "kategori": "Buat",
+  "kid": 13,
+  "ozellikler": {}
+ },
+ {
+  "id": 2116,
+  "stok_kodu": "STK02081",
+  "ad": "CAT 6 KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2118,
+  "stok_kodu": "STK02083",
+  "ad": "2.5 MT H 80 X 80 X KARE PROFİLLİ UZATMA KOLLU ELEKTROSTATİK POLYESTER FIRIN BOYALI KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2126,
+  "stok_kodu": "STK02091",
+  "ad": "NVR 2108HS-8P-T 8 KANAL NVR POE DESTEKLİ",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2127,
+  "stok_kodu": "STK02092",
+  "ad": "ipc-hfw1230s-s-0280b-s4 IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2128,
+  "stok_kodu": "STK02093",
+  "ad": "DXc1 1 Loop Yangın Algılama Paneli, 6x40 LCD Gösterge, 198 Adres Kapasiteli, 2 Siren Çıkışı, 2 Bağımsız Programlanabilen Fonksiyon Tuşları, 230V AC",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2130,
+  "stok_kodu": "STK02095",
+  "ad": "HM-PSE-AP **Adreslenebilir Optik Duman Dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2132,
+  "stok_kodu": "STK02097",
+  "ad": "M5A-RP05FF-K013-01 **Adreslenebilir Yangın İhbar Butonu, Resetlenebilir Tip",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2134,
+  "stok_kodu": "STK02099",
+  "ad": "STTR-3192R **Konvansiyonel flaşörlü siren",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2137,
+  "stok_kodu": "STK02102",
+  "ad": "8 Port RUIJIE Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 2147,
+  "stok_kodu": "STK02112",
+  "ad": "4MP BULLET KAMERA 2,8 İLA 12 MM MOTORLU DEĞİŞKEN ODAKLI LENS",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2149,
+  "stok_kodu": "STK02116",
+  "ad": "FİBER PATCH PANEL SC",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2157,
+  "stok_kodu": "STK02124",
+  "ad": "16 Port 10/100/1000 Mbps Yönetilebilir Gigabit PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "16",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2158,
+  "stok_kodu": "STK02125",
+  "ad": "24 Port 10/100/1000 Mbps Yönetilebilir Gigabit PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2159,
+  "stok_kodu": "STK02126",
+  "ad": "64 Kanal 4 HDD 4 X 20TB 80TB Kapasiteli H265+ 4K NVR Kayıt Cihazı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2160,
+  "stok_kodu": "STK02127",
+  "ad": "Bullet 2 MP 2.8mm Lens Gece Görüşlü IP Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2161,
+  "stok_kodu": "STK02128",
+  "ad": "Bullet Full HD 2 MP 2.8mm Gece Görüşlü IP Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2162,
+  "stok_kodu": "STK02129",
+  "ad": "Bullet 2 MP Gece Görüşlü IP Güvenlik Kamerası 1/2.7\" CMOS Sensör ile 1920x1080p 2MP Çözünürlük, 2.8mm-12mm Motorize Lens",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Motorize lens"
+  }
+ },
+ {
+  "id": 2168,
+  "stok_kodu": "STK02135",
+  "ad": "GEÇİŞ KONTROL PANELİ (> 8 Wiegand Okuyucu > 100.000 Kullanıcı, 150.000 Olay hafızası > 2048 Geçiş Grubu Hafızası > 2 CPU'lu (32 Bit Ana CPU ve 16 Bit Co-CPU), 20MBit Flash, 8MBit SRAM > Alarm ve Yangın tetikleme girişleri > Lokal Antipassback, PC'den bağı",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2169,
+  "stok_kodu": "STK02136",
+  "ad": "8 Kanal NVR Kayıt Cihazı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2171,
+  "stok_kodu": "STK02138",
+  "ad": "4 Kanal H.265 NVR, 1x8TB SATA HDD Desteği, İzleme/Kayıt Bant Genişliği: 80Mbps / 80Mbps, 8MP' e kadar çözünürlük, Çift Yönlü Konuşma, P2P bulut desteği, 1x HDMI, 1x VGA, 2x USB, 1x RJ45 port (10/100Mbps).",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2174,
+  "stok_kodu": "STK02141",
+  "ad": "4 Port Poe+10-100 Mbps 2 Port 10-100 78 W Uplink Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 2175,
+  "stok_kodu": "STK02142",
+  "ad": "8 Port 10/100MB 2 Uplink10/100MB Poe Switch 96W",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 2178,
+  "stok_kodu": "STK02145",
+  "ad": "Adreslenebilir Optik Duman Dedektörü, İzolatörlü - Fildişi Rengi",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2180,
+  "stok_kodu": "STK02147",
+  "ad": "PURE IP (50 KULLANICI, 15 EŞ ZAMANLI GÖRÜŞME, ÇAĞRI MERKEZİ, Kİ IP TRUNK DAHİL) TELEFON SANTRALİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2181,
+  "stok_kodu": "STK02148",
+  "ad": "FXO 2/0 DIŞ HAT KARTI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2182,
+  "stok_kodu": "STK02149",
+  "ad": "FXS 0/2 ABONE KARTI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2187,
+  "stok_kodu": "STK02154",
+  "ad": "ODS 4P2U 4 PORT FE 2 UPLINK FE POE SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 2188,
+  "stok_kodu": "STK02155",
+  "ad": "8 KANAL MINI NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2190,
+  "stok_kodu": "STK02157",
+  "ad": "TP-Link TL-SG1005D 5 Port 10/100/1000 Mbps Gigabit Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "5",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2191,
+  "stok_kodu": "STK02158",
+  "ad": "IPC-HDBW3241FP-AS-M Full HD 2 MP Gece Görüşlü IP Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 2192,
+  "stok_kodu": "STK02159",
+  "ad": "5 MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2193,
+  "stok_kodu": "STK02160",
+  "ad": "ALICI VERİCİ TAKIM ACCESS POINT",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 2194,
+  "stok_kodu": "STK02161",
+  "ad": "CS4228-24GT-240 24 Port 10/100/1000 Mbps Yönetilebilir Gigabit PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2196,
+  "stok_kodu": "STK02163",
+  "ad": "TG-102 WIEGAND ŞİFRE+KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2198,
+  "stok_kodu": "STK02165",
+  "ad": "1 AYLIK BAKIM VE SERVİS BEDELİ ( CCTV IP KAMERA SİSTEMLERİ )",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2201,
+  "stok_kodu": "STK02168",
+  "ad": "HAC-B1A51-U-IL-A 5MP 3.6MM CMOS 1080P HD-TVI BULLET KAMERA",
+  "kategori": "Analog Kamera",
+  "kid": 4,
+  "ozellikler": {}
+ },
+ {
+  "id": 2202,
+  "stok_kodu": "STK02169",
+  "ad": "HAC-T1A51-U-A 1 5mpix 25 mt Gece Gör., Smart Dual Light, 2,8mm Lens, Dahili Mikrofon, Dome Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome",
+   "Mikrofon": "Evet"
+  }
+ },
+ {
+  "id": 2212,
+  "stok_kodu": "STK02179",
+  "ad": "802371 **Optik duman dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2213,
+  "stok_kodu": "STK02180",
+  "ad": "802382 **O/So optik duman dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2234,
+  "stok_kodu": "STK02201",
+  "ad": "583503.RE ***Yangın Kontrol PA Paneli DCSF12",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2239,
+  "stok_kodu": "STK02206",
+  "ad": "581722 ***Acil durum güç Kaynağı PSU 24 V-2",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2249,
+  "stok_kodu": "STK02216",
+  "ad": "KAMERA YER DEĞİŞİLİĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2250,
+  "stok_kodu": "STK02217",
+  "ad": "MEVCUTTA BULUNAN KAMERALARIN İSİMLENDİRİLMESİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2251,
+  "stok_kodu": "STK02218",
+  "ad": "MEVCUTTA BULUNAN ARIZALI KAMERALARIN AKTİF EDİLMESİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2252,
+  "stok_kodu": "STK02219",
+  "ad": "IPC-SD4E425GB-HNR-A-PV1 4MP SESLİ IP PTZ KAMERA",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2253,
+  "stok_kodu": "STK02220",
+  "ad": "DH-P5AE-PV-4G 5MP 4G SPEED DOME",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2254,
+  "stok_kodu": "STK02221",
+  "ad": "2,5 metre L kamera direği",
+  "kategori": "Kamera Ayağı",
+  "kid": 12,
+  "ozellikler": {}
+ },
+ {
+  "id": 2257,
+  "stok_kodu": "STK02224",
+  "ad": "FC361-ZA - Kompakt yangın kontrol paneli (1 Loop) Yüksek Akü kapasitesi",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2263,
+  "stok_kodu": "STK02230",
+  "ad": "16 KANAL MINI NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2264,
+  "stok_kodu": "STK02231",
+  "ad": "DS-2CD1021G2-LIUF 2MP DIŞ MEKAN KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Ortam": "Dış ortam"
+  }
+ },
+ {
+  "id": 2276,
+  "stok_kodu": "STK02243",
+  "ad": "IPC-HDW1249T-S-IL 2MP IP IR Dome Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2277,
+  "stok_kodu": "STK02244",
+  "ad": "IPC-HDW1249-S-IL-0360B 2MP Çözünürlük, Akıllı Çift Işıklı Bullet Kamera (30m IR+30m Beyaz Işık), 1/2.8 \" CMOS, 2.8 mm Sabit Lens,",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet",
+   "Lens tipi": "Sabit lens",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 2278,
+  "stok_kodu": "STK02245",
+  "ad": "FC362-ZA Kompakt yangın kontrol paneli (2 Loop) Yüksek Akü kapasitesi",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2281,
+  "stok_kodu": "STK02248",
+  "ad": "NO ÇIKIŞLI DOĞALGAZ DEDEKTÖRÜ NO Kontak Çıkışı, 85 dB Alarm",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2282,
+  "stok_kodu": "STK02249",
+  "ad": "24V 2 Amper adaptör",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2285,
+  "stok_kodu": "STK02252",
+  "ad": "FDS366-RW Adresli Filaşörlü Siren Beyaz LED",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2288,
+  "stok_kodu": "STK02255",
+  "ad": "Utp Cat 6 24 Port Patch Panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2289,
+  "stok_kodu": "STK02256",
+  "ad": "Utp Cat 6 Patch Cord LSZH 3 Mt. Grey",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2290,
+  "stok_kodu": "STK02257",
+  "ad": "Utp Cat 6 Patch Cord LSZH 1 Mt. Grey",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2294,
+  "stok_kodu": "STK02261",
+  "ad": "Fiber Optik Ek Kaset 12'li",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 2301,
+  "stok_kodu": "STK02268",
+  "ad": "Anahtarlamalı Güç Kaynağı",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2302,
+  "stok_kodu": "STK02269",
+  "ad": "4 ZONE YANGIN ALGILAMA PANELİ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2306,
+  "stok_kodu": "STK02273",
+  "ad": "KONVANSİYONEL OPTİK DUMAN DEDEKTÖRÜ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2316,
+  "stok_kodu": "STK02283",
+  "ad": "YAZAR KASA POS (> KREDİ KARTI POS FONKSİYONU > SİM KART DESTEKLİ MOBİL KULLANIMA UYGUN > PLAKA TANIMA VE OTOPARK SİSTEMİ İLE ENTEGRE)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 2332,
+  "stok_kodu": "STK02299",
+  "ad": "DS-6916UDI© 4K Kod ÇözücüVideo GirişiBilgisayarlardan ve video konferans terminallerinden gelen video girişini ve 4K HDMI sinyal girişini destekler.Ağ kameralarını, NVR'ları ve diğer cihazları ağ sinyal kaynağı olarak kullanmayı destekler.",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2333,
+  "stok_kodu": "STK02300",
+  "ad": "DS-3E0310P-EI/M 8 × 10/100 PoE Port | 2 × Gigabit RJ45 Uplink Port | Full Duplex | 300 Metre İletişim Mesafesi | Switch Kapasitesi 9.6Gbps | PoE Güç Kapasitesi 60 W | Maksimum Port Gücü 30 W | 54 V ~ DC | Metal",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2334,
+  "stok_kodu": "STK02301",
+  "ad": "Telefon santrali yıllık bakım ücreti",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2342,
+  "stok_kodu": "STK02309",
+  "ad": "305m Siyah 0,57mm 23awg UTP CAT6 Makaralı Dış SPİRAL BORU",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2343,
+  "stok_kodu": "STK02310",
+  "ad": "Güvenlik Kamerası Kablolama Hizmeti",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2344,
+  "stok_kodu": "STK02311",
+  "ad": "IPG500 8 dış hat  64 iç hat, 1 adet  (4 VOIP kanal), 20 SIP abone,  4 SIP Dış hat, 4 kanal robot anons, NET/WEB-CM",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2346,
+  "stok_kodu": "STK02313",
+  "ad": "mLrX - Pure IP (SIP) abone Bloklamasız VoIP kanalı, 2 adet Cluster Lisansı dahil santral ( TDM Port hariç)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2347,
+  "stok_kodu": "STK02314",
+  "ad": "ITS7 HD HD dokunmatik IP set (XSIP lisansı gerektirir)(güç adaptörü dahil)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2349,
+  "stok_kodu": "STK02316",
+  "ad": "5864-EI 64 KANAL NVR",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2352,
+  "stok_kodu": "STK02319",
+  "ad": "pfm9201-6unc_el_white 24 AWG CAT 6 KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2354,
+  "stok_kodu": "STK02321",
+  "ad": "16 Analog Dış Hat, 155 SIP Abone İç Hat, 8 Sayısal Analog Hat, 6 IP Dış Hat, Telefon Santrali-MLRX Pure IP",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2355,
+  "stok_kodu": "STK02322",
+  "ad": "3*1,5 ENERJİ KABLOSU TTR",
+  "kategori": "Enerji Kablosu",
+  "kid": 29,
+  "ozellikler": {}
+ },
+ {
+  "id": 2358,
+  "stok_kodu": "STK02325",
+  "ad": "12V / 50A METAL KASA ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2360,
+  "stok_kodu": "STK02327",
+  "ad": "IPC-HFW1431T-ZS-2812-S4 4MP 2.8-12MM MOTORIZE BULL",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8–12 mm",
+   "Lens tipi": "Motorize lens"
+  }
+ },
+ {
+  "id": 2362,
+  "stok_kodu": "STK02329",
+  "ad": "CAT6 Kablo Çekim İşçiliği",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2366,
+  "stok_kodu": "STK02333",
+  "ad": "DS-2CE16D0T-EXLPF bullet kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2369,
+  "stok_kodu": "STK02336",
+  "ad": "TG-301 GEÇİŞ KONTROL PANELİ (> 8 Wiegand Okuyucu > 100.000 Kullanıcı, 150.000 Olay hafızası > 2048 Geçiş Grubu Hafızası > 2 CPU'lu (32 Bit Ana CPU ve 16 Bit Co-CPU), 20MBit Flash, 8MBit SRAM > Alarm ve Yangın tetikleme girişleri > Lokal Antipassback, PC'd",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2370,
+  "stok_kodu": "STK02337",
+  "ad": "TG-10 MF KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2377,
+  "stok_kodu": "STK02344",
+  "ad": "DS-9664NI-M8/R(STD) 64 kanallı 2U 8K NVR64 kanala kadar IP kamera bağlanabilir12 MP'ye kadar yüksek çözünürlüklü canlı görüntü, depolama ve oynatma400 Mbps'ye kadar yüksek gelen bant genişliği, IP kameraların bağlanabilmesini sağlar2 HDMI (farklı kaynak)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2379,
+  "stok_kodu": "STK02346",
+  "ad": "DS-2CD3641G2-IZS 4MP Değişken Odaklı Mermi Ağ Kamerası4 MP çözünürlükle yüksek kaliteli görüntülemeBant genişliği ve depolama alanından tasarruf sağlayan verimli H.265+ sıkıştırma teknolojisiWDR teknolojisi sayesinde güçlü arka ışığa karşı net görüntüleme",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP"
+  }
+ },
+ {
+  "id": 2380,
+  "stok_kodu": "STK02347",
+  "ad": "DS-2XE6646G0-LIZS Alüminyum Alaşımlı 4MP Patlamaya Dayanıklı Değişken Odaklı MermiPatlamaya dayanıklı tasarım: Kamera uluslararası ATEX ve IECEx sertifikalarını geçmiştir ve gaz ve toz tehlikesi olan senaryolarda kullanılabilirIP68 su geçirmezlik, dış mek",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "IP koruma sınıfı": "IP68"
+  }
+ },
+ {
+  "id": 2384,
+  "stok_kodu": "STK02351",
+  "ad": "CS4218-16ET-135 16 Port 10/100/1000 Mbps Yönetilebilir Gigabit PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "16",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2385,
+  "stok_kodu": "STK02352",
+  "ad": "PFS3010-8ET-65 8 Port Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 2387,
+  "stok_kodu": "STK02354",
+  "ad": "Giriş-Çıkış takipli kart okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2388,
+  "stok_kodu": "STK02355",
+  "ad": "Cat 6 patch kablo 1 metre",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2389,
+  "stok_kodu": "STK02356",
+  "ad": "K20 parmak izi cihazı",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2390,
+  "stok_kodu": "STK02357",
+  "ad": "20Q izoleli çelik spiral",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2392,
+  "stok_kodu": "STK02359",
+  "ad": "BURSA SERVİS ( KAMERA ARIZASI)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2393,
+  "stok_kodu": "STK02360",
+  "ad": "BURSA SERVİS ( KAMERA DEĞİŞİMİ)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2394,
+  "stok_kodu": "STK02361",
+  "ad": "SAMSUN SERVİS (KAMERA DEĞİŞİMİ)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2395,
+  "stok_kodu": "STK02362",
+  "ad": "FULYA SERVİS (YENİ KAMERA TAKIMI )",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2398,
+  "stok_kodu": "STK02365",
+  "ad": "DS-2CD1723G2-LIZSU Dome 4 MP Gece Görüşlü IP Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2402,
+  "stok_kodu": "STK02369",
+  "ad": "DS-2CD1043G2-LIUF 4 MP 2.8mm Lens IP Bullet Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2403,
+  "stok_kodu": "STK02370",
+  "ad": "RG-ES110GDS-P 10 Port 10/100/1000 Mbps Gigabit PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "10",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2407,
+  "stok_kodu": "STK02374",
+  "ad": "KAREL IP TELEFON ADAPTÖRÜ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2409,
+  "stok_kodu": "STK02376",
+  "ad": "8 IP DIŞ HAT (VOİP) 24 ANALOG İÇ HAT KAPASİTELİ TELEFON SANTRALİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2410,
+  "stok_kodu": "STK02377",
+  "ad": "DS-2CD1643G2-LIZSU Bullet 4 MP  Gece Görüşlü IP Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2416,
+  "stok_kodu": "STK02383",
+  "ad": "IPC-PTS2649C-3E3Z-4GB20 3 MP Solar Gece Görüşlü Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2418,
+  "stok_kodu": "STK02385",
+  "ad": "Yangın ihbar lambası",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2419,
+  "stok_kodu": "STK02386",
+  "ad": "FULL HD PLAKA TANIMA SİSTEMİ SMART PAKET •Plaka Tanıma yazılımı (Kamera başına lisanslanmıştır) • Plaka Tanıma Kamerası (Full HD IP – IP67-IR Bullet – Motorize – PTS Firmwire) • Muhafaza Koruma şapkası (Kar-Yağmur-Güneş Siperliği)",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 2422,
+  "stok_kodu": "STK02389",
+  "ad": "246 DC Kollu Bariyer Senkron Kartı",
+  "kategori": "Bariyer",
+  "kid": 24,
+  "ozellikler": {}
+ },
+ {
+  "id": 2424,
+  "stok_kodu": "STK02391",
+  "ad": "PLAKA TANIMA YAZILIMI ÜCRETLİ SUNUCU MODÜLÜ •Otomatik ücret hesaplama • Abone yönetim sistemi • Girişte peşin ücret veya otoparkta kalınan süreye endeksli ücret opsiyonu • Parametrik ücret tarifesi belirleme • Esnek ücret tarifeleri oluşturma •",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 2431,
+  "stok_kodu": "STK02398",
+  "ad": "cat 6 0,50 patch kablo",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2432,
+  "stok_kodu": "STK02399",
+  "ad": "RG-NBS3100-8GT2SFP-P 8 Port 2 SFP 10/100/1000 Mbps Gigabit Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2434,
+  "stok_kodu": "STK02401",
+  "ad": "SLR-3320S-MH/SL-4G 3+3 MP Spot Light 4G FIX & PT Camera 3 MP Sabit, 3 MP PT 4mm Lens 20m Beyaz Işık 256 GB'a Kadar SD Kart Desteği Dahili Mikrofon ve Hoparlör Kırmızı ve Mavi Işık Uyarı Sistemi Yüksek Kapasite Dahili Batarya",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Lens ölçüsü": "4 mm",
+   "SD kart desteği": "Evet",
+   "Mikrofon": "Evet"
+  }
+ },
+ {
+  "id": 2436,
+  "stok_kodu": "STK02403",
+  "ad": "Telefon santrali yedek parçaları",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2439,
+  "stok_kodu": "STK02406",
+  "ad": "DS-2CD1743G2-LIZSU 4 MP Gece Görüşlü IP Motorize Dome Güvenlik Kamerası",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Dome",
+   "Lens tipi": "Motorize lens"
+  }
+ },
+ {
+  "id": 2440,
+  "stok_kodu": "STK02407",
+  "ad": "NVR-3108HP-4K 8 Kanal Nvr Kayıt Cihazı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2441,
+  "stok_kodu": "STK02408",
+  "ad": "IPBP-2330M-M-Lite Bullet Full HD 2 MP Gece Görüşlü IP Güvenlik Kameras",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2442,
+  "stok_kodu": "STK02409",
+  "ad": "IPDP-2330M-M-Lite Dome Full HD 2 MP Gece Görüşlü IP Güvenlik Kameras",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2443,
+  "stok_kodu": "STK02410",
+  "ad": "4+2 Port 10/100 Mbps 72 Watt Poe Ethernet Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "2"
+  }
+ },
+ {
+  "id": 2444,
+  "stok_kodu": "STK02411",
+  "ad": "Reyee RG-ES05G 5 Port 10/100/1000 Gigabit Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "5",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2446,
+  "stok_kodu": "STK02413",
+  "ad": "CMX EVAC-500RT 6 Zone Router, built-in 500W class-D amplifier, with 6 zone speaker outputs and volume control, receive sources and fire alarm message from master controller, with AB speaker line low impedance",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 2454,
+  "stok_kodu": "STK02421",
+  "ad": "LOSEN XLR RCA Muhtelif Konnektör Seti",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2456,
+  "stok_kodu": "STK02423",
+  "ad": "CS4010-8ET-60 10 (8+2) PORT 10/100 YÖNETİLEBİLİR SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 2460,
+  "stok_kodu": "STK02427",
+  "ad": "FIBER20 20 Mt. Fiber HDMI Kablo Full HD",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 2462,
+  "stok_kodu": "STK02429",
+  "ad": "PFS3006-4ET-60-V2 4 Port 10/100 Mbps PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 2464,
+  "stok_kodu": "STK02431",
+  "ad": "0.5 MT CAT6 PATCH CORD HCS",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2475,
+  "stok_kodu": "STK02442",
+  "ad": "TSD-701 | NO ÇIKIŞLI DOĞALGAZ DEDEKTÖRÜ NO Kontak Çıkışı, 85 dB Alarm",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2477,
+  "stok_kodu": "STK02444",
+  "ad": "STRR-3192R | Konvansiyonel flaşörlü siren (Kırmızı)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2480,
+  "stok_kodu": "STK02447",
+  "ad": "HARİCİ GÜÇ KAYNAĞI - 24V-5Ah (akü hariç)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2488,
+  "stok_kodu": "STK02455",
+  "ad": "Konvansiyonel Yangın Alarm Flaşörü (Kırmızı)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2491,
+  "stok_kodu": "STK02458",
+  "ad": "HARİCİ GÜÇ KAYNAĞI - 24V~5Ah ( akü hariç )",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2492,
+  "stok_kodu": "STK02459",
+  "ad": "Zkteco bariyer",
+  "kategori": "Bariyer",
+  "kid": 24,
+  "ozellikler": {}
+ },
+ {
+  "id": 2502,
+  "stok_kodu": "STK02469",
+  "ad": "RG11 SK RG 11 Sıkıştırmalı F Konnektör",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2503,
+  "stok_kodu": "STK02470",
+  "ad": "RG6 SK RG 6 Sıkıştırmalı F Konnektör",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2504,
+  "stok_kodu": "STK02471",
+  "ad": "Yangın Algılama Santrali 9 Loop Kapasiteli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2505,
+  "stok_kodu": "STK02472",
+  "ad": "Yangın Algılama Santrali 5 Loop Kapasiteli",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2513,
+  "stok_kodu": "STK02480",
+  "ad": "Konvansiyonel LPG ve Doğal Gaz Dedektörü 1224",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2515,
+  "stok_kodu": "STK02482",
+  "ad": "Konvansiyonel Flaşörlü Elektronik Siren",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2518,
+  "stok_kodu": "STK02485",
+  "ad": "Güç Kaynağı  EN-54 ( Akü Hariç )",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2519,
+  "stok_kodu": "STK02486",
+  "ad": "GEKKO - 4 4 Loop Akıllı Adresli Yangın Alarm Kontrol Paneli",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2520,
+  "stok_kodu": "STK02487",
+  "ad": "GEKKO - 2 2 Loop Akıllı Adresli Yangın Alarm Kontrol Paneli",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2523,
+  "stok_kodu": "STK02490",
+  "ad": "GFE-ZEOS-AS-SI Kısa Devre İzolatörlü Akıllı Adresli Optik Duman Dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2526,
+  "stok_kodu": "STK02493",
+  "ad": "GFE-GAS-A Akıllı Adresli Doğal Gaz Dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2527,
+  "stok_kodu": "STK02494",
+  "ad": "GFE-MCPE-AI Kısa Devre İzolatörlü Akıllı Adresli Yangın İhbar Butonu Koruma Kapaklı",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2528,
+  "stok_kodu": "STK02495",
+  "ad": "VULCAN CSB Konvansiyonel Flaşörlü Siren",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2537,
+  "stok_kodu": "STK02504",
+  "ad": "RG-RAP2260(G) 1800mbps AX1800 Dual Band Kurumsal Access Point PoE",
+  "kategori": "Access Point",
+  "kid": 19,
+  "ozellikler": {}
+ },
+ {
+  "id": 2545,
+  "stok_kodu": "STK02512",
+  "ad": "ı Miktar Br. B.Fiyatı %İnd. Tutar 993300036261126 CODESEC ADRESLİ YANGIN ALARM PANELİ AA504- 2 ADRESLİ.",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2546,
+  "stok_kodu": "STK02513",
+  "ad": "CODESEC ADRESLİ YANGIN PANELİ AA45R TEKRARLMA.",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2552,
+  "stok_kodu": "STK02519",
+  "ad": "CODESEC ADRESLİ YANGIN BUTONU CP312 RESET.",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2554,
+  "stok_kodu": "STK02521",
+  "ad": "CODESEC YARDIMCI GÜÇ KAYNAĞI PS120 (24V-3,5 AH).",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2563,
+  "stok_kodu": "STK02530",
+  "ad": "S2-R MF Wiegand Mifare Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2564,
+  "stok_kodu": "STK02531",
+  "ad": "USB KART OKUYUCU MIFARE",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2566,
+  "stok_kodu": "STK02533",
+  "ad": "TG-302 Geçiş Kontrol Panel",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2570,
+  "stok_kodu": "STK02537",
+  "ad": "IPC-ITC413-PW4D-IZ1 PTZ KAMERA",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2574,
+  "stok_kodu": "STK02541",
+  "ad": "IPG SOFT VE IPG500 -    1 adet Sayısal  PRI Telekom Hattı -    30 adet SIP TRUNK, -   20 adet IP Dahili Lisansı -    5 Adet Mobil Telefon Uygulama Yazılımı -     8 port Sesli Karşılama ve Mesaj -     1 adet Detaylı Çağrı Kayıt Yazılımı",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2584,
+  "stok_kodu": "STK02552",
+  "ad": "24 PORT CAT6 UTP PATCH PANEL (DOLU)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2585,
+  "stok_kodu": "STK02553",
+  "ad": "FİBEROPTİK PATCH PANEL 12 PORT SC  BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 2588,
+  "stok_kodu": "STK02556",
+  "ad": "NETLINK UTP CAT6 LSZH PATCH CORD  0,50 M",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2589,
+  "stok_kodu": "STK02557",
+  "ad": "HIKVISION DS-3T1310P-SI/HS 8 PORT  10/100 120W SMART POE + 1xGBIT RJ45  +1xGBIT SFP SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 2592,
+  "stok_kodu": "STK02560",
+  "ad": "NVR4232-4KS3 32 Kanal NVR Kayıt Cihazı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2595,
+  "stok_kodu": "STK02563",
+  "ad": "ARIZA TESPİTİ VE KAMERA DEĞİŞİMİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2596,
+  "stok_kodu": "STK02564",
+  "ad": "PFS3010-8ET-65 8 Port 10/100 Mbps Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 2597,
+  "stok_kodu": "STK02565",
+  "ad": "Santral Adı : IPG500 (0 IP Dış. + 0 PRI + 20 Ana.Dış. / 32 Ana.Ab. + 0 Say.Ab. + 0 SIP.Ab.) G.Top.",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 2603,
+  "stok_kodu": "STK02571",
+  "ad": "TR-D2253WDZIR7 2.7-13.5--- 1/2.8\" CMOS STARVIS 5MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2606,
+  "stok_kodu": "STK02574",
+  "ad": "İ7 - 14.NESİL İŞLEMCİ/64GB RAM/512GB SSD HDD/8GB RTX5060 EKRAN KARTI/650W GÜÇ KAYNAĞI/KABLOSUZ KLAVYE VE MAUSE/KASA",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2607,
+  "stok_kodu": "STK02575",
+  "ad": "DS-9632NI-M8/32 kanallı 2U 8K NVR/8 SATA 16TB/2-kanal@32 MP/2-kanal@24 MP/4-kanal@12 MP/8-kanal@8 MP/16-kanal@4 MP/32-kanal@1080p'ye kadar kod çözme kapasitesi/320 Mbps'ye kadar gelen bant genişliği ve 400 Mbps'ye kadar giden bant genişliği",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2610,
+  "stok_kodu": "STK02578",
+  "ad": "DS-2CD2T26G2-ISU/SL 2MP 2.8MM  SABİT LENSLİ IP BULLET KAMERA :",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2615,
+  "stok_kodu": "STK02583",
+  "ad": "HDMI/DP ÇEVİRİCİ ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2618,
+  "stok_kodu": "STK02586",
+  "ad": "KAMERA KABİN TAŞINMASI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2619,
+  "stok_kodu": "STK02587",
+  "ad": "SC-3000 Geçiş Kontrol Panel",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2620,
+  "stok_kodu": "STK02588",
+  "ad": "Z5-B MF ZKR Mifare Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 2622,
+  "stok_kodu": "STK02590",
+  "ad": "LEGRANT CAT6 UDP NETWORK KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2623,
+  "stok_kodu": "STK02591",
+  "ad": "HIKVISION KAMERA 2 MEGAPİXEL 1080P HD BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2626,
+  "stok_kodu": "STK02594",
+  "ad": "16 Portlu Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "16"
+  }
+ },
+ {
+  "id": 2633,
+  "stok_kodu": "STK02601",
+  "ad": "Software for display, recording and playback of 1 any IP-camera (Native SDK,  ONVIF and RTSP). Licences in a bundle cannot be splitted",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 2634,
+  "stok_kodu": "STK02602",
+  "ad": "TRASSIR D8121IR2W 2.8 2mp 1920x1080p IP kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 2640,
+  "stok_kodu": "STK02608",
+  "ad": "SW20244-44CP SWITCH",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 2641,
+  "stok_kodu": "STK02609",
+  "ad": "CAT 6 DATA KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2642,
+  "stok_kodu": "STK02610",
+  "ad": "4 METRE KAMERA DİREĞİ BETON DAHİL",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2643,
+  "stok_kodu": "STK02611",
+  "ad": "2 METRE KAMERA DİREĞİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2645,
+  "stok_kodu": "STK02613",
+  "ad": "TR 6221IR20 TRASSIR PTZ KAMERA",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2646,
+  "stok_kodu": "STK02614",
+  "ad": "I/O MODUL(Kamera tetik girişi mevcut olduğundan ihtiyaç mevcut değildir)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2647,
+  "stok_kodu": "STK02615",
+  "ad": "PTZ DIREK 1.5m",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2648,
+  "stok_kodu": "STK02616",
+  "ad": "PTZ IZLEME SUNUCU PC",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2649,
+  "stok_kodu": "STK02617",
+  "ad": "TRASSIR TR-3251WDIR3 v2 2.8 5 MP (2592×1920) IP kamera 2.8mm IP66",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "IP koruma sınıfı": "IP66"
+  }
+ },
+ {
+  "id": 2650,
+  "stok_kodu": "STK02618",
+  "ad": "TR-6254IR15 v3 5-115 5MP IP KAMERA –30 °C... +65 °C, IP66 WDR 140 dB, 3D DNR H.265+, H.265, H.264, MJPEG",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "WDR": "Evet",
+   "IP koruma sınıfı": "IP66"
+  }
+ },
+ {
+  "id": 2652,
+  "stok_kodu": "STK02620",
+  "ad": "SW20244-44CP SWITCH L2+L2 Yönetilebilir Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Yönetim": "Yönetilebilir"
+  }
+ },
+ {
+  "id": 2654,
+  "stok_kodu": "STK02622",
+  "ad": "CAT 6 KABLO ÇEKİLMESİ TV İÇİN  5 (ADET)",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 2655,
+  "stok_kodu": "STK02623",
+  "ad": "TRASSIR  TR 6221IR20 2MP PTZ SPEED DOME KAMERA Real WDR 140dB 200M IR MESAFESI",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 2661,
+  "stok_kodu": "STK02629",
+  "ad": "8 Port, MegaBit, 8 Port PoE, 123W, +1 Port GigaBit Uplink, Yönetilemez, Masaüstü Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2662,
+  "stok_kodu": "STK02630",
+  "ad": "16 Port, MegaBit, 16 Port PoE, 130W, +1 Port GigaBit, +1 Port GigaBit SFP, Long Range 250 Metre, Yönetilemez, Masaüstü Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "16",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2663,
+  "stok_kodu": "STK02631",
+  "ad": "DS-7732NXI-K4 32 Kanal NVR - 8MP | 256 Mbps | 4 SATA X 10 TB HDD | 8MP Recording | 1-Ch RCA Ses Alarm 4 in / 1 Out | VCA | Metal | H265+ | 1-Ch 4K HDMI & VGA İnsan ve Araç Ayrımı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2668,
+  "stok_kodu": "STK02636",
+  "ad": "DS-7108NI-Q1 Full HD 8 Kanal NVR Kayıt Cihazı",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2670,
+  "stok_kodu": "STK02638",
+  "ad": "RG-ES110D-P 8 Port 10/100/1000 Mbps Gigabit Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 2671,
+  "stok_kodu": "STK02639",
+  "ad": "YANGIN ALGILAMA SİSTEMLERİN BAKIM KONTROL VE TESTLERİ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2678,
+  "stok_kodu": "STK02646",
+  "ad": "Dahua NVR2108HS-T 8 Kanal NVR Kayıt Cihazı 1x8TB SATA HDD Desteği, İzleme/Kayıt Bant Genişliği: 80Mbps / 80Mbps, 8MP' e kadar çözünürlük",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2682,
+  "stok_kodu": "STK02650",
+  "ad": "SC-LC SM DX FIBER PATCH CORD 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2686,
+  "stok_kodu": "STK02654",
+  "ad": "Sc sm dx adaptör",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2687,
+  "stok_kodu": "STK02655",
+  "ad": "SC-LC SM DX FIBER PATCH CORD 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 2692,
+  "stok_kodu": "STK02660",
+  "ad": "SİSTEM ODASI MODEM UPS BAĞLANMASI",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 2695,
+  "stok_kodu": "STK02664",
+  "ad": "OP720 Cerberus PRO Interaktif Optik Duman Dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2703,
+  "stok_kodu": "STK02672",
+  "ad": "Cerberus PRO Interaktif Yangın Algılama ve Alarm Kontrol Paneli (2 loop 252 adres, max 12 loop, 756 adres, Ethernet bağlantı, VMS/Scope/Client kartı opsiyonel)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2704,
+  "stok_kodu": "STK02673",
+  "ad": "STR-3193R Konvansiyonel Yangın Alarm Flaşör",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2843,
+  "stok_kodu": "STK02812",
+  "ad": "İç Ortam Siren ZR1",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2845,
+  "stok_kodu": "STK02814",
+  "ad": "Gaz Dedektörü ZGA1",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2858,
+  "stok_kodu": "STK02827",
+  "ad": "Cue 2 IPC-C22EP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2860,
+  "stok_kodu": "STK02829",
+  "ad": "Cube IPC-K22P",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2863,
+  "stok_kodu": "STK02832",
+  "ad": "Cube 4MP IPC-K42P",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP"
+  }
+ },
+ {
+  "id": 2865,
+  "stok_kodu": "STK02834",
+  "ad": "Cube PoE IPC-K22AP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "PoE desteği": "Evet"
+  }
+ },
+ {
+  "id": 2866,
+  "stok_kodu": "STK02835",
+  "ad": "Cube PoE 4MP IPC-K42AP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "PoE desteği": "Evet"
+  }
+ },
+ {
+  "id": 2868,
+  "stok_kodu": "STK02837",
+  "ad": "Ranger 2C IPC-TA22CP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2870,
+  "stok_kodu": "STK02839",
+  "ad": "Ranger 2C 4MP IPC-TA42P",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP"
+  }
+ },
+ {
+  "id": 2872,
+  "stok_kodu": "STK02841",
+  "ad": "Ranger 2 IPC-A22EP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2873,
+  "stok_kodu": "STK02842",
+  "ad": "Ranger 2 4MP IPC-A42P",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP"
+  }
+ },
+ {
+  "id": 2874,
+  "stok_kodu": "STK02843",
+  "ad": "Ranger 2-H Black IPC-A22EP-H-Blac",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2875,
+  "stok_kodu": "STK02844",
+  "ad": "Ranger RC 3MP IPC-GK2CP-3C0WR",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2876,
+  "stok_kodu": "STK02845",
+  "ad": "Ranger RC 5MP IPC-GK2CP-5C0W",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP"
+  }
+ },
+ {
+  "id": 2877,
+  "stok_kodu": "STK02846",
+  "ad": "REX 3D 3MP IPC-GS2DP-3K0W",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2878,
+  "stok_kodu": "STK02847",
+  "ad": "REX 3D 5MP IPC-GS2DP-5K0W",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP"
+  }
+ },
+ {
+  "id": 2879,
+  "stok_kodu": "STK02848",
+  "ad": "Cruiser SE+ IPC-S21FEP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2880,
+  "stok_kodu": "STK02849",
+  "ad": "Cruiser SE+ 4MP IPC-S41FEP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP"
+  }
+ },
+ {
+  "id": 2881,
+  "stok_kodu": "STK02850",
+  "ad": "Cruiser 2 3MP IPC-GS7EP-3M0WE",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2882,
+  "stok_kodu": "STK02851",
+  "ad": "Cruiser 2 5MP IPC-GS7EP-5M0WE",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP"
+  }
+ },
+ {
+  "id": 2883,
+  "stok_kodu": "STK02852",
+  "ad": "Turret SE IPC-T22EP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Turret"
+  }
+ },
+ {
+  "id": 2884,
+  "stok_kodu": "STK02853",
+  "ad": "Turret SE 4MP IPC-T42EP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Turret"
+  }
+ },
+ {
+  "id": 2885,
+  "stok_kodu": "STK02854",
+  "ad": "Dome Pro 3MP IPC-D32MIP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2886,
+  "stok_kodu": "STK02855",
+  "ad": "Dome Pro 5MP IPC-D52MIP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2887,
+  "stok_kodu": "STK02856",
+  "ad": "Bullet 2E IPC-F22FP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2888,
+  "stok_kodu": "STK02857",
+  "ad": "Bullet 2E 4MP IPC-F42FP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2889,
+  "stok_kodu": "STK02858",
+  "ad": "Bullet 2 IPC-F22FEP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2890,
+  "stok_kodu": "STK02859",
+  "ad": "Bullet Pro 3MP IPC-F32MIP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2891,
+  "stok_kodu": "STK02860",
+  "ad": "Bullet Pro 5MP IPC-F52MIP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2892,
+  "stok_kodu": "STK02861",
+  "ad": "Cell 2 IPC-B46LP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2893,
+  "stok_kodu": "STK02862",
+  "ad": "Cell 2 - Beyaz IPC-B46LP-White",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 2895,
+  "stok_kodu": "STK02864",
+  "ad": "4 Kanal Wi-Fi NVR NVR1104HS-W-S2",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2896,
+  "stok_kodu": "STK02865",
+  "ad": "8 Kanal Wi-Fi NVR NVR1108HS-W-S2",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2897,
+  "stok_kodu": "STK02866",
+  "ad": "4 Kanal PoE NVR N14P",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2898,
+  "stok_kodu": "STK02867",
+  "ad": "8 Kanal PoE NVR N18P",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2950,
+  "stok_kodu": "STK02919",
+  "ad": "NVR 8 KANAL KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2951,
+  "stok_kodu": "STK02920",
+  "ad": "NVR 16 KANAL KAYIT CİHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 2952,
+  "stok_kodu": "STK02921",
+  "ad": "Bullet Cam 5 Mp 2.8mm Bullet Kablolu Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 2953,
+  "stok_kodu": "STK02922",
+  "ad": "DomeCam Mini 5 Mp 2.8mm Dome Mini Kablolu Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2954,
+  "stok_kodu": "STK02923",
+  "ad": "TurretCam 5 Mp 2.8mm Dome Mini Kablolu Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 2958,
+  "stok_kodu": "STK02927",
+  "ad": "Home Siren",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 2963,
+  "stok_kodu": "STK02932",
+  "ad": "12 V Power Supply Unit for Hub/Hub Plus/Rex",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2964,
+  "stok_kodu": "STK02933",
+  "ad": "12 V Power Supply Unit for Hub2/Rex2",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 2965,
+  "stok_kodu": "STK02934",
+  "ad": "6 V Power Supply Unit for Hub2/Hub2 Plus/Rex2 Plus",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3001,
+  "stok_kodu": "STK02970",
+  "ad": "CAMBOX KAMERA KUTUSU 2 M",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3005,
+  "stok_kodu": "STK02974",
+  "ad": "UTP Kablo Çekim İşçilik Bedeli",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3006,
+  "stok_kodu": "STK02975",
+  "ad": "UTP Kablo Sonlandırma Test Etiketleme",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3010,
+  "stok_kodu": "STK02979",
+  "ad": "12V/5A ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3013,
+  "stok_kodu": "STK02982",
+  "ad": "IPC-HFW2441T-ZAS",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3014,
+  "stok_kodu": "STK02983",
+  "ad": "IPC-HDBW2441R-ZAS",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3016,
+  "stok_kodu": "STK02985",
+  "ad": "RG-ES228GS-P  28 Port Gigabit Smart Cloud Managed PoE Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "28",
+   "Yönetim": "Yönetilebilir",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 3017,
+  "stok_kodu": "STK02986",
+  "ad": "ODS 24 port CAT6 Dolu Patch Panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3018,
+  "stok_kodu": "STK02987",
+  "ad": "ODS 0,50cm CAT6 PatchCord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3020,
+  "stok_kodu": "STK02989",
+  "ad": "24 Portlu, Utp Cat6 Patch Panel // DOLU",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3026,
+  "stok_kodu": "STK02995",
+  "ad": "Dahua Cat6 iç ortam kablo",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3027,
+  "stok_kodu": "STK02996",
+  "ad": "Dahua Cat6 iç ortam kablo",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3044,
+  "stok_kodu": "STK03013",
+  "ad": "24 Portlu, Utp Cat6  Patch Panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3046,
+  "stok_kodu": "STK03015",
+  "ad": "Fiber sonlandırma seti  (Patch  cord,pigtail,sonlandırma  kutusu vb.",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3053,
+  "stok_kodu": "STK03022",
+  "ad": "CAT6 KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3067,
+  "stok_kodu": "STK03036",
+  "ad": "CAT 6 KABLO",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3068,
+  "stok_kodu": "STK03037",
+  "ad": "YANGIN ALGILAMA BAKIM VE SİSTEM ARIZASI GİDERİLMESİ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3079,
+  "stok_kodu": "STK03048",
+  "ad": "F QUICK Hızlı F Konnektör",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3088,
+  "stok_kodu": "STK03057",
+  "ad": "ATLANTİK YANGIN RÖLE 220 V Devre Kesici Acil Anons Sistemi Röle Modülü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3112,
+  "stok_kodu": "STK03081",
+  "ad": "ATEN FIBER20 20 Mt. Fiber HDMI Kablo Full HD",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3119,
+  "stok_kodu": "STK03088",
+  "ad": "SIEMENS FC724-ZA Cerberus PRO İnteraktif Yangın Algılama ve Alarm Kontrol Paneli",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3122,
+  "stok_kodu": "STK03091",
+  "ad": "SIEMENS OP720 Cerberus PRO İnteraktif Optik Duman Dedektörü",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3126,
+  "stok_kodu": "STK03095",
+  "ad": "TEKNİM TSD-701 NO ÇIKIŞLI DOĞALGAZ DEDEKTÖRÜ NO Kontak Çıkışı, 85 dB Alarm",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3131,
+  "stok_kodu": "STK03100",
+  "ad": "HONEYWELL STTR-3192R Konvansiyonel flaşörlü siren (Kırmızı)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3132,
+  "stok_kodu": "STK03101",
+  "ad": "HONEYWELL STR-3193R Konvansiyonel Yangın Alarm Flaşörü (Kırmızı)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3133,
+  "stok_kodu": "STK03102",
+  "ad": "TPU-8245 HARİCİ GÜÇ KAYNAĞI - 24V~5Ah ( akü hariç )",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3135,
+  "stok_kodu": "STK03104",
+  "ad": "SIEMENS FC726-ZA Cerberus Pro Interaktif Yangın Algılama ve Alarm Kontrol Paneli ( 4 Loop 504 adres, max 24 Loop 1512 adres, Ethernet Bağlantılı )",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3137,
+  "stok_kodu": "STK03106",
+  "ad": "TEKNİM TPU-8245 HARİCİ GÜÇ KAYNAĞI - 24V~5Ah ( akü hariç )",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3139,
+  "stok_kodu": "STK03108",
+  "ad": "FULL HD PLAKA TANIMA SİSTEMİ SMART PAKET  •Plaka Tanıma yazılımı (Kamera başına lisanslanmıştır) • Plaka Tanıma Kamerası (Full HD IP – IP67-IR Bullet – Motorize  PTS Firmwire)  BİRİM FİYAT  ADET  TOPLAM  470,00  USD  • Muhafaza Koruma şapk",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 3142,
+  "stok_kodu": "STK03111",
+  "ad": "8 PORT POE GIGABIT NETWORK SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 3143,
+  "stok_kodu": "STK03112",
+  "ad": "212 KOLLU BARİYER SAĞ  •Kol Uzunluğu : 5000 mm  K.B Geçme Alıcı Kart  • 4 Kanallı Kumanda (212-216 Kollu Bariyer)  • Çalışma Hızı: 3.5 saniye • Arma Fotosel  • Çatal Ayak   K.B Manuel Kol Aparatı",
+  "kategori": "Bariyer",
+  "kid": 24,
+  "ozellikler": {}
+ },
+ {
+  "id": 3144,
+  "stok_kodu": "STK03113",
+  "ad": "PLAKA TANIMA YAZILIMI ÜCRETLİ SUNUCU MODÜLÜ",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 3174,
+  "stok_kodu": "STK03143",
+  "ad": "TEKNOLINE TP-OS02-IC 4,3 inç Dış Kapı Paneli - Şifreli ve Kartlı Geçiş - Butonlu Tuş Takımı IC Desteği",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3175,
+  "stok_kodu": "STK03144",
+  "ad": "TEKNOLINE TGD-GU10 10.1\" Güvenlik Ünitesi Dokunmatik Ekran 255 e Kadar IP Kamera Bağlantısı",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3176,
+  "stok_kodu": "STK03145",
+  "ad": "IP -CAM HARİCİ TİP DAY NİGHT CAM 2 MP IP KAMERA ONVİF ÖZELLİKLİ",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP"
+  }
+ },
+ {
+  "id": 3177,
+  "stok_kodu": "STK03146",
+  "ad": "TEKNOLINE TGD-12V 12V Güç Kaynağı",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3178,
+  "stok_kodu": "STK03147",
+  "ad": "TEKNOLINE TGD - P4/24 4+2 PORT 24V PoE Switch (Güç kaynaklı)",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "2"
+  }
+ },
+ {
+  "id": 3180,
+  "stok_kodu": "STK03149",
+  "ad": "TEKNOLINE PATCH CORD SC/APC 2 MT SC/APC Patch Cord 2 Mt",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3185,
+  "stok_kodu": "STK03154",
+  "ad": "TVS50M6 M6 Kafes Somun+Vida+Pul (50adet)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3189,
+  "stok_kodu": "STK03158",
+  "ad": "TFM 30 MDU/10 Tek Core Fiber Optik Giriş 9 Polarite+1 Terr Sonlu Optik Multiswitch",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3193,
+  "stok_kodu": "STK03162",
+  "ad": "DC3-UAAA/1D DECT SARJ UNİTESİ",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3199,
+  "stok_kodu": "STK03168",
+  "ad": "TK 150 TELSİZ TELEFON",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3208,
+  "stok_kodu": "STK03178",
+  "ad": "MS26S 2.EL SANTRAL",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3209,
+  "stok_kodu": "STK03179",
+  "ad": "PS02 AC ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3210,
+  "stok_kodu": "STK03180",
+  "ad": "4 DIS (FXO) 6 ABONE (FXS)+2 SAYISAL ABONE KARTI",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3211,
+  "stok_kodu": "STK03181",
+  "ad": "8 PORT ANALOG DIŞ HAT (FXO) KARTI (RJ'Lİ)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3212,
+  "stok_kodu": "STK03182",
+  "ad": "8 PORT ANALOG ABONE KARTI (FXS) (RJ'Lİ)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3214,
+  "stok_kodu": "STK03184",
+  "ad": "SANTRAL ADAPTÖRÜ (2LTFYPSPWRX) M",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3215,
+  "stok_kodu": "STK03185",
+  "ad": "16 PORT ANALOG ABONE KARTI (FXS) (RJ'Lİ)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3219,
+  "stok_kodu": "STK03189",
+  "ad": "SPS200M GÜÇ KAYNAĞI (ESKİ TİP)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3221,
+  "stok_kodu": "STK03191",
+  "ad": "KR101-E KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3223,
+  "stok_kodu": "STK03193",
+  "ad": "DATALOGİC KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3231,
+  "stok_kodu": "STK03201",
+  "ad": "TFR 32 TWIN Tek fiber optik core üzerinden fiber optik alıcı sistem,·Her giriş için kazanç ayarı,·Beslemesi içinde Yüksek izolasyon kompakt",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3250,
+  "stok_kodu": "STK03220",
+  "ad": "12 V 2 A 12 V 2 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3254,
+  "stok_kodu": "STK03224",
+  "ad": "SLR-3320S-MMH/SL-4G  SOLAR KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3258,
+  "stok_kodu": "STK03228",
+  "ad": "IMOU CONSUMER CAMERA RANGER 2-A",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3269,
+  "stok_kodu": "STK03239",
+  "ad": "IPG1000 (0 IP Dış. + 0 PRI + 8 Ana.Dış. / 80 Ana.Ab. + 0 Say.Ab. + 10 SIP.Ab.)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3290,
+  "stok_kodu": "STK03260",
+  "ad": "Maxlogic Akıllı Adresli GCU Modülü 3A Güç Kaynağı Dahil, TCP/IP Çıkışlı",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3291,
+  "stok_kodu": "STK03261",
+  "ad": "PX24 xrX 20 ANALOG DIŞ HAT, 154 ANALOG İÇ HAT, 32 SAYISAL İÇ HAT, 30 KANAL PRI , 10 IP DIŞ HAT VE 120 IP İÇ HAT KAPASİTELİ TELEFON SANTRALİ + 1 SAYISAL SET",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3292,
+  "stok_kodu": "STK03262",
+  "ad": "Maxlogic Akıllı Adresli Yangın Alarm Santralı,3 Çevrim,381 Adres Network",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3294,
+  "stok_kodu": "STK03264",
+  "ad": "Maxlogic Konvansiyonel Flaşörlü Siren",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3296,
+  "stok_kodu": "STK03266",
+  "ad": "Maxlogic Konvansiyonel SMPS Anahtarlamalı Güç Kaynağı 5A ML-2420",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3297,
+  "stok_kodu": "STK03267",
+  "ad": "Maxlogic Akıllı Adresli Yangın Alarm Santralı,2 Çevrim,254 Adres Network",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3300,
+  "stok_kodu": "STK03270",
+  "ad": "Maxlogic Konvansiyonel Flaşörlü Siren, Hava Şartlarına Dayanıklı (IP65)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3301,
+  "stok_kodu": "STK03271",
+  "ad": "25 PORT ISDN PATCH PANEL (TELEFON)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3304,
+  "stok_kodu": "STK03274",
+  "ad": "FO PATCH PANEL 12PORT 19\" KASET DAHİL",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3305,
+  "stok_kodu": "STK03275",
+  "ad": "FO PATCH CORD DUPLEX LC/LC SM 9/125µ 3MT",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3360,
+  "stok_kodu": "STK03362",
+  "ad": "16X16 SİYAH KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3361,
+  "stok_kodu": "STK03363",
+  "ad": "TRASSIR Plaka Tanıma Sistemi Analiz Yazılımı",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 3370,
+  "stok_kodu": "STK03372",
+  "ad": "24V 4.2A METAL ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3373,
+  "stok_kodu": "STK03375",
+  "ad": "LEGRAND KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3377,
+  "stok_kodu": "STK03379",
+  "ad": "YÜZ TANIMA KAMERALARI İÇİN DİREK",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3380,
+  "stok_kodu": "STK03382",
+  "ad": "CFAS-404 **CFAS 4 Zon Konvansiyonel Yangın Algılama Paneli",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3381,
+  "stok_kodu": "STK03383",
+  "ad": "OSD-3230 **Optik Duman Dedektörü - (DB-0120 Standart Dedektör Tabanı Gerektirir)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3382,
+  "stok_kodu": "STK03384",
+  "ad": "MCP-3165 **Yangın İhbar Butonu",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3384,
+  "stok_kodu": "STK03386",
+  "ad": "12 VOLT 10 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3395,
+  "stok_kodu": "STK03397",
+  "ad": "RUİJİE 8 PORT POE SWITCH",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "8"
+  }
+ },
+ {
+  "id": 3396,
+  "stok_kodu": "STK03398",
+  "ad": "TRASSIR TR-D8151IR2 v2 2.8 2560x1920 5MP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "5 MP"
+  }
+ },
+ {
+  "id": 3397,
+  "stok_kodu": "STK03399",
+  "ad": "DH-NVR5432 TREİ 32 KANAL NVR 574",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 3398,
+  "stok_kodu": "STK03400",
+  "ad": "Ruijie Reyee RG-ES226GC-P 24 Port switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24"
+  }
+ },
+ {
+  "id": 3399,
+  "stok_kodu": "STK03401",
+  "ad": "Cat6 kablo topu",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3400,
+  "stok_kodu": "STK03402",
+  "ad": "Karel MS48IP 8 Dış Hat / 24 İç Hat Hibrit IP Telefon Santrali",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3415,
+  "stok_kodu": "STK03417",
+  "ad": "PATCH PANEL,KEYSTONE,PATCH KABLO(KAMERA SAYISI KADAR)",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3423,
+  "stok_kodu": "STK03425",
+  "ad": "DS-2CD1623G2-LIZSU 2 MP MOTORİZE BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 3424,
+  "stok_kodu": "STK03426",
+  "ad": "FortiGate-200G 10 x GE RJ45 (including 1 x MGMT port, 1 x HA port, 8 x switch ports), 4 x GE SFP slots, 8 x 5GE RJ45, 8 x 10GE SFP+ slots, NP7Lite and CP10 hardware accelerated.",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 3434,
+  "stok_kodu": "STK03437",
+  "ad": "Web Şifre Özellikli Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3444,
+  "stok_kodu": "STK03447",
+  "ad": "TEGESİS S3-R-MF 13,56 Mhz Wiegand Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3446,
+  "stok_kodu": "STK03449",
+  "ad": "TRASSIR AnyIP Pro - professional software for display, recording and playback  of 1 any IP-camera (Native SDK, ONVIF and RTSP). CMS functionality included. Licences in a bundle cannot be splitted",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 3447,
+  "stok_kodu": "STK03450",
+  "ad": "Neuro Fire and Smoke Detector INT - Neuro fire and smoke detector allows  to detect flames and smoke in the camera's visibility zone, including open  spaces",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3448,
+  "stok_kodu": "STK03451",
+  "ad": "Neuro Fire and Smoke Detector INT - Neuro fire and smoke detector allows  to detect flames and smoke in the camera's visibility zone, including open  spaces",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3449,
+  "stok_kodu": "STK03452",
+  "ad": "Neuro Fire and Smoke Detector INT - Neuro fire and smoke detector allows  to detect flames and smoke in the camera's visibility zone, including  open spcaes",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3453,
+  "stok_kodu": "STK03456",
+  "ad": "TRASSIR NetSync - professional software for synchronizing the archive of any  video channel from another TRASSIR server Licences in a bundle cannot be splitted.",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 3459,
+  "stok_kodu": "STK03462",
+  "ad": "Güvenlik Kamera Sistemi,Plaka Tanıma,Turnike,Bariyer Aylık Bakım Onarım Hizmeti",
+  "kategori": "Plaka Tanıma",
+  "kid": 25,
+  "ozellikler": {}
+ },
+ {
+  "id": 3463,
+  "stok_kodu": "STK03466",
+  "ad": "TRASSIR EnterpriseIP (Debian) - professional software for distributed video surveillance system for display, recording and playback of 1 any IP-camera (Native SDK, ONVIF and RTSP).¶CMS and License Manager functionality included. Licences in a bundle canno",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 3465,
+  "stok_kodu": "STK03468",
+  "ad": "FİBER PATCH CORD SC/SC 1 METRE",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3485,
+  "stok_kodu": "STK03488",
+  "ad": "12 V 2,3 AMPER ADAPTÖR",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3498,
+  "stok_kodu": "STK03501",
+  "ad": "M6 Kafes Somun+Vida+Pul (25adet)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3508,
+  "stok_kodu": "STK03511",
+  "ad": "SC/UPC - LC/UPC DUBLEX Patch Cord 1 Mt",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3518,
+  "stok_kodu": "STK03521",
+  "ad": "TPP 24 STP FİBER SONLANDIRMA SETİ (Pigtale, patchcord, organizer, ek mufu dahil)",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3520,
+  "stok_kodu": "STK03523",
+  "ad": "TVS25M6 M6 Kafes Somun+Vida+Pul (25adet)",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3532,
+  "stok_kodu": "STK03535",
+  "ad": "Dahua Nvr4232-4ks2 32 Kanal Nvr",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 3533,
+  "stok_kodu": "STK03536",
+  "ad": "Hikvision  DS-2DE4425IW-DE 4.0 MP IP Speed Dome",
+  "kategori": "PTZ Kamera",
+  "kid": 6,
+  "ozellikler": {}
+ },
+ {
+  "id": 3534,
+  "stok_kodu": "STK03537",
+  "ad": "RG-NBS3100-48GT4SFP-P Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 3536,
+  "stok_kodu": "STK03539",
+  "ad": "24 Port Moduler Patch Panel Boş",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3537,
+  "stok_kodu": "STK03540",
+  "ad": "Cat6 Utp Keystone Jack",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3538,
+  "stok_kodu": "STK03541",
+  "ad": "REYEE RG-NBS3200-24SFP/8GT4XS Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 3541,
+  "stok_kodu": "STK03544",
+  "ad": "Reyee RG-NIS2100-8GT2SFP-HP Endüstriyel Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 3542,
+  "stok_kodu": "STK03545",
+  "ad": "Cat6 Utp Patch Cord 1m",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3544,
+  "stok_kodu": "STK03547",
+  "ad": "2 Port SC Dublex Patch Panel Dolu",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3545,
+  "stok_kodu": "STK03548",
+  "ad": "SC LC SM Fiber Patch Cord 1m",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3548,
+  "stok_kodu": "STK03551",
+  "ad": "Tegesis Timecure Time Attendance Lite Geçiş Kontrol Yazılımı",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3550,
+  "stok_kodu": "STK03553",
+  "ad": "İÇ ORTAM 2MP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 3554,
+  "stok_kodu": "STK03557",
+  "ad": "TR-DPSF 2.8 2MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 3555,
+  "stok_kodu": "STK03558",
+  "ad": "TR-DP2BF 2.8 2MP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 3556,
+  "stok_kodu": "STK03559",
+  "ad": "246 DC Pro 3m Kollu Bariyer",
+  "kategori": "Bariyer",
+  "kid": 24,
+  "ozellikler": {}
+ },
+ {
+  "id": 3557,
+  "stok_kodu": "STK03560",
+  "ad": "16 port GbE + 2 SFP L2 250W Smart Rackmount CCTV Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "16",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 3558,
+  "stok_kodu": "STK03561",
+  "ad": "24 port GbE + 2 SFP L2 375W Smart Rackmount CCTV Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24",
+   "Gigabit desteği": "Evet"
+  }
+ },
+ {
+  "id": 3559,
+  "stok_kodu": "STK03562",
+  "ad": "IPC-HDW2441T-S 4MP 2.8MM 30M IR WIZSENSE POE IP KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "4 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "PoE desteği": "Evet",
+   "Gece görüş mesafesi": "30"
+  }
+ },
+ {
+  "id": 3560,
+  "stok_kodu": "STK03563",
+  "ad": "DAHUA NVR2108HS-T 8 KANAL NVR CIHAZI",
+  "kategori": "NVR",
+  "kid": 8,
+  "ozellikler": {}
+ },
+ {
+  "id": 3562,
+  "stok_kodu": "STK03565",
+  "ad": "Acil Durum Telefon Levhası",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3563,
+  "stok_kodu": "STK03566",
+  "ad": "YEALİNK BAZ İSTASYONU + EL TELEFONU",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3589,
+  "stok_kodu": "STK03592",
+  "ad": "COPANL CO Algılama Santrali",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3598,
+  "stok_kodu": "STK03601",
+  "ad": "TG-105 MF 13,56 Mhz. Mifare Wiegand Kart Okuyucu",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3611,
+  "stok_kodu": "STK03614",
+  "ad": "16X16 KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3612,
+  "stok_kodu": "STK03615",
+  "ad": "TC-C35LQ Spec:I5W/E/Y/T/4mm/V4.2 Thermal Kamera",
+  "kategori": "Termal Kamera",
+  "kid": 5,
+  "ozellikler": {}
+ },
+ {
+  "id": 3613,
+  "stok_kodu": "STK03616",
+  "ad": "TR-2DP2BF 2.8mm 2 MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 3620,
+  "stok_kodu": "STK03623",
+  "ad": "24 PORT CAT6 PATCH PANEL BOŞ",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3621,
+  "stok_kodu": "STK03624",
+  "ad": "CAT6 KEYSTONE JACK",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3622,
+  "stok_kodu": "STK03625",
+  "ad": "24 Port POE GBit Kenar Switch",
+  "kategori": "PoE Switch",
+  "kid": 18,
+  "ozellikler": {
+   "Port sayısı": "24"
+  }
+ },
+ {
+  "id": 3641,
+  "stok_kodu": "STK03644",
+  "ad": "168 TB'LIK KAYIT SUNUCUSU + DEPOLAMA ÜNİTESİ",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 3647,
+  "stok_kodu": "STK03650",
+  "ad": "TR-DP2SF 2.8 2MP IP DOME KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 3648,
+  "stok_kodu": "STK03651",
+  "ad": "TR-DP2BF 2.8 MM 2MP IP BULLET KAMERA",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Lens ölçüsü": "2.8 mm",
+   "Kamera tipi": "Bullet"
+  }
+ },
+ {
+  "id": 3651,
+  "stok_kodu": "STK03654",
+  "ad": "PİL 3 VOLT CR123A (KABLOSUZ YANGIN ÜRÜNLERİ İÇİN)",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3660,
+  "stok_kodu": "STK03663",
+  "ad": "Universat Quattro FO/SAT Konvertör (Güç kaynağı dahil)",
+  "kategori": "Adaptör",
+  "kid": 14,
+  "ozellikler": {}
+ },
+ {
+  "id": 3667,
+  "stok_kodu": "STK03670",
+  "ad": "IPG500 (O IP Dış + 1 PRI +4 Ana Dış./48 Ana Ab.+8 Say.Ab.+ SIP.Ab)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3669,
+  "stok_kodu": "STK03672",
+  "ad": "HID 0009P KART OKUYUCU",
+  "kategori": "Kartlı Geçiş",
+  "kid": 22,
+  "ozellikler": {}
+ },
+ {
+  "id": 3674,
+  "stok_kodu": "STK03677",
+  "ad": "Yangın dedektörü kablosu 2x1 J-H(St)H",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3676,
+  "stok_kodu": "STK03679",
+  "ad": "OPTİK DUMAN DEDEKTÖRÜ",
+  "kategori": "Yangın Sistemleri",
+  "kid": 31,
+  "ozellikler": {}
+ },
+ {
+  "id": 3677,
+  "stok_kodu": "STK03680",
+  "ad": "HY-CW3013-FB-Hybrone İç/Dış Ortam Akıllı Wi-Fi Batarya Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Ortam": "Dış ortam"
+  }
+ },
+ {
+  "id": 3679,
+  "stok_kodu": "STK03682",
+  "ad": "Utp cat6 sıva altı tekli priz (telefon+data)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3680,
+  "stok_kodu": "STK03683",
+  "ad": "Utp cat6h halojen free 4x2x23 awg kablo",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3688,
+  "stok_kodu": "STK03691",
+  "ad": "10  Çifte kadar Telefon Dağıtım Kutusu",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3689,
+  "stok_kodu": "STK03692",
+  "ad": "100  Çifte kadar Telefon Dağıtım Kutusu",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3690,
+  "stok_kodu": "STK03693",
+  "ad": "Tip2 sayısal telefon seti(an.h.hat20,an.dha112,say.d.hat15)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3691,
+  "stok_kodu": "STK03694",
+  "ad": "12 fiber kapasiteli sc/sm rak tipi fiber optik terminasyon birimi",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3694,
+  "stok_kodu": "STK03697",
+  "ad": "3 mt sm sc-sc patchcord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3695,
+  "stok_kodu": "STK03698",
+  "ad": "24 portlu utp cat6 patch panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3697,
+  "stok_kodu": "STK03700",
+  "ad": "24 Port Gbit Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "24"
+  }
+ },
+ {
+  "id": 3698,
+  "stok_kodu": "STK03701",
+  "ad": "1mt. CAT6 Patch cord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3699,
+  "stok_kodu": "STK03702",
+  "ad": "Omurga Network Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {}
+ },
+ {
+  "id": 3700,
+  "stok_kodu": "STK03703",
+  "ad": "4 Port Switch",
+  "kategori": "Network Switch",
+  "kid": 17,
+  "ozellikler": {
+   "Port sayısı": "4"
+  }
+ },
+ {
+  "id": 3708,
+  "stok_kodu": "STK03711",
+  "ad": "48 Portlu, Utp Cat6 Patch Panel",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3709,
+  "stok_kodu": "STK03712",
+  "ad": "Utp Cat6H HALOJEN FREE 4x2x23 AWG, BAKIR DATA KABLOLARI",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3710,
+  "stok_kodu": "STK03713",
+  "ad": "Ftp Cat 6H HALOJEN FREE 4x2x23 AWG, BAKIR DATA KABLOLARI",
+  "kategori": "Data Kablosu",
+  "kid": 27,
+  "ozellikler": {}
+ },
+ {
+  "id": 3712,
+  "stok_kodu": "STK03715",
+  "ad": "1 adet F/O Giriş Kartı + 200 Port Analog Abone (TELEFON SANTRALİ UZAK MODÜLÜ)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3713,
+  "stok_kodu": "STK03716",
+  "ad": "25 Port ISDN Patch Panel  (TELEFON)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3714,
+  "stok_kodu": "STK03717",
+  "ad": "50 Port ISDN Patch Panel  (TELEFON)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3717,
+  "stok_kodu": "STK03720",
+  "ad": "4 Fiber Kapasiteli ST/SM, Rak tipi Fiber Optik Terminasyon Birimi",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3718,
+  "stok_kodu": "STK03721",
+  "ad": "8 Fiber Kapasiteli ST/SM, Rak tipi Fiber Optik Terminasyon Birimi",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3719,
+  "stok_kodu": "STK03722",
+  "ad": "24 Fiber Kapasiteli ST/SM, Rak tipi Fiber Optik Terminasyon Birimi",
+  "kategori": "Fiber Kablo",
+  "kid": 28,
+  "ozellikler": {}
+ },
+ {
+  "id": 3725,
+  "stok_kodu": "STK03728",
+  "ad": "Telefon Sanrali ;16 / 224 / 15 / 1 / _ / _ / En az 2 adet işlemcili ve % 50 genişleyebilen",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3726,
+  "stok_kodu": "STK03729",
+  "ad": "0,3-0,5mt patch cord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3727,
+  "stok_kodu": "STK03730",
+  "ad": "KEYSTON JACK",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3730,
+  "stok_kodu": "STK03733",
+  "ad": "Dış Ortam Bullet Kamera Tip-1",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Kamera tipi": "Bullet",
+   "Ortam": "Dış ortam"
+  }
+ },
+ {
+  "id": 3731,
+  "stok_kodu": "STK03734",
+  "ad": "En az 2 MP İç Ortam Dome Kamera",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "Çözünürlük": "2 MP",
+   "Kamera tipi": "Dome"
+  }
+ },
+ {
+  "id": 3738,
+  "stok_kodu": "STK03741",
+  "ad": "CCTV SUNUCU",
+  "kategori": "Sunucu",
+  "kid": 10,
+  "ozellikler": {}
+ },
+ {
+  "id": 3739,
+  "stok_kodu": "STK03742",
+  "ad": "GÜVENLİK MERKEZİ KAMERA İZLEME ve YÖNETİM BİLGİSAYARI",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3741,
+  "stok_kodu": "STK03744",
+  "ad": "1mt. CAT6 Patch cord",
+  "kategori": "Patch Cord",
+  "kid": 30,
+  "ozellikler": {}
+ },
+ {
+  "id": 3743,
+  "stok_kodu": "STK03746",
+  "ad": "8Zone Router, built-in 500W class-D amplifier, with 6 zone  speaker outputs and volume control, receive sources and  fire alarm message from master controller, with AB  speaker line low impedance supervision, with amplifier  auto changeover into standby w",
+  "kategori": "Router",
+  "kid": 20,
+  "ozellikler": {}
+ },
+ {
+  "id": 3746,
+  "stok_kodu": "STK03749",
+  "ad": "Konnektör Set",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3749,
+  "stok_kodu": "STK03752",
+  "ad": "TRASSIR AnyIP Win64 [INT]: software for display, recording and playback of 1 any IP-camera (Native SDK, ONVIF and RTSP).¶Licences in a bundle cannot be splitted.",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 3750,
+  "stok_kodu": "STK03753",
+  "ad": "TRASSIR AnyIP Win64 [INT]: software for display, recording and playback of 1 any IP-camera (Native SDK, ONVIF and RTSP).Licences in a bundle cannot be splitted.",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 3752,
+  "stok_kodu": "STK03755",
+  "ad": "RASSIR AnyIP [INT]  software for display, recording and playback of 1 any IP-camera (Native SDK ONVIF and RTSP) Licences in a bundle cannot be splitted.",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {
+   "ONVIF desteği": "Evet"
+  }
+ },
+ {
+  "id": 3753,
+  "stok_kodu": "STK03756",
+  "ad": "IPG1000 (0 IP Dış. + 0 PRI + 20 Ana.Dış. / 112 Ana.Ab. + 16 Say.Ab. + 0 SIP.Ab.)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3754,
+  "stok_kodu": "STK03757",
+  "ad": "IPG1000 (0 IP Dış. + 0 PRI + 0 Ana.Dış. / 200 Ana.Ab. + 0 Say.Ab. + 0 SIP.Ab.)",
+  "kategori": "Telekomünikasyon Sistemleri",
+  "kid": 32,
+  "ozellikler": {}
+ },
+ {
+  "id": 3760,
+  "stok_kodu": "STK03763",
+  "ad": "60x40 KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3761,
+  "stok_kodu": "STK03764",
+  "ad": "40X60 KABLO KANALI",
+  "kategori": "Sarf Malzemeleri",
+  "kid": 33,
+  "ozellikler": {}
+ },
+ {
+  "id": 3765,
+  "stok_kodu": "MOB-G2153C",
+  "ad": "HİKVİSİON IPC-HFW1230T-ZS-2812-S5",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ },
+ {
+  "id": 3767,
+  "stok_kodu": "MOB-G0C602",
+  "ad": "Dahua DH-IPC-HDBW3241FP",
+  "kategori": "IP Kamera",
+  "kid": 3,
+  "ozellikler": {}
+ }
+]
