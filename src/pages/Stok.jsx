@@ -5,6 +5,7 @@ import {
   Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList,
   ArrowLeftRight, Image as ImageIcon, AlertTriangle, X, Tag, Hash,
   ClipboardCheck, BarChart3, FolderTree, FileText, Eye, EyeOff,
+  SlidersHorizontal, ArrowLeft,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -23,6 +24,11 @@ import {
   kategorileriGetir, kategoriEkle, kategoriGuncelle,
   agacKur, kategoriYolu, altKategoriIdleri,
 } from '../services/stokKategoriService'
+import {
+  OZELLIK_TIPLERI, ozellikTanimlariGetir, ozellikEkle, ozellikGuncelle,
+  kategoriOzellikleri, urunOzellikleriGetir, urunOzellikleriKaydet,
+  tumUrunOzellikleriGetir,
+} from '../services/stokOzellikService'
 import { AlertTriangle as AlertIkon } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -119,6 +125,22 @@ function Stok() {
   const admin = kullanici?.rol === 'admin'
   const alisFiyatGoster = alisFiyatGorebilir(kullanici)
 
+  // Stok v2 Faz 2 — kategori-bazlı teknik özellikler (mig 152)
+  const [ozellikTanimlar, setOzellikTanimlar] = useState([])   // tüm tanımlar (pasifler dahil — yönetim için)
+  const [ozellikDegerleri, setOzellikDegerleri] = useState({}) // formdaki ürünün değerleri {ozellikId: deger}
+  const [ozellikFiltre, setOzellikFiltre] = useState({})       // liste filtreleri {ozellikId: deger}
+  const [urunOzellikMap, setUrunOzellikMap] = useState(null)   // Map<urunId, Map<ozellikId,deger>> — lazy
+
+  // Kategori filtresi seçilince ürün özellik değerlerini (filtre için) lazy yükle
+  useEffect(() => {
+    if (filtreKatId && !urunOzellikMap) {
+      tumUrunOzellikleriGetir()
+        .then(m => setUrunOzellikMap(m || new Map()))
+        .catch(() => setUrunOzellikMap(new Map()))
+    }
+    setOzellikFiltre({})  // dal değişince eski özellik filtreleri sıfırlansın
+  }, [filtreKatId])
+
   // id → tam yol map'i ("Güvenlik Sistemleri › Kamera Sistemleri › IP Kamera")
   // Arama ve tabloda her satırda tekrar hesaplamamak için tek sefer kurulur.
   const katYol = new Map(kategoriler.map(k => [k.id, kategoriYolu(kategoriler, k.id)]))
@@ -162,15 +184,17 @@ function Stok() {
       stokKalemOzetleriniGetir(),
       tumSeriNumaralariniGetir(),
       aktifOpsiyonToplamlari(),
-      kategorileriGetir(true),  // pasifler dahil — yönetim modalında lazım
+      kategorileriGetir(true),      // pasifler dahil — yönetim modalında lazım
+      ozellikTanimlariGetir(true),  // pasifler dahil — yönetim modalında lazım
     ])
-      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData]) => {
+      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData, ozData]) => {
         setUrunler(urunData || [])
         setHareketler(hareketData || [])
         setKalemOzetleri(kalemOzet || new Map())
         setGlobalSN(snMap || new Map())
         setOpsiyonToplam(opsMap || new Map())
         setKategoriler(katData || [])
+        setOzellikTanimlar(ozData || [])
       })
       .catch(err => console.error('[Stok yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -417,6 +441,7 @@ function Stok() {
     setForm({ ...bosForm, stokKodu: stokKoduOlustur(urunler) })
     setKodModu('otomatik')
     setDuzenleId(null)
+    setOzellikDegerleri({})
     setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -455,6 +480,11 @@ function Stok() {
     setDuzenleId(u.id)
     setGoster(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    // Ürünün kayıtlı teknik özellik değerlerini yükle (Faz 2)
+    setOzellikDegerleri({})
+    urunOzellikleriGetir(u.id)
+      .then(m => setOzellikDegerleri(Object.fromEntries(m)))
+      .catch(() => setOzellikDegerleri({}))
     // SN takipli üründe düzenleme açılınca mevcut SN'leri ve global SN map'ini yükle
     if (u.seriTakipli) {
       Promise.all([
@@ -492,6 +522,25 @@ function Stok() {
     return { yeni, buUrunde, baskaUrunde, tekrar }
   })()
 
+  // Teknik özellik değerlerini kaydet — yalnız seçili kategori zincirinde geçerli
+  // olanlar yazılır; kategori değişmişse artık geçersiz kalan eskiler silinir ('')
+  const ozellikleriKaydet = async (urunId) => {
+    const gecerliIds = new Set(
+      kategoriOzellikleri(ozellikTanimlar, kategoriler, form.kategoriId).map(t => t.id)
+    )
+    const paket = {}
+    for (const [k, v] of Object.entries(ozellikDegerleri)) {
+      paket[k] = gecerliIds.has(Number(k)) ? v : ''
+    }
+    if (Object.keys(paket).length === 0) return
+    try {
+      await urunOzellikleriKaydet(urunId, paket)
+      setUrunOzellikMap(null)  // filtre map'i bayatladı — gerekince yeniden yüklenir
+    } catch (e) {
+      toast.error(e?.message || 'Teknik özellikler kaydedilemedi.')
+    }
+  }
+
   const kaydet = async () => {
     if (!form.stokAdi || !form.stokKodu) {
       toast.error('Stok adı ve kodu zorunludur.')
@@ -507,6 +556,7 @@ function Stok() {
       const guncellendi = await stokUrunGuncelle(duzenleId, updateForm)
       if (guncellendi) {
         setUrunler(prev => prev.map(u => u.id === duzenleId ? guncellendi : u))
+        await ozellikleriKaydet(duzenleId)
 
         // Toplu S/N ekleme — seri_takipli ürünler için
         // DUPLICATE FİLTRE: sadece "yeni" olanları ekle (analiz sonucundan)
@@ -568,6 +618,7 @@ function Stok() {
       const yeniUrun = await stokUrunEkle(insertForm)
       if (yeniUrun) {
         setUrunler(prev => [...prev, yeniUrun])
+        await ozellikleriKaydet(yeniUrun.id)
         if (form.seriTakipli && seriKalemleri.length > 0) {
           const gecerli = seriKalemleri.filter(k => k.seriNo?.trim())
           if (gecerli.length > 0) {
@@ -637,9 +688,29 @@ function Stok() {
   // Kategori filtresi: seçilen dal + tüm alt dalları (örn. "Kamera Sistemleri"
   // seçilince IP/Analog/Termal/PTZ kameralar da gelir)
   const filtreKatSet = filtreKatId ? altKategoriIdleri(kategoriler, Number(filtreKatId)) : null
+  // Özellik filtreleri (Faz 2): seçilen dalda filtrelenebilir alanlar =
+  // dalın alt ağacında + ata zincirinde tanımlı secim/evet_hayir özellikleri
+  const filtrelenebilirOzellikler = (() => {
+    if (!filtreKatId) return []
+    const kapsam = altKategoriIdleri(kategoriler, Number(filtreKatId))
+    for (const t of kategoriOzellikleri(ozellikTanimlar, kategoriler, Number(filtreKatId))) {
+      kapsam.add(t.kategoriId)  // ata zincirindeki tanım kategorileri de kapsansın
+    }
+    return ozellikTanimlar.filter(t =>
+      t.aktif !== false && kapsam.has(t.kategoriId) && (t.tip === 'secim' || t.tip === 'evet_hayir')
+    )
+  })()
+  const aktifOzellikFiltre = Object.entries(ozellikFiltre).filter(([, v]) => v)
   const gorunenUrunler = urunler.filter((u) => {
     if (!pasifGoster && u.aktif === false) return false
     if (filtreKatSet && !filtreKatSet.has(u.kategoriId)) return false
+    // Özellik filtreleri — map henüz yüklenmediyse filtre uygulanmaz
+    if (aktifOzellikFiltre.length > 0 && urunOzellikMap) {
+      const uMap = urunOzellikMap.get(u.id)
+      for (const [oid, v] of aktifOzellikFiltre) {
+        if (!uMap || uMap.get(Number(oid)) !== v) return false
+      }
+    }
     if (snEslesenKod && u.stokKodu === snEslesenKod) return true
     if (aramaSN && aramaSN.length >= 3) {
       // Kısmi SN eşleşmesi de: globalSN içinde SN aramada geçenler var mı?
@@ -660,7 +731,7 @@ function Stok() {
     aktifSayfa * sayfaBoyutu,
   )
 
-  useEffect(() => { setSayfa(1) }, [arama, sayfaBoyutu, filtreKatId, pasifGoster])
+  useEffect(() => { setSayfa(1) }, [arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
 
   const toplamUrun = urunler.length
   const toplamBakiye = urunler.reduce((sum, u) => sum + stokBakiye(u.stokKodu), 0)
@@ -764,6 +835,47 @@ function Stok() {
           </Button>
         )}
       </div>
+
+      {/* Özellik filtreleri (Faz 2) — kategori seçilince o dalın teknik
+          özellikleriyle daraltma: "2 MP" + "Dome" gibi kombinasyonlar */}
+      {filtrelenebilirOzellikler.length > 0 && (
+        <div style={{
+          display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center',
+          padding: '8px 10px', background: 'var(--surface-sunken)',
+          border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+        }}>
+          <span style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            Teknik filtre
+          </span>
+          {filtrelenebilirOzellikler.map(t => (
+            <div key={t.id} style={{ minWidth: 140 }}>
+              <CustomSelect
+                className="w-auto"
+                value={ozellikFiltre[t.id] || ''}
+                onChange={(e) => setOzellikFiltre(prev => ({ ...prev, [t.id]: e.target.value }))}
+                style={{ padding: '5px 10px', font: '400 12px/18px var(--font-sans)' }}
+              >
+                <option value="">{t.ad}</option>
+                {t.tip === 'evet_hayir'
+                  ? [<option key="e" value="Evet">{t.ad}: Evet</option>, <option key="h" value="Hayır">{t.ad}: Hayır</option>]
+                  : (t.secenekler || []).map(s => <option key={s} value={s}>{t.ad}: {s}</option>)}
+              </CustomSelect>
+            </div>
+          ))}
+          {aktifOzellikFiltre.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setOzellikFiltre({})}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--danger)', font: '500 12px/16px var(--font-sans)', padding: '0 4px',
+              }}
+            >
+              Temizle ({aktifOzellikFiltre.length})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Form card */}
       {goster && (
@@ -994,6 +1106,63 @@ function Stok() {
               />
             </div>
           </div>
+
+          {/* Teknik Özellikler (Faz 2) — kategori seçilince o dalın (+ üst dalların)
+              admin tanımlı alanları otomatik açılır */}
+          {(() => {
+            const alanlar = kategoriOzellikleri(ozellikTanimlar, kategoriler, form.kategoriId)
+            if (alanlar.length === 0) return null
+            const deger = (id) => ozellikDegerleri[id] ?? ''
+            const yaz = (id, v) => setOzellikDegerleri(prev => ({ ...prev, [id]: v }))
+            return (
+              <div style={{
+                marginBottom: 16, padding: 14,
+                background: 'var(--brand-primary-soft)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <p className="t-label" style={{ color: 'var(--brand-primary)', marginBottom: 10 }}>
+                  Teknik Özellikler — {kategoriler.find(k => k.id === Number(form.kategoriId))?.ad}
+                  <span style={{ marginLeft: 6, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                    (boş bırakılan alanlar kaydedilmez)
+                  </span>
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                  {alanlar.map(t => (
+                    <div key={t.id}>
+                      <Label>{t.ad}{t.birim ? ` (${t.birim})` : ''}</Label>
+                      {t.tip === 'secim' ? (
+                        <CustomSelect value={deger(t.id)} onChange={(e) => yaz(t.id, e.target.value)}>
+                          <option value="">—</option>
+                          {(t.secenekler || []).map(s => <option key={s} value={s}>{s}</option>)}
+                        </CustomSelect>
+                      ) : t.tip === 'evet_hayir' ? (
+                        <CustomSelect value={deger(t.id)} onChange={(e) => yaz(t.id, e.target.value)}>
+                          <option value="">—</option>
+                          <option value="Evet">Evet</option>
+                          <option value="Hayır">Hayır</option>
+                        </CustomSelect>
+                      ) : t.tip === 'sayi' ? (
+                        <Input
+                          type="number"
+                          className="sayi-sade"
+                          value={deger(t.id)}
+                          onChange={(e) => yaz(t.id, e.target.value)}
+                          placeholder="0"
+                        />
+                      ) : (
+                        <Input
+                          value={deger(t.id)}
+                          onChange={(e) => yaz(t.id, e.target.value)}
+                          placeholder="—"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Görsel */}
           <div style={{ marginBottom: 16 }}>
@@ -1828,6 +1997,11 @@ function Stok() {
           const kat = await kategorileriGetir(true)
           setKategoriler(kat || [])
         }}
+        ozellikler={ozellikTanimlar}
+        ozellikYenile={async () => {
+          const oz = await ozellikTanimlariGetir(true)
+          setOzellikTanimlar(oz || [])
+        }}
       />
     </div>
   )
@@ -1896,14 +2070,16 @@ function Sayfalama({ aktifSayfa, toplamSayfa, toplam, sayfaBoyutu, setSayfa, set
 }
 
 // Kategori ağacı yönetimi — ekle / yeniden adlandır / pasife al (silme yok:
-// ürünler bağlı olabilir, on delete restrict; pasif = listelerden düşer)
-function KategoriYonetimi({ open, onClose, kategoriler, yenile }) {
+// ürünler bağlı olabilir, on delete restrict; pasif = listelerden düşer).
+// Faz 2: dal başına ⚙ ile teknik özellik tanımları yönetilir.
+function KategoriYonetimi({ open, onClose, kategoriler, yenile, ozellikler = [], ozellikYenile }) {
   const { toast } = useToast()
   const [yeniAd, setYeniAd] = useState('')
   const [ekleUstId, setEkleUstId] = useState(null)   // hangi dala alt ekleniyor (null = kök)
   const [duzenleKatId, setDuzenleKatId] = useState(null)
   const [duzenleAd, setDuzenleAd] = useState('')
   const [mesgul, setMesgul] = useState(false)
+  const [ozellikKat, setOzellikKat] = useState(null) // ⚙ açılan kategori — özellik görünümü
 
   const { kokler, cocuklar } = agacKur(kategoriler)
 
@@ -1973,6 +2149,17 @@ function KategoriYonetimi({ open, onClose, kategoriler, yenile }) {
                 {k.ad} {pasif && <Badge tone="kayip">Pasif</Badge>}
               </span>
               <button
+                aria-label="Teknik özellikler"
+                title={`Teknik özellik tanımları (${ozellikler.filter(o => o.kategoriId === k.id).length})`}
+                onClick={() => setOzellikKat(k)}
+                style={{
+                  ...iconBtnStyle,
+                  color: ozellikler.some(o => o.kategoriId === k.id) ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                }}
+              >
+                <SlidersHorizontal size={12} strokeWidth={1.5} />
+              </button>
+              <button
                 aria-label="Alt kategori ekle"
                 title="Alt kategori ekle"
                 onClick={() => { setEkleUstId(k.id); setYeniAd('') }}
@@ -2019,11 +2206,32 @@ function KategoriYonetimi({ open, onClose, kategoriler, yenile }) {
     )
   }
 
+  // ⚙ görünümü: seçilen dalın teknik özellik tanımları
+  if (ozellikKat) {
+    return (
+      <Modal
+        open={open}
+        onClose={() => { setOzellikKat(null); onClose() }}
+        title={`Teknik Özellikler — ${ozellikKat.ad}`}
+        width={680}
+      >
+        <OzellikYonetimi
+          kategori={ozellikKat}
+          ozellikler={ozellikler.filter(o => o.kategoriId === ozellikKat.id)}
+          geri={() => setOzellikKat(null)}
+          yenile={ozellikYenile}
+        />
+      </Modal>
+    )
+  }
+
   return (
     <Modal open={open} onClose={onClose} title="Stok Kategorileri" width={640}>
       <p className="t-caption" style={{ marginBottom: 10, color: 'var(--text-tertiary)' }}>
         Kategoriler hiyerarşiktir; pasife alınan dal ürün formunda ve filtrelerde görünmez.
         Ürün bağlı olabileceği için silme yerine pasife alma kullanılır.
+        Dal başına ⚙ ile teknik özellik alanları tanımlanır — üst dala tanımlanan
+        özellik tüm alt dallarda da geçerlidir.
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         <Input
@@ -2045,6 +2253,187 @@ function KategoriYonetimi({ open, onClose, kategoriler, yenile }) {
         ) : kokler.map(k => <Satir key={k.id} k={k} seviye={0} />)}
       </div>
     </Modal>
+  )
+}
+
+// Bir kategorinin teknik özellik tanımları — ekle / yeniden adlandır / pasife al.
+// Silme yok: ürün değerleri bağlı (on delete cascade değerleri de götürür).
+const bosOzellikForm = { ad: '', tip: 'secim', secenekler: '', birim: '' }
+
+function OzellikYonetimi({ kategori, ozellikler, geri, yenile }) {
+  const { toast } = useToast()
+  const [oForm, setOForm] = useState(bosOzellikForm)
+  const [duzenleId, setDuzenleId] = useState(null)
+  const [mesgul, setMesgul] = useState(false)
+
+  const formuDoldur = (o) => {
+    setDuzenleId(o.id)
+    setOForm({
+      ad: o.ad,
+      tip: o.tip,
+      secenekler: Array.isArray(o.secenekler) ? o.secenekler.join(', ') : '',
+      birim: o.birim || '',
+    })
+  }
+
+  const kaydet = async () => {
+    if (!oForm.ad.trim()) { toast.error('Özellik adı zorunlu.'); return }
+    const secenekler = oForm.tip === 'secim'
+      ? oForm.secenekler.split(',').map(s => s.trim()).filter(Boolean)
+      : null
+    if (oForm.tip === 'secim' && (!secenekler || secenekler.length === 0)) {
+      toast.error('Seçim listesi için en az 1 seçenek girin (virgülle ayırın).')
+      return
+    }
+    setMesgul(true)
+    try {
+      if (duzenleId) {
+        await ozellikGuncelle(duzenleId, {
+          ad: oForm.ad, tip: oForm.tip, secenekler,
+          birim: oForm.tip === 'sayi' ? (oForm.birim || null) : null,
+        })
+        toast.success('Özellik güncellendi.')
+      } else {
+        await ozellikEkle({
+          kategoriId: kategori.id, ad: oForm.ad, tip: oForm.tip, secenekler,
+          birim: oForm.tip === 'sayi' ? (oForm.birim || null) : null,
+          sira: ozellikler.length + 1,
+        })
+        toast.success('Özellik eklendi.')
+      }
+      setOForm(bosOzellikForm)
+      setDuzenleId(null)
+      await yenile?.()
+    } catch (e) {
+      toast.error(e?.message || 'Kaydedilemedi.')
+    } finally { setMesgul(false) }
+  }
+
+  const aktifDegistir = async (o) => {
+    setMesgul(true)
+    try {
+      await ozellikGuncelle(o.id, { aktif: !(o.aktif !== false) })
+      await yenile?.()
+    } catch (e) {
+      toast.error(e?.message || 'Değiştirilemedi.')
+    } finally { setMesgul(false) }
+  }
+
+  const tipAd = (t) => OZELLIK_TIPLERI.find(x => x.id === t)?.ad || t
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={geri}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', padding: 0,
+        }}
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} /> Kategorilere dön
+      </button>
+      <p className="t-caption" style={{ marginBottom: 10, color: 'var(--text-tertiary)' }}>
+        Bu alanlar "{kategori.ad}" ve tüm alt dallarındaki ürün formlarında otomatik açılır.
+      </p>
+
+      {/* Ekle / düzenle formu */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.4fr auto', gap: 6,
+        alignItems: 'end', marginBottom: 12, padding: 10,
+        background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)',
+      }}>
+        <div>
+          <Label>Özellik adı</Label>
+          <Input
+            value={oForm.ad}
+            onChange={(e) => setOForm({ ...oForm, ad: e.target.value })}
+            placeholder="örn. Çözünürlük"
+          />
+        </div>
+        <div>
+          <Label>Tip</Label>
+          <CustomSelect value={oForm.tip} onChange={(e) => setOForm({ ...oForm, tip: e.target.value })}>
+            {OZELLIK_TIPLERI.map(t => <option key={t.id} value={t.id}>{t.ad}</option>)}
+          </CustomSelect>
+        </div>
+        {oForm.tip === 'secim' ? (
+          <div>
+            <Label>Seçenekler (virgülle)</Label>
+            <Input
+              value={oForm.secenekler}
+              onChange={(e) => setOForm({ ...oForm, secenekler: e.target.value })}
+              placeholder="2 MP, 4 MP, 8 MP"
+            />
+          </div>
+        ) : oForm.tip === 'sayi' ? (
+          <div>
+            <Label>Birim (ops.)</Label>
+            <Input
+              value={oForm.birim}
+              onChange={(e) => setOForm({ ...oForm, birim: e.target.value })}
+              placeholder="m, W, port…"
+            />
+          </div>
+        ) : <div />}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button variant="primary" size="sm" onClick={kaydet} disabled={mesgul || !oForm.ad.trim()}>
+            {duzenleId ? 'Güncelle' : 'Ekle'}
+          </Button>
+          {duzenleId && (
+            <Button variant="tertiary" size="sm" onClick={() => { setDuzenleId(null); setOForm(bosOzellikForm) }}>
+              İptal
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Tanım listesi */}
+      <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', maxHeight: 400, overflowY: 'auto' }}>
+        {ozellikler.length === 0 ? (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+            Bu kategoriye henüz özellik tanımlanmadı.
+          </div>
+        ) : ozellikler.map(o => {
+          const pasif = o.aktif === false
+          return (
+            <div key={o.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 10px', borderBottom: '1px solid var(--border-default)',
+              opacity: pasif ? 0.55 : 1,
+            }}>
+              <SlidersHorizontal size={12} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                  {o.ad}{o.birim ? ` (${o.birim})` : ''} {pasif && <Badge tone="kayip">Pasif</Badge>}
+                </span>
+                <div className="t-caption" style={{ color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {tipAd(o.tip)}{Array.isArray(o.secenekler) && o.secenekler.length > 0 ? ` — ${o.secenekler.join(' / ')}` : ''}
+                </div>
+              </div>
+              <button
+                aria-label="Düzenle"
+                title="Düzenle"
+                onClick={() => formuDoldur(o)}
+                style={iconBtnStyle}
+              >
+                <Pencil size={12} strokeWidth={1.5} />
+              </button>
+              <button
+                aria-label={pasif ? 'Aktifleştir' : 'Pasife al'}
+                title={pasif ? 'Aktifleştir' : 'Pasife al'}
+                onClick={() => aktifDegistir(o)}
+                style={{ ...iconBtnStyle, color: pasif ? 'var(--success)' : 'var(--danger)' }}
+                disabled={mesgul}
+              >
+                {pasif ? <Eye size={12} strokeWidth={1.5} /> : <EyeOff size={12} strokeWidth={1.5} />}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
