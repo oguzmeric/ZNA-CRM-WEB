@@ -400,9 +400,10 @@ export default function SatisSozlesmeForm() {
                 <Label>Kaynak teklif</Label>
                 <CustomSelect value={form.teklifId || ''} disabled={!duzenlenebilir}
                   onChange={async e => {
-                    const t = (teklifler || []).find(x => String(x.id) === e.target.value)
+                    if (!e.target.value) { alan('teklifId', null); return }
+                    // Liste objesi satirlar içermez — tam kaydı çek (ürün listesi + toplam için)
+                    const t = await teklifGetir(Number(e.target.value)).catch(() => null)
                     if (t) await tekliftenDoldur(t)
-                    else alan('teklifId', null)
                   }}>
                   <option value="">— Bağımsız / seçilmedi —</option>
                   {(teklifler || []).slice(0, 200).map(t => (
