@@ -258,7 +258,7 @@ export default function SatisSozlesmeForm() {
   const yazdir = () => {
     const w = window.open('', '_blank', 'width=920,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi.'); return }
-    w.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${kayit?.sozlesmeNo || 'Satış Sözleşmesi'}</title></head><body>${icerikHtml()}<script>window.onload = () => setTimeout(() => window.print(), 400)</scr` + `ipt></body></html>`)
+    w.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>${kayit?.sozlesmeNo || 'Satış Sözleşmesi'}</title></head><body>${icerikHtml()}<script>window.onload = () => setTimeout(() => window.print(), 400)</scr` + `ipt></body></html>`)
     w.document.close()
   }
 

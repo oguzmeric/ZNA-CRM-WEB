@@ -44,10 +44,8 @@ export const hesapVeIcerikHazirla = (form) => {
   const evraklar = form.evraklar?.length
     ? form.evraklar
     : evrakListesiUret({ firmaTipi: form.firmaTipi, odemeTipi: form.odemeTipi, imzaBelgesiIstenir: form.imzaBelgesiIstenir })
-  const icerik = sozlesmeHtmlUret(
-    { ...form, ...hesap, evraklar },
-    { logoUrl: (typeof window !== 'undefined' ? window.location.origin : '') + '/logo.jpeg' },
-  )
+  // Logo göreli tutulur — uygulama içinde doğrudan, yazdırma penceresinde <base> ile çözülür
+  const icerik = sozlesmeHtmlUret({ ...form, ...hesap, evraklar }, { logoUrl: '/logo.jpeg' })
   return { ...hesap, evraklar, uretilenIcerik: icerik }
 }
 
