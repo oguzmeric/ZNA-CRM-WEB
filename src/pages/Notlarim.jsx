@@ -65,6 +65,7 @@ import {
 } from '../services/notService'
 import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
+import { htmlMi, htmlToDuzMetin, duzMetinToHtml } from '../lib/notIcerik'
 import { invalidate } from '../lib/cache'
 
 function tarihFormat(iso) {
@@ -163,7 +164,9 @@ function Notlarim() {
   const filtrelenmis = useMemo(() => {
     return notlar.filter((n) => {
       if (filtreKategori !== 'hepsi' && n.kategori !== filtreKategori) return false
-      if (arama && !trContains([n.baslik, n.icerik, n.musteriFirma].join(' '), arama)) return false
+      // İçerik HTML olabilir (Quill) — arama düz metin üzerinde yapılsın
+      // ("65 usd" araması "65&nbsp;usd" kaydını da bulsun)
+      if (arama && !trContains([n.baslik, htmlToDuzMetin(n.icerik), n.musteriFirma].join(' '), arama)) return false
       return true
     })
   }, [notlar, filtreKategori, arama])
@@ -177,7 +180,9 @@ function Notlarim() {
   const duzenleAc = (n) => {
     setForm({
       baslik: n.baslik || '',
-      icerik: n.icerik || '',
+      // Mobilden gelen eski düz metin notlarda Quill \n'leri yutuyordu —
+      // HTML değilse paragraf HTML'ine sarıp aç (satırlar korunur)
+      icerik: htmlMi(n.icerik) ? (n.icerik || '') : duzMetinToHtml(n.icerik || ''),
       kategori: n.kategori || 'diger',
       musteriId: n.musteriId || '',
       cizimler: n.cizimler || [],
@@ -434,7 +439,7 @@ function Notlarim() {
                     whiteSpace: 'pre-wrap',
                   }}>
                     {/* HTML'i strip ederek plain text önizle */}
-                    {n.icerik.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}
+                    {htmlToDuzMetin(n.icerik).replace(/\s+/g, ' ').trim()}
                   </p>
                 )}
 
