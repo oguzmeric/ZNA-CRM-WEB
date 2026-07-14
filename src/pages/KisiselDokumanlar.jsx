@@ -259,6 +259,7 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
   const [yeniId, setYeniId] = useState('')
   const [kategoriId, setKategoriId] = useState('')
   const [gorunurluk, setGorunurluk] = useState('sadece_ben')
+  const [mod, setMod] = useState('link')              // link = depo kullanmaz (varsayılan) | kopya = CRM'e kopyala
   const [secilenler, setSecilenler] = useState([])    // {oge, durum: bekliyor|aktariliyor|tamam|link|hata, mesaj}
   const [mesgul, setMesgul] = useState(false)
 
@@ -278,7 +279,7 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
   const seciciAc = async () => {
     setMesgul(true)
     try {
-      const ogeler = await oneDriveSec(clientId)
+      const ogeler = await oneDriveSec(clientId, mod)
       setSecilenler(ogeler.map(oge => ({ oge, durum: 'bekliyor', mesaj: '' })))
       if (!ogeler.length) toast.info?.('Dosya seçilmedi.')
     } catch (e) {
@@ -297,12 +298,16 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
         setSecilenler(prev => prev.map((s, j) => j === i ? { ...s, durum, mesaj } : s))
       try {
         durumYaz('aktariliyor')
-        if (oge.size > MAX_BOYUT) {
-          // Depo limiti üstü: dosya kopyalanmaz, OneDrive linki olarak eklenir
-          if (!oge.webUrl) throw new Error(`${MAX_BOYUT_MB} MB üstü ve paylaşım linki alınamadı.`)
+        // Link modu (varsayılan) VEYA kopya modunda depo limitini aşan dosya:
+        // Supabase deposu HİÇ kullanılmaz — OneDrive linki olarak bağlanır.
+        if (mod === 'link' || oge.size > MAX_BOYUT) {
+          const url = oge.paylasimUrl || oge.webUrl
+          if (!url) throw new Error('Paylaşım linki alınamadı.')
           await dokumanEkle({
-            baslik: oge.name, tip: 'link', linkUrl: oge.webUrl,
-            aciklama: 'OneDrive dosyası (boyut nedeniyle link olarak eklendi)',
+            baslik: oge.name, tip: 'link', linkUrl: url,
+            aciklama: mod === 'link'
+              ? 'OneDrive dosyası (link — CRM deposu kullanılmadı)'
+              : `OneDrive dosyası (${MAX_BOYUT_MB} MB üstü olduğu için link olarak eklendi)`,
             kategoriId: kategoriId || null, gorunurluk,
           })
           durumYaz('link')
@@ -322,7 +327,9 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
     }
     setMesgul(false)
     if (tamam) {
-      toast.success(`${tamam} dosya Dokümanlarım'a aktarıldı.`)
+      toast.success(mod === 'link'
+        ? `${tamam} dosya link olarak eklendi — depo kullanılmadı.`
+        : `${tamam} dosya Dokümanlarım'a aktarıldı.`)
       onAktarildi()
     }
   }
@@ -369,6 +376,32 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
       ) : (
         // ---- Seçici + aktarım ----
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Ekleme şekli — varsayılan LINK: Supabase deposu hiç kullanılmaz */}
+          <div>
+            <Label>Ekleme şekli</Label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                ['link', 'Link olarak bağla (önerilen)', 'Dosya OneDrive\'da kalır, CRM deposunda YER KAPLAMAZ. Paylaşım linki üretilir.'],
+                ['kopya', 'CRM deposuna kopyala', `Dosya CRM'e kopyalanır (${MAX_BOYUT_MB} MB'a kadar) — OneDrive'dan silinse bile erişilir, depo kotası kullanır.`],
+              ].map(([id, baslik, aciklama]) => (
+                <label key={id} style={{
+                  display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer',
+                  border: `1px solid ${mod === id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                  background: mod === id ? 'var(--brand-primary-soft)' : 'transparent',
+                  borderRadius: 'var(--radius-md)', padding: '8px 12px',
+                }}>
+                  <input type="radio" name="od-mod" checked={mod === id} onChange={() => { setMod(id); setSecilenler([]) }}
+                    style={{ marginTop: 2, accentColor: 'var(--brand-primary)' }} />
+                  <span>
+                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{baslik}</span>
+                    <br />
+                    <span className="t-caption">{aciklama}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <Label>Kategori</Label>
@@ -401,7 +434,9 @@ function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
                         {s.oge.name}
                       </div>
                       <div className="t-caption">
-                        {boyutFormat(s.oge.size)}{s.oge.size > MAX_BOYUT ? ` — ${MAX_BOYUT_MB} MB üstü, link olarak eklenecek` : ''}
+                        {boyutFormat(s.oge.size)}
+                        {mod === 'link' ? ' — link olarak eklenecek (depo kullanılmaz)'
+                          : s.oge.size > MAX_BOYUT ? ` — ${MAX_BOYUT_MB} MB üstü, link olarak eklenecek` : ''}
                         {s.mesaj ? ` · ${s.mesaj}` : ''}
                       </div>
                     </div>

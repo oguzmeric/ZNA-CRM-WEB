@@ -34,15 +34,19 @@ export const oneDriveSdkYukle = () => {
 
 /**
  * Seçiciyi açar; kullanıcının seçtiği öğeleri döner.
- * Dönen her öğe: { name, size, downloadUrl, webUrl }
+ * mod:
+ *  - 'link'  → action:'share': OneDrive paylaşım linki üretilir (dosya KOPYALANMAZ,
+ *              Supabase deposunda yer kaplamaz; linki ekip de açabilir)
+ *  - 'kopya' → action:'download': ön yetkili indirme URL'i döner (CRM'e kopyalamak için)
+ * Dönen her öğe: { name, size, downloadUrl, webUrl, paylasimUrl }
  * Kullanıcı vazgeçerse boş dizi döner.
  */
-export const oneDriveSec = async (clientId) => {
+export const oneDriveSec = async (clientId, mod = 'link') => {
   const OneDrive = await oneDriveSdkYukle()
   return new Promise((resolve, reject) => {
     OneDrive.open({
       clientId,
-      action: 'download', // hem kişisel hem iş hesabında ön yetkili indirme URL'i verir
+      action: mod === 'kopya' ? 'download' : 'share',
       multiSelect: true,
       advanced: {
         redirectUri: window.location.origin,
@@ -54,6 +58,8 @@ export const oneDriveSec = async (clientId) => {
           size: v.size || 0,
           downloadUrl: v['@microsoft.graph.downloadUrl'] || v['@content.downloadUrl'] || null,
           webUrl: v.webUrl || null,
+          // action:'share' yanıtında üretilen paylaşım linki permissions altında gelir
+          paylasimUrl: v.permissions?.[0]?.link?.webUrl || v.webUrl || null,
         }))
         resolve(ogeler)
       },
