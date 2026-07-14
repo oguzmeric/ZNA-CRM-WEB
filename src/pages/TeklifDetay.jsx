@@ -1548,8 +1548,10 @@ function TeklifDetay() {
                         />
                         <button
                           type="button"
-                          onClick={() => setHesaplaModal({ idx: index, alis: satir.alisFiyat || 0, katsayi: 1.4 })}
-                          title="Alış × Katsayı ile satış fiyatı hesapla"
+                          onClick={() => setHesaplaModal({ idx: index, alis: satir.alisFiyat || 0, katsayi: satir.katsayi || 1.4 })}
+                          title={satir.katsayi
+                            ? `Alış × Katsayı — bu ürünün kayıtlı katsayısı: ${satir.katsayi}`
+                            : 'Alış × Katsayı ile satış fiyatı hesapla'}
                           style={{
                             width: 28, height: 28, padding: 0, flexShrink: 0,
                             background: 'var(--surface-subtle)',
@@ -1947,9 +1949,10 @@ function TeklifDetay() {
             toast.warning('Geçerli alış fiyatı ve katsayı girin.')
             return
           }
-          // Kuruş hassasiyeti — 2 haneye yuvarla. Alış fiyatı da satıra kaydedilir
-          // (kar% renk göstergesi + modal tekrar açılınca hatırlansın diye).
-          satirGuncelleCoklu(hesaplaModal.idx, { birimFiyat: Number(satis.toFixed(2)), alisFiyat: alis })
+          // Kuruş hassasiyeti — 2 haneye yuvarla. Alış fiyatı VE katsayı da satıra
+          // kaydedilir (kar% renk göstergesi + modal tekrar açılınca o ürünün kendi
+          // katsayısı gelsin diye — her üründe farklı katsayı olabilir: 1.3 / 1.5).
+          satirGuncelleCoklu(hesaplaModal.idx, { birimFiyat: Number(satis.toFixed(2)), alisFiyat: alis, katsayi })
           setHesaplaModal(null)
         }
         return (
