@@ -4,7 +4,23 @@ import { pagedFetch } from '../lib/pagedFetch'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
 // Liste kolonları — aciklama listede lazım değil (3762 ürün × free text = büyük)
-const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf'
+const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf, kategori_id, urun_tipi, barkod, tedarikci, tedarikci_urun_kodu, garanti_suresi_ay, para_birimi, aktif, dokuman_url, dokuman_ad'
+
+// Ürün tipleri (mig 151) — spec: stoklu/stoksuz/sarf/hizmet/demirbaş
+export const URUN_TIPLERI = [
+  { id: 'stoklu',   ad: 'Stoklu ürün' },
+  { id: 'stoksuz',  ad: 'Stoksuz ürün' },
+  { id: 'sarf',     ad: 'Sarf malzemesi' },
+  { id: 'hizmet',   ad: 'Hizmet ürünü' },
+  { id: 'demirbas', ad: 'Demirbaş' },
+]
+export const PARA_BIRIMLERI = ['TRY', 'USD', 'EUR']
+
+// Alış fiyatı/maliyet görme yetkisi — kâr/marj kuralıyla aynı üçlü:
+// 1=Ali Uğur, 2=Oğuz, 29=Ahmet Agun
+export const ALIS_FIYAT_GOREBILENLER = [1, 2, 29]
+export const alisFiyatGorebilir = (kullanici) =>
+  ALIS_FIYAT_GOREBILENLER.includes(Number(kullanici?.id))
 
 export const stokUrunleriniGetir = () => cached('stokUrunler:list', async () => {
   const data = await pagedFetch((off, size) =>
@@ -24,6 +40,9 @@ const KABUL_EDILEN_KOLONLAR = [
   'marka', 'grupKodu', 'gorselUrl', 'katalogdaGoster', 'birimFiyat',
   'seriTakipli', 'beklenenAdet', 'kategori', 'stokMiktari', 'kdvOrani',
   'alisFiyat', 'raf',
+  // Stok v2 Faz 1 (mig 151)
+  'kategoriId', 'urunTipi', 'barkod', 'tedarikci', 'tedarikciUrunKodu',
+  'garantiSuresiAy', 'paraBirimi', 'aktif', 'dokumanUrl', 'dokumanAd',
 ]
 
 // Eski tablolarda olmayan kolonlar varsa fallback — burada da grupKodu dahil
@@ -43,6 +62,14 @@ const tumAlanlarTemizle = (urun) => {
   if (temiz.marka === '') temiz.marka = null
   if (temiz.grupKodu === '') temiz.grupKodu = null
   if (temiz.raf === '') temiz.raf = null
+  // Stok v2 alanları: boş string → null (numeric/FK kolonlar 22P02 vermesin)
+  if (temiz.kategoriId === '') temiz.kategoriId = null
+  if (temiz.garantiSuresiAy === '') temiz.garantiSuresiAy = null
+  if (temiz.barkod === '') temiz.barkod = null
+  if (temiz.tedarikci === '') temiz.tedarikci = null
+  if (temiz.tedarikciUrunKodu === '') temiz.tedarikciUrunKodu = null
+  if (temiz.dokumanUrl === '') temiz.dokumanUrl = null
+  if (temiz.dokumanAd === '') temiz.dokumanAd = null
   return temiz
 }
 
@@ -112,6 +139,36 @@ export const gorselYukle = async (file, stokKodu) => {
 
 export const gorselSil = async (stokKodu, ext) => {
   await supabase.storage.from('urun-gorselleri').remove([`${stokKodu}.${ext}`])
+}
+
+// ── Teknik doküman (datasheet) — private 'urun-dokuman' bucket (mig 151) ──
+export const DOKUMAN_MAX_MB = 8
+
+export const dokumanYukle = async (file, stokKodu) => {
+  if (file.size > DOKUMAN_MAX_MB * 1024 * 1024) {
+    throw new Error(`Dosya çok büyük — en fazla ${DOKUMAN_MAX_MB} MB.`)
+  }
+  const ext = (file.name.split('.').pop() || 'pdf').toLowerCase()
+  const path = `${stokKodu}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('urun-dokuman')
+    .upload(path, file, { upsert: true, contentType: file.type || 'application/octet-stream' })
+  if (error) throw new Error('Doküman yüklenemedi: ' + error.message)
+  return { path, ad: file.name }
+}
+
+// Private bucket — görüntüleme için kısa ömürlü imzalı URL
+export const dokumanImzaliUrl = async (path, saniye = 300) => {
+  const { data, error } = await supabase.storage
+    .from('urun-dokuman')
+    .createSignedUrl(path, saniye)
+  if (error) { console.error('[dokumanImzaliUrl]', error.message); return null }
+  return data?.signedUrl || null
+}
+
+export const dokumanSil = async (path) => {
+  if (!path) return
+  await supabase.storage.from('urun-dokuman').remove([path])
 }
 
 export const katalogUrunleriniGetir = async () => {

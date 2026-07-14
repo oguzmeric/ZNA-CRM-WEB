@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import {
   Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList,
   ArrowLeftRight, Image as ImageIcon, AlertTriangle, X, Tag, Hash,
-  ClipboardCheck, BarChart3,
+  ClipboardCheck, BarChart3, FolderTree, FileText, Eye, EyeOff,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -16,7 +16,13 @@ import {
   stokHareketleriniGetir, stokHareketEkle, gorselYukle,
   stokKalemOzetleriniGetir, stokKalemleriToplu,
   tumSeriNumaralariniGetir, modelKalemleriniGetir,
+  URUN_TIPLERI, PARA_BIRIMLERI, alisFiyatGorebilir,
+  dokumanYukle, dokumanImzaliUrl, DOKUMAN_MAX_MB,
 } from '../services/stokService'
+import {
+  kategorileriGetir, kategoriEkle, kategoriGuncelle,
+  agacKur, kategoriYolu, altKategoriIdleri,
+} from '../services/stokKategoriService'
 import { AlertTriangle as AlertIkon } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -38,6 +44,7 @@ const bosForm = {
   grupKodu: '',
   minStok: '',
   alisFiyat: '',  // Stok değeri raporu için (mig 137)
+  birimFiyat: '', // Liste satış fiyatı
   raf: '',        // Depo lokasyonu, örn. "A-3" (mig 137)
   aciklama: '',
   ilkStok: '',
@@ -46,6 +53,17 @@ const bosForm = {
   seriTakipli: false,
   seriKalemleri: [],
   topluSN: '',  // Düzenleme modunda toplu SN yapıştırma
+  // Stok v2 Faz 1 (mig 151)
+  kategoriId: '',
+  urunTipi: 'stoklu',
+  barkod: '',
+  tedarikci: '',
+  tedarikciUrunKodu: '',
+  garantiSuresiAy: '',
+  paraBirimi: 'TRY',
+  aktif: true,
+  dokumanUrl: '',
+  dokumanAd: '',
 }
 
 const bosOpsiyonForm = {
@@ -91,6 +109,35 @@ function Stok() {
   const [urunSNSet, setUrunSNSet] = useState(new Set())  // bu üründeki SN'ler
   const [globalSN, setGlobalSN] = useState(new Map())  // seri_no.lower → stok_kodu
 
+  // Stok v2 Faz 1 — kategori ağacı + filtreler + doküman
+  const [kategoriler, setKategoriler] = useState([])
+  const [filtreKatId, setFiltreKatId] = useState('')       // liste kategori filtresi (alt dallar dahil)
+  const [pasifGoster, setPasifGoster] = useState(false)    // pasif ürünleri de göster
+  const [kategoriModal, setKategoriModal] = useState(false) // admin kategori yönetimi
+  const [dokumanYukleniyor, setDokumanYukleniyor] = useState(false)
+  const dokumanRef = useRef(null)
+  const admin = kullanici?.rol === 'admin'
+  const alisFiyatGoster = alisFiyatGorebilir(kullanici)
+
+  // id → tam yol map'i ("Güvenlik Sistemleri › Kamera Sistemleri › IP Kamera")
+  // Arama ve tabloda her satırda tekrar hesaplamamak için tek sefer kurulur.
+  const katYol = new Map(kategoriler.map(k => [k.id, kategoriYolu(kategoriler, k.id)]))
+  const katAgac = agacKur(kategoriler)
+
+  // Ağacı girintili düz listeye çevir (select option'ları için) — pasifler hariç
+  const katSecenekler = (() => {
+    const out = []
+    const gez = (liste, seviye) => {
+      for (const k of liste) {
+        if (k.aktif === false) continue
+        out.push({ id: k.id, etiket: `${'   '.repeat(seviye)}${seviye > 0 ? '› ' : ''}${k.ad}` })
+        gez(katAgac.cocuklar.get(k.id) || [], seviye + 1)
+      }
+    }
+    gez(katAgac.kokler, 0)
+    return out
+  })()
+
   // Yeni ürün modunda da seriTakipli açılınca globalSN yükle (duplicate kontrolü için).
   // Fetch fail olursa kullanıcı SN girip DB unique constraint hatası yiyecek —
   // sessiz yutmuyoruz, toast ile uyarıyoruz ki kullanıcı bilinçli devam etsin.
@@ -115,13 +162,15 @@ function Stok() {
       stokKalemOzetleriniGetir(),
       tumSeriNumaralariniGetir(),
       aktifOpsiyonToplamlari(),
+      kategorileriGetir(true),  // pasifler dahil — yönetim modalında lazım
     ])
-      .then(([urunData, hareketData, kalemOzet, snMap, opsMap]) => {
+      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData]) => {
         setUrunler(urunData || [])
         setHareketler(hareketData || [])
         setKalemOzetleri(kalemOzet || new Map())
         setGlobalSN(snMap || new Map())
         setOpsiyonToplam(opsMap || new Map())
+        setKategoriler(katData || [])
       })
       .catch(err => console.error('[Stok yükle]', err))
       .finally(() => setYukleniyor(false))
@@ -190,22 +239,29 @@ function Stok() {
       const bakiye = stokBakiye(u.stokKodu)
       const opsiyonlu = opsiyonluMiktar(u.stokKodu)
       const alis = Number(u.alisFiyat || 0)
-      return {
+      const satir = {
         'Stok Kodu': u.stokKodu,
         'Stok Adı': u.stokAdi,
         'Birim': u.birim || 'Adet',
         'Marka': u.marka || '',
-        'Grup Kodu': u.grupKodu || '',
+        'Kategori': katYol.get(u.kategoriId) || u.grupKodu || '',
+        'Ürün Tipi': URUN_TIPLERI.find(t => t.id === u.urunTipi)?.ad || '',
+        'Tedarikçi': u.tedarikci || '',
         'Raf': u.raf || '',
         'Bakiye': bakiye,
         'Opsiyonlu': opsiyonlu,
         'Satılabilir': bakiye - opsiyonlu,
         'Min Stok': u.minStok || '',
-        'Alış Fiyatı (₺)': alis || '',
-        'Stok Değeri (₺)': alis > 0 ? Number((bakiye * alis).toFixed(2)) : '',
         'S/N Takipli': u.seriTakipli ? 'Evet' : '',
+        'Durum': u.aktif === false ? 'Pasif' : 'Aktif',
         'Açıklama': u.aciklama || '',
       }
+      // Maliyet bilgisi yalnız yetkili üçlüde (kâr/marj kuralı)
+      if (alisFiyatGoster) {
+        satir['Alış Fiyatı (₺)'] = alis || ''
+        satir['Stok Değeri (₺)'] = alis > 0 ? Number((bakiye * alis).toFixed(2)) : ''
+      }
+      return satir
     })
     const ws = XLSX.utils.json_to_sheet(satirlar)
     ws['!cols'] = [
@@ -374,6 +430,7 @@ function Stok() {
       grupKodu: u.grupKodu || '',
       minStok: u.minStok || '',
       alisFiyat: u.alisFiyat || '',
+      birimFiyat: u.birimFiyat || '',
       raf: u.raf || '',
       aciklama: u.aciklama || '',
       ilkStok: '',
@@ -383,6 +440,16 @@ function Stok() {
       seriTakipli: !!u.seriTakipli,  // DB'den gerçek değeri al
       seriKalemleri: [],
       topluSN: '',
+      kategoriId: u.kategoriId || '',
+      urunTipi: u.urunTipi || 'stoklu',
+      barkod: u.barkod || '',
+      tedarikci: u.tedarikci || '',
+      tedarikciUrunKodu: u.tedarikciUrunKodu || '',
+      garantiSuresiAy: u.garantiSuresiAy || '',
+      paraBirimi: u.paraBirimi || 'TRY',
+      aktif: u.aktif !== false,
+      dokumanUrl: u.dokumanUrl || '',
+      dokumanAd: u.dokumanAd || '',
     })
     setKodModu('manuel')
     setDuzenleId(u.id)
@@ -567,7 +634,12 @@ function Stok() {
   // Arama: normal metin + SN eşleşmesi (SN girildiğinde ilgili ürünü göster)
   const aramaSN = arama.trim().toLowerCase()
   const snEslesenKod = aramaSN.length >= 3 ? globalSN.get(aramaSN) : null
+  // Kategori filtresi: seçilen dal + tüm alt dalları (örn. "Kamera Sistemleri"
+  // seçilince IP/Analog/Termal/PTZ kameralar da gelir)
+  const filtreKatSet = filtreKatId ? altKategoriIdleri(kategoriler, Number(filtreKatId)) : null
   const gorunenUrunler = urunler.filter((u) => {
+    if (!pasifGoster && u.aktif === false) return false
+    if (filtreKatSet && !filtreKatSet.has(u.kategoriId)) return false
     if (snEslesenKod && u.stokKodu === snEslesenKod) return true
     if (aramaSN && aramaSN.length >= 3) {
       // Kısmi SN eşleşmesi de: globalSN içinde SN aramada geçenler var mı?
@@ -575,7 +647,10 @@ function Stok() {
         if (sn.includes(aramaSN) && u.stokKodu === kod) return true
       }
     }
-    return trContains(`${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''}`, arama)
+    return trContains(
+      `${u.stokKodu || ''} ${u.stokAdi || ''} ${u.marka || ''} ${u.grupKodu || ''} ${u.barkod || ''} ${u.tedarikciUrunKodu || ''} ${katYol.get(u.kategoriId) || ''}`,
+      arama,
+    )
   })
 
   const toplamSayfa = Math.max(1, Math.ceil(gorunenUrunler.length / sayfaBoyutu))
@@ -585,7 +660,7 @@ function Stok() {
     aktifSayfa * sayfaBoyutu,
   )
 
-  useEffect(() => { setSayfa(1) }, [arama, sayfaBoyutu])
+  useEffect(() => { setSayfa(1) }, [arama, sayfaBoyutu, filtreKatId, pasifGoster])
 
   const toplamUrun = urunler.length
   const toplamBakiye = urunler.reduce((sum, u) => sum + stokBakiye(u.stokKodu), 0)
@@ -656,7 +731,7 @@ function Stok() {
           <SearchInput
             value={arama}
             onChange={(e) => setArama(e.target.value)}
-            placeholder="Stok kodu, adı, marka veya SN ara…"
+            placeholder="Stok kodu, adı, marka, barkod, kategori veya SN ara…"
           />
           {snEslesenKod && (
             <div style={{ fontSize: 11, color: 'var(--accent-primary)', marginTop: 4 }}>
@@ -664,6 +739,30 @@ function Stok() {
             </div>
           )}
         </div>
+        <div style={{ minWidth: 220 }}>
+          <CustomSelect value={filtreKatId} onChange={(e) => setFiltreKatId(e.target.value)}>
+            <option value="">Tüm kategoriler</option>
+            {katSecenekler.map(k => <option key={k.id} value={k.id}>{k.etiket}</option>)}
+          </CustomSelect>
+        </div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+          <input
+            type="checkbox"
+            checked={pasifGoster}
+            onChange={(e) => setPasifGoster(e.target.checked)}
+            style={{ width: 14, height: 14, accentColor: 'var(--brand-primary)' }}
+          />
+          Pasifleri göster
+        </label>
+        {admin && (
+          <Button
+            variant="secondary" size="sm"
+            iconLeft={<FolderTree size={13} strokeWidth={1.5} />}
+            onClick={() => setKategoriModal(true)}
+          >
+            Kategoriler
+          </Button>
+        )}
       </div>
 
       {/* Form card */}
@@ -746,35 +845,22 @@ function Stok() {
               />
             </div>
             <div>
-              <Label>Grup kodu</Label>
-              <Input
-                value={form.grupKodu}
-                onChange={(e) => setForm({ ...form, grupKodu: e.target.value })}
-                placeholder="Kamera, Kablo, Bariyer…"
-              />
-              <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-                {Array.from(new Set([
-                  'Kamera', 'Kablo', 'NVR', 'Aksesuar',
-                  ...urunler.map(u => u.grupKodu).filter(Boolean),
-                ])).map(g => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setForm({ ...form, grupKodu: g })}
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: 'var(--radius-pill)',
-                      font: '500 11px/14px var(--font-sans)',
-                      background: form.grupKodu === g ? 'var(--brand-primary)' : 'var(--surface-card)',
-                      color: form.grupKodu === g ? '#fff' : 'var(--text-secondary)',
-                      border: `1px solid ${form.grupKodu === g ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
+              <Label>Kategori</Label>
+              <CustomSelect value={form.kategoriId} onChange={(e) => setForm({ ...form, kategoriId: e.target.value ? Number(e.target.value) : '' })}>
+                <option value="">Kategori seç…</option>
+                {katSecenekler.map(k => <option key={k.id} value={k.id}>{k.etiket}</option>)}
+              </CustomSelect>
+              {form.kategoriId && (
+                <p className="t-caption" style={{ marginTop: 4, color: 'var(--brand-primary)' }}>
+                  {katYol.get(Number(form.kategoriId))}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>Ürün tipi</Label>
+              <CustomSelect value={form.urunTipi} onChange={(e) => setForm({ ...form, urunTipi: e.target.value })}>
+                {URUN_TIPLERI.map(t => <option key={t.id} value={t.id}>{t.ad}</option>)}
+              </CustomSelect>
             </div>
             <div>
               <Label>Min. stok uyarı</Label>
@@ -786,19 +872,40 @@ function Stok() {
                 min="0"
               />
             </div>
+            {alisFiyatGoster && (
+              <div>
+                <Label>Alış fiyatı</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.alisFiyat}
+                  onChange={(e) => setForm({ ...form, alisFiyat: e.target.value })}
+                  placeholder="0,00"
+                  min="0"
+                />
+                <p className="t-caption" style={{ marginTop: 4 }}>
+                  Depo Raporları'ndaki stok değeri hesabında kullanılır.
+                </p>
+              </div>
+            )}
             <div>
-              <Label>Alış fiyatı (₺)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.alisFiyat}
-                onChange={(e) => setForm({ ...form, alisFiyat: e.target.value })}
-                placeholder="0,00"
-                min="0"
-              />
-              <p className="t-caption" style={{ marginTop: 4 }}>
-                Depo Raporları'ndaki stok değeri hesabında kullanılır.
-              </p>
+              <Label>Liste satış fiyatı</Label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.birimFiyat}
+                  onChange={(e) => setForm({ ...form, birimFiyat: e.target.value })}
+                  placeholder="0,00"
+                  min="0"
+                  style={{ flex: 1 }}
+                />
+                <div style={{ width: 84, flexShrink: 0 }}>
+                  <CustomSelect value={form.paraBirimi} onChange={(e) => setForm({ ...form, paraBirimi: e.target.value })}>
+                    {PARA_BIRIMLERI.map(p => <option key={p} value={p}>{p}</option>)}
+                  </CustomSelect>
+                </div>
+              </div>
             </div>
             <div>
               <Label>Raf / Lokasyon</Label>
@@ -806,6 +913,42 @@ function Stok() {
                 value={form.raf}
                 onChange={(e) => setForm({ ...form, raf: e.target.value })}
                 placeholder="örn. A-3"
+              />
+            </div>
+            <div>
+              <Label>Ürün barkodu</Label>
+              <Input
+                value={form.barkod}
+                onChange={(e) => setForm({ ...form, barkod: e.target.value })}
+                placeholder="Ürün kutusu barkodu (SN'den bağımsız)"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              />
+            </div>
+            <div>
+              <Label>Tedarikçi</Label>
+              <Input
+                value={form.tedarikci}
+                onChange={(e) => setForm({ ...form, tedarikci: e.target.value })}
+                placeholder="Tedarikçi firma adı"
+              />
+            </div>
+            <div>
+              <Label>Tedarikçi ürün kodu</Label>
+              <Input
+                value={form.tedarikciUrunKodu}
+                onChange={(e) => setForm({ ...form, tedarikciUrunKodu: e.target.value })}
+                placeholder="Tedarikçinin kendi kodu"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              />
+            </div>
+            <div>
+              <Label>Garanti süresi (ay)</Label>
+              <Input
+                type="number"
+                value={form.garantiSuresiAy}
+                onChange={(e) => setForm({ ...form, garantiSuresiAy: e.target.value })}
+                placeholder="örn. 24"
+                min="0"
               />
             </div>
             {!duzenleId ? (
@@ -915,6 +1058,71 @@ function Stok() {
               </div>
             </div>
 
+            {/* Teknik doküman (datasheet) — private bucket, imzalı URL ile açılır */}
+            <div style={{ marginTop: 14 }}>
+              <Label>
+                Teknik doküman
+                <span style={{ marginLeft: 6, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                  (datasheet, kılavuz — en fazla {DOKUMAN_MAX_MB} MB)
+                </span>
+              </Label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  iconLeft={<FileText size={14} strokeWidth={1.5} />}
+                  onClick={() => dokumanRef.current?.click()}
+                  disabled={dokumanYukleniyor || !form.stokKodu}
+                >
+                  {dokumanYukleniyor ? 'Yükleniyor…' : form.dokumanUrl ? 'Değiştir' : 'Doküman yükle'}
+                </Button>
+                {form.dokumanUrl && (
+                  <>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      📄 {form.dokumanAd || 'doküman'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = await dokumanImzaliUrl(form.dokumanUrl)
+                        if (url) window.open(url, '_blank')
+                        else toast.error('Doküman açılamadı.')
+                      }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}
+                    >
+                      Görüntüle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, dokumanUrl: '', dokumanAd: '' })}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--danger)', font: '500 12px/16px var(--font-sans)' }}
+                    >
+                      Kaldır
+                    </button>
+                  </>
+                )}
+              </div>
+              <input
+                ref={dokumanRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files[0]
+                  if (!file || !form.stokKodu) return
+                  setDokumanYukleniyor(true)
+                  try {
+                    const { path, ad } = await dokumanYukle(file, form.stokKodu)
+                    setForm(prev => ({ ...prev, dokumanUrl: path, dokumanAd: ad }))
+                  } catch (err) {
+                    toast.error(err?.message || 'Doküman yüklenemedi.')
+                  } finally {
+                    setDokumanYukleniyor(false)
+                    e.target.value = ''
+                  }
+                }}
+              />
+            </div>
+
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -924,6 +1132,18 @@ function Stok() {
               />
               <span style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                 Müşteri katalogunda göster
+              </span>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.aktif}
+                onChange={(e) => setForm({ ...form, aktif: e.target.checked })}
+                style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
+              />
+              <span style={{ font: '400 13px/18px var(--font-sans)', color: form.aktif ? 'var(--text-secondary)' : 'var(--danger)' }}>
+                Ürün aktif {!form.aktif && '— pasif ürünler listede ve aramalarda gizlenir'}
               </span>
             </label>
 
@@ -1247,7 +1467,7 @@ function Stok() {
                 <TH>Ürün</TH>
                 <TH>Birim</TH>
                 <TH>Marka</TH>
-                <TH>Grup</TH>
+                <TH>Kategori</TH>
                 <TH align="right">Bakiye</TH>
                 <TH align="right">Opsiyonlu</TH>
                 <TH align="right">Boş</TH>
@@ -1276,6 +1496,7 @@ function Stok() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <CodeBadge>{u.stokKodu}</CodeBadge>
                         {seriTakipli && <Badge tone="brand">S/N</Badge>}
+                        {u.aktif === false && <Badge tone="kayip">Pasif</Badge>}
                       </div>
                     </TD>
                     <TD>
@@ -1335,7 +1556,13 @@ function Stok() {
                     </TD>
                     <TD>{u.birim}</TD>
                     <TD>{gosterilenMarka || '—'}</TD>
-                    <TD>{u.grupKodu ? <Badge tone="neutral">{u.grupKodu}</Badge> : '—'}</TD>
+                    <TD>
+                      {u.kategoriId && kategoriler.length ? (
+                        <span title={katYol.get(u.kategoriId)}>
+                          <Badge tone="neutral">{kategoriler.find(k => k.id === u.kategoriId)?.ad || '—'}</Badge>
+                        </span>
+                      ) : u.grupKodu ? <Badge tone="neutral">{u.grupKodu}</Badge> : '—'}
+                    </TD>
                     <TD align="right">
                       {/* Rozet sayının SOLUNDA tek satırda — alt alta dizilince
                           satır şişiyor ve sayı diğer hücrelerle hizasızdı */}
@@ -1591,6 +1818,17 @@ function Stok() {
           </>
         )}
       </Modal>
+
+      {/* Kategori yönetimi — yalnız admin (RLS'de de yazma admin'e kilitli) */}
+      <KategoriYonetimi
+        open={kategoriModal}
+        onClose={() => setKategoriModal(false)}
+        kategoriler={kategoriler}
+        yenile={async () => {
+          const kat = await kategorileriGetir(true)
+          setKategoriler(kat || [])
+        }}
+      />
     </div>
   )
 }
@@ -1654,6 +1892,159 @@ function Sayfalama({ aktifSayfa, toplamSayfa, toplam, sayfaBoyutu, setSayfa, set
         </select>
       </div>
     </div>
+  )
+}
+
+// Kategori ağacı yönetimi — ekle / yeniden adlandır / pasife al (silme yok:
+// ürünler bağlı olabilir, on delete restrict; pasif = listelerden düşer)
+function KategoriYonetimi({ open, onClose, kategoriler, yenile }) {
+  const { toast } = useToast()
+  const [yeniAd, setYeniAd] = useState('')
+  const [ekleUstId, setEkleUstId] = useState(null)   // hangi dala alt ekleniyor (null = kök)
+  const [duzenleKatId, setDuzenleKatId] = useState(null)
+  const [duzenleAd, setDuzenleAd] = useState('')
+  const [mesgul, setMesgul] = useState(false)
+
+  const { kokler, cocuklar } = agacKur(kategoriler)
+
+  const ekle = async () => {
+    if (!yeniAd.trim()) return
+    setMesgul(true)
+    try {
+      await kategoriEkle({ ad: yeniAd, ustId: ekleUstId })
+      setYeniAd('')
+      setEkleUstId(null)
+      await yenile()
+      toast.success('Kategori eklendi.')
+    } catch (e) {
+      toast.error(e?.message || 'Kategori eklenemedi.')
+    } finally { setMesgul(false) }
+  }
+
+  const adKaydet = async () => {
+    if (!duzenleAd.trim() || !duzenleKatId) return
+    setMesgul(true)
+    try {
+      await kategoriGuncelle(duzenleKatId, { ad: duzenleAd })
+      setDuzenleKatId(null)
+      await yenile()
+      toast.success('Kategori güncellendi.')
+    } catch (e) {
+      toast.error(e?.message || 'Güncellenemedi.')
+    } finally { setMesgul(false) }
+  }
+
+  const aktifDegistir = async (k) => {
+    setMesgul(true)
+    try {
+      await kategoriGuncelle(k.id, { aktif: !(k.aktif !== false) })
+      await yenile()
+    } catch (e) {
+      toast.error(e?.message || 'Değiştirilemedi.')
+    } finally { setMesgul(false) }
+  }
+
+  const Satir = ({ k, seviye }) => {
+    const pasif = k.aktif === false
+    return (
+      <>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 8px', paddingLeft: 8 + seviye * 22,
+          borderBottom: '1px solid var(--border-default)',
+          opacity: pasif ? 0.55 : 1,
+        }}>
+          <FolderTree size={13} strokeWidth={1.5} style={{ color: seviye === 0 ? 'var(--brand-primary)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+          {duzenleKatId === k.id ? (
+            <span style={{ display: 'inline-flex', gap: 6, flex: 1, alignItems: 'center' }}>
+              <Input
+                value={duzenleAd}
+                onChange={(e) => setDuzenleAd(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') adKaydet() }}
+                style={{ height: 28, flex: 1 }}
+                autoFocus
+              />
+              <Button variant="primary" size="sm" onClick={adKaydet} disabled={mesgul}>Kaydet</Button>
+              <Button variant="tertiary" size="sm" onClick={() => setDuzenleKatId(null)}>İptal</Button>
+            </span>
+          ) : (
+            <>
+              <span style={{ font: seviye === 0 ? '600 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)', color: 'var(--text-primary)', flex: 1 }}>
+                {k.ad} {pasif && <Badge tone="kayip">Pasif</Badge>}
+              </span>
+              <button
+                aria-label="Alt kategori ekle"
+                title="Alt kategori ekle"
+                onClick={() => { setEkleUstId(k.id); setYeniAd('') }}
+                style={iconBtnStyle}
+              >
+                <Plus size={12} strokeWidth={1.5} />
+              </button>
+              <button
+                aria-label="Yeniden adlandır"
+                title="Yeniden adlandır"
+                onClick={() => { setDuzenleKatId(k.id); setDuzenleAd(k.ad) }}
+                style={iconBtnStyle}
+              >
+                <Pencil size={12} strokeWidth={1.5} />
+              </button>
+              <button
+                aria-label={pasif ? 'Aktifleştir' : 'Pasife al'}
+                title={pasif ? 'Aktifleştir' : 'Pasife al'}
+                onClick={() => aktifDegistir(k)}
+                style={{ ...iconBtnStyle, color: pasif ? 'var(--success)' : 'var(--danger)' }}
+                disabled={mesgul}
+              >
+                {pasif ? <Eye size={12} strokeWidth={1.5} /> : <EyeOff size={12} strokeWidth={1.5} />}
+              </button>
+            </>
+          )}
+        </div>
+        {ekleUstId === k.id && (
+          <div style={{ display: 'flex', gap: 6, padding: '6px 8px', paddingLeft: 8 + (seviye + 1) * 22, background: 'var(--brand-primary-soft)' }}>
+            <Input
+              value={yeniAd}
+              onChange={(e) => setYeniAd(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') ekle() }}
+              placeholder={`"${k.ad}" altına yeni kategori…`}
+              style={{ height: 28, flex: 1 }}
+              autoFocus
+            />
+            <Button variant="primary" size="sm" onClick={ekle} disabled={mesgul || !yeniAd.trim()}>Ekle</Button>
+            <Button variant="tertiary" size="sm" onClick={() => setEkleUstId(null)}>Vazgeç</Button>
+          </div>
+        )}
+        {(cocuklar.get(k.id) || []).map(c => <Satir key={c.id} k={c} seviye={seviye + 1} />)}
+      </>
+    )
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Stok Kategorileri" width={640}>
+      <p className="t-caption" style={{ marginBottom: 10, color: 'var(--text-tertiary)' }}>
+        Kategoriler hiyerarşiktir; pasife alınan dal ürün formunda ve filtrelerde görünmez.
+        Ürün bağlı olabileceği için silme yerine pasife alma kullanılır.
+      </p>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <Input
+          value={ekleUstId === null ? yeniAd : ''}
+          onChange={(e) => { setEkleUstId(null); setYeniAd(e.target.value) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && ekleUstId === null) ekle() }}
+          placeholder="Yeni ana kategori adı…"
+          style={{ flex: 1 }}
+        />
+        <Button variant="primary" size="sm" onClick={() => { setEkleUstId(null); ekle() }} disabled={mesgul || ekleUstId !== null || !yeniAd.trim()}>
+          Ana kategori ekle
+        </Button>
+      </div>
+      <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', maxHeight: 460, overflowY: 'auto' }}>
+        {kokler.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+            Henüz kategori yok.
+          </div>
+        ) : kokler.map(k => <Satir key={k.id} k={k} seviye={0} />)}
+      </div>
+    </Modal>
   )
 }
 
