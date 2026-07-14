@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
-  GripVertical, Percent, Copy, History, LayoutTemplate, Eye,
+  GripVertical, Percent, Copy, History, LayoutTemplate, Eye, FileSignature,
 } from 'lucide-react'
 // Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -995,6 +995,16 @@ function TeklifDetay() {
               onClick={faturayaDonustur}
             >
               Fatura oluştur
+            </Button>
+          )}
+          {/* Satış sözleşmesi (spec: teklif onaylandıktan sonra tek tuşla üretim) */}
+          {!yeni && form?.onayDurumu === 'kabul' && (
+            <Button
+              variant="secondary"
+              iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
+              onClick={() => navigate(`/sozlesmeler/satis/yeni?teklifId=${id}`)}
+            >
+              Satış Sözleşmesi Oluştur
             </Button>
           )}
           <Button variant="primary" onClick={kaydet}>Kaydet</Button>

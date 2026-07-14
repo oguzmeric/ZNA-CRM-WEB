@@ -111,6 +111,16 @@ export default function SiparisDetay() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/siparisler')}>Geri</Button>
         <Button variant="secondary" iconLeft={<Printer size={14} />} onClick={() => window.open(`/siparisler/${siparis.id}/yazdir`, '_blank')}>PDF / Yazdır</Button>
+        {/* Satış sözleşmesi (spec: sipariş numarası oluşunca "Satış Sözleşmesi Oluştur") */}
+        {siparis.sozlesmeId ? (
+          <Button variant="secondary" iconLeft={<FileText size={14} />} onClick={() => navigate(`/sozlesmeler/satis/${siparis.sozlesmeId}`)}>
+            Sözleşmeli Sipariş ✓
+          </Button>
+        ) : (
+          <Button variant="secondary" iconLeft={<FileText size={14} />} onClick={() => navigate(`/sozlesmeler/satis/yeni?siparisId=${siparis.id}`)}>
+            Satış Sözleşmesi Oluştur
+          </Button>
+        )}
         {siparis.durum === 'aktif' && (
           <Button
             variant="danger"

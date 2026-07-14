@@ -19,6 +19,9 @@ import {
   SOZLESME_DURUMLARI, EVRAK_TIPLERI, EVRAK_DURUMLARI, ONAY_ADIMLARI, bayiStatu,
 } from '../services/bayiService'
 import { YeniSozlesmeWizard, SozlesmeGoruntuleModal } from '../components/BayiSozlesmeModallari'
+import { satisSozlesmeleriGetir } from '../services/satisSozlesmeService'
+import { SS_DURUMLARI, SABLON_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
+import { paraFmt } from '../lib/satisSozlesmeHesap'
 import { fmtTL, kalanGun, BitisRozet, FiloKpi } from '../components/FiloOrtak'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -26,6 +29,7 @@ import { useAuth } from '../context/AuthContext'
 import { SkeletonList } from '../components/Skeleton'
 
 const SEKMELER = [
+  { id: 'satis',     isim: 'Satış Sözleşmeleri' },
   { id: 'bayi',      isim: 'Bayi Sözleşmeleri' },
   { id: 'sablonlar', isim: 'Şablonlar' },
   { id: 'evrak',     isim: 'Eksik Evrak Takibi' },
@@ -47,7 +51,7 @@ function YenilemeRozet({ bitis }) {
 }
 
 export default function Sozlesmeler() {
-  const [sekme, setSekme] = useState('bayi')
+  const [sekme, setSekme] = useState('satis')
 
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
@@ -72,12 +76,200 @@ export default function Sozlesmeler() {
         ))}
       </div>
 
+      {sekme === 'satis' && <SatisSozlesmeleriSekmesi />}
       {sekme === 'bayi' && <BayiSozlesmeleriSekmesi />}
       {sekme === 'sablonlar' && <SablonlarSekmesi />}
       {sekme === 'evrak' && <EksikEvrakSekmesi />}
       {sekme === 'onay' && <OnayBekleyenlerSekmesi />}
       {sekme === 'genel' && <GenelSozlesmeler />}
     </div>
+  )
+}
+
+// ---------------- Satış Sözleşmeleri ----------------
+
+const SS_FILTRELER = [
+  { id: 'tumu',        isim: 'Tümü' },
+  { id: 'taslak',      isim: 'Taslaklar' },
+  { id: 'yonetici',    isim: 'Yönetici Onayı Bekleyenler' },
+  { id: 'gonderilen',  isim: 'Müşteriye Gönderilenler' },
+  { id: 'imzalanan',   isim: 'İmzalanan Sözleşmeler' },
+  { id: 'eksik_evrak', isim: 'Eksik Evraklı' },
+  { id: 'vadeli',      isim: 'Vadeli / Çekli' },
+  { id: 'kur_farki',   isim: 'Kur Farkı Takip' },
+  { id: 'tahsilat',    isim: 'Tahsilatı Yaklaşanlar' },
+  { id: 'temerrut',    isim: 'Temerrüde Düşenler' },
+]
+
+const ssYasayan = (s) => !['iptal'].includes(s.durum)
+
+function SatisSozlesmeleriSekmesi() {
+  const navigate = useNavigate()
+  const [sozlesmeler, setSozlesmeler] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [filtre, setFiltre] = useState('tumu')
+
+  useEffect(() => {
+    satisSozlesmeleriGetir().then(s => { setSozlesmeler(s); setYukleniyor(false) })
+  }, [])
+
+  const bugun = new Date(new Date().toDateString())
+  const kalanGunSS = (t) => t ? Math.round((new Date(t) - bugun) / 86400000) : null
+
+  const filtrele = (s) => {
+    switch (filtre) {
+      case 'taslak':      return s.durum === 'taslak'
+      case 'yonetici':    return s.durum === 'yonetici_onayinda'
+      case 'gonderilen':  return s.durum === 'gonderildi'
+      case 'imzalanan':   return s.durum === 'imzalandi'
+      case 'eksik_evrak': return ssYasayan(s) && (s.evraklar || []).some(e => e.durum !== 'tamam')
+      case 'vadeli':      return ssYasayan(s) && (['cek', 'senet'].includes(s.odemeTipi) || Number(s.vadeGunu) > 0)
+      case 'kur_farki':   return ssYasayan(s) && (s.kurFarkiUygulanir || s.paraBirimi !== 'TL') && s.kurFarkiDurumu !== 'faturalandi'
+      case 'tahsilat': {
+        const g = kalanGunSS(s.vadeTarihi)
+        return ssYasayan(s) && g != null && g >= 0 && g <= 14
+      }
+      case 'temerrut': {
+        const g = kalanGunSS(s.vadeTarihi)
+        return ['onaylandi', 'gonderildi', 'imzalandi'].includes(s.durum) && g != null && g < 0
+      }
+      default: return true
+    }
+  }
+
+  const gorunen = useMemo(() => sozlesmeler.filter(filtrele), [sozlesmeler, filtre]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (yukleniyor) return <SkeletonList />
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <p className="t-caption">
+          Teklif veya siparişten tek tuşla üretilir; vade farkı, damga vergisi ve iskonto otomatik hesaplanır (ZNA-SS-YYYY-NNNN).
+        </p>
+        <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/sozlesmeler/satis/yeni')}>
+          Yeni Satış Sözleşmesi
+        </Button>
+      </div>
+
+      {/* Filtre çipleri (spec §9 alt menüleri) */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        {SS_FILTRELER.map(f => {
+          const aktif = filtre === f.id
+          return (
+            <button key={f.id} onClick={() => setFiltre(f.id)}
+              style={{
+                padding: '5px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+                border: `1px solid ${aktif ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                background: aktif ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+                font: `${aktif ? 600 : 400} 12px/16px var(--font-sans)`,
+                color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              }}>
+              {f.isim}
+            </button>
+          )
+        })}
+      </div>
+
+      {gorunen.length === 0 ? (
+        <EmptyState
+          icon={<FileSignature size={32} strokeWidth={1.5} />}
+          title={filtre === 'tumu' ? 'Satış sözleşmesi yok' : 'Bu filtrede sözleşme yok'}
+          description={filtre === 'tumu' ? '"Yeni Satış Sözleşmesi" ile teklif veya siparişten üretin.' : 'Farklı bir filtre deneyin.'}
+        />
+      ) : (
+        <Card style={{ padding: 0 }}>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Sözleşme</TH>
+                <TH>Müşteri / Proje</TH>
+                <TH>Tip</TH>
+                <TH>Nihai Bedel</TH>
+                <TH>Vade</TH>
+                <TH>Çek</TH>
+                <TH>Kur Farkı</TH>
+                <TH>İmza</TH>
+                <TH>Evrak</TH>
+                <TH></TH>
+              </TR>
+            </THead>
+            <TBody>
+              {gorunen.map(s => {
+                const d = SS_DURUMLARI[s.durum] || SS_DURUMLARI.taslak
+                const g = kalanGunSS(s.vadeTarihi)
+                const evrakEksik = (s.evraklar || []).filter(e => e.durum !== 'tamam').length
+                const kf = s.kurFarkiDurumu
+                return (
+                  <TR key={s.id}>
+                    <TD>
+                      <strong>{s.sozlesmeNo}</strong>
+                      <div className="t-caption" style={{ marginTop: 2 }}>
+                        {[s.gorusmeNo, s.teklifNo, s.siparisNo].filter(Boolean).join(' · ') || '—'}
+                      </div>
+                      <Badge tone={d.tone} style={{ marginTop: 3 }}>{d.isim}</Badge>
+                    </TD>
+                    <TD>
+                      <strong>{s.firmaAdi || '—'}</strong>
+                      {s.projeAdi && <div className="t-caption">{s.projeAdi}</div>}
+                    </TD>
+                    <TD style={{ maxWidth: 150 }}>
+                      <span style={{ font: '400 12px/16px var(--font-sans)' }}>
+                        {SABLON_TIPLERI_SS.find(t => t.id === s.sablonTipi)?.isim || s.sablonTipi}
+                      </span>
+                    </TD>
+                    <TD>
+                      <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{paraFmt(s.nihaiToplam, s.paraBirimi)}</strong>
+                      <div className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        Ana {paraFmt(s.anaToplam, s.paraBirimi)}
+                        {Number(s.vadeFarki) ? ` + VF ${paraFmt(s.vadeFarki, s.paraBirimi)}` : ''}
+                        {Number(s.damgaVergisi) ? ` + DV ${paraFmt(s.damgaVergisi, s.paraBirimi)}` : ''}
+                        {Number(s.iskonto) ? ` − İsk ${paraFmt(s.iskonto, s.paraBirimi)}` : ''}
+                      </div>
+                    </TD>
+                    <TD>
+                      {s.vadeTarihi ? (
+                        g < 0 && ['onaylandi', 'gonderildi', 'imzalandi'].includes(s.durum)
+                          ? <Badge tone="kayip">Vadesi geçti ({-g} gün)</Badge>
+                          : g != null && g <= 14 && ssYasayan(s)
+                            ? <Badge tone="uyari">{g} gün kaldı</Badge>
+                            : <span className="t-caption">{new Date(s.vadeTarihi).toLocaleDateString('tr-TR')}</span>
+                      ) : Number(s.vadeGunu) > 0
+                        ? <span className="t-caption">{s.vadeGunu} gün</span>
+                        : <span className="t-caption">Peşin</span>}
+                    </TD>
+                    <TD>
+                      {['cek', 'senet'].includes(s.odemeTipi)
+                        ? <Badge tone="beklemede">{s.cekNo ? `Çek ${s.cekNo}` : 'Çekli'}</Badge>
+                        : <span className="t-caption">—</span>}
+                    </TD>
+                    <TD>
+                      {kf === 'faturalandi' ? <Badge tone="aktif">Faturalandı</Badge>
+                        : kf === 'olustu' ? <Badge tone="kayip">{Number(s.kurFarkiTl) ? paraFmt(s.kurFarkiTl, 'TL') : 'Oluştu'}</Badge>
+                        : kf === 'izleniyor' ? <Badge tone="uyari">İzleniyor</Badge>
+                        : <span className="t-caption">—</span>}
+                    </TD>
+                    <TD>
+                      {s.imzaliPdfUrl ? <Badge tone="aktif">İmzalı</Badge>
+                        : s.durum === 'gonderildi' ? <Badge tone="beklemede">Bekleniyor</Badge>
+                        : <span className="t-caption">—</span>}
+                    </TD>
+                    <TD>
+                      {(s.evraklar || []).length === 0 ? <span className="t-caption">—</span>
+                        : evrakEksik === 0 ? <Badge tone="aktif">Tamam</Badge>
+                        : <Badge tone="uyari">{evrakEksik} eksik</Badge>}
+                    </TD>
+                    <TD>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sozlesmeler/satis/${s.id}`)}>Aç</Button>
+                    </TD>
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
+        </Card>
+      )}
+    </>
   )
 }
 
