@@ -90,7 +90,7 @@ const menuItems = [
     grup: 'gunluk',
     altMenu: [
       { id: 'musteri-liste', isim: 'Müşteri Listesi', yol: '/musteriler' },
-      { id: 'firmalar', isim: 'Firmalar', yol: '/firmalar' },
+      { id: 'bayiler', isim: 'Bayiler', yol: '/bayiler' },
     ],
   },
   { id: 'gorevler', isim: 'Görevler', Icon: CheckSquare, yol: '/gorevler', modul: 'gorevler', grup: 'gunluk' },
@@ -219,7 +219,7 @@ const bildirimTipIcon = {
 const sayfaIsimleri = {
   '/dashboard': 'Panel',
   '/musteriler': 'Müşteriler',
-  '/firmalar': 'Firmalar',
+  '/bayiler': 'Bayiler',
   '/gorevler': 'Görevler',
   '/gorusmeler': 'Görüşmeler',
   '/stok': 'Stok Kartları',
@@ -436,7 +436,8 @@ function MainLayout({ children }) {
     if (location.pathname === '/dashboard') return 'Panel'
     if (location.pathname === '/musteriler') return 'Müşteriler'
     if (location.pathname.startsWith('/musteriler/')) return 'Müşteri Detayı'
-    if (location.pathname === '/firmalar') return 'Firmalar'
+    if (location.pathname === '/bayiler') return 'Bayiler'
+    if (location.pathname.startsWith('/bayiler/')) return 'Bayi Detayı'
     if (location.pathname === '/stok') return 'Stok Kartları'
     if (location.pathname === '/stok-hareketleri') return 'Stok Hareketleri'
     if (location.pathname === '/stok-opsiyon') return 'Stok Opsiyonları'

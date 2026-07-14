@@ -129,6 +129,7 @@ export default function PaylasimBelge() {
         // 2. Belge verisini cek
         const rpcAdi = link.belge_tipi === 'teklif' ? 'paylasim_teklif_oku'
           : link.belge_tipi === 'demo_tutanak' ? 'paylasim_demo_tutanak_oku'
+          : link.belge_tipi === 'bayi_sozlesme' ? 'paylasim_bayi_sozlesme_oku'
           : 'paylasim_servis_oku'
         const { data: belgeData, error: belgeErr } = await supabase
           .rpc(rpcAdi, { in_token: token })
@@ -219,6 +220,10 @@ export default function PaylasimBelge() {
       baslik="Belge Yüklenemedi"
       mesaj="Geçici bir teknik sorun oluştu. Lütfen birkaç dakika sonra tekrar deneyin."
     />
+  }
+
+  if (durum === 'bayi_sozlesme') {
+    return <BayiSozlesmeGorunum belge={belge} />
   }
 
   if (durum === 'teklif') {
@@ -420,4 +425,70 @@ export default function PaylasimBelge() {
   }
 
   return null
+}
+
+// Bayi sözleşmesi (anon görünüm) — önce markalı kart, "Aç" sözleşme metnini gösterir
+function BayiSozlesmeGorunum({ belge }) {
+  const [goster, setGoster] = useState(false)
+
+  if (!goster) {
+    const linkBtn = { cursor: 'pointer', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }
+    return (
+      <div style={ekranMerkez}>
+        <div style={{ ...kart, maxWidth: 560 }}>
+          <img src="/logo.jpeg" alt="ZNA Teknoloji"
+            style={{ height: 64, objectFit: 'contain', display: 'block', margin: '0 auto 16px' }} />
+          <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
+            Bayilik Sözleşmeniz
+          </h1>
+          <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>
+            {belge.sozlesmeNo} — {belge.sozlesmeTarihi ? new Date(belge.sozlesmeTarihi).toLocaleDateString('tr-TR') : ''}
+          </p>
+          <div style={{
+            textAlign: 'left', background: '#F4F6F8', border: '1px solid #DEE3EC',
+            borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: '#3B4960',
+          }}>
+            <div><strong>Bayi:</strong> {belge.firmaAdi || '—'}</div>
+            <div style={{ marginTop: 6 }}>
+              Sözleşmeyi görüntüleyip yazdırdıktan sonra kaşeli ve imzalı halini PDF olarak
+              satış temsilcinize iletiniz. Talep edilen evraklar: İmza Sirküleri, Vergi Levhası,
+              Faaliyet Belgesi (son 6 ay), Ticaret Sicil Gazetesi{belge.vadeTalebi ? ', Son Mizan (vade talebiniz nedeniyle)' : ''}.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            <button onClick={() => setGoster(true)}
+              style={{ ...linkBtn, background: '#1E5AA8', color: '#fff', border: 'none' }}>
+              📄 Sözleşmeyi Aç
+            </button>
+          </div>
+          <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+            © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: '#fff', minHeight: '100vh' }}>
+      <div className="no-print" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
+        <button onClick={() => window.print()}
+          style={{
+            background: '#1E5AA8', color: '#fff', border: 'none', borderRadius: 999,
+            padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            boxShadow: '0 6px 20px rgba(30,90,168,0.35)', display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}>
+          🖨 Yazdır / PDF
+        </button>
+      </div>
+      <div style={{ maxWidth: 794, margin: '0 auto', padding: '48px 40px' }}>
+        <pre style={{
+          whiteSpace: 'pre-wrap', margin: 0,
+          font: "400 12.5pt/1.55 'Times New Roman', serif", color: '#111',
+        }}>
+          {belge.uretilenIcerik || 'Sözleşme içeriği bulunamadı.'}
+        </pre>
+      </div>
+    </div>
+  )
 }

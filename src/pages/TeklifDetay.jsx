@@ -22,6 +22,7 @@ import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle, stokFiyatGecmisi, paylasimDurumOzet,
 } from '../services/teklifService'
 import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
+import { bayiTeklifKontrol } from '../services/bayiService'
 import { supabase } from '../lib/supabase'
 import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
@@ -478,6 +479,19 @@ function TeklifDetay() {
     if (!form.firmaAdi || !form.konu) {
       toast.warning('Firma ve konu zorunludur.')
       return
+    }
+
+    // BAYİ BLOKAJI (bayi spec §11/§18): firma adı bir bayi kartıyla eşleşiyorsa
+    // ve bayi "Aktif" statüsünde değilse teklif kaydına izin verme.
+    // Bayi kaydı olmayan normal müşteriler etkilenmez.
+    try {
+      const bayiKontrol = await bayiTeklifKontrol(form.firmaAdi)
+      if (bayiKontrol.engel) {
+        toast.error(bayiKontrol.mesaj)
+        return
+      }
+    } catch (e) {
+      console.error('[TeklifDetay bayi kontrol]', e)
     }
 
     // PARA BİRİMİ UYARISI: TL değilse onay sor — kullanıcı yanlışlıkla USD/EUR

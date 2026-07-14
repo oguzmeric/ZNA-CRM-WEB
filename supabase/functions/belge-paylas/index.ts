@@ -64,18 +64,21 @@ function err(req: Request, status: number, hata: string, extra: Record<string, u
 // ------ Mail govdesi (HTML + text) ------
 
 function mailGovdesi(
-  belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak',
+  belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme',
   link: string,
   ozelMesaj: string,
   sureGun: number,
 ): { html: string; text: string; subject: string } {
   const baslik = belgeTipi === 'teklif' ? 'Teklifiniz Hazır'
     : belgeTipi === 'demo_tutanak' ? 'Demo Cihaz Teslim Tutanağınız'
+    : belgeTipi === 'bayi_sozlesme' ? 'Bayilik Sözleşmeniz Hazır'
     : 'Servis Raporunuz Hazır'
   const aciklama = belgeTipi === 'teklif'
     ? 'Tarafınıza hazırlanan teklifi aşağıdaki butona tıklayarak görüntüleyebilir veya yazdırabilirsiniz.'
     : belgeTipi === 'demo_tutanak'
     ? 'Tarafınıza demo amaçlı teslim edilen cihazın teslim tutanağını aşağıdaki butona tıklayarak görüntüleyebilir, yazdırıp imzalayabilirsiniz.'
+    : belgeTipi === 'bayi_sozlesme'
+    ? 'Tarafınıza hazırlanan bayilik sözleşmesini aşağıdaki butona tıklayarak görüntüleyebilir, yazdırıp kaşe ve imza sonrasında PDF olarak tarafımıza iletebilirsiniz.'
     : 'Tamamlanan servis raporunuzu aşağıdaki butona tıklayarak görüntüleyebilir veya yazdırabilirsiniz.'
 
   const text = `${baslik}
@@ -156,9 +159,10 @@ znateknoloji.com`
 
 // ------ SMS govdesi ------
 
-function smsGovdesi(belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak', link: string): string {
+function smsGovdesi(belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme', link: string): string {
   const baslik = belgeTipi === 'teklif' ? 'Teklifiniz'
     : belgeTipi === 'demo_tutanak' ? 'Demo teslim tutanaginiz'
+    : belgeTipi === 'bayi_sozlesme' ? 'Bayilik sozlesmeniz'
     : 'Servis raporunuz'
   // ~140 char hedef (Tr karakter ile encode 70 char limiti, ASCII'ye yakin tutuyoruz)
   return `ZNA Teknoloji: ${baslik} hazir. Goruntule: ${link}`
@@ -239,7 +243,7 @@ serve(async (req) => {
     const sirketRaw: string = (body?.sirket ?? '').toString().toLowerCase()
     const sirket: string | null = sirketRaw === 'anadolunet' ? 'anadolunet' : null
 
-    if (!['teklif', 'servis_raporu', 'demo_tutanak'].includes(belgeTipi)) return err(req,400, 'Gecersiz belge tipi.')
+    if (!['teklif', 'servis_raporu', 'demo_tutanak', 'bayi_sozlesme'].includes(belgeTipi)) return err(req,400, 'Gecersiz belge tipi.')
     if (!belgeId || belgeId < 1) return err(req,400, 'Gecersiz belge id.')
     if (!['mail', 'sms', 'her_ikisi'].includes(kanal)) return err(req,400, 'Gecersiz kanal.')
 
@@ -252,6 +256,7 @@ serve(async (req) => {
     // Belge gercekten var mi?
     const tablo = belgeTipi === 'teklif' ? 'teklifler'
       : belgeTipi === 'demo_tutanak' ? 'demo_zimmet_kayitlari'
+      : belgeTipi === 'bayi_sozlesme' ? 'bayi_sozlesmeleri'
       : 'servis_talepleri'
     const { data: belgeRow, error: belgeErr } = await supa
       .from(tablo)

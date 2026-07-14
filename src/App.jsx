@@ -23,7 +23,8 @@ const Gorevler = lazy(() => import('./pages/Gorevler'))
 const GorevDetay = lazy(() => import('./pages/GorevDetay'))
 const Musteriler = lazy(() => import('./pages/Musteriler'))
 const MusteriDetay = lazy(() => import('./pages/MusteriDetay'))
-const Firmalar = lazy(() => import('./pages/Firmalar'))
+const Bayiler = lazy(() => import('./pages/Bayiler'))
+const BayiDetay = lazy(() => import('./pages/BayiDetay'))
 const Gorusmeler = lazy(() => import('./pages/Gorusmeler'))
 const GorusmeDetay = lazy(() => import('./pages/GorusmeDetay'))
 const Stok = lazy(() => import('./pages/Stok'))
@@ -327,7 +328,9 @@ function App() {
           <Route path="/duyurular" element={<OguzGuard><Duyurular /></OguzGuard>} />
           <Route path="/musteriler" element={<Musteriler />} />
           <Route path="/musteriler/:id" element={<MusteriDetay />} />
-          <Route path="/firmalar" element={<Firmalar />} />
+          <Route path="/bayiler" element={<Bayiler />} />
+          <Route path="/bayiler/:id" element={<BayiDetay />} />
+          <Route path="/firmalar" element={<Navigate to="/bayiler" replace />} />
           <Route path="/gorusmeler" element={<Gorusmeler />} />
           <Route path="/gorusmeler/:id" element={<GorusmeDetay />} />
           <Route path="/stok" element={<Stok />} />
