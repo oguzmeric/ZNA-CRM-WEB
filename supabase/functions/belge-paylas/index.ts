@@ -270,6 +270,31 @@ serve(async (req) => {
       .maybeSingle()
     if (belgeErr || !belgeRow) return err(req,404, 'Belge bulunamadi.')
 
+    // SUNUCU TARAFI KURAL (spec): yonetici onayi olmayan teklif musteriye
+    // gonderilemez. Client'taki buton kilidi asilsa bile burada durur.
+    // (Client esdegeri: src/lib/teklifDurumlari.js GONDERIME_UYGUN_DURUMLAR)
+    if (belgeTipi === 'teklif') {
+      const { data: t } = await supa
+        .from('teklifler')
+        .select('spek_durum, onay_durumu, teklif_onayi')
+        .eq('id', belgeId)
+        .maybeSingle()
+      const izinli = [
+        'yon_onayladi', 'musteriye_gonderildi', 'musteri_onay_bekliyor',
+        'musteri_onayladi', 'musteri_reddetti', 'siparise_aktarildi',
+      ]
+      const spek = (t?.spek_durum ?? '').toString()
+      const od = (t?.onay_durumu ?? '').toString()
+      const toDurum = (t?.teklif_onayi as { durum?: string } | null)?.durum ?? null
+      const uygun = izinli.includes(spek)
+        || izinli.includes(od)                        // yeni deger eski kolona dusmus edge case
+        || od === 'kabul' || od === 'vazgecildi'      // musteri karari verilmis eski kayitlar
+        || (od === 'takipte' && toDurum === 'onayli') // eski onay jsonb'si
+      if (!uygun) {
+        return err(req, 403, 'Yonetici onayi olmayan teklif musteriye gonderilemez. Once teklifi yonetici onayina gonderin.')
+      }
+    }
+
     // Token uret + DB'ye yaz
     const token = tokenUret()
     const sonKullanma = new Date(Date.now() + sureGun * 24 * 60 * 60 * 1000).toISOString()

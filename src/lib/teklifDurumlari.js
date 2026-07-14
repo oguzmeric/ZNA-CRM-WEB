@@ -64,6 +64,23 @@ export function tekliftenDurum(teklif) {
 }
 
 /**
+ * Spec kuralı: "Yönetici tarafından onaylanmayan teklif müşteriye gönderilemez."
+ * PDF üretimi, yazdırma ve Müşteriye Gönder AYNI kapıyı kullanır — tek kaynak burası.
+ * (Sunucu tarafı eşleniği: belge-paylas edge fn'deki teklif kontrolü.)
+ */
+export const GONDERIME_UYGUN_DURUMLAR = [
+  TEKLIF_DURUM.YON_ONAYLADI,
+  TEKLIF_DURUM.MUSTERIYE_GONDERILDI,
+  TEKLIF_DURUM.MUSTERI_ONAY_BEKLIYOR,
+  TEKLIF_DURUM.MUSTERI_ONAYLADI,
+  TEKLIF_DURUM.MUSTERI_REDDETTI,
+  TEKLIF_DURUM.SIPARISE_AKTARILDI,
+]
+
+export const musteriyeGonderilebilir = (teklif) =>
+  GONDERIME_UYGUN_DURUMLAR.includes(tekliftenDurum(teklif))
+
+/**
  * Yeni durumu DB'ye yazarken hangi kolon(lar)ı güncellemeliyiz?
  * spek_durum → yeni sistem (gerçek durum)
  * onay_durumu → eski kod okumaya devam etsin diye map ile eski değere yazıyoruz

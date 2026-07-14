@@ -24,7 +24,7 @@ import {
 import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
 import { bayiTeklifKontrol } from '../services/bayiService'
 import { supabase } from '../lib/supabase'
-import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar } from '../lib/teklifDurumlari'
+import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
@@ -924,6 +924,12 @@ function TeklifDetay() {
               variant="secondary"
               iconLeft={<Printer size={14} strokeWidth={1.5} />}
               onClick={() => {
+                // Spec: yönetici onayı olmadan PDF üretilemez — onaysız teklif
+                // müşteriye hiçbir kanaldan (PDF dahil) gidemez.
+                if (!GONDERIME_UYGUN_DURUMLAR.includes(spekDurumKey)) {
+                  toast.error('Yönetici onayı olmayan teklifin PDF çıktısı alınamaz. Önce "Yönetici Onayına Gönder" akışını tamamlayın.')
+                  return
+                }
                 // Form'da seçili olan tipi URL'ye geçir — kaydet zorunlu olmasın
                 const tip = form.teklifTipi || 'standart'
 
@@ -957,11 +963,8 @@ function TeklifDetay() {
           )}
           {!yeni && (() => {
             // Spec: "Yönetici tarafından onaylanmayan teklif müşteriye gönderilemez"
-            // Yön.Onayladı ve sonrası durumlarda gönderime izin ver.
-            const gonderimeUygun = [
-              'yon_onayladi', 'musteriye_gonderildi', 'musteri_onay_bekliyor',
-              'musteri_onayladi', 'musteri_reddetti', 'siparise_aktarildi',
-            ].includes(spekDurumKey)
+            // Yön.Onayladı ve sonrası durumlarda gönderime izin ver (tek kaynak: lib).
+            const gonderimeUygun = GONDERIME_UYGUN_DURUMLAR.includes(spekDurumKey)
             return (
               <Button
                 variant={gonderimeUygun ? 'primary' : 'secondary'}

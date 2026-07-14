@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { Printer, FileDown, FileSpreadsheet, X } from 'lucide-react'
 import { teklifGetir } from '../services/teklifService'
 import { stokUrunleriniGetir } from '../services/stokService'
+import { musteriyeGonderilebilir, tekliftenDurum, TEKLIF_DURUM_META } from '../lib/teklifDurumlari'
 import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
@@ -56,6 +57,39 @@ export default function TeklifYazdir() {
 
   if (!teklif || !seciliTip) {
     return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Yükleniyor...</div>
+  }
+
+  // Spec kapısı: yönetici onayı olmayan teklifin PDF/yazdırma/Excel çıktısı YOK.
+  // Buton gizlense bile URL ile doğrudan gelinebiliyor — asıl emniyet burası.
+  if (!musteriyeGonderilebilir(teklif)) {
+    const durumIsim = TEKLIF_DURUM_META[tekliftenDurum(teklif)]?.isim || 'Taslak'
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#F4F6F8', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,sans-serif', padding: 20,
+      }}>
+        <div style={{ maxWidth: 480, width: '100%', background: '#fff', borderRadius: 16, padding: '40px 32px', boxShadow: '0 4px 14px rgba(15,27,46,0.08)', textAlign: 'center' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%', background: '#FEF3C7', color: '#B45309',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16,
+          }}>🔒</div>
+          <h1 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 700, color: '#0F1B2E' }}>
+            Çıktı alınamaz — yönetici onayı gerekli
+          </h1>
+          <p style={{ margin: '0 0 6px', fontSize: 14, lineHeight: 1.55, color: '#3B4960' }}>
+            <strong>{teklif.teklifNo || `#${teklif.id}`}</strong> numaralı teklifin durumu: <strong>{durumIsim}</strong>.
+          </p>
+          <p style={{ margin: '0 0 24px', fontSize: 13, lineHeight: 1.55, color: '#6B7A93' }}>
+            Yönetici tarafından onaylanmayan teklif PDF haline getirilemez ve müşteriye gönderilemez.
+            Teklif detayından "Yönetici Onayına Gönder" akışını tamamlayın.
+          </p>
+          <button onClick={() => { window.close(); setTimeout(() => { window.location.href = `/teklifler/${teklif.id}` }, 150) }}
+            style={{ padding: '11px 22px', borderRadius: 9, border: 'none', background: '#1E5AA8', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            Teklif Detayına Dön
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const { baseTip, pacal } = tipCoz(seciliTip)
