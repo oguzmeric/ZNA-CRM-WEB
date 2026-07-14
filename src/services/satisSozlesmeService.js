@@ -143,6 +143,8 @@ export const kurFarkiKaydet = async (id, { tahsilKuru, kurFarkiTl, durum }) =>
 
 // ---------- Kaynaktan veri hazırlama ----------
 
+const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+
 // Teklif → sözleşme form alanları (genel_toplam KDV DAHİLDİR — TeklifDetay hesabı)
 export const tekliftenForm = (teklif, gorusmeNo) => ({
   musteriId: teklif.musteriId || null,
@@ -152,14 +154,14 @@ export const tekliftenForm = (teklif, gorusmeNo) => ({
   yetkiliAdi: teklif.musteriYetkilisi || '',
   isinKonusu: teklif.konu || '',
   paraBirimi: ['TL', 'USD', 'EUR'].includes(teklif.paraBirimi) ? teklif.paraBirimi : 'TL',
-  anaToplam: Number(teklif.genelToplam) || 0,
+  anaToplam: r2(teklif.genelToplam),
   urunListesi: (teklif.satirlar || []).map(s => ({
     stokKodu: s.stokKodu || '',
     urunAdi: s.stokAdi || s.aciklama || '',
     miktar: Number(s.miktar) || 0,
     birim: s.birim || 'Adet',
     birimFiyat: Number(s.birimFiyat) || 0,
-    toplam: (Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0) * (1 - (Number(s.iskonto) || 0) / 100) * (1 + (Number(s.kdv) || 0) / 100),
+    toplam: r2((Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0) * (1 - (Number(s.iskonto) || 0) / 100) * (1 + (Number(s.kdv) || 0) / 100)),
   })),
 })
 
@@ -173,14 +175,14 @@ export const siparistenForm = (siparis, kalemler, musteri) => ({
   telefon: musteri?.telefon || '', email: musteri?.email || '',
   isinKonusu: siparis.konu || '',
   paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
-  anaToplam: Number(siparis.genelToplam) || 0,
+  anaToplam: r2(siparis.genelToplam),
   urunListesi: (kalemler || []).map(k => ({
     stokKodu: k.stokKodu || '',
     urunAdi: k.urunAd || k.aciklama || '',
     miktar: Number(k.miktar) || 0,
     birim: k.birim || 'Adet',
     birimFiyat: Number(k.birimFiyat) || 0,
-    toplam: (Number(k.araToplam) || 0) * (1 + (Number(k.kdvOrani) || 0) / 100),
+    toplam: r2((Number(k.araToplam) || 0) * (1 + (Number(k.kdvOrani) || 0) / 100)),
   })),
 })
 
