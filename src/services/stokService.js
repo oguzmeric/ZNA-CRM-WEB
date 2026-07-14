@@ -177,6 +177,7 @@ export const katalogUrunleriniGetir = async () => {
       .from('stok_urunler')
       .select('id, stok_kodu, stok_adi, marka, grup_kodu, birim, aciklama, gorsel_url, katalogda_goster')
       .eq('katalogda_goster', true)
+      .eq('aktif', true)   // pasif ürün müşteri kataloğunda görünmez (mig 151)
       .order('stok_adi')
       .range(off, off + size - 1)
   )

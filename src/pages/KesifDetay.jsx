@@ -69,7 +69,7 @@ export default function KesifDetay() {
       setKesif(k)
       setKalemler(kal)
       setFotolar(fot)
-      setStokUrunler(stok || [])
+      setStokUrunler((stok || []).filter(u => u.aktif !== false))  // pasif ürün keşfe eklenemez (mig 151)
       const urls = await kesifFotoUrlleri(fot.map(f => f.dosyaYolu))
       setFotoUrlMap(urls)
     } catch (e) {

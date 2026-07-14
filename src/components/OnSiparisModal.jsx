@@ -62,7 +62,8 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
 
   // Stok ürünlerini yükle (arama için)
   useEffect(() => {
-    stokUrunleriniGetir().then(setStokUrunleri).catch(() => setStokUrunleri([]))
+    // Pasif ürünler ön siparişte aranamaz (mig 151)
+    stokUrunleriniGetir().then(d => setStokUrunleri((d || []).filter(u => u.aktif !== false))).catch(() => setStokUrunleri([]))
   }, [])
 
   // Müşteri kişilerini yükle (İlgili Kişi dropdown için)

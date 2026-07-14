@@ -184,7 +184,8 @@ function TeklifDetay() {
     const promises = [
       musterileriGetir().then(setMusteriler),
       gorusmeleriGetir().then(setGorusmeler),
-      stokUrunleriniGetir().then(setStokUrunler),
+      // Pasif ürünler teklife eklenemesin (mig 151)
+      stokUrunleriniGetir().then(d => setStokUrunler((d || []).filter(u => u.aktif !== false))),
       teklifleriGetir().then(data => {
         setTumTeklifler(data)
         // TEK-XXXX formatindaki mevcut en yuksek numarayi bul (eski farkli formatli

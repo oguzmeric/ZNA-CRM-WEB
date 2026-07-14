@@ -164,7 +164,7 @@ function SatisDetay() {
   useEffect(() => {
     Promise.all([musterileriGetir(), stokUrunleriniGetir()]).then(([m, s]) => {
       setMusteriler(m || [])
-      setStoklar(s || [])
+      setStoklar((s || []).filter(u => u.aktif !== false))  // pasif ürün satışa eklenemez (mig 151)
     })
   }, [])
 
