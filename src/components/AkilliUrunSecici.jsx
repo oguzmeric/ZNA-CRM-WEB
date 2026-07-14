@@ -109,7 +109,8 @@ export default function AkilliUrunSecici({
   for (const u of urunler) {
     if (u.aktif === false) continue
     if (cozum?.akilli) {
-      if (!urunEslesiyorMu(u, cozum, kategoriler, urunOzellikMap, metinAra)) continue
+      // Özellik eşleşmesi VEYA metin eşleşmesi — etiketlenmemiş ürünler de bulunur
+      if (!urunEslesiyorMu(u, cozum, kategoriler, urunOzellikMap, metinAra) && !metinAra(u, sorgu)) continue
     } else if (sorgu.trim() && !metinAra(u, sorgu)) continue
     sonuclar.push(u)
     if (sonuclar.length >= MAKS_SONUC) break

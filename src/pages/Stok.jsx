@@ -739,8 +739,13 @@ function Stok() {
       `${urun.stokKodu || ''} ${urun.stokAdi || ''} ${urun.marka || ''} ${urun.grupKodu || ''} ${urun.barkod || ''} ${urun.tedarikciUrunKodu || ''} ${katYol.get(urun.kategoriId) || ''}`,
       sorgu,
     )
-    // Akıllı arama: "2 mp 2.8 dome kamera" → kategori dalı + özellik eşitliği + kalan metin
-    if (akilliAktif) return urunEslesiyorMu(u, aramaCozum, kategoriler, urunOzellikMap, metinAra)
+    // Akıllı arama: "2 mp 2.8 dome kamera" → kategori dalı + özellik eşitliği + kalan metin.
+    // ÖNEMLİ: özellik verisi girilmemiş ürünler kaybolmasın diye metin araması
+    // dışlanmaz — özellik eşleşmesi VEYA adında/modelinde geçen metin yeterli
+    // (örn. "2 MP" hem etiketli ürünleri hem adında "2MP" geçenleri bulur).
+    if (akilliAktif) {
+      return urunEslesiyorMu(u, aramaCozum, kategoriler, urunOzellikMap, metinAra) || metinAra(u, arama)
+    }
     return metinAra(u, arama)
   })
 
@@ -835,15 +840,36 @@ function Stok() {
                 Algılandı:
               </span>
               {aramaCozum.rozetler.map((r, i) => (
-                <span key={i} style={{
-                  padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                  font: '500 11px/16px var(--font-sans)',
-                  background: r.tip === 'kategori' ? 'var(--brand-primary)' : 'var(--brand-primary-soft)',
-                  color: r.tip === 'kategori' ? '#fff' : 'var(--brand-primary)',
-                  border: '1px solid var(--brand-primary)',
-                }}>
+                <button
+                  key={i}
+                  type="button"
+                  title="Bu filtreyi kaldır"
+                  onClick={() => {
+                    // Kalan rozetler + serbest metinden aramayı yeniden kur —
+                    // tıklanan terim aramadan düşer
+                    const parcalar = []
+                    aramaCozum.rozetler.forEach((x, j) => {
+                      if (j === i) return
+                      if (x.tip === 'kategori') parcalar.push(x.etiket)
+                      else if (x.etiket.endsWith(': Evet')) parcalar.push(x.etiket.split(':')[0])
+                      else parcalar.push(x.etiket.split(': ')[1] || '')
+                    })
+                    if (aramaCozum.kalan) parcalar.push(aramaCozum.kalan)
+                    setArama(parcalar.filter(Boolean).join(' '))
+                  }}
+                  style={{
+                    padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                    font: '500 11px/16px var(--font-sans)',
+                    background: r.tip === 'kategori' ? 'var(--brand-primary)' : 'var(--brand-primary-soft)',
+                    color: r.tip === 'kategori' ? '#fff' : 'var(--brand-primary)',
+                    border: '1px solid var(--brand-primary)',
+                    cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}
+                >
                   {r.etiket}
-                </span>
+                  <X size={10} strokeWidth={2} />
+                </button>
               ))}
               {aramaCozum.kalan && (
                 <span style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
