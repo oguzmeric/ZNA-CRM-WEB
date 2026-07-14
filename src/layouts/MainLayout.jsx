@@ -177,6 +177,7 @@ const menuItems = [
     altMenu: [
       { id: 'raporlar-liste', isim: 'Raporlar', yol: '/raporlar' },
       { id: 'rapor-merkezi',  isim: 'Rapor Merkezi', yol: '/rapor-merkezi' },
+      { id: 'teklif-cikti-kayitlari', isim: 'Teklif Çıktı Kayıtları', yol: '/teklif-cikti-kayitlari' },
     ],
   },
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
