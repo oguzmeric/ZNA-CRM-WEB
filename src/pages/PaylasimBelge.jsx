@@ -133,6 +133,7 @@ export default function PaylasimBelge() {
           : link.belge_tipi === 'demo_tutanak' ? 'paylasim_demo_tutanak_oku'
           : link.belge_tipi === 'bayi_sozlesme' ? 'paylasim_bayi_sozlesme_oku'
           : link.belge_tipi === 'satis_sozlesme' ? 'paylasim_satis_sozlesme_oku'
+          : link.belge_tipi === 'fatura' ? 'paylasim_fatura_oku'
           : 'paylasim_servis_oku'
         const { data: belgeData, error: belgeErr } = await supabase
           .rpc(rpcAdi, { in_token: token })
@@ -310,6 +311,55 @@ export default function PaylasimBelge() {
         <Cikti teklif={belge} pacal={pacal} />
         <MusteriKararPaneli token={token} belge={belge} />
       </>
+    )
+  }
+
+  // Fatura — kesilen gerçek faturanın PDF'i. İmzalı bağlantı gönderim anında
+  // (personel yetkisiyle) üretilip link kaydına yazıldı; burada sadece açılıyor.
+  if (durum === 'fatura') {
+    const sembol = { TL: '₺', USD: '$', EUR: '€' }[belge.paraBirimi] || '₺'
+    const tutar = `${sembol}${(Number(belge.genelToplam) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+    const btn = { cursor: 'pointer', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }
+    return (
+      <div style={ekranMerkez}>
+        <div style={{ ...kart, maxWidth: 560 }}>
+          <img src="/logo.jpeg" alt="ZNA Teknoloji"
+            style={{ height: 64, objectFit: 'contain', display: 'block', margin: '0 auto 16px' }} />
+          <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#0F1B2E', letterSpacing: '-0.02em' }}>
+            Faturanız
+          </h1>
+          <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.55, color: '#6B7A93' }}>
+            {belge.faturaNo}{belge.faturaTarihi ? ` — ${new Date(belge.faturaTarihi).toLocaleDateString('tr-TR')}` : ''}
+          </p>
+          <div style={{
+            textAlign: 'left', background: '#F4F6F8', border: '1px solid #DEE3EC',
+            borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: '#3B4960',
+          }}>
+            <div><strong>Firma:</strong> {belge.firmaAdi || '—'}</div>
+            {belge.konu && <div style={{ marginTop: 4 }}><strong>Konu:</strong> {belge.konu}</div>}
+            <div style={{ marginTop: 4 }}><strong>Tutar:</strong> {tutar}</div>
+          </div>
+          {belge.pdfUrl ? (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href={belge.pdfUrl} target="_blank" rel="noopener noreferrer"
+                style={{ ...btn, background: '#1E5AA8', color: '#fff', border: 'none', textDecoration: 'none', display: 'inline-block' }}>
+                📄 Faturayı Aç
+              </a>
+              <a href={belge.pdfUrl} download={belge.pdfAd || 'fatura.pdf'}
+                style={{ ...btn, background: '#fff', color: '#1E5AA8', border: '1.5px solid #1E5AA8', textDecoration: 'none', display: 'inline-block' }}>
+                ⬇ İndir / Kaydet
+              </a>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#B45309' }}>
+              Fatura dosyası bulunamadı. Lütfen bizimle iletişime geçin.
+            </div>
+          )}
+          <div style={{ marginTop: 24, fontSize: 11, color: '#98A3B6' }}>
+            © ZNA Teknoloji · <a href="https://znateknoloji.com" style={{ color: '#1E5AA8', textDecoration: 'none' }}>znateknoloji.com</a>
+          </div>
+        </div>
+      </div>
     )
   }
 

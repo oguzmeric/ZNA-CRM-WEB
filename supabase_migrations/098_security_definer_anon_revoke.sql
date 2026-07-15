@@ -63,6 +63,9 @@ DECLARE
     -- Müşterinin linkten teklife cevap vermesi (mig 164) — dar kapsamlı,
     -- yalnız token'ın işaret ettiği teklifin durumunu ilerletir, veri döndürmez
     'paylasim_teklif_musteri_karar',
+    -- Müşterinin kesilen faturasını linkten görmesi (mig 166) — yalnız
+    -- müşteriye ait alanlar döner, iç bilgi (talep notu/personel) dönmez
+    'paylasim_fatura_oku',
     -- RLS helper'ları — NULL döner, yan etki yok
     'current_kullanici_id',
     'current_musteri_id',

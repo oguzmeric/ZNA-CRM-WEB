@@ -64,7 +64,7 @@ function err(req: Request, status: number, hata: string, extra: Record<string, u
 // ------ Mail govdesi (HTML + text) ------
 
 function mailGovdesi(
-  belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme' | 'satis_sozlesme',
+  belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme' | 'satis_sozlesme' | 'fatura',
   link: string,
   ozelMesaj: string,
   sureGun: number,
@@ -73,6 +73,7 @@ function mailGovdesi(
     : belgeTipi === 'demo_tutanak' ? 'Demo Cihaz Teslim Tutanağınız'
     : belgeTipi === 'bayi_sozlesme' ? 'Bayilik Sözleşmeniz Hazır'
     : belgeTipi === 'satis_sozlesme' ? 'Satış Sözleşmeniz Hazır'
+    : belgeTipi === 'fatura' ? 'Faturanız Hazır'
     : 'Servis Raporunuz Hazır'
   const aciklama = belgeTipi === 'teklif'
     ? 'Tarafınıza hazırlanan teklifi aşağıdaki butona tıklayarak görüntüleyebilir veya yazdırabilirsiniz.'
@@ -82,6 +83,8 @@ function mailGovdesi(
     ? 'Tarafınıza hazırlanan bayilik sözleşmesini aşağıdaki butona tıklayarak görüntüleyebilir, yazdırıp kaşe ve imza sonrasında PDF olarak tarafımıza iletebilirsiniz.'
     : belgeTipi === 'satis_sozlesme'
     ? 'Tarafınıza hazırlanan satış sözleşmesini aşağıdaki butona tıklayarak görüntüleyebilir, yazdırıp kaşe ve imza sonrasında PDF olarak tarafımıza iletebilirsiniz.'
+    : belgeTipi === 'fatura'
+    ? 'Tarafınıza kesilen faturayı aşağıdaki butona tıklayarak görüntüleyebilir ve PDF olarak indirebilirsiniz.'
     : 'Tamamlanan servis raporunuzu aşağıdaki butona tıklayarak görüntüleyebilir veya yazdırabilirsiniz.'
 
   const text = `${baslik}
@@ -162,11 +165,12 @@ znateknoloji.com`
 
 // ------ SMS govdesi ------
 
-function smsGovdesi(belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme' | 'satis_sozlesme', link: string): string {
+function smsGovdesi(belgeTipi: 'teklif' | 'servis_raporu' | 'demo_tutanak' | 'bayi_sozlesme' | 'satis_sozlesme' | 'fatura', link: string): string {
   const baslik = belgeTipi === 'teklif' ? 'Teklifiniz'
     : belgeTipi === 'demo_tutanak' ? 'Demo teslim tutanaginiz'
     : belgeTipi === 'bayi_sozlesme' ? 'Bayilik sozlesmeniz'
     : belgeTipi === 'satis_sozlesme' ? 'Satis sozlesmeniz'
+    : belgeTipi === 'fatura' ? 'Faturaniz'
     : 'Servis raporunuz'
   // ~140 char hedef (Tr karakter ile encode 70 char limiti, ASCII'ye yakin tutuyoruz)
   return `ZNA Teknoloji: ${baslik} hazir. Goruntule: ${link}`
@@ -253,7 +257,7 @@ serve(async (req) => {
     const sirketRaw: string = (body?.sirket ?? '').toString().toLowerCase()
     const sirket: string | null = sirketRaw === 'anadolunet' ? 'anadolunet' : null
 
-    if (!['teklif', 'servis_raporu', 'demo_tutanak', 'bayi_sozlesme', 'satis_sozlesme'].includes(belgeTipi)) return err(req,400, 'Gecersiz belge tipi.')
+    if (!['teklif', 'servis_raporu', 'demo_tutanak', 'bayi_sozlesme', 'satis_sozlesme', 'fatura'].includes(belgeTipi)) return err(req,400, 'Gecersiz belge tipi.')
     if (!belgeId || belgeId < 1) return err(req,400, 'Gecersiz belge id.')
     if (!['mail', 'sms', 'her_ikisi'].includes(kanal)) return err(req,400, 'Gecersiz kanal.')
 
@@ -267,6 +271,7 @@ serve(async (req) => {
     const tablo = belgeTipi === 'teklif' ? 'teklifler'
       : belgeTipi === 'demo_tutanak' ? 'demo_zimmet_kayitlari'
       : belgeTipi === 'bayi_sozlesme' ? 'bayi_sozlesmeleri'
+      : belgeTipi === 'fatura' ? 'fatura_talepleri'
       : belgeTipi === 'satis_sozlesme' ? 'satis_sozlesmeleri'
       : 'servis_talepleri'
     const { data: belgeRow, error: belgeErr } = await supa
@@ -301,6 +306,32 @@ serve(async (req) => {
       }
     }
 
+    // Fatura: PDF 'fatura-belge' PRIVATE bucket'inda. Public /p/:token sayfasi
+    // anon calisir ve imzali URL uretemez — imzali URL'i BURADA (service role
+    // ile) uretip link meta'sina yaziyoruz. Suresi link suresiyle esit.
+    let faturaPdfUrl: string | null = null
+    if (belgeTipi === 'fatura') {
+      const { data: ft } = await supa
+        .from('fatura_talepleri')
+        .select('durum, fatura_pdf_yol')
+        .eq('id', belgeId)
+        .maybeSingle()
+      if (ft?.durum !== 'faturalandi') {
+        return err(req, 403, 'Bu talep icin fatura henuz kesilmemis.')
+      }
+      if (!ft?.fatura_pdf_yol) {
+        return err(req, 400, 'Fatura PDF yuklenmemis — once PDF yukleyin.')
+      }
+      const { data: imzali, error: imzaErr } = await supa.storage
+        .from('fatura-belge')
+        .createSignedUrl(ft.fatura_pdf_yol, sureGun * 24 * 60 * 60)
+      if (imzaErr || !imzali?.signedUrl) {
+        console.error('[belge-paylas] fatura signed url:', imzaErr?.message)
+        return err(req, 502, 'Fatura baglantisi olusturulamadi.')
+      }
+      faturaPdfUrl = imzali.signedUrl
+    }
+
     // Token uret + DB'ye yaz
     const token = tokenUret()
     const sonKullanma = new Date(Date.now() + sureGun * 24 * 60 * 60 * 1000).toISOString()
@@ -316,6 +347,7 @@ serve(async (req) => {
         gonderim_kanali: kanal,
         gonderildigi_email: mailGonderilecek ? email : null,
         gonderildigi_gsm:   smsGonderilecek ? gsm : null,
+        meta: faturaPdfUrl ? { pdf_url: faturaPdfUrl } : {},
       })
       .select('id')
       .single()
