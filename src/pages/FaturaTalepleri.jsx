@@ -23,9 +23,9 @@ import {
 } from '../services/faturaTalepService'
 
 const SEKMELER = [
-  { id: 'bekliyor',    label: 'Fatura Bekleyen', renk: '#F59E0B' },
-  { id: 'faturalandi', label: 'Faturalandı',     renk: '#10B981' },
-  { id: 'reddedildi',  label: 'Reddedilen',      renk: '#EF4444' },
+  { id: 'bekliyor',    label: 'Fatura Bekleyen' },
+  { id: 'faturalandi', label: 'Faturalandı' },
+  { id: 'reddedildi',  label: 'Reddedilen' },
 ]
 
 const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
@@ -71,26 +71,32 @@ export default function FaturaTalepleri() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <h1 className="t-h1" style={{ margin: 0 }}>Fatura Oluşturulacak</h1>
-        <p className="t-caption" style={{ margin: '4px 0 0' }}>
-          Satıştan gelen fatura talepleri. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
-          satış kaydı ancak o zaman oluşur.
-        </p>
-      </div>
+      {/* Başlık MainLayout'ta zaten yazıyor — sayfada tekrar etmiyoruz. */}
+      <p className="t-caption" style={{ margin: 0, color: 'var(--text-tertiary)' }}>
+        Satıştan gelen fatura talepleri. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
+        satış kaydı ancak o zaman oluşur.
+      </p>
 
-      <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* Sekmeler — Teklifler/Sözleşmeler ile aynı alt-çizgi deseni.
+          Kalınlık HER ZAMAN 600: eskiden aktif olunca 500→600 değişiyordu,
+          yazı genişleyip yanındaki sekmeler zıplıyordu ("garip tepki"). */}
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border-default)', flexWrap: 'wrap' }}>
         {SEKMELER.map(s => {
           const aktif = sekme === s.id
           return (
             <button key={s.id} type="button" onClick={() => setSekme(s.id)}
               style={{
-                padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
-                font: `${aktif ? 600 : 500} 13px/18px var(--font-sans)`,
-                border: `1px solid ${aktif ? s.renk : 'var(--border-default)'}`,
-                background: aktif ? s.renk : 'var(--surface-card)',
-                color: aktif ? '#fff' : 'var(--text-secondary)',
-              }}>
+                padding: '10px 14px', marginBottom: -1,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                font: '600 11px/16px var(--font-sans)',
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+                transition: 'color 120ms, border-color 120ms',
+              }}
+              onMouseEnter={e => { if (!aktif) e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { if (!aktif) e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
               {s.label}
             </button>
           )
@@ -123,20 +129,34 @@ export default function FaturaTalepleri() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
+                  {/* Başlıklar gövdeyle BİREBİR aynı sayıda olmalı. Eskiden
+                      'Fatura No' koşulu boş bir <th> bırakıyordu → sekme
+                      'faturalandi' değilken 8 başlık / 7 hücre = sütunlar kayıyordu. */}
                   <tr style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textAlign: 'left' }}>
-                    {['Talep No', 'Firma', 'Teklif', 'Tutar', 'Talep Eden', 'Tarih',
-                      sekme === 'faturalandi' ? 'Fatura No' : '', ''].map((h, i) => (
-                      <th key={i} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>{h}</th>
+                    {[
+                      'Talep No', 'Müşteri', 'Teklif', 'Tutar', 'Talep Eden', 'Tarih',
+                      ...(sekme === 'faturalandi' ? ['Fatura No'] : []),
+                      '',
+                    ].map((h, i) => (
+                      <th key={i} style={{
+                        padding: '8px 12px', borderBottom: '1px solid var(--border-default)',
+                        whiteSpace: 'nowrap',
+                        textAlign: h === 'Tutar' ? 'right' : 'left',
+                      }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {talepler.map(t => (
-                    <tr key={t.id} style={{ font: '400 13px/18px var(--font-sans)' }}>
+                    <tr key={t.id}
+                      style={{ font: '400 13px/18px var(--font-sans)', transition: 'background 120ms' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-sunken)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
                       <td style={hucre}><CodeBadge>{t.talepNo}</CodeBadge></td>
                       <td style={{ ...hucre, fontWeight: 500 }}>{t.firmaAdi}</td>
                       <td style={hucre}>{t.teklifNo || '—'}</td>
-                      <td style={{ ...hucre, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</td>
+                      <td className="tabular-nums" style={{ ...hucre, fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'right' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</td>
                       <td style={hucre}>{t.talepEdenAd || '—'}</td>
                       <td style={{ ...hucre, whiteSpace: 'nowrap' }}>{fmtTarih(t.talepTarihi)}</td>
                       {sekme === 'faturalandi' && <td style={hucre}><CodeBadge>{t.faturaNo}</CodeBadge></td>}
