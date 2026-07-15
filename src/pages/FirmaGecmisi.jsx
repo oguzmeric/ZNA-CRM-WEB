@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Phone, FileText, KeyRound, CheckSquare, MapPin, Inbox, Infinity as InfIcon, ArrowRight,
-  Building2, Mail, Clock, Plus, Wrench, ReceiptText, AlertTriangle, User,
+  Building2, Mail, Clock, Plus, Wrench, ReceiptText, AlertTriangle, User, Video,
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorevleriGetir } from '../services/gorevService'
 import { lisanslariGetir } from '../services/lisansService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriToplantilariGetir } from '../services/takvimBaglantiService'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
@@ -25,6 +26,8 @@ const OLAY_KONFIG = {
   teklif:  { isim: 'Teklif',  C: FileText,    tone: 'brand',     renk: 'var(--brand-primary)' },
   lisans:  { isim: 'Lisans',  C: KeyRound,    tone: 'brand',     renk: 'var(--brand-primary)' },
   gorev:   { isim: 'Görev',   C: CheckSquare, tone: 'beklemede', renk: 'var(--warning)' },
+  // Takvimden müşteriye bağlanan Google Meet toplantıları (mig 173)
+  toplanti: { isim: 'Toplantı', C: Video,     tone: 'lead',      renk: '#a855f7' },
 }
 
 const onayTone = {
@@ -140,6 +143,7 @@ function FirmaGecmisi() {
   const [lisanslar, setLisanslar] = useState([])
   const [gorevler, setGorevler] = useState([])
   const [musteri, setMusteri] = useState(null)
+  const [toplantilar, setToplantilar] = useState([])
   const { kullanicilar } = useAuth()
   const { talepler } = useServisTalebi()
 
@@ -154,7 +158,11 @@ function FirmaGecmisi() {
         setTeklifler((t || []).filter(i => i.firmaAdi === firma))
         setLisanslar((l || []).filter(i => i.firmaAdi === firma))
         setGorevler((gr || []).filter(i => i.firmaAdi === firma))
-        setMusteri((m || []).find(i => i.firma === firma) || null)
+        // Toplantı bağı musteri_id üzerinden — bu sayfa firma ADI ile çalışıyor,
+        // önce müşteri kartını çöz, sonra toplantıları çek.
+        const kart = (m || []).find(i => i.firma === firma) || null
+        setMusteri(kart)
+        setToplantilar(kart ? await musteriToplantilariGetir(kart.id) : [])
       } catch (err) {
         console.error('[FirmaGecmisi yükle]', err)
       } finally {
@@ -218,6 +226,17 @@ function FirmaGecmisi() {
       detay: `Atanan: ${g.atananAd || ''} · ${g.durum}`,
       veri: g,
     })),
+    ...toplantilar.map(t => ({
+      id: `toplanti-${t.id}`, tip: 'toplanti',
+      tarih: (t.baslangic || '').split('T')[0],
+      baslik: t.baslik || '(başlıksız toplantı)',
+      detay: [
+        new Date(t.baslangic).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        Array.isArray(t.davetliler) && t.davetliler.length ? `${t.davetliler.length} davetli` : null,
+        t.toplanti_linki ? 'Meet' : null,
+      ].filter(Boolean).join(' · '),
+      veri: t,
+    })),
   ].sort((a, b) => new Date(b.tarih) - new Date(a.tarih))
 
   const filtreliOlaylar = aktifSekme === 'hepsi' ? tumOlaylar : tumOlaylar.filter(o => o.tip === aktifSekme)
@@ -237,6 +256,7 @@ function FirmaGecmisi() {
     teklif:  'var(--brand-primary)',
     lisans:  '#534AB7',
     gorev:   'var(--warning)',
+    toplanti: '#a855f7',
   }
   const sparkline = (data, renk) => {
     if (data.every(v => v === 0)) {
@@ -341,6 +361,7 @@ function FirmaGecmisi() {
             { key: 'teklif',  isim: 'Teklifler',  sayi: teklifler.length },
             { key: 'lisans',  isim: 'Lisanslar',  sayi: lisanslar.length },
             { key: 'gorev',   isim: 'Görevler',   sayi: gorevler.length },
+            { key: 'toplanti', isim: 'Toplantılar', sayi: toplantilar.length },
           ].map(c => {
             const aktif = aktifSekme === c.key
             return (

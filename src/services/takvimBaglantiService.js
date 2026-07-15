@@ -207,3 +207,39 @@ export async function hariciEtkinlikleriGetir(kullaniciId, baslangic, bitis) {
   if (error) { console.warn('hariciEtkinlikleriGetir', error.message); return [] }
   return data ?? []
 }
+
+// ─── Etkinlik ↔ Müşteri bağı (mig 173) ────────────────────────────────────
+// Toplantıya müşteri bağlanınca Firma Geçmişi zaman çizelgesinde görünür.
+
+/**
+ * Oluşturulan etkinliği seçili müşterilere bağla.
+ * Etkinlik ZATEN oluşmuş durumda çağrılır — burada patlarsa etkinliği geri
+ * almayız, çağıran tarafa hata döner ve kullanıcıya bildirilir.
+ */
+export async function etkinlikMusterileriBagla(etkinlikId, musteriIdler = [], olusturanId = null) {
+  const idler = [...new Set((musteriIdler || []).map(Number).filter(Boolean))]
+  if (!etkinlikId || !idler.length) return []
+  const { data, error } = await supabase
+    .from('etkinlik_musterileri')
+    .upsert(
+      idler.map((mid) => ({ etkinlik_id: etkinlikId, musteri_id: mid, olusturan_id: olusturanId })),
+      { onConflict: 'etkinlik_id,musteri_id' },
+    )
+    .select()
+  if (error) throw new Error('Toplantı müşteriye bağlanamadı: ' + error.message)
+  return data ?? []
+}
+
+/** Bir müşterinin bağlı toplantıları — Firma Geçmişi zaman çizelgesi için. */
+export async function musteriToplantilariGetir(musteriId) {
+  if (!musteriId) return []
+  const { data, error } = await supabase
+    .from('etkinlik_musterileri')
+    .select('etkinlik_id, harici_etkinlikler (id, baslik, aciklama, lokasyon, baslangic, bitis, toplanti_linki, durum, davetliler, silindi)')
+    .eq('musteri_id', musteriId)
+  if (error) { console.warn('musteriToplantilariGetir', error.message); return [] }
+  return (data ?? [])
+    .map((r) => r.harici_etkinlikler)
+    .filter((e) => e && !e.silindi)          // iptal edilen toplantı geçmişte durmasın
+    .sort((a, b) => new Date(b.baslangic) - new Date(a.baslangic))
+}

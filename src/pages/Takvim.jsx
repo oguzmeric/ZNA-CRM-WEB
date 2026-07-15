@@ -12,6 +12,7 @@ import { kargolariGetir } from '../services/kargoService'
 import {
   hariciEtkinlikleriGetir, tazelikSyncTetikle,
   takvimBaglantilariniGetir, etkinlikOlustur, etkinlikSil,
+  etkinlikMusterileriBagla,
 } from '../services/takvimBaglantiService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriKisileriToplu } from '../services/musteriKisiService'
@@ -1030,6 +1031,7 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
   const [seciliKisiIdler, setSeciliKisiIdler] = useState([])
   const [smsGonder, setSmsGonder] = useState(false)
   const [smsSonuc, setSmsSonuc] = useState(null)
+  const [bagHatasi, setBagHatasi] = useState(null)
 
   useEffect(() => {
     musterileriGetir()
@@ -1123,8 +1125,17 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
 
       setSonuc(res)  // başarılı — Meet linki + HTML linki göster
 
-      // Etkinlik OLUŞTU; SMS ayrı bir adım. Burada patlarsa etkinliği geri
-      // almayız — kullanıcıya kimlere gidip kimlere gitmediğini söyleriz.
+      // Toplantıyı seçili müşterilere bağla → Firma Geçmişi'nde görünsün.
+      // Etkinlik OLUŞTU; bağ kurulamazsa etkinliği geri almayız, uyarırız.
+      if (seciliMusteriIdler.length && res?.etkinlikId) {
+        try {
+          await etkinlikMusterileriBagla(res.etkinlikId, seciliMusteriIdler, kullanici?.id ?? null)
+        } catch (e) {
+          setBagHatasi(e?.message || 'Toplantı müşteri geçmişine bağlanamadı.')
+        }
+      }
+
+      // SMS de ayrı adım — patlarsa etkinlik durur, kime gidip gitmediğini yazarız.
       if (smsGonder) {
         setSmsSonuc(await smsleriGonder(res?.meetLinki || res?.htmlLink || null))
       }
@@ -1216,7 +1227,23 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
           </div>
           <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 16 }}>
             Google Calendar'a yazıldı. Davetlilere e-posta gönderildi.
+            {seciliMusteriIdler.length > 0 && !bagHatasi && (
+              <> Toplantı {seciliMusteriIdler.length === 1
+                ? <strong style={{ color: 'var(--text-secondary)' }}>{musteriAdi(seciliMusteriIdler[0])}</strong>
+                : <strong style={{ color: 'var(--text-secondary)' }}>{seciliMusteriIdler.length} müşterinin</strong>} geçmişine işlendi.</>
+            )}
           </p>
+
+          {bagHatasi && (
+            <div style={{
+              marginBottom: 16, padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--warning-soft)', border: '1px solid var(--warning)',
+              font: '400 12px/18px var(--font-sans)', color: 'var(--text-secondary)',
+            }}>
+              Etkinlik oluştu ama müşteri geçmişine bağlanamadı: {bagHatasi}
+            </div>
+          )}
 
           {/* SMS sonucu — kısmi başarı da AÇIKÇA yazılır: kullanıcı kimin
               linki almadığını bilmeli (mail zaten bu yüzden yetmiyordu). */}
