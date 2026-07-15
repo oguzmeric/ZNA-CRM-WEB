@@ -42,7 +42,7 @@ import HizliMusteriEkleModal from '../components/HizliMusteriEkleModal'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonDetay } from '../components/Skeleton'
 import {
-  Button, Input, Textarea, Label, Card, Badge, CodeBadge,
+  Button, Input, Textarea, Label, Card, CardTitle, Badge, CodeBadge,
   Alert, EmptyState, Table, THead, TBody, TR, TH, TD, SegmentedControl, Modal,
 } from '../components/ui'
 

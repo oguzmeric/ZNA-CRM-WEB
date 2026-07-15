@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
-  CheckCircle2, Send,
+  CheckCircle2, Send, User,
 } from 'lucide-react'
 import MusteriDavetModal from '../components/MusteriDavetModal'
 import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
