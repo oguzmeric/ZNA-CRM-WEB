@@ -143,6 +143,38 @@ export const kurFarkiKaydet = async (id, { tahsilKuru, kurFarkiTl, durum }) =>
 
 const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 
+// Firma tipini unvandan tahmin et — kullanıcı yine de değiştirebilir
+export const firmaTipiTahmin = (firmaAdi) => {
+  const s = (firmaAdi || '').toLocaleLowerCase('tr')
+  if (/a\.?\s?ş\.?|anonim/.test(s)) return 'anonim'
+  if (/ltd|limited|şti/.test(s)) return 'limited'
+  if (/belediye|bakanlık|müdürlüğ|kaymakam|valilik|üniversite/.test(s)) return 'kamu'
+  if (/vakf|vakıf/.test(s)) return 'vakif'
+  if (/derneğ|dernek/.test(s)) return 'dernek'
+  return null
+}
+
+// Müşteri kartındaki firma künyesi (vergi no, vergi dairesi, adres, iletişim).
+// Teklif/sipariş kaydı bunları tutmuyor — sözleşmede elle doldurulmasın diye
+// müşteriden taşınır. Boş alanlar mevcut form değerini EZMEZ.
+export const musteridenKunye = (musteri) => {
+  if (!musteri) return {}
+  const dolu = (v) => (typeof v === 'string' ? v.trim() : v) || null
+  const adres = [dolu(musteri.adres), dolu(musteri.sehir)].filter(Boolean).join(' · ')
+  const kunye = {
+    tcVergiNo:    dolu(musteri.vergiNo),
+    vergiDairesi: dolu(musteri.vergiDairesi),
+    adres:        adres || null,
+    telefon:      dolu(musteri.telefon),
+    email:        dolu(musteri.email),
+    firmaAdi:     dolu(musteri.firma),
+    yetkiliAdi:   [musteri.ad, musteri.soyad].filter(Boolean).join(' ').trim() || null,
+    firmaTipi:    firmaTipiTahmin(musteri.firma),
+  }
+  // null olanları at — spread edilirken dolu alanları silmesin
+  return Object.fromEntries(Object.entries(kunye).filter(([, v]) => v !== null))
+}
+
 // Teklif → sözleşme form alanları (genel_toplam KDV DAHİLDİR — TeklifDetay hesabı)
 export const tekliftenForm = (teklif, gorusmeNo) => ({
   musteriId: teklif.musteriId || null,

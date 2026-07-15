@@ -18,13 +18,13 @@ import { useAuth } from '../context/AuthContext'
 import { belgePaylas } from '../services/belgePaylasimService'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
 import { siparisGetir, kalemleriGetir } from '../services/siparisService'
-import { musterileriGetir } from '../services/musteriService'
+import { musteriGetir } from '../services/musteriService'
 import { gorusmeGetir, gorusmeleriGetir } from '../services/gorusmeService'
 import {
   satisSozlesmeGetir, satisSozlesmeEkle, satisSozlesmeGuncelle, hesapVeIcerikHazirla,
   onayaGonder, sozlesmeOnayla, sozlesmeReddet, gonderildiIsaretle, sozlesmeIptalEt, kilidiAc,
   imzaliSozlesmeYukleSS, ssDosyaUrl, ssDosyaYukle, kurFarkiKaydet,
-  tekliftenForm, siparistenForm,
+  tekliftenForm, siparistenForm, musteridenKunye,
 } from '../services/satisSozlesmeService'
 import { sozlesmeHesapla, kurFarkiHesapla, paraFmt } from '../lib/satisSozlesmeHesap'
 import {
@@ -158,23 +158,36 @@ export default function SatisSozlesmeForm() {
   useEffect(() => { yukle() }, [yukle])
 
   const tekliftenDoldur = async (t) => {
-    let gorusmeNo = ''
-    if (t.gorusmeId) {
-      const g = await gorusmeGetir(t.gorusmeId).catch(() => null)
-      gorusmeNo = g?.gorusmeNo || ''
-    }
-    const veri = tekliftenForm(t, gorusmeNo)
-    setForm(f => ({ ...f, ...veri }))
-    setGonderEmail(veri.email || '')
-    toast.success(`${t.teklifNo || 'Teklif'} bilgileri yüklendi — ana toplam KDV dahil ${paraFmt(veri.anaToplam, veri.paraBirimi)}.`)
+    // Teklif kaydı firma künyesini (vergi no, vergi dairesi, adres, iletişim)
+    // tutmuyor — müşteri kartında duruyor. Sözleşmede elle doldurulmasın diye
+    // müşteriyi de çekip birleştiriyoruz.
+    const [g, musteri] = await Promise.all([
+      t.gorusmeId ? gorusmeGetir(t.gorusmeId).catch(() => null) : Promise.resolve(null),
+      t.musteriId ? musteriGetir(Number(t.musteriId)).catch(() => null) : Promise.resolve(null),
+    ])
+    const veri = tekliftenForm(t, g?.gorusmeNo || '')
+    const kunye = musteridenKunye(musteri)
+    setForm(f => ({
+      ...f, ...kunye, ...veri,
+      // Teklifteki değer önce; boşsa müşteri kartından
+      firmaAdi:   veri.firmaAdi   || kunye.firmaAdi   || f.firmaAdi,
+      yetkiliAdi: veri.yetkiliAdi || kunye.yetkiliAdi || f.yetkiliAdi,
+    }))
+    setGonderEmail(kunye.email || '')
+    const eksik = ['tcVergiNo', 'vergiDairesi', 'adres'].filter(k => !kunye[k])
+    toast.success(
+      `${t.teklifNo || 'Teklif'} bilgileri yüklendi — ana toplam KDV dahil ${paraFmt(veri.anaToplam, veri.paraBirimi)}.` +
+      (musteri && eksik.length ? ' Müşteri kartında vergi/adres bilgisi eksik.' : '')
+    )
   }
 
   const siparistenDoldur = async (sip) => {
-    const [kalemler, musteriler] = await Promise.all([
+    // musterileriGetir liste sorgusu vergi_no / vergi_dairesi / adres kolonlarını
+    // ÇEKMEZ (MUSTERI_LISTE_KOLONLARI) — künye boş kalırdı. Tek kaydı tam çekiyoruz.
+    const [kalemler, musteri] = await Promise.all([
       kalemleriGetir(sip.id).catch(() => []),
-      musterileriGetir().catch(() => []),
+      sip.musteriId ? musteriGetir(Number(sip.musteriId)).catch(() => null) : Promise.resolve(null),
     ])
-    const musteri = (musteriler || []).find(m => Number(m.id) === Number(sip.musteriId))
     let ek = {}
     if (sip.gorusmeId) {
       const g = await gorusmeGetir(sip.gorusmeId).catch(() => null)
@@ -185,8 +198,10 @@ export default function SatisSozlesmeForm() {
       if (t) ek.teklifNo = t.teklifNo || ''
     }
     const veri = siparistenForm(sip, kalemler, musteri)
-    setForm(f => ({ ...f, ...veri, ...ek }))
-    setGonderEmail(veri.email || '')
+    // Firma künyesi (vergi no / vergi dairesi / adres / firma tipi) müşteri kartında
+    const kunye = musteridenKunye(musteri)
+    setForm(f => ({ ...f, ...kunye, ...veri, ...ek }))
+    setGonderEmail(veri.email || kunye.email || '')
     toast.success(`${sip.siparisNo || 'Sipariş'} bilgileri yüklendi.`)
   }
 
