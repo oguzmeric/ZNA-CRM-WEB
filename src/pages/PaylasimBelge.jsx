@@ -21,6 +21,7 @@ import KarelCikti    from './teklifCikti/KarelCikti'
 import ServisFormu   from './servisCikti/ServisFormu'
 import DemoTutanak   from './demoCikti/DemoTutanak'
 import { bayiBelgeHtml } from '../lib/bayiSozlesmeBelge'
+import { ssBelgeGoster } from '../lib/satisSozlesmeMaddeleri'
 import { tipCoz } from '../lib/teklifTemplates'
 
 const ciktiMap = {
@@ -542,8 +543,10 @@ function SatisSozlesmeGorunum({ belge }) {
         </button>
       </div>
       <div style={{ maxWidth: 794, margin: '0 auto', padding: '12px 40px 48px' }}>
-        {/* İçerik CRM'in kendi ürettiği HTML — güvenli */}
-        <div dangerouslySetInnerHTML={{ __html: belge.uretilenIcerik || '<p>Sözleşme içeriği bulunamadı.</p>' }} />
+        {/* İçerik CRM'in kendi ürettiği HTML — güvenli.
+            ssBelgeGoster: eski kayıtların yazdırmada bozulan gömülü stilini
+            gösterim anında onarır; içeriğe dokunmaz. */}
+        <div dangerouslySetInnerHTML={{ __html: ssBelgeGoster(belge.uretilenIcerik) || '<p>Sözleşme içeriği bulunamadı.</p>' }} />
       </div>
     </div>
   )

@@ -263,16 +263,24 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
 <style>
   .ss-belge { font: 400 11.5pt/1.5 'Times New Roman', Georgia, serif; color: #111; }
   .ss-belge * { box-sizing: border-box; }
-  .ss-sabit-ust { position: fixed; top: 0; left: 0; right: 0; height: 58px; display: flex;
-    align-items: center; justify-content: space-between; padding: 6px 0 4px;
+
+  /* Sayfa iskeleti. Başlık/altlık thead/tfoot içinde durur: tarayıcı bunları HER
+     A4 sayfasında tekrarlar VE yerlerini kendisi ayırır. Eskiden position:fixed
+     kullanılıyordu; fixed öğe her sayfada çizilir ama yer YALNIZCA ilk sayfada
+     ayrıldığı için (.ss-icerik margin) 2. sayfadan itibaren başlık metnin üstüne
+     biniyor, altına gizlenen satırlar okunamıyordu. */
+  .ss-belge > .ss-sayfa { width: 100%; border-collapse: collapse; margin: 0; page-break-inside: auto; }
+  .ss-sayfa > thead > tr > td,
+  .ss-sayfa > tfoot > tr > td,
+  .ss-sayfa > tbody > tr > td { border: 0; padding: 0; font-size: inherit; vertical-align: top; }
+  .ss-ust { display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0 4px; margin-bottom: 12px;
     border-bottom: 1.5px solid #1E5AA8; background: #fff; }
-  .ss-sabit-ust img { height: 40px; object-fit: contain; }
-  .ss-sabit-ust .no { font: 700 10pt/1.2 'Times New Roman', serif; color: #1E5AA8; text-align: right; }
-  .ss-sabit-alt { position: fixed; bottom: 0; left: 0; right: 0; height: 52px;
-    border-top: 1px solid #999; background: #fff; display: flex; justify-content: space-between;
-    padding-top: 4px; font: 600 8.5pt/1.3 'Times New Roman', serif; color: #444; }
-  .ss-sabit-alt .kutu { width: 46%; }
-  .ss-icerik { margin: 70px 0 64px; }
+  .ss-ust img { height: 40px; object-fit: contain; }
+  .ss-ust .no { font: 700 10pt/1.2 'Times New Roman', serif; color: #1E5AA8; text-align: right; }
+  .ss-alt { border-top: 1px solid #999; background: #fff; display: flex; justify-content: space-between;
+    margin-top: 12px; padding-top: 4px; font: 600 8.5pt/1.3 'Times New Roman', serif; color: #444; }
+  .ss-alt .kutu { width: 46%; }
   .ss-belge h1 { font-size: 15pt; text-align: center; margin: 8px 0 2px; letter-spacing: 0.02em; }
   .ss-belge h2 { font-size: 12pt; margin: 18px 0 6px; border-bottom: 1px solid #bbb; padding-bottom: 2px; }
   .ss-belge h3 { font-size: 11.5pt; margin: 12px 0 4px; }
@@ -286,19 +294,29 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
   .ss-imza .alan { width: 46%; border: 1px solid #999; padding: 12px 14px 64px; font-size: 10.5pt; }
   .ss-toplam td { font-weight: 700; background: #F6F8FB; }
   @media print {
-    .ss-icerik { margin: 70px 0 64px; }
+    .ss-sayfa > thead { display: table-header-group; }
+    .ss-sayfa > tfoot { display: table-footer-group; }
+    /* Başlık sayfa sonunda tek başına kalmasın, madde metni tek satır bölünmesin */
+    .ss-belge h2, .ss-belge h3 { page-break-after: avoid; break-after: avoid; }
+    .ss-belge .madde { orphans: 2; widows: 2; }
     @page { margin: 18mm 14mm; }
   }
 </style>
 <div class="ss-belge">
-  <div class="ss-sabit-ust">
-    <img src="${esc(logoUrl)}" alt="ZNA Teknoloji" />
-    <div class="no">${esc(s.sozlesmeNo || 'TASLAK')}<br/><span style="font-weight:400;color:#555">${esc(sablonIsim)}</span></div>
-  </div>
-  <div class="ss-sabit-alt">
-    <div class="kutu">SATICI Kaşe / İmza:</div>
-    <div class="kutu" style="text-align:right">ALICI Kaşe / İmza:</div>
-  </div>
+ <table class="ss-sayfa">
+  <thead><tr><td>
+    <div class="ss-ust">
+      <img src="${esc(logoUrl)}" alt="ZNA Teknoloji" />
+      <div class="no">${esc(s.sozlesmeNo || 'TASLAK')}<br/><span style="font-weight:400;color:#555">${esc(sablonIsim)}</span></div>
+    </div>
+  </td></tr></thead>
+  <tfoot><tr><td>
+    <div class="ss-alt">
+      <div class="kutu">SATICI Kaşe / İmza:</div>
+      <div class="kutu" style="text-align:right">ALICI Kaşe / İmza:</div>
+    </div>
+  </td></tr></tfoot>
+  <tbody><tr><td>
 
   <div class="ss-icerik">
     <h1>${esc(sablonIsim).toUpperCase()}</h1>
@@ -366,7 +384,31 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
       <div class="alan"><strong>ALICI</strong><br/>${esc(s.firmaAdi || '—')}<br/>Yetkili: ${esc(s.imzaYetkilisi || s.yetkiliAdi || '—')}<br/><br/>Kaşe / İmza:</div>
     </div>
   </div>
+
+  </td></tr></tbody>
+ </table>
 </div>`
+}
+
+// 2026-07-15 öncesi üretilmiş sözleşmelerin GÖMÜLÜ stili bozuktu (position:fixed
+// başlık 2. sayfadan itibaren metnin üstüne biniyor, altındaki satırlar
+// okunamıyordu). uretilen_icerik imzalı sözleşmelerde donmuş bir anlık
+// görüntüdür — metnine dokunulmaz. Bu yama yalnızca GÖSTERİM anında sonuna
+// eklenir; kayıt byte olarak aynı kalır, sadece binme kalkar.
+//
+// Eski belgede başlık/altlık HER sayfada tekrar edemez (yapısı buna uygun
+// değil): başlık bir kez üstte görünür. Metnin kaybolmasına yeğdir.
+const ESKI_KAYIT_YAMASI = `
+<style>
+  .ss-sabit-ust { position: static !important; height: auto !important; margin-bottom: 12px !important; }
+  .ss-sabit-alt { display: none !important; }
+  .ss-icerik { margin: 0 !important; }
+</style>`
+
+/** Kayıtlı sözleşme HTML'ini ekrana/yazdırmaya vermeden önce buradan geçir. */
+export const ssBelgeGoster = (html) => {
+  if (!html) return ''
+  return html.includes('ss-sabit-ust') ? `${html}${ESKI_KAYIT_YAMASI}` : html
 }
 
 const kapsamlarMetni = (s) => {

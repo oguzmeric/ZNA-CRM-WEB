@@ -29,7 +29,7 @@ import {
 import { sozlesmeHesapla, kurFarkiHesapla, paraFmt } from '../lib/satisSozlesmeHesap'
 import {
   SABLON_TIPLERI_SS, FIRMA_TIPLERI_SS, ODEME_TIPLERI_SS, KUR_TIPLERI_SS, SS_DURUMLARI,
-  evrakListesiUret, sozlesmeHtmlUret,
+  evrakListesiUret, sozlesmeHtmlUret, ssBelgeGoster,
 } from '../lib/satisSozlesmeMaddeleri'
 
 const BOS_FORM = {
@@ -334,7 +334,7 @@ export default function SatisSozlesmeForm() {
   const yazdir = () => {
     const w = window.open('', '_blank', 'width=920,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi.'); return }
-    w.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>${kayit?.sozlesmeNo || 'Satış Sözleşmesi'}</title></head><body>${icerikHtml()}<script>window.onload = () => setTimeout(() => window.print(), 400)</scr` + `ipt></body></html>`)
+    w.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>${kayit?.sozlesmeNo || 'Satış Sözleşmesi'}</title></head><body>${ssBelgeGoster(icerikHtml())}<script>window.onload = () => setTimeout(() => window.print(), 400)</scr` + `ipt></body></html>`)
     w.document.close()
   }
 
@@ -940,8 +940,12 @@ export default function SatisSozlesmeForm() {
       {onizleme && (
         <Modal open onClose={() => setOnizleme(false)} title={`Önizleme — ${kayit?.sozlesmeNo || 'Taslak'}`} width={900}>
           <div style={{ maxHeight: '68vh', overflow: 'auto', background: '#fff', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '8px 16px' }}>
-            {/* İçerik kendi ürettiğimiz HTML — güvenli */}
-            <div dangerouslySetInnerHTML={{ __html: icerikHtml().replace(/position:\s*fixed/g, 'position: static') }} />
+            {/* İçerik kendi ürettiğimiz HTML — güvenli.
+                Önizleme ile yazdırma AYNI HTML'i basar. Eskiden burada
+                position:fixed'ler static'e çevriliyordu: önizleme düzgün
+                görünüyor ama yazdırma bozuk çıkıyordu (madde kayması) — hata
+                tam da bu yüzden fark edilmiyordu. */}
+            <div dangerouslySetInnerHTML={{ __html: ssBelgeGoster(icerikHtml()) }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
             <Button variant="secondary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={yazdir}>Yazdır / PDF</Button>

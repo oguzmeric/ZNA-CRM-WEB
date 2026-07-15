@@ -12,6 +12,14 @@ const STIL = `
 <style>
   .bd { font: 400 11.5pt/1.5 'Times New Roman', Georgia, serif; color: #111; }
   .bd * { box-sizing: border-box; }
+  /* Başlık/altlık thead/tfoot içinde: tarayıcı her A4 sayfasında tekrarlar ve
+     yerini kendisi ayırır. Eskiden @media print'te position:fixed'di; fixed her
+     sayfada çizilir ama yer yalnızca ilk sayfada ayrıldığı için (.bd-icerik
+     margin) 2. sayfadan itibaren başlık metnin üstüne biniyordu. */
+  .bd > .bd-sayfa { width: 100%; border-collapse: collapse; margin: 0; page-break-inside: auto; }
+  .bd-sayfa > thead > tr > td,
+  .bd-sayfa > tfoot > tr > td,
+  .bd-sayfa > tbody > tr > td { border: 0; padding: 0; font-size: inherit; vertical-align: top; }
   .bd-ust { display: flex; align-items: center; justify-content: space-between;
     padding: 6px 0 5px; border-bottom: 1.5px solid #1E5AA8; background: #fff; margin-bottom: 14px; }
   .bd-ust img { height: 40px; object-fit: contain; }
@@ -29,11 +37,12 @@ const STIL = `
   .bd .imza { margin-top: 30px; display: flex; justify-content: space-between; gap: 24px; page-break-inside: avoid; }
   .bd .imza .alan { width: 47%; border: 1px solid #999; padding: 12px 14px 60px; font-size: 10.5pt; }
   @media print {
-    .bd-ust { position: fixed; top: 0; left: 0; right: 0; height: 56px; margin: 0; }
-    .bd-alt { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 48px;
-      justify-content: space-between; border-top: 1px solid #999; background: #fff;
+    .bd-sayfa > thead { display: table-header-group; }
+    .bd-sayfa > tfoot { display: table-footer-group; }
+    .bd-alt { display: flex; justify-content: space-between; margin-top: 12px;
+      border-top: 1px solid #999; background: #fff;
       padding-top: 4px; font: 600 8.5pt/1.3 'Times New Roman', serif; color: #444; }
-    .bd-icerik { margin: 70px 0 60px; }
+    .bd p { orphans: 2; widows: 2; }
     @page { size: A4; margin: 16mm 14mm; }
   }
 </style>`
@@ -136,20 +145,25 @@ export const bayiBelgeHtml = (icerik, { sozlesmeNo = '', logoUrl = '/logo.jpeg' 
     <div style="text-align:right">BAYİ${bayiUnvan ? ` (${esc(bayiUnvan)})` : ''} — Kaşe / İmza:</div>
   </div>`
 
+  // Başlık/altlık şeridini her sayfada tekrarlayan iskelete sarar
+  const sayfa = (bayiUnvan, govde) => `
+<div class="bd">
+ <table class="bd-sayfa">
+  <thead><tr><td>${ust}</td></tr></thead>
+  <tfoot><tr><td>${alt(bayiUnvan)}</td></tr></tfoot>
+  <tbody><tr><td><div class="bd-icerik">${govde}</div></td></tr></tbody>
+ </table>
+</div>`
+
   // Beklenen yapı yoksa: sade ama düzgün fallback (Times, yazdırma şeritli)
   if (!p) {
-    return `${STIL}<div class="bd">${ust}${alt('')}
-      <div class="bd-icerik"><pre style="white-space:pre-wrap;font:11.5pt/1.55 'Times New Roman',serif;margin:0">${esc(icerik || 'Sözleşme içeriği bulunamadı.')}</pre></div></div>`
+    return STIL + sayfa('', `<pre style="white-space:pre-wrap;font:11.5pt/1.55 'Times New Roman',serif;margin:0">${esc(icerik || 'Sözleşme içeriği bulunamadı.')}</pre>`)
   }
 
   const bayiUnvan = p.kunyeMap['Bayi'] || p.bayiMap['Ticari Unvan'] || ''
   const tarih = p.kunyeMap['Sözleşme Tarihi'] || ''
 
-  return `${STIL}
-<div class="bd">
-  ${ust}
-  ${alt(bayiUnvan)}
-  <div class="bd-icerik">
+  return STIL + sayfa(bayiUnvan, `
     <h1>${esc(p.baslik)}</h1>
     <p class="altbaslik">${esc(p.altBaslik)}</p>
 
@@ -175,9 +189,7 @@ export const bayiBelgeHtml = (icerik, { sozlesmeNo = '', logoUrl = '/logo.jpeg' 
         ${esc(bayiUnvan || '—')}<br/>
         Yetkili: ${esc(p.bayiMap['Yetkili Kişi'] || '—')}<br/>
         Tarih: ${esc(tarih)}<br/><br/>Kaşe / İmza:</div>
-    </div>
-  </div>
-</div>`
+    </div>`)
 }
 
 /** Yazdırma penceresi için tam sayfa (base + otomatik window.print) */
