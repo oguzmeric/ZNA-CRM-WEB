@@ -107,7 +107,11 @@ const menuItems = [
     altMenu: [
       { id: 'kesif-liste', isim: 'Keşifler', yol: '/kesifler' },
       { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
-      { id: 'satis-faturalari', isim: 'Satış Faturaları', yol: '/satislar' },
+      // 'Satış Faturaları' menüden KALDIRILDI (2026-07-15): fatura işleri tek
+      // merkezden — Proforma Fatura — yürüyor (Faturalanan sekmesi: PDF +
+      // satış kaydına git + müşteriye gönder). /satislar rotaları YAŞIYOR:
+      // proforma detayındaki "Satış kaydına git", Teklifler'deki fatura rozeti
+      // ve Müşteri Detay bağları oraya derin link veriyor.
     ],
   },
   // Onaylar — SADECE onay yetkilisi olanlar görür (admin dahil bypass yok).
