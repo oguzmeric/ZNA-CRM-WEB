@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Receipt, FileUp, ExternalLink, CheckCircle2, XCircle, RotateCcw, Clock, Send,
+  Receipt, FileUp, ExternalLink, CheckCircle2, XCircle, RotateCcw, Clock, Send, Printer,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -283,6 +283,10 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
                 {talep.teklifNo || 'Teklife git'}
               </Button>
             )}
+            <Button variant="secondary" size="sm" iconLeft={<Printer size={13} strokeWidth={1.5} />}
+              onClick={() => window.open(`/fatura-talepleri/${talep.id}/yazdir`, '_blank', 'noopener')}>
+              Proforma Yazdır
+            </Button>
             <Button variant="secondary" size="sm" onClick={onKapat}>Kapat</Button>
           </div>
         </div>

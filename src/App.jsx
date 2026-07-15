@@ -76,6 +76,7 @@ const MusteriTalepDetay = lazy(() => import('./pages/musteri/MusteriTalepDetay')
 const TeklifIste = lazy(() => import('./pages/musteri/TeklifIste'))
 const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
+const ProformaYazdir = lazy(() => import('./pages/ProformaYazdir'))
 const ServisFormuYazdir = lazy(() => import('./pages/ServisFormuYazdir'))
 const SiparisYazdir = lazy(() => import('./pages/SiparisYazdir'))
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'))
@@ -279,6 +280,7 @@ function App() {
         <Routes>
           <Route path="/teklifler/:id/yazdir" element={<TeklifYazdir />} />
           <Route path="/satislar/:id/yazdir" element={<FaturaYazdir />} />
+          <Route path="/fatura-talepleri/:id/yazdir" element={<ProformaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
           <Route path="/siparisler/:id/yazdir" element={<SiparisYazdir />} />
         </Routes>
