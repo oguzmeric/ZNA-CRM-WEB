@@ -8,8 +8,12 @@
 //   <ServisFormu talep={talepData} sirket="zna" />     // ZNA Teknoloji
 //   <ServisFormu talep={talepData} sirket="anadolunet" />
 
+import { useState, useEffect, useRef } from 'react'
 import znaBanner from '../../assets/servis-formu/zna-banner.png'
 import anadolunetLogo from '../../assets/servis-formu/anadolunet-logo.jpeg'
+
+// A4 genisligi CSS px cinsinden (210mm @96dpi). Telefonda olcegi bundan hesaplariz.
+const A4_PX = 794
 
 const SIRKET_BILGI = {
   zna: {
@@ -73,6 +77,33 @@ function Kutu({ dolu }) {
 
 export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
   const cfg = SIRKET_BILGI[sirket] || SIRKET_BILGI.zna
+
+  // Telefonda A4'u ekrana SIGDIR. Eskiden sabit 794px basiliyordu: musteri SMS
+  // linkini telefonda acinca formun sag yarisi (Tutar sutunu, Genel Toplam,
+  // talep no) ekran disinda kaliyordu — 57 hucrenin 27'si gorunmuyordu.
+  // Olcum: iPhone 13'te gorsel ekran 709px, form 794px (2026-07-15).
+  // Yazdirmada olcek YOK — @page A4 aynen korunur (asagidaki print CSS sifirlar).
+  const sarmalRef = useRef(null)
+  const sayfaRef = useRef(null)
+  const [olcek, setOlcek] = useState(1)
+  const [sarmalYukseklik, setSarmalYukseklik] = useState(null)
+
+  useEffect(() => {
+    const hesapla = () => {
+      const musait = sarmalRef.current?.clientWidth || window.innerWidth
+      const yeni = Math.min(1, musait / A4_PX)
+      setOlcek(yeni)
+      const h = sayfaRef.current?.offsetHeight
+      setSarmalYukseklik(yeni < 1 && h ? Math.ceil(h * yeni) : null)
+    }
+    hesapla()
+    window.addEventListener('resize', hesapla)
+    // Fotograf/banner yuklenince sayfa uzayabilir — yuksekligi tekrar olc
+    const g = window.setTimeout(hesapla, 600)
+    return () => { window.removeEventListener('resize', hesapla); window.clearTimeout(g) }
+  }, [talep?.id, sirket])
+
+  const kucultuluyor = olcek < 1
 
   // ─── Renkler ve stil tokenleri ───────────────────────────────────────
   const ACCENT = cfg.accent
@@ -169,6 +200,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
       body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none !important; }
       @page { size: A4; margin: 6mm; }
+      /* Telefon icin uygulanan kucultme YAZDIRMADA olmaz — A4 birebir kalir */
+      .sf-sarmal { height: auto !important; overflow: visible !important; }
+      .sf-sayfa  { transform: none !important; width: 210mm !important; }
     }
     @media screen {
       body { background: #e9eef5; }
@@ -178,7 +212,20 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
   return (
     <>
       <style>{printCss}</style>
-      <div style={sayfaStyle}>
+      <div
+        ref={sarmalRef}
+        className="sf-sarmal"
+        style={kucultuluyor
+          ? { width: '100%', height: sarmalYukseklik ?? undefined, overflow: 'hidden' }
+          : undefined}
+      >
+      <div
+        ref={sayfaRef}
+        className="sf-sayfa"
+        style={kucultuluyor
+          ? { ...sayfaStyle, margin: 0, transform: `scale(${olcek})`, transformOrigin: 'top left' }
+          : sayfaStyle}
+      >
         {/* ─── BANNER ─── */}
         <div style={{ marginBottom: 8, textAlign: 'center' }}>
           <img
@@ -445,6 +492,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
             </div>
           </div>
         )}
+      </div>
       </div>
     </>
   )
