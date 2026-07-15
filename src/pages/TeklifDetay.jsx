@@ -425,6 +425,19 @@ function TeklifDetay() {
     return () => clearTimeout(timer)
   }, [yeni, form, taslakBanner])
 
+  // Teklifler listesindeki "Proforma oluştur" ?proforma=1 ile gelir — form
+  // yüklenince modal kendiliğinden açılır (listedeki tek tık hissi korunur).
+  // faturaTalebiAc early return'lerin ALTINDA tanımlı; bu effect ise Rules of
+  // Hooks gereği ÜSTTE olmak zorunda (bu dosyada 3 kez beyaz sayfa yaşandı) —
+  // köprü ref ile kurulur, render gövdesinde en güncel fonksiyon atanır.
+  const proformaOtoAcRef = useRef(new URLSearchParams(window.location.search).get('proforma') === '1')
+  const faturaTalebiAcRef = useRef(null)
+  useEffect(() => {
+    if (!form || !proformaOtoAcRef.current) return
+    proformaOtoAcRef.current = false   // tek sefer — form her düzenlemede değişir
+    if (form.onayDurumu === 'kabul') faturaTalebiAcRef.current?.()
+  }, [form])
+
   if (!veriYuklendi) {
     return <SkeletonDetay />
   }
@@ -862,10 +875,13 @@ function TeklifDetay() {
       const musteri = await musteriKartiniBul()
       setFaturaTalepTaslak(tekliftenTalep({ ...form, id, satirlar: form.satirlar }, musteri, kullanici))
       setFaturaTalepAcik(true)
+      // (?proforma=1 otomatik açılışı yukarıdaki ref köprüsünden buraya gelir)
     } finally {
       setFaturaTalepMesgul(false)
     }
   }
+  // ?proforma=1 köprüsü — effect üstte (Rules of Hooks), fonksiyon burada.
+  faturaTalebiAcRef.current = faturaTalebiAc
 
   // Teklifin müşteri kartı — künye (vergi no / adres) faturaya lazım.
   // Tekliflerin ~yarısında musteri_id boş, firma adından eşleştiriyoruz.

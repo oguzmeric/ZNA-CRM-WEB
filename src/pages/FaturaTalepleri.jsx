@@ -402,6 +402,10 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
                 </Button>
               </div>
             </div>
+            <p className="t-caption" style={{ margin: '6px 0 0', color: 'var(--text-tertiary)' }}>
+              Gerçek fatura muhasebe / e-arşiv sisteminde kesilir — buraya o faturanın
+              PDF'ini yükleyin. CRM'de saklanır ve "Müşteriye Gönder" bu dosyayı iletir.
+            </p>
 
             {redAcik && (
               <div style={{ marginTop: 12 }}>
