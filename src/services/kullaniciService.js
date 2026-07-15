@@ -3,7 +3,7 @@ import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
 // Liste kolonları — 21 kullanıcı listesinde imza (~150KB base64) taşımak saçma.
 // Servis Formu / mobil profil ihtiyacı için ayrıca session'a özgü kolon seti var.
-const KULLANICI_KOLONLARI = 'id, ad, kullanici_adi, tip, moduller, durum, izinli_turler, firma_adi, unvan, foto_url, rol, email, musteri_id, cep_telefon, siparis_onay_yetkilisi, siparis_onay_ust_yetkili, teklif_onay_yetkilisi, teklif_onay_ust_yetkili, hesap_silindi, onay_durum, onay_tarihi, onaylayan_id, red_nedeni, email_dogrulandi, zeyna_kalan_soru, zeyna_toplam_soru, created_at, silinebilir, auth_id'
+const KULLANICI_KOLONLARI = 'id, ad, kullanici_adi, tip, moduller, durum, izinli_turler, firma_adi, unvan, foto_url, rol, email, musteri_id, cep_telefon, siparis_onay_yetkilisi, siparis_onay_ust_yetkili, teklif_onay_yetkilisi, teklif_onay_ust_yetkili, fatura_yetkilisi, hesap_silindi, onay_durum, onay_tarihi, onaylayan_id, red_nedeni, email_dogrulandi, zeyna_kalan_soru, zeyna_toplam_soru, created_at, silinebilir, auth_id'
 
 // Session'daki kullanıcının tam bilgisi — imza dahil (Profil ekranı için gerekli).
 // Liste'de değil, sadece login/session-restore çağrılarında kullanılır.

@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
-  GripVertical, Percent, Copy, History, LayoutTemplate, Eye, FileSignature,
+  GripVertical, Percent, Copy, History, LayoutTemplate, Eye, FileSignature, Clock,
 } from 'lucide-react'
 // Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -28,7 +28,10 @@ import { supabase } from '../lib/supabase'
 import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
-import { musterileriGetir } from '../services/musteriService'
+import { musterileriGetir, musteriGetir } from '../services/musteriService'
+import {
+  tekliftenTalep, faturaTalebiEkle, teklifFaturaTalebiGetir,
+} from '../services/faturaTalepService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
@@ -148,6 +151,12 @@ function TeklifDetay() {
   const [veriYuklendi, setVeriYuklendi] = useState(false)
   const [hatirlatmaGun, setHatirlatmaGun] = useState(7)
   const [ilgiliFatura, setIlgiliFatura] = useState(null)
+  // Fatura talebi (mig 165) — early return'ün ÜSTÜNDE (Rules of Hooks)
+  const [faturaTalebi, setFaturaTalebi] = useState(null)
+  const [faturaTalepAcik, setFaturaTalepAcik] = useState(false)
+  const [faturaTalepTaslak, setFaturaTalepTaslak] = useState(null)
+  const [faturaTalepNotu, setFaturaTalepNotu] = useState('')
+  const [faturaTalepMesgul, setFaturaTalepMesgul] = useState(false)
   // Hızlı stok ekleme modal'ı state — early return'ün ÜSTÜNDE olmalı
   // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
   const [hizliStokAcik, setHizliStokAcik] = useState(false)
@@ -282,6 +291,8 @@ function TeklifDetay() {
       promises.push(satislariGetir().then(data => {
         setIlgiliFatura(data.find(s => s.teklifId === id) || null)
       }))
+      // Bu teklif için açılmış fatura talebi var mı? (tek sorgu — tüm liste değil)
+      promises.push(teklifFaturaTalebiGetir(id).then(setFaturaTalebi))
     }
     Promise.all(promises)
       .catch(err => console.error('[TeklifDetay yükle]', err))
@@ -786,30 +797,58 @@ function TeklifDetay() {
     }
   }
 
-  const faturayaDonustur = () => {
-    localStorage.setItem(
-      'satis_on_doldurum',
-      JSON.stringify({
-        firmaAdi: form.firmaAdi,
-        musteriYetkili: form.musteriYetkilisi,
-        teklifId: id,
-        teklifNo: form.teklifNo,
-        satirlar: (form.satirlar || []).map((s) => ({
-          id: crypto.randomUUID(),
-          stokKodu: s.stokKodu || '',
-          urunAdi: s.stokAdi || '',
-          miktar: s.miktar || 1,
-          birim: s.birim || 'Adet',
-          birimFiyat: s.birimFiyat || 0,
-          iskontoOran: s.iskonto || 0,
-          kdvOran: s.kdv || 20,
-          araToplam: 0,
-          kdvTutar: 0,
-          satirToplam: 0,
-        })),
-      })
-    )
-    navigate('/satislar/yeni')
+  // Fatura talebi — satışçı NUMARASIZ talep açar, fatura yetkilisi keser.
+  // Eskiden bu buton localStorage'a yarım veri koyup /satislar/yeni açıyordu:
+  // satışçı fatura numarasını kendisi uyduruyordu ve müşteri e-posta/telefon,
+  // para birimi, vade, notlar hiç taşınmıyordu.
+  const faturaTalebiAc = async () => {
+    setFaturaTalepMesgul(true)
+    try {
+      const musteri = await musteriKartiniBul()
+      setFaturaTalepTaslak(tekliftenTalep({ ...form, id, satirlar: form.satirlar }, musteri, kullanici))
+      setFaturaTalepAcik(true)
+    } finally {
+      setFaturaTalepMesgul(false)
+    }
+  }
+
+  // Teklifin müşteri kartı — künye (vergi no / adres) faturaya lazım.
+  // Tekliflerin ~yarısında musteri_id boş, firma adından eşleştiriyoruz.
+  const musteriKartiniBul = async () => {
+    try {
+      if (form.musteriId) {
+        const m = await musteriGetir(Number(form.musteriId))
+        if (m) return m
+      }
+      const norm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+      const hedef = norm(form.firmaAdi)
+      if (!hedef) return null
+      const liste = await musterileriGetir()
+      const bulunan = (liste || []).find(m => norm(m.firma) === hedef)
+      return bulunan ? await musteriGetir(bulunan.id) : null
+    } catch (e) {
+      console.warn('[TeklifDetay] müşteri kartı bulunamadı:', e?.message)
+      return null
+    }
+  }
+
+  const faturaTalebiGonder = async () => {
+    if (!faturaTalepTaslak) return
+    setFaturaTalepMesgul(true)
+    try {
+      const kayit = await faturaTalebiEkle({ ...faturaTalepTaslak, talepNotu: faturaTalepNotu.trim() || null })
+      setFaturaTalebi(kayit)
+      setFaturaTalepAcik(false)
+      setFaturaTalepNotu('')
+      toast.success(`${kayit.talepNo} oluşturuldu — fatura yetkilisine bildirildi.`)
+    } catch (e) {
+      const mesaj = e?.code === '23505'
+        ? 'Bu teklif için zaten bekleyen bir fatura talebi var.'
+        : 'Talep oluşturulamadı: ' + (e?.message || 'bilinmeyen hata')
+      toast.error(mesaj)
+    } finally {
+      setFaturaTalepMesgul(false)
+    }
   }
 
   // Spec sistem durumu (10 durum). ÖNCELİK: spek_durum kolonu (yeni sistem, gerçek
@@ -1088,14 +1127,28 @@ function TeklifDetay() {
               Faturaya git
             </Button>
           )}
+          {/* Fatura talebi — bekleyen/red talep varsa kuyruğa götür, yoksa talep aç */}
           {!yeni && !ilgiliFatura && form?.onayDurumu === 'kabul' && (
-            <Button
-              variant="secondary"
-              iconLeft={<Receipt size={14} strokeWidth={1.5} />}
-              onClick={faturayaDonustur}
-            >
-              Fatura oluştur
-            </Button>
+            faturaTalebi && faturaTalebi.durum === 'bekliyor' ? (
+              <Button
+                variant="secondary"
+                iconLeft={<Clock size={14} strokeWidth={1.5} />}
+                onClick={() => navigate('/fatura-talepleri')}
+                title={`${faturaTalebi.talepNo} — fatura yetkilisinde`}
+              >
+                Fatura Talebi Gönderildi
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                iconLeft={<Receipt size={14} strokeWidth={1.5} />}
+                onClick={faturaTalebiAc}
+                disabled={faturaTalepMesgul}
+                title="Fatura yetkilisine numarasız fatura talebi gönder"
+              >
+                {faturaTalepMesgul ? 'Hazırlanıyor…' : 'Fatura Oluştur'}
+              </Button>
+            )
           )}
           {/* Satış sözleşmesi (spec: teklif onaylandıktan sonra tek tuşla üretim) */}
           {!yeni && form?.onayDurumu === 'kabul' && (
@@ -2056,6 +2109,112 @@ function TeklifDetay() {
               }
             }}
           />
+        )
+      })()}
+
+      {/* Fatura Talebi — numarasız; muhasebe kesip numarasını ve PDF'ini girecek */}
+      {faturaTalepAcik && faturaTalepTaslak && (() => {
+        const t = faturaTalepTaslak
+        const sembol = paraBirimleri.find(p => p.id === t.paraBirimi)?.sembol || '₺'
+        const fmt = (n) => `${sembol}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+        const satir = { padding: '5px 8px', borderBottom: '1px solid var(--border-default)' }
+        const kunye = [
+          ['Firma', t.firmaAdi], ['Yetkili', t.yetkiliAdi], ['Vergi No', t.vergiNo],
+          ['Vergi Dairesi', t.vergiDairesi], ['Adres', t.adres],
+          ['Telefon', t.telefon], ['E-posta', t.email],
+        ]
+        const eksik = ['vergiNo', 'vergiDairesi', 'adres'].filter(k => !t[k])
+        return (
+          <Modal open onClose={() => setFaturaTalepAcik(false)} title="Fatura Talebi Oluştur" width={720}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{
+                background: 'var(--info-soft)', border: '1px solid var(--info)',
+                borderRadius: 8, padding: '10px 12px', font: '400 12.5px/1.5 var(--font-sans)', color: 'var(--text-primary)',
+              }}>
+                Fatura <strong>numarası girilmez</strong>. Talep fatura yetkilisine düşer; gerçek faturayı
+                o keser, numarasını ve PDF'ini sisteme girer.
+              </div>
+
+              <div>
+                <div style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                  Müşteri Künyesi
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12.5px/18px var(--font-sans)' }}>
+                  <tbody>
+                    {kunye.map(([k, v]) => (
+                      <tr key={k}>
+                        <td style={{ ...satir, color: 'var(--text-tertiary)', width: 120 }}>{k}</td>
+                        <td style={{ ...satir, color: v ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{v || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {eksik.length > 0 && (
+                  <div style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--warning)', marginTop: 6 }}>
+                    ⚠ Müşteri kartında vergi/adres bilgisi eksik — fatura kesilirken sorun çıkabilir.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                  Kalemler ({t.kalemler.length})
+                </div>
+                <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12.5px/18px var(--font-sans)' }}>
+                    <thead>
+                      <tr style={{ color: 'var(--text-tertiary)', textAlign: 'left' }}>
+                        <th style={satir}>Ürün</th>
+                        <th style={{ ...satir, textAlign: 'right', width: 60 }}>Miktar</th>
+                        <th style={{ ...satir, textAlign: 'right', width: 90 }}>Birim Fiyat</th>
+                        <th style={{ ...satir, textAlign: 'right', width: 100 }}>Toplam</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {t.kalemler.map((k, i) => (
+                        <tr key={i}>
+                          <td style={satir}>{k.urunAdi || '—'}{k.stokKodu ? ` · ${k.stokKodu}` : ''}</td>
+                          <td style={{ ...satir, textAlign: 'right' }}>{k.miktar} {k.birim}</td>
+                          <td style={{ ...satir, textAlign: 'right' }}>{fmt(k.birimFiyat)}</td>
+                          <td style={{ ...satir, textAlign: 'right', fontWeight: 600 }}>{fmt(k.satirToplam)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--surface-sunken)', borderRadius: 8, padding: '10px 12px' }}>
+                {[['Ara toplam', t.araToplam], ['KDV', t.kdvToplam]].map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', font: '400 12.5px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                    <span>{k}</span><span>{fmt(v)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', font: '700 15px/24px var(--font-sans)', color: 'var(--text-primary)', borderTop: '1px solid var(--border-default)', marginTop: 4, paddingTop: 4 }}>
+                  <span>Fatura Tutarı (KDV dahil)</span><span>{fmt(t.genelToplam)}</span>
+                </div>
+                {t.odemeSekli && (
+                  <div style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    Ödeme: {t.odemeSekli}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label>Muhasebeye not (isteğe bağlı)</Label>
+                <Textarea rows={2} value={faturaTalepNotu} onChange={e => setFaturaTalepNotu(e.target.value)}
+                  placeholder="Ör. Fatura ay sonuna kadar kesilmeli / e-arşiv olarak düzenlensin" />
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <Button variant="secondary" onClick={() => setFaturaTalepAcik(false)}>Vazgeç</Button>
+                <Button variant="primary" onClick={faturaTalebiGonder} disabled={faturaTalepMesgul}
+                  iconLeft={<Receipt size={14} strokeWidth={1.5} />}>
+                  {faturaTalepMesgul ? 'Gönderiliyor…' : 'Fatura Talebini Gönder'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
         )
       })()}
 

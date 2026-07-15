@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
 const KomutPaleti = lazy(() => import('./components/KomutPaleti'))
@@ -42,6 +43,7 @@ const SiparisOnaylari = lazy(() => import('./pages/SiparisOnaylari'))
 const Siparisler = lazy(() => import('./pages/Siparisler'))
 const SiparisDetay = lazy(() => import('./pages/SiparisDetay'))
 const TeklifOnaylari = lazy(() => import('./pages/TeklifOnaylari'))
+const FaturaTalepleri = lazy(() => import('./pages/FaturaTalepleri'))
 const TeklifDetay = lazy(() => import('./pages/TeklifDetay'))
 const Kesifler = lazy(() => import('./pages/Kesifler'))
 const KesifDetay = lazy(() => import('./pages/KesifDetay'))
@@ -124,6 +126,13 @@ function TeklifOnayGuard({ children }) {
 function SiparisOnayGuard({ children }) {
   const { kullanici } = useAuth()
   if (!kullanici?.siparisOnayYetkilisi) return <Navigate to="/dashboard" replace />
+  return children
+}
+// Fatura kuyruğu — fatura_yetkilisi bayrağı VEYA admin (mig 165).
+// Yetki mantığı tek yerde: faturaYetkisi() — sidebar ve sayfa da onu kullanır.
+function FaturaYetkiGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!faturaYetkisi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -352,6 +361,7 @@ function App() {
           <Route path="/siparisler" element={<Siparisler />} />
           <Route path="/siparisler/:id" element={<SiparisDetay />} />
           <Route path="/teklif-onaylari" element={<TeklifOnayGuard><TeklifOnaylari /></TeklifOnayGuard>} />
+          <Route path="/fatura-talepleri" element={<FaturaYetkiGuard><FaturaTalepleri /></FaturaYetkiGuard>} />
           <Route path="/satislar" element={<Satislar />} />
           <Route path="/satislar/:id" element={<SatisDetay />} />
           <Route path="/raporlar" element={<YonetimGuard><Raporlar /></YonetimGuard>} />

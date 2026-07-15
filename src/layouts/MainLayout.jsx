@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext'
+import { faturaYetkisi } from '../services/faturaTalepService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -9,7 +10,7 @@ import {
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car,
-  FileCheck, Fuel, ShoppingCart, Sun, FileSignature,
+  FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -123,6 +124,16 @@ const menuItems = [
       { id: 'siparis_onaylari', isim: 'Sipariş Onayı', yol: '/siparis-onaylari' },
     ],
   },
+  // Fatura Oluşturulacak — fatura yetkilisi (Abdullah) + adminler (mig 165).
+  // Satıştan gelen numarasız fatura talepleri burada karşılanır.
+  {
+    id: 'fatura_talepleri',
+    isim: 'Fatura Oluşturulacak',
+    Icon: Receipt,
+    modul: '_fatura_yetkisi',
+    grup: 'satis',
+    yol: '/fatura-talepleri',
+  },
   // ── Tedarik Süreçleri — Sipariş takibi ──
   {
     id: 'tedarik_surecleri',
@@ -232,6 +243,7 @@ const sayfaIsimleri = {
   '/teklifler': 'Teklifler',
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
+  '/fatura-talepleri': 'Fatura Oluşturulacak',
   '/kesifler': 'Keşifler',
   '/gunluk-ozet': 'Günlük Özet',
   '/sozlesmeler': 'Sözleşmeler',
@@ -386,6 +398,8 @@ function MainLayout({ children }) {
     // (Ferdi admin ama onay yetkisi yok; sadece Ali/Oğuz/Ahmet görür)
     if (m.modul === '_onay_yetkisi') return !!(kullanici?.siparisOnayYetkilisi || kullanici?.teklifOnayYetkilisi)
     if (m.modul === '_siparis_onay_yetkilisi') return !!kullanici?.siparisOnayYetkilisi
+    // Fatura kuyruğu — App.jsx FaturaYetkiGuard ile AYNI kaynak (faturaYetkisi)
+    if (m.modul === '_fatura_yetkisi') return faturaYetkisi(kullanici)
     if (m.grup === 'yonetim' || m.grup === 'filo') return yonetimErisimi
     return m.modul === null
       || kullanici?.rol === 'admin'
