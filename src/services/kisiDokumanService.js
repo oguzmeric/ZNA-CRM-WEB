@@ -5,7 +5,10 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
 const BUCKET = 'kisi-dokuman'
-export const MAX_BOYUT_MB = 8
+// 8 MB'dan 25'e çıkarıldı (2026-07-15): proje/DWG dosyaları 8 MB'a sığmıyordu.
+// DWG'yi engelleyen dosya TİPİ değildi — ne bucket'ta MIME kısıtı var ne de
+// input'ta accept — sadece bu sınırdı. Üstü OneDrive linki olarak eklenir.
+export const MAX_BOYUT_MB = 25
 export const MAX_BOYUT = MAX_BOYUT_MB * 1024 * 1024
 
 // ---------- Kategoriler ----------
@@ -32,6 +35,24 @@ export async function kategoriEkle({ isim, ikon, publicMi = false }) {
 export async function kategoriSil(id) {
   const { error } = await supabase.from('dokuman_kategorileri').delete().eq('id', id)
   if (error) throw error
+}
+
+/** Klasör adını değiştir. Sistem klasörleri (kullanici_id null) korunur —
+ *  RLS zaten engeller ama kullanıcıya net hata dönsün. */
+export async function kategoriYenidenAdlandir(id, isim) {
+  const yeni = String(isim || '').trim()
+  if (!yeni) throw new Error('Klasör adı boş olamaz.')
+  const { data, error } = await supabase
+    .from('dokuman_kategorileri')
+    .update({ isim: yeni })
+    .eq('id', id)
+    .select().single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Bu isimde bir klasörün zaten var.')
+    throw error
+  }
+  if (!data) throw new Error('Klasör güncellenemedi — sistem klasörleri yeniden adlandırılamaz.')
+  return toCamel(data)
 }
 
 async function mevcutKullaniciId() {

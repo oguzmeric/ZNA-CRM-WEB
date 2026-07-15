@@ -7,12 +7,13 @@ import {
   Upload, Link2, FileText, FileSpreadsheet, FileImage, File,
   Search, Eye, Download, Trash2, Edit2, Lock, Users, User as UserIcon,
   Plus, X, RefreshCw, ClipboardList, Target, Library, Tag, Cloud, CheckCircle2, AlertTriangle,
+  Folder, FolderPlus,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import {
-  kategorileriGetir, kategoriEkle, kategoriSil,
+  kategorileriGetir, kategoriEkle, kategoriSil, kategoriYenidenAdlandir,
   dokumanlariGetir, dokumanEkle, dokumanGuncelle, dokumanSil,
   dokumanIndirmeUrl, dokumanDosyayiIndir,
   MAX_BOYUT_MB, MAX_BOYUT,
@@ -66,6 +67,16 @@ export default function KisiselDokumanlar() {
   const [arama, setArama] = useState('')
   const [kategoriFiltre, setKategoriFiltre] = useState('')
 
+  // ── Klasör görünümü ───────────────────────────────────────────────────
+  // Kategoriler zaten kullanıcı-tanımlı ve isimliydi, ama sadece filtre
+  // açılırında duruyordu — kullanıcı "dağınık" görüyordu. Artık içine
+  // girilen klasör kartları (2026-07-15).
+  const [acikKlasor, setAcikKlasor] = useState(null)   // null = kök
+  const [yeniKlasorAcik, setYeniKlasorAcik] = useState(false)
+  const [yeniKlasorAd, setYeniKlasorAd] = useState('')
+  const [surukleAktif, setSurukleAktif] = useState(false)
+  const [yuklemeDurum, setYuklemeDurum] = useState(null)  // {toplam, biten, ad}
+
   const kimId = kullanici?.id
 
   const yukle = async () => {
@@ -116,8 +127,166 @@ export default function KisiselDokumanlar() {
 
   const kategoriIsim = (id) => kategoriler.find(k => k.id === id)?.isim || 'Kategorisiz'
 
+  // Klasörde kaç doküman var (o anki sekme kapsamında)
+  const klasorSayisi = (kid) => sekmeliListe.filter(d => String(d.kategoriId) === String(kid)).length
+
+  // Arama yapılırken klasör gezinme devre dışı: kullanıcı "her yerde ara"
+  // bekler, açık klasörün içine hapsolmasın.
+  const aramaModu = arama.trim().length > 0
+
+  const gorunenListe = useMemo(() => {
+    if (aramaModu || kategoriFiltre) return aramaliListe
+    return aramaliListe.filter(d =>
+      acikKlasor ? String(d.kategoriId) === String(acikKlasor) : !d.kategoriId)
+  }, [aramaliListe, acikKlasor, aramaModu, kategoriFiltre])
+
+  const acikKlasorObj = kategoriler.find(k => String(k.id) === String(acikKlasor)) || null
+
+  const klasorOlustur = async (ad) => {
+    const isim = String(ad || '').trim()
+    if (!isim) return null
+    const mevcut = kategoriler.find(k => k.isim.toLocaleLowerCase('tr') === isim.toLocaleLowerCase('tr'))
+    if (mevcut) return mevcut     // aynı isim varsa onu kullan (sürükle-bırakta tekrar açma)
+    const yeniK = await kategoriEkle({ isim })
+    setKategoriler(prev => [...prev, yeniK])
+    return yeniK
+  }
+
+  const yeniKlasorKaydet = async () => {
+    try {
+      const k = await klasorOlustur(yeniKlasorAd)
+      if (!k) { toast.error('Klasör adı boş olamaz.'); return }
+      setYeniKlasorAd(''); setYeniKlasorAcik(false)
+      toast.success(`"${k.isim}" klasörü oluşturuldu.`)
+    } catch (e) {
+      toast.error(e?.message?.includes('duplicate') || e?.code === '23505'
+        ? 'Bu isimde bir klasörün zaten var.'
+        : (e?.message || 'Klasör oluşturulamadı.'))
+    }
+  }
+
+  // ── Sürükle-bırak ────────────────────────────────────────────────────
+  // Dosya bırakılırsa açık klasöre yüklenir. KLASÖR bırakılırsa o isimde
+  // klasör açılır ve içindekiler oraya yüklenir (kullanıcı isteği).
+  // DataTransferItem.webkitGetAsEntry: dizin mi dosya mı ayırmanın tek yolu;
+  // dosya listesi (e.dataTransfer.files) dizinleri 0 baytlık dosya gösterir.
+  const dizinDosyalari = (dizinEntry) => new Promise((resolve) => {
+    const okuyucu = dizinEntry.createReader()
+    const hepsi = []
+    const oku = () => okuyucu.readEntries(async (girisler) => {
+      if (!girisler.length) { resolve(hepsi); return }
+      for (const g of girisler) {
+        if (g.isFile) {
+          await new Promise(r => g.file((f) => { hepsi.push(f); r() }))
+        }
+        // Alt klasörler DÜZ geçilir — tek seviye klasör modeli.
+      }
+      oku()   // readEntries tek seferde en fazla 100 döner
+    }, () => resolve(hepsi))
+    oku()
+  })
+
+  const dosyalariYukle = async (dosyalar, kategoriId) => {
+    if (!dosyalar.length) return
+    setYuklemeDurum({ toplam: dosyalar.length, biten: 0, ad: dosyalar[0].name })
+    let basarili = 0
+    const hatalar = []
+    for (let i = 0; i < dosyalar.length; i++) {
+      const f = dosyalar[i]
+      setYuklemeDurum({ toplam: dosyalar.length, biten: i, ad: f.name })
+      try {
+        if (f.size > MAX_BOYUT) {
+          hatalar.push(`${f.name}: ${MAX_BOYUT_MB} MB üstü`)
+          continue
+        }
+        await dokumanEkle({
+          baslik: f.name.replace(/\.[^.]+$/, ''),
+          aciklama: null,
+          kategoriId: kategoriId || null,
+          tip: 'dosya',
+          dosya: f,
+          gorunurluk: 'sadece_ben',
+        })
+        basarili++
+      } catch (e) {
+        hatalar.push(`${f.name}: ${e?.message || 'yüklenemedi'}`)
+      }
+    }
+    setYuklemeDurum(null)
+    await yukle()
+    // Kısmi başarı SAKLANMAZ — hangi dosya neden yüklenmedi söylenir.
+    if (basarili) toast.success(`${basarili} dosya yüklendi.`)
+    if (hatalar.length) toast.error(`${hatalar.length} dosya yüklenemedi — ${hatalar.slice(0, 3).join(' · ')}${hatalar.length > 3 ? ' …' : ''}`)
+  }
+
+  const birakildi = async (e) => {
+    e.preventDefault()
+    setSurukleAktif(false)
+    if (sekme !== 'bana_ait') { toast.error('Dosya eklemek için "Benim Dokümanlarım" sekmesinde ol.'); return }
+    const ogeler = Array.from(e.dataTransfer.items || [])
+      .map(o => (o.webkitGetAsEntry ? o.webkitGetAsEntry() : null))
+      .filter(Boolean)
+
+    try {
+      if (ogeler.length) {
+        const dizinler = ogeler.filter(o => o.isDirectory)
+        const dosyaGirisleri = ogeler.filter(o => o.isFile)
+
+        // Klasör(ler) bırakıldı → aynı isimde klasör aç, içine yükle
+        for (const d of dizinler) {
+          const k = await klasorOlustur(d.name)
+          const icerik = await dizinDosyalari(d)
+          if (!icerik.length) { toast.error(`"${d.name}" boş görünüyor — yüklenecek dosya yok.`); continue }
+          await dosyalariYukle(icerik, k?.id)
+        }
+
+        // Tekil dosyalar → açık klasöre
+        if (dosyaGirisleri.length) {
+          const dosyalar = await Promise.all(dosyaGirisleri.map(g => new Promise(r => g.file(r))))
+          await dosyalariYukle(dosyalar, acikKlasor)
+        }
+        return
+      }
+      // webkitGetAsEntry yoksa (eski tarayıcı) düz dosya listesi
+      await dosyalariYukle(Array.from(e.dataTransfer.files || []), acikKlasor)
+    } catch (err) {
+      setYuklemeDurum(null)
+      toast.error(err?.message || 'Yükleme başarısız.')
+    }
+  }
+
   return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+    <div
+      style={{ padding: 24, maxWidth: 1400, margin: '0 auto', position: 'relative' }}
+      onDragOver={e => { e.preventDefault(); if (!surukleAktif) setSurukleAktif(true) }}
+      onDragLeave={e => { if (e.currentTarget === e.target) setSurukleAktif(false) }}
+      onDrop={birakildi}
+    >
+      {/* Sürükle-bırak katmanı — dosya/klasör bırakılınca yüklenir */}
+      {surukleAktif && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(30,90,168,0.08)',
+          border: '3px dashed var(--brand-primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            background: 'var(--surface-card)', padding: '18px 28px',
+            borderRadius: 'var(--radius-lg)', border: '1px solid var(--brand-primary)',
+            boxShadow: 'var(--shadow-lg)', textAlign: 'center',
+          }}>
+            <Upload size={28} style={{ color: 'var(--brand-primary)' }} />
+            <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)', marginTop: 6 }}>
+              {acikKlasorObj ? `"${acikKlasorObj.isim}" klasörüne bırak` : 'Bırak — yüklensin'}
+            </div>
+            <div style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              Klasör bırakırsan aynı isimde klasör açılır · max {MAX_BOYUT_MB} MB
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 className="t-h1" style={{ margin: 0 }}>Dokümanlarım</h1>
@@ -126,8 +295,11 @@ export default function KisiselDokumanlar() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" iconLeft={<FolderPlus size={14} />} onClick={() => { setYeniKlasorAd(''); setYeniKlasorAcik(true) }}>
+            Yeni Klasör
+          </Button>
           <Button variant="secondary" iconLeft={<Tag size={14} />} onClick={() => setKategoriModal(true)}>
-            Kategoriler
+            Klasörleri Yönet
           </Button>
           <Button variant="secondary" iconLeft={<Cloud size={14} />} onClick={() => setOneDriveModal(true)}>
             OneDrive'dan Ekle
@@ -176,18 +348,99 @@ export default function KisiselDokumanlar() {
         </CustomSelect>
       </div>
 
+      {/* Yeni klasör satırı */}
+      {yeniKlasorAcik && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Folder size={16} style={{ color: 'var(--brand-primary)' }} />
+            <input
+              autoFocus
+              value={yeniKlasorAd}
+              onChange={e => setYeniKlasorAd(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') yeniKlasorKaydet(); if (e.key === 'Escape') setYeniKlasorAcik(false) }}
+              placeholder="Klasör adı (ör. Bayrampaşa Projesi)"
+              style={{
+                flex: 1, minWidth: 200, padding: 8,
+                borderRadius: 8, border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)', color: 'var(--text-primary)', fontSize: 13,
+              }}
+            />
+            <Button variant="primary" size="sm" onClick={yeniKlasorKaydet}>Oluştur</Button>
+            <Button variant="tertiary" size="sm" onClick={() => setYeniKlasorAcik(false)}>Vazgeç</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Yükleme göstergesi */}
+      {yuklemeDurum && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+            <Upload size={16} style={{ color: 'var(--brand-primary)' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>
+              Yükleniyor: <strong style={{ color: 'var(--text-primary)' }}>{yuklemeDurum.ad}</strong>
+              {yuklemeDurum.toplam > 1 && <> · {yuklemeDurum.biten + 1}/{yuklemeDurum.toplam}</>}
+            </span>
+          </div>
+        </Card>
+      )}
+
+      {/* Konum çubuğu — klasörün içindeyken */}
+      {acikKlasorObj && !aramaModu && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13 }}>
+          <button onClick={() => setAcikKlasor(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 600 }}>
+            Dokümanlarım
+          </button>
+          <span style={{ color: 'var(--text-tertiary)' }}>/</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--text-primary)' }}>
+            <Folder size={14} style={{ color: 'var(--brand-primary)' }} /> {acikKlasorObj.isim}
+          </span>
+          <span style={{ color: 'var(--text-tertiary)' }}>· {klasorSayisi(acikKlasorObj.id)} doküman</span>
+        </div>
+      )}
+
+      {/* Klasör kartları — yalnız kökte ve arama yokken */}
+      {!yukleniyor && !acikKlasor && !aramaModu && !kategoriFiltre && kategoriler.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10, marginBottom: 16 }}>
+          {kategoriler.map(k => (
+            <button key={k.id} onClick={() => setAcikKlasor(k.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 14px', textAlign: 'left',
+                background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+            >
+              <Folder size={20} style={{ color: k.kullaniciId ? 'var(--brand-primary)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {k.isim}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  {klasorSayisi(k.id)} doküman{k.kullaniciId ? '' : ' · ortak'}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Liste */}
       {yukleniyor ? (
         <Card><div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div></Card>
-      ) : aramaliListe.length === 0 ? (
+      ) : gorunenListe.length === 0 ? (
         <EmptyState
           icon={<File size={40} strokeWidth={1.5} />}
-          title="Doküman yok"
-          description={sekme === 'bana_ait' ? 'İlk dokümanını ekle.' : 'Bu sekmede kayıt yok.'}
+          title={acikKlasorObj ? `"${acikKlasorObj.isim}" boş` : (aramaModu ? 'Sonuç yok' : 'Klasör dışında doküman yok')}
+          description={sekme === 'bana_ait'
+            ? 'Dosyaları buraya sürükleyip bırakabilirsin — klasör bırakırsan aynı isimde klasör açılır.'
+            : 'Bu sekmede kayıt yok.'}
         />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-          {aramaliListe.map(d => (
+          {gorunenListe.map(d => (
             <DokumanKarti key={d.id}
               dokuman={d}
               kategoriIsim={kategoriIsim}
@@ -735,6 +988,8 @@ function KategoriYonetimModal({ kategoriler, kullanici, onKapat, onDegisiklik })
   const { toast } = useToast()
   const [yeniIsim, setYeniIsim] = useState('')
   const [publicMi, setPublicMi] = useState(false)
+  const [adDuzenle, setAdDuzenle] = useState(null)   // yeniden adlandırılan klasör id
+  const [yeniAd, setYeniAd] = useState('')
   const isAdmin = kullanici?.rol === 'admin'
   const benimKategori = kategoriler.filter(k => String(k.kullaniciId) === String(kullanici?.id))
   const publicKategori = kategoriler.filter(k => !k.kullaniciId)
@@ -749,9 +1004,19 @@ function KategoriYonetimModal({ kategoriler, kullanici, onKapat, onDegisiklik })
     } catch (e) { toast.error(e?.message || 'Ekleme hatası') }
   }
   const sil = async (id, isim) => {
-    if (!confirm(`"${isim}" silinsin mi? Bu kategoriye bağlı dokümanlar "Kategorisiz" olur.`)) return
-    try { await kategoriSil(id); toast.success('Silindi.'); await onDegisiklik() }
+    // Klasör silinince İÇİNDEKİ DOKÜMANLAR SİLİNMEZ — kategori_id null olur
+    // (mig 123: on delete set null). Kullanıcı bunu bilerek onaylasın.
+    if (!confirm(`"${isim}" klasörü silinsin mi? İçindeki dokümanlar silinmez, klasörsüz kalır.`)) return
+    try { await kategoriSil(id); toast.success('Klasör silindi.'); await onDegisiklik() }
     catch (e) { toast.error(e?.message || 'Silme hatası') }
+  }
+  const adKaydet = async (id) => {
+    try {
+      await kategoriYenidenAdlandir(id, yeniAd)
+      setAdDuzenle(null)
+      toast.success('Klasör adı değişti.')
+      await onDegisiklik()
+    } catch (e) { toast.error(e?.message || 'Yeniden adlandırılamadı.') }
   }
 
   return createPortal(
@@ -795,11 +1060,28 @@ function KategoriYonetimModal({ kategoriler, kullanici, onKapat, onDegisiklik })
         {benimKategori.length === 0 ? (
           <div style={{ padding: 10, fontSize: 12, color: 'var(--text-tertiary)' }}>Henüz eklemedin.</div>
         ) : benimKategori.map(k => (
-          <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 6, marginBottom: 4 }}>
-            <span>📁 {k.isim}</span>
-            <button onClick={() => sil(k.id, k.isim)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
-              <Trash2 size={14} />
-            </button>
+          <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 6, marginBottom: 4 }}>
+            {adDuzenle === k.id ? (
+              <>
+                <Input autoFocus value={yeniAd} onChange={e => setYeniAd(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') adKaydet(k.id); if (e.key === 'Escape') setAdDuzenle(null) }}
+                  style={{ flex: 1 }} />
+                <Button variant="primary" size="sm" onClick={() => adKaydet(k.id)}>Kaydet</Button>
+                <Button variant="tertiary" size="sm" onClick={() => setAdDuzenle(null)}>Vazgeç</Button>
+              </>
+            ) : (
+              <>
+                <span style={{ flex: 1 }}>📁 {k.isim}</span>
+                <button onClick={() => { setAdDuzenle(k.id); setYeniAd(k.isim) }} title="Yeniden adlandır"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                  <Edit2 size={14} />
+                </button>
+                <button onClick={() => sil(k.id, k.isim)} title="Sil"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
+                  <Trash2 size={14} />
+                </button>
+              </>
+            )}
           </div>
         ))}
 
