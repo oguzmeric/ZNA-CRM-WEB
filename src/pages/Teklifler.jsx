@@ -404,8 +404,9 @@ export default function Teklifler() {
                     <colgroup>
                       <col style={{ width: 112 }} />               {/* Teklif No */}
                       <col style={{ width: '24%' }} />             {/* Müşteri */}
-                      <col style={{ width: '26%' }} />             {/* Açıklama */}
-                      <col style={{ width: 148 }} />               {/* Fatura */}
+                      <col style={{ width: '24%' }} />             {/* Açıklama */}
+                      {/* ikonlu "Proforma oluştur" butonu ~176px — dar olursa Düzenleme kolonuna taşıyor */}
+                      <col style={{ width: 180 }} />               {/* Proforma */}
                       <col style={{ width: 104 }} />               {/* Düzenleme */}
                       <col style={{ width: 118 }} />               {/* Hazırlayan */}
                       <col style={{ width: 148 }} />               {/* Toplam */}
