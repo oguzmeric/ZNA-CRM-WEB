@@ -15,7 +15,7 @@ import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
-import { belgePaylas } from '../services/belgePaylasimService'
+import BelgePaylasModal from '../components/BelgePaylasModal'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
 import { siparisGetir, kalemleriGetir } from '../services/siparisService'
 import { musteriGetir, musterileriGetir } from '../services/musteriService'
@@ -339,25 +339,21 @@ export default function SatisSozlesmeForm() {
   }
 
   // ---- Müşteriye gönder ----
-  const gonder = async () => {
-    if (!gonderEmail.trim()) { toast.error('E-posta adresi girin.'); return }
-    setMesgul(true)
+  // Gönderim ortak BelgePaylasModal ile yapılıyor (e-posta / SMS / ikisi).
+  // Eskiden bu sayfada kanal 'mail' olarak sabitlenmişti; altyapı SMS'i zaten
+  // destekliyordu (belge-paylas edge fn satis_sozlesme SMS metnini üretiyor).
+  const gonderildiSonrasi = async () => {
     try {
-      await belgePaylas({
-        belge_tipi: 'satis_sozlesme', belge_id: kayit.id, kanal: 'mail',
-        email: gonderEmail.trim(), sure_gun: 30,
-        ozel_mesaj: `Satış sözleşmenizi görüntüleyip yazdırdıktan sonra kaşe ve imza ile PDF olarak tarafımıza iletiniz. Nihai sözleşme bedeli: ${paraFmt(kayit.nihaiToplam, kayit.paraBirimi)}.`,
-      })
       const g = await gonderildiIsaretle(kayit.id)
       if (!g?._hata) setKayit(g)
-      toast.success('Sözleşme müşteriye e-posta ile gönderildi.')
-      setGonderAcik(false)
     } catch (e) {
-      toast.error('Gönderilemedi: ' + e.message)
-    } finally {
-      setMesgul(false)
+      console.warn('[SatisSozlesmeForm] gonderildiIsaretle:', e?.message)
     }
   }
+
+  const gonderOzelMesaj = kayit
+    ? `Satış sözleşmenizi görüntüleyip yazdırdıktan sonra kaşe ve imza ile PDF olarak tarafımıza iletiniz. Nihai sözleşme bedeli: ${paraFmt(kayit.nihaiToplam, kayit.paraBirimi)}.`
+    : ''
 
   // ---- İmzalı PDF ----
   const imzaliYukle = async (file) => {
@@ -867,7 +863,7 @@ export default function SatisSozlesmeForm() {
 
               {kayit && ['onaylandi', 'gonderildi'].includes(kayit.durum) && (
                 <>
-                  <Button variant="primary" iconLeft={<Send size={14} strokeWidth={1.5} />} onClick={() => setGonderAcik(v => !v)}>
+                  <Button variant="primary" iconLeft={<Send size={14} strokeWidth={1.5} />} onClick={() => setGonderAcik(true)}>
                     Müşteriye Gönder
                   </Button>
                   <Button variant="secondary" iconLeft={<FileUp size={14} strokeWidth={1.5} />} onClick={() => imzaliRef.current?.click()} disabled={mesgul}>
@@ -895,14 +891,18 @@ export default function SatisSozlesmeForm() {
               )}
             </div>
 
-            {gonderAcik && kayit && (
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-default)' }}>
-                <Label>Müşteri e-posta</Label>
-                <Input type="email" value={gonderEmail} onChange={e => setGonderEmail(e.target.value)} placeholder="musteri@firma.com" />
-                <Button variant="primary" style={{ marginTop: 8, width: '100%' }} onClick={gonder} disabled={mesgul}>
-                  {mesgul ? 'Gönderiliyor…' : 'E-posta Gönder'}
-                </Button>
-              </div>
+            {kayit && (
+              <BelgePaylasModal
+                acik={gonderAcik}
+                onKapat={() => setGonderAcik(false)}
+                belgeTipi="satis_sozlesme"
+                belgeId={kayit.id}
+                baslangicEmail={gonderEmail || form.email || ''}
+                baslangicGsm={form.telefon || ''}
+                baslangicOzelMesaj={gonderOzelMesaj}
+                belgeBaslik={`${kayit.sozlesmeNo || 'Satış Sözleşmesi'} — ${form.firmaAdi || ''}`}
+                onGonderildi={gonderildiSonrasi}
+              />
             )}
 
             {redAcik && (

@@ -46,6 +46,7 @@ export default function BelgePaylasModal({
   baslangicEmail = '',
   baslangicGsm   = '',
   baslangicSablon = 'standart',   // teklifin kayitli sablonu — default secim
+  baslangicOzelMesaj = '',        // belge tipine ozel hazir mesaj (kullanici duzenleyebilir)
   belgeBaslik    = '',
   onGonderildi,     // başarılı paylaşım sonrası callback — teklif durumu güncelleme için
 }) {
@@ -68,12 +69,12 @@ export default function BelgePaylasModal({
       setSureGun(30)
       setSablon(baslangicSablon || 'standart')
       setSirket('zna')
-      setOzelMesaj('')
+      setOzelMesaj(baslangicOzelMesaj || '')
       setHata(null)
       setSonuc(null)
       setGonderiliyor(false)
     }
-  }, [acik, baslangicEmail, baslangicGsm, baslangicSablon])
+  }, [acik, baslangicEmail, baslangicGsm, baslangicSablon, baslangicOzelMesaj])
 
   if (!acik) return null
 
@@ -121,6 +122,8 @@ export default function BelgePaylasModal({
 
   const baslik = belgeTipi === 'teklif' ? 'Teklifi Müşteriye Gönder'
     : belgeTipi === 'demo_tutanak' ? 'Teslim Tutanağını Müşteriye Gönder'
+    : belgeTipi === 'satis_sozlesme' ? 'Satış Sözleşmesini Müşteriye Gönder'
+    : belgeTipi === 'bayi_sozlesme' ? 'Bayilik Sözleşmesini Gönder'
     : 'Servis Raporunu Müşteriye Gönder'
 
   // ─── BASARILI SONUC EKRANI ─────────────────────────────────────────────
