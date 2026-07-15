@@ -10,6 +10,8 @@ import {
 } from '../services/hatirlatmaService'
 import { lisanslariGetir } from '../services/lisansService'
 import { teklifleriGetir } from '../services/teklifService'
+import { musterileriGetir } from '../services/musteriService'
+import { useAuth } from './AuthContext'
 
 // Demo bitişi <= bu kadar gün ise hatırlatma çıkar
 const LISANS_UYARI_GUN = 3
@@ -28,19 +30,32 @@ const HatirlatmaContext = createContext(null)
 export function HatirlatmaProvider({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
-  // /skor ofis kiosk ekranıdır — kişisel takip hatırlatması popup'ının yeri değil
-  const kioskta = location.pathname === '/skor'
+  const { kullanici } = useAuth()
+  // Popup'ın ÇIKMAMASI gereken ekranlar:
+  //  - /skor: ofis kiosk ekranı, kişisel hatırlatmanın yeri değil
+  //  - /yazdir: yazdırma önizlemesi — popup faturanın/teklifin üstüne biniyor,
+  //    hatta çıktıya karışıyordu (App.jsx'teki isPrint ile aynı kural)
+  //  - /p/, /davet/: müşteriye açık public sayfalar — iç hatırlatma sızmasın
+  const p = location.pathname
+  const popupKapali =
+    p === '/skor' ||
+    p.endsWith('/yazdir') ||
+    p.startsWith('/p/') ||
+    p.startsWith('/davet/')
   const [hatirlatmalar, setHatirlatmalar] = useState([])
   const [gosterModal, setGosterModal] = useState(false)
   const [vadesiGelenler, setVadesiGelenler] = useState([])
   const kontrolEdildiRef = useRef(false)
 
   useEffect(() => {
+    // Kullanıcı henüz yüklenmediyse bekle — filtreleri onunla kuruyoruz
+    if (!kullanici?.id) return
     Promise.all([
       hatirlatmalariGetir(),
       lisanslariGetir().catch(() => []),
       teklifleriGetir().catch(() => []),
-    ]).then(async ([listeHam, lisanslar, teklifler]) => {
+      musterileriGetir().catch(() => []),
+    ]).then(async ([listeHam, lisanslar, teklifler, musteriler]) => {
       // Silinmiş tekliflere ait teklif hatırlatmalarını at ve DB'den temizle
       const mevcutTeklifIds = new Set(teklifler.map(t => t.id))
       const orphan = listeHam.filter(h => h.tip === 'teklif' && h.teklifId && !mevcutTeklifIds.has(h.teklifId))
@@ -54,10 +69,30 @@ export function HatirlatmaProvider({ children }) {
       kontrolEdildiRef.current = true
       const simdi = new Date()
 
-      // Demo lisanslarda bitişe <= 3 gün kalanlar (synthetic hatirlatma)
+      // Demo lisanslarda bitişe <= 3 gün kalanlar (synthetic hatirlatma).
+      //
+      // KİME GÖSTERİLİR: teklif hatırlatmaları zaten kullanici_id ile sahibine
+      // filtreleniyor (hatirlatmaService), ama lisans hatırlatmaları synthetic
+      // üretildiği için HİÇ filtresi yoktu — depocudan teknisyene herkese
+      // çıkıyordu. trassir_lisanslar'da sahip kolonu yok; en yakın gerçek sahip
+      // müşterinin temsilcisi. Temsilci atanmamışsa lisansı yönetenlere düşsün
+      // (lisanslar modülü / admin) — yine de herkese değil.
+      const temsilciHaritasi = new Map(
+        (musteriler || []).filter(m => m.temsilciKullaniciId)
+          .map(m => [Number(m.id), Number(m.temsilciKullaniciId)])
+      )
+      const lisansModulu =
+        kullanici?.rol === 'admin' || (kullanici?.moduller || []).includes('lisanslar')
+      const lisansBanaMi = (l) => {
+        const temsilci = temsilciHaritasi.get(Number(l.musteriId))
+        if (temsilci) return temsilci === Number(kullanici.id)
+        return lisansModulu
+      }
+
       const snooze = snoozeOku()
       const lisansHatirlatmalari = (lisanslar || [])
         .filter((l) => l.lisansTipi === 'sureksiz_demo' && l.durum === 'aktif' && l.bitisTarih)
+        .filter(lisansBanaMi)
         .map((l) => {
           const kalanGun = Math.ceil((new Date(l.bitisTarih) - simdi) / 86400000)
           return { l, kalanGun }
@@ -91,7 +126,8 @@ export function HatirlatmaProvider({ children }) {
         setTimeout(() => setGosterModal(true), 800)
       }
     })
-  }, [])
+    // Kullanıcı değişince (giriş/çoklu hesap) filtreler yeniden kurulmalı
+  }, [kullanici?.id])
 
   const hatirlatmaEkle = async (teklifData, gunSayisi = 7) => {
     if (!gunSayisi || gunSayisi <= 0) return null
@@ -213,7 +249,7 @@ export function HatirlatmaProvider({ children }) {
 
       {/* Hatırlatma Popup Modal */}
       <AnimatePresence>
-        {gosterModal && !kioskta && vadesiGelenler.length > 0 && (
+        {gosterModal && !popupKapali && vadesiGelenler.length > 0 && (
           <motion.div
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
