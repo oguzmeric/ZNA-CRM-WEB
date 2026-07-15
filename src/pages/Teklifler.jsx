@@ -14,6 +14,11 @@ import {
   musteriTalepleriniGetir, musteriTalepGuncelle,
 } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
+import { teklifOnayla } from '../services/teklifOnayService'
+import { useAuth } from '../context/AuthContext'
+import {
+  TEKLIF_DURUM, TEKLIF_DURUM_META, tekliftenDurum, durumdanDbAlanlar,
+} from '../lib/teklifDurumlari'
 import { trContains } from '../lib/trSearch'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -21,11 +26,20 @@ import {
   Button, SearchInput, Card, Badge, CodeBadge, EmptyState,
 } from '../components/ui'
 
-const onayTone = {
-  takipte:    { tone: 'lead',      isim: 'Cevap Bekleniyor' },
-  kabul:      { tone: 'aktif',     isim: 'Onaylandı' },
-  revizyon:   { tone: 'beklemede', isim: 'Revizyon' },
-  vazgecildi: { tone: 'kayip',     isim: 'Reddedildi' },
+// Rozet artık gerçek durumu (spek_durum öncelikli) gösterir. Eskiden yalnız eski
+// onay_durumu kolonuna bakıyordu; yönetici onayı bekleyen teklif "Cevap Bekleniyor"
+// görünüp detay sayfasıyla çelişiyordu.
+const DURUM_TONE = {
+  taslak:                'neutral',
+  yon_onay_bekliyor:     'beklemede',
+  revizyon_istendi:      'uyari',
+  yon_onayladi:          'basarili',
+  musteriye_gonderildi:  'lead',
+  musteri_onay_bekliyor: 'lead',
+  musteri_onayladi:      'aktif',
+  musteri_reddetti:      'kayip',
+  suresi_doldu:          'neutral',
+  siparise_aktarildi:    'aktif',
 }
 
 // Şablon tipi badge — 'standart' için gürültü olmasın diye render edilmez
@@ -72,6 +86,7 @@ export default function Teklifler() {
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const { teklifHatirlatmasi, hatirlatmaSil } = useHatirlatma()
+  const { kullanici } = useAuth()
 
   const [teklifler, setTeklifler] = useState([])
   const [musteriTalepleri, setMusteriTalepleri] = useState([])
@@ -115,12 +130,50 @@ export default function Teklifler() {
     navigate('/teklifler/yeni')
   }
 
-  const durumGuncelle = async (id, yeniDurum) => {
-    // Kabul dışı durumlarda onay kuyruğundan (teklif_onayi + siparis_onayi) düşür.
-    const payload = { onayDurumu: yeniDurum }
-    if (yeniDurum !== 'kabul') { payload.teklifOnayi = null; payload.siparisOnayi = null }
-    await teklifGuncelle(id, payload)
-    setTeklifler(prev => prev.map(t => t.id === id ? { ...t, ...payload } : t))
+  // Listedeki onay butonu, teklifin bulunduğu adıma göre şekil alır.
+  // Eskiden tek bir "Onayla" vardı ve yalnızca onay_durumu='kabul' yazıyordu:
+  // spek_durum'a dokunmadığı için teklif yönetici onay kuyruğundan (filtre:
+  // onay_durumu IN takipte/revizyon) sessizce düşüyor ama detayda hâlâ
+  // "Yönetici Onayı Bekliyor" görünüyordu. Artık adım atlanmıyor ve her yazma
+  // iki kolonu birden senkron tutuyor.
+  const listeAksiyonu = (t) => {
+    const durum = tekliftenDurum(t)
+    if (durum === TEKLIF_DURUM.YON_ONAY_BEKLIYOR) {
+      const yetkili = kullanici?.teklifOnayYetkilisi === true || kullanici?.teklif_onay_yetkilisi === true
+      return yetkili ? { tip: 'yonetici', etiket: 'Yönetici Onayla' } : null
+    }
+    if (durum === TEKLIF_DURUM.MUSTERIYE_GONDERILDI || durum === TEKLIF_DURUM.MUSTERI_ONAY_BEKLIYOR) {
+      return { tip: 'musteri_kabul', etiket: 'Müşteri Kabul' }
+    }
+    return null
+  }
+
+  const listeOnayla = async (t) => {
+    const aksiyon = listeAksiyonu(t)
+    if (!aksiyon) return
+    const onay = await confirm({
+      baslik: aksiyon.tip === 'yonetici' ? 'Yönetici Onayı' : 'Müşteri Kabulü',
+      mesaj: aksiyon.tip === 'yonetici'
+        ? `${t.teklifNo} yönetici onayından geçsin mi? Teklif müşteriye gönderilebilir hale gelir.`
+        : `${t.teklifNo} için müşteri kabulü işaretlensin mi?`,
+      onayMetin: aksiyon.etiket, iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    try {
+      if (aksiyon.tip === 'yonetici') {
+        await teklifOnayla(t.id, kullanici, null, null)
+        setTeklifler(prev => prev.map(x => x.id === t.id
+          ? { ...x, spekDurum: TEKLIF_DURUM.YON_ONAYLADI, onayDurumu: 'takipte' } : x))
+        toast('Yönetici onayı verildi', 'basari')
+      } else {
+        const alanlar = durumdanDbAlanlar(TEKLIF_DURUM.MUSTERI_ONAYLADI)
+        await teklifGuncelle(t.id, alanlar)
+        setTeklifler(prev => prev.map(x => x.id === t.id ? { ...x, ...alanlar } : x))
+        toast('Müşteri kabulü işaretlendi', 'basari')
+      }
+    } catch (e) {
+      toast('İşlem başarısız: ' + (e?.message || 'bilinmeyen hata'), 'hata')
+    }
   }
 
   const teklifSil = async (id) => {
@@ -440,7 +493,12 @@ export default function Teklifler() {
                     </thead>
                     <tbody>
                       {gorunenTeklifler.map(t => {
-                        const onay = onayTone[t.onayDurumu] || onayTone.takipte
+                        const durum = tekliftenDurum(t)
+                        const onay = {
+                          tone: DURUM_TONE[durum] || 'neutral',
+                          isim: TEKLIF_DURUM_META[durum]?.isim || 'Taslak',
+                        }
+                        const aksiyon = listeAksiyonu(t)
                         const hatirlatma = teklifHatirlatmasi(t.id)
                         const hatirlatmaVadesiGeldi = hatirlatma && new Date(hatirlatma.hatirlatmaTarihi) <= new Date()
                         const ilgiliFatura = satislar.find(s => s.teklifId === t.id)
@@ -582,10 +640,11 @@ export default function Teklifler() {
                                 >
                                   <Pencil size={12} strokeWidth={1.5} />
                                 </button>
-                                {t.onayDurumu !== 'kabul' && t.onayDurumu !== 'vazgecildi' && (
+                                {aksiyon && (
                                   <button
-                                    aria-label="Onayla"
-                                    onClick={() => durumGuncelle(t.id, 'kabul')}
+                                    aria-label={aksiyon.etiket}
+                                    title={aksiyon.etiket}
+                                    onClick={() => listeOnayla(t)}
                                     style={{
                                       height: 28, padding: '0 10px',
                                       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -596,7 +655,7 @@ export default function Teklifler() {
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    <Check size={12} strokeWidth={2} /> Onayla
+                                    <Check size={12} strokeWidth={2} /> {aksiyon.etiket}
                                   </button>
                                 )}
                                 <button

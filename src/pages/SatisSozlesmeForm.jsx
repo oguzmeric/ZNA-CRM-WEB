@@ -17,9 +17,9 @@ import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { belgePaylas } from '../services/belgePaylasimService'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
-import { siparisleriGetir, siparisGetir, kalemleriGetir } from '../services/siparisService'
+import { siparisGetir, kalemleriGetir } from '../services/siparisService'
 import { musterileriGetir } from '../services/musteriService'
-import { gorusmeGetir } from '../services/gorusmeService'
+import { gorusmeGetir, gorusmeleriGetir } from '../services/gorusmeService'
 import {
   satisSozlesmeGetir, satisSozlesmeEkle, satisSozlesmeGuncelle, hesapVeIcerikHazirla,
   onayaGonder, sozlesmeOnayla, sozlesmeReddet, gonderildiIsaretle, sozlesmeIptalEt, kilidiAc,
@@ -34,7 +34,10 @@ import {
 
 const BOS_FORM = {
   sablonTipi: 'standart',
-  musteriId: null, gorusmeNo: '', teklifId: null, teklifNo: '', siparisId: null, siparisNo: '',
+  // siparisNo kaldırıldı — sözleşme öncesi sipariş akışı kullanılmıyor.
+  // siparisId kalıyor: /sozlesmeler/satis/yeni?siparisId= girişi ve imzalı sözleşme
+  // yüklenince siparisler.sozlesme_id işaretlemesi buna bağlı.
+  musteriId: null, gorusmeNo: '', teklifId: null, teklifNo: '', siparisId: null,
   firmaTipi: 'limited', firmaAdi: '', yetkiliAdi: '', tcVergiNo: '', vergiDairesi: '',
   adres: '', telefon: '', email: '', imzaYetkilisi: '', imzaBelgesiIstenir: true,
   projeAdi: '', lokasyon: '', kurumAdi: '', anaYuklenici: '', isinKonusu: '',
@@ -69,7 +72,7 @@ export default function SatisSozlesmeForm() {
   const [form, setForm] = useState(BOS_FORM)
   const [kayit, setKayit] = useState(null)       // DB'deki sözleşme (yeni ise null)
   const [teklifler, setTeklifler] = useState([])
-  const [siparisler, setSiparisler] = useState([])
+  const [gorusmeler, setGorusmeler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [mesgul, setMesgul] = useState(false)
   const [onizleme, setOnizleme] = useState(false)
@@ -87,6 +90,40 @@ export default function SatisSozlesmeForm() {
   // Canlı hesap özeti (spec §3)
   const hesap = useMemo(() => sozlesmeHesapla(form), [form])
 
+  // Bağlı görüşme seçenekleri — elle numara yazmak yerine geçmişten seç.
+  // Müşteri/firma biliniyorsa (teklif seçilince doluyor) o firmayla daralt;
+  // bilinmiyorsa hepsini göster — CustomSelect 8+ seçenekte aramayı kendi açar.
+  const gorusmeSecenekleri = useMemo(() => {
+    const norm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+    const firma = norm(form.firmaAdi)
+    let liste = gorusmeler || []
+    const eslesen = liste.filter(g =>
+      (form.musteriId && Number(g.musteriId) === Number(form.musteriId)) ||
+      (firma && norm(g.firmaAdi) === firma)
+    )
+    if (eslesen.length) liste = eslesen
+
+    const secenekler = liste
+      .map(g => {
+        const no = g.gorusmeNo || g.aktNo || ''
+        if (!no) return null
+        const rozet = g.aktNo || g.gorusmeNo
+        const tarih = g.tarih ? new Date(g.tarih).toLocaleDateString('tr-TR') : ''
+        return {
+          no,
+          kisa: rozet,
+          etiket: [rozet, g.konu, tarih].filter(Boolean).join(' · '),
+        }
+      })
+      .filter(Boolean)
+
+    // Kayıtlı numara listede yoksa (eski kayıt / farklı firma) seçili kalsın diye ekle
+    if (form.gorusmeNo && !secenekler.some(s => s.no === form.gorusmeNo)) {
+      secenekler.unshift({ no: form.gorusmeNo, kisa: form.gorusmeNo, etiket: `${form.gorusmeNo} · (kayıtlı)` })
+    }
+    return secenekler
+  }, [gorusmeler, form.musteriId, form.firmaAdi, form.gorusmeNo])
+
   // ---- Yükleme ----
   const kayittanForma = (s) => {
     const f = { ...BOS_FORM }
@@ -95,12 +132,14 @@ export default function SatisSozlesmeForm() {
   }
 
   const yukle = useCallback(async () => {
-    const [tList, sList] = await Promise.all([
+    // Sipariş listesi artık çekilmiyor — "Kaynak sipariş" seçici kaldırıldı.
+    // ?siparisId= ile gelinirse siparisGetir ile tek kayıt çekiliyor.
+    const [tList, gList] = await Promise.all([
       teklifleriGetir().catch(() => []),
-      siparisleriGetir().catch(() => []),
+      gorusmeleriGetir().catch(() => []),
     ])
     setTeklifler(tList || [])
-    setSiparisler(sList || [])
+    setGorusmeler(gList || [])
 
     if (id) {
       const s = await satisSozlesmeGetir(Number(id))
@@ -412,30 +451,22 @@ export default function SatisSozlesmeForm() {
                 </CustomSelect>
               </div>
               <div>
-                <Label>Kaynak sipariş</Label>
-                <CustomSelect value={form.siparisId || ''} disabled={!duzenlenebilir}
-                  onChange={async e => {
-                    const s = (siparisler || []).find(x => String(x.id) === e.target.value)
-                    if (s) await siparistenDoldur(s)
-                    else alan('siparisId', null)
-                  }}>
+                <Label>Bağlı görüşme</Label>
+                <CustomSelect value={form.gorusmeNo || ''} disabled={!duzenlenebilir}
+                  selectedDisplay={(v) => {
+                    const g = gorusmeSecenekleri.find(x => x.no === v)
+                    return g ? g.kisa : (v || '— Seçilmedi —')
+                  }}
+                  onChange={e => alan('gorusmeNo', e.target.value)}>
                   <option value="">— Seçilmedi —</option>
-                  {(siparisler || []).slice(0, 200).map(s => (
-                    <option key={s.id} value={s.id}>{s.siparisNo || `#${s.id}`}{s.konu ? ` · ${s.konu.slice(0, 40)}` : ''}</option>
+                  {gorusmeSecenekleri.map(g => (
+                    <option key={g.no} value={g.no}>{g.etiket}</option>
                   ))}
                 </CustomSelect>
               </div>
               <div>
-                <Label>Görüşme no</Label>
-                <Input value={form.gorusmeNo} disabled={!duzenlenebilir} onChange={e => alan('gorusmeNo', e.target.value)} placeholder="GRS-2026-000123" />
-              </div>
-              <div>
                 <Label>Teklif no</Label>
                 <Input value={form.teklifNo} disabled={!duzenlenebilir} onChange={e => alan('teklifNo', e.target.value)} placeholder="TEK-0123" />
-              </div>
-              <div>
-                <Label>Sipariş no</Label>
-                <Input value={form.siparisNo} disabled={!duzenlenebilir} onChange={e => alan('siparisNo', e.target.value)} placeholder="ZNA-SIP-2026-000045" />
               </div>
 
               <div style={BOLUM}>Müşteri / Alıcı Bilgileri</div>

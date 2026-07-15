@@ -308,6 +308,7 @@ export default function PaylasimBelge() {
           </button>
         </div>
         <Cikti teklif={belge} pacal={pacal} />
+        <MusteriKararPaneli token={token} belge={belge} />
       </>
     )
   }
@@ -557,6 +558,177 @@ function BayiSozlesmeGorunum({ belge }) {
         <div dangerouslySetInnerHTML={{
           __html: bayiBelgeHtml(belge.uretilenIcerik, { sozlesmeNo: belge.sozlesmeNo }),
         }} />
+      </div>
+    </div>
+  )
+}
+
+// ── Müşteri karar paneli ────────────────────────────────────────────────
+// Teklif çıktısının altında; müşteri linki açtığı yerden cevap verebilsin.
+// Yetki modeli: linke sahip olan cevap verir (token'ın kendisi yetkidir) + müşteri
+// adını yazıp yetkili olduğunu beyan eder. Ad/tarih/IP DB'de link meta'sına yazılır
+// (mig 164), sonradan "kim onayladı" sorusu cevaplanabilsin diye.
+const KARAR_VERILMIS_DURUMLAR = ['musteri_onayladi', 'musteri_reddetti', 'revizyon_istendi', 'siparise_aktarildi']
+
+const KARAR_SECENEKLERI = [
+  { id: 'onayladi', etiket: '✓ Onaylıyorum',        renk: '#0F8A4F', notZorunlu: false },
+  { id: 'revizyon', etiket: '✎ Revizyon istiyorum', renk: '#B7791F', notZorunlu: true },
+  { id: 'reddetti', etiket: '✕ Reddediyorum',       renk: '#C0392B', notZorunlu: false },
+]
+
+function MusteriKararPaneli({ token, belge }) {
+  const [karar, setKarar] = useState(null)
+  const [ad, setAd] = useState('')
+  const [beyan, setBeyan] = useState(false)
+  const [not, setNot] = useState('')
+  const [gonderiliyor, setGonderiliyor] = useState(false)
+  const [gonderildi, setGonderildi] = useState(false)
+  const [hata, setHata] = useState('')
+
+  const oncedenKararli =
+    KARAR_VERILMIS_DURUMLAR.includes(belge?.spekDurum || '') ||
+    ['kabul', 'vazgecildi', 'revizyon'].includes(belge?.onayDurumu || '')
+
+  const secili = KARAR_SECENEKLERI.find(k => k.id === karar)
+
+  const gonder = async () => {
+    setHata('')
+    if (ad.trim().length < 2) { setHata('Lütfen adınızı ve soyadınızı yazın.'); return }
+    if (!beyan) { setHata('Devam etmek için yetkili olduğunuzu onaylayın.'); return }
+    if (secili?.notZorunlu && !not.trim()) { setHata('Lütfen talebinizi kısaca yazın.'); return }
+    setGonderiliyor(true)
+    try {
+      const { data, error } = await supabase.rpc('paylasim_teklif_musteri_karar', {
+        in_token: token, in_karar: karar, in_ad: ad.trim(), in_not: not.trim() || null,
+      })
+      if (error) throw error
+      if (!data?.ok) { setHata(data?.mesaj || 'Cevabınız kaydedilemedi.'); return }
+      setGonderildi(true)
+    } catch (e) {
+      setHata('Bir sorun oluştu, lütfen tekrar deneyin. (' + (e?.message || 'bilinmeyen') + ')')
+    } finally {
+      setGonderiliyor(false)
+    }
+  }
+
+  const sarmal = {
+    maxWidth: 820, margin: '0 auto 48px', padding: '0 16px',
+    fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+  }
+  const kutu = {
+    background: '#fff', border: '1px solid #DEE3EC', borderRadius: 14,
+    padding: 20, boxShadow: '0 2px 12px rgba(15,27,46,0.06)',
+  }
+  const baslikSt = { margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: '#0F1B2E' }
+  const altSt = { margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: '#6B7A93' }
+  const etiketSt = { display: 'block', fontSize: 12.5, fontWeight: 600, color: '#3B4960', marginBottom: 6 }
+  const girdiSt = {
+    width: '100%', boxSizing: 'border-box', padding: '11px 12px',
+    border: '1px solid #DEE3EC', borderRadius: 8, fontSize: 14,
+    fontFamily: 'inherit', color: '#0F1B2E', background: '#fff',
+  }
+
+  if (gonderildi) {
+    return (
+      <div className="no-print" style={sarmal}>
+        <div style={{ ...kutu, borderColor: '#9FD8BC', background: '#F1FBF6', textAlign: 'center' }}>
+          <div style={{ fontSize: 32, lineHeight: 1 }}>✓</div>
+          <h2 style={{ ...baslikSt, marginTop: 10 }}>Cevabınız alındı</h2>
+          <p style={{ ...altSt, margin: 0 }}>
+            Teşekkür ederiz. Yetkilimiz bilgilendirildi, en kısa sürede sizinle iletişime geçecek.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (oncedenKararli) {
+    return (
+      <div className="no-print" style={sarmal}>
+        <div style={{ ...kutu, background: '#F4F6F8', textAlign: 'center' }}>
+          <p style={{ ...altSt, margin: 0 }}>
+            Bu teklif için cevabınız daha önce alınmıştır. Soru veya değişiklik talebiniz için
+            yetkilimizle iletişime geçebilirsiniz.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="no-print" style={sarmal}>
+      <div style={kutu}>
+        <h2 style={baslikSt}>Teklife cevabınız</h2>
+        <p style={altSt}>
+          {belge?.teklifNo ? `${belge.teklifNo} numaralı teklif` : 'Teklif'} için kararınızı buradan
+          iletebilirsiniz. Cevabınız satış yetkilimize anında bildirilir.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: karar ? 18 : 0 }}>
+          {KARAR_SECENEKLERI.map(k => {
+            const aktif = karar === k.id
+            return (
+              <button key={k.id} type="button"
+                onClick={() => { setKarar(aktif ? null : k.id); setHata('') }}
+                style={{
+                  flex: '1 1 180px', padding: '13px 16px', borderRadius: 10,
+                  fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  background: aktif ? k.renk : '#fff',
+                  color: aktif ? '#fff' : k.renk,
+                  border: `1.5px solid ${k.renk}`,
+                  transition: 'background 120ms, color 120ms',
+                }}>
+                {k.etiket}
+              </button>
+            )
+          })}
+        </div>
+
+        {karar && (
+          <div style={{ borderTop: '1px solid #EDF0F5', paddingTop: 16, display: 'grid', gap: 12 }}>
+            <div>
+              <label style={etiketSt}>Adınız ve soyadınız</label>
+              <input style={girdiSt} value={ad} onChange={e => setAd(e.target.value)}
+                placeholder="Ad Soyad" autoComplete="name" />
+            </div>
+
+            <div>
+              <label style={etiketSt}>
+                {secili?.notZorunlu ? 'Talebiniz' : 'Eklemek istediğiniz not (isteğe bağlı)'}
+              </label>
+              <textarea style={{ ...girdiSt, minHeight: 74, resize: 'vertical' }}
+                value={not} onChange={e => setNot(e.target.value)}
+                placeholder={secili?.notZorunlu
+                  ? 'Hangi kalemde nasıl bir değişiklik istediğinizi yazın'
+                  : 'İsterseniz bir not bırakabilirsiniz'} />
+            </div>
+
+            <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input type="checkbox" checked={beyan} onChange={e => setBeyan(e.target.checked)}
+                style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }} />
+              <span style={{ fontSize: 12.5, lineHeight: 1.5, color: '#3B4960' }}>
+                Firma adına bu teklife cevap vermeye yetkili olduğumu beyan ederim.
+              </span>
+            </label>
+
+            {hata && (
+              <div style={{
+                background: '#FDF0EF', border: '1px solid #F0C4C0', borderRadius: 8,
+                padding: '10px 12px', fontSize: 13, color: '#C0392B',
+              }}>{hata}</div>
+            )}
+
+            <button type="button" onClick={gonder} disabled={gonderiliyor}
+              style={{
+                padding: '13px 20px', borderRadius: 10, border: 'none',
+                background: gonderiliyor ? '#9BB4D4' : (secili?.renk || '#1E5AA8'),
+                color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+                cursor: gonderiliyor ? 'default' : 'pointer',
+              }}>
+              {gonderiliyor ? 'Gönderiliyor…' : 'Cevabımı gönder'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

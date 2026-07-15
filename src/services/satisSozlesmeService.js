@@ -166,7 +166,8 @@ export const tekliftenForm = (teklif, gorusmeNo) => ({
 // Sipariş → sözleşme form alanları
 export const siparistenForm = (siparis, kalemler, musteri) => ({
   musteriId: siparis.musteriId || null,
-  siparisId: siparis.id, siparisNo: siparis.siparisNo || '',
+  // siparisNo forma taşınmaz — alan kaldırıldı; siparisId bağlantı için kalıyor
+  siparisId: siparis.id,
   teklifId: siparis.teklifId || null,
   firmaAdi: musteri?.firma || '',
   yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
