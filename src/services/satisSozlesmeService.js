@@ -175,47 +175,66 @@ export const musteridenKunye = (musteri) => {
   return Object.fromEntries(Object.entries(kunye).filter(([, v]) => v !== null))
 }
 
+// Ana toplam güvenli çözüm: genel_toplam boş/0/NaN ise ürün listesinden türet.
+// Neden: 62 teklifte genel_toplam 0/null; ayrıca r2(undefined) = NaN olur ve
+// number input'a NaN verilince alan BOŞ görünür (0 bile yazmaz) — kullanıcı
+// "tutar otomatik gelmedi" diye görür. Tek satır bile olsa toplam elde var.
+const urunListesiToplami = (liste) =>
+  r2((liste || []).reduce((a, u) => a + (Number(u.toplam) || 0), 0))
+
+const anaToplamCoz = (ham, urunListesi) => {
+  const n = Number(ham)
+  if (Number.isFinite(n) && n > 0) return r2(n)
+  return urunListesiToplami(urunListesi)
+}
+
 // Teklif → sözleşme form alanları (genel_toplam KDV DAHİLDİR — TeklifDetay hesabı)
-export const tekliftenForm = (teklif, gorusmeNo) => ({
-  musteriId: teklif.musteriId || null,
-  teklifId: teklif.id, teklifNo: teklif.teklifNo || '',
-  gorusmeNo: gorusmeNo || '',
-  firmaAdi: teklif.firmaAdi || '',
-  yetkiliAdi: teklif.musteriYetkilisi || '',
-  isinKonusu: teklif.konu || '',
-  paraBirimi: ['TL', 'USD', 'EUR'].includes(teklif.paraBirimi) ? teklif.paraBirimi : 'TL',
-  anaToplam: r2(teklif.genelToplam),
-  urunListesi: (teklif.satirlar || []).map(s => ({
+export const tekliftenForm = (teklif, gorusmeNo) => {
+  const urunListesi = (teklif.satirlar || []).map(s => ({
     stokKodu: s.stokKodu || '',
     urunAdi: s.stokAdi || s.aciklama || '',
     miktar: Number(s.miktar) || 0,
     birim: s.birim || 'Adet',
     birimFiyat: Number(s.birimFiyat) || 0,
     toplam: r2((Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0) * (1 - (Number(s.iskonto) || 0) / 100) * (1 + (Number(s.kdv) || 0) / 100)),
-  })),
-})
+  }))
+  return {
+    musteriId: teklif.musteriId || null,
+    teklifId: teklif.id, teklifNo: teklif.teklifNo || '',
+    gorusmeNo: gorusmeNo || '',
+    firmaAdi: teklif.firmaAdi || '',
+    yetkiliAdi: teklif.musteriYetkilisi || '',
+    isinKonusu: teklif.konu || '',
+    paraBirimi: ['TL', 'USD', 'EUR'].includes(teklif.paraBirimi) ? teklif.paraBirimi : 'TL',
+    anaToplam: anaToplamCoz(teklif.genelToplam, urunListesi),
+    urunListesi,
+  }
+}
 
 // Sipariş → sözleşme form alanları
-export const siparistenForm = (siparis, kalemler, musteri) => ({
-  musteriId: siparis.musteriId || null,
-  // siparisNo forma taşınmaz — alan kaldırıldı; siparisId bağlantı için kalıyor
-  siparisId: siparis.id,
-  teklifId: siparis.teklifId || null,
-  firmaAdi: musteri?.firma || '',
-  yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
-  telefon: musteri?.telefon || '', email: musteri?.email || '',
-  isinKonusu: siparis.konu || '',
-  paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
-  anaToplam: r2(siparis.genelToplam),
-  urunListesi: (kalemler || []).map(k => ({
+export const siparistenForm = (siparis, kalemler, musteri) => {
+  const urunListesi = (kalemler || []).map(k => ({
     stokKodu: k.stokKodu || '',
     urunAdi: k.urunAd || k.aciklama || '',
     miktar: Number(k.miktar) || 0,
     birim: k.birim || 'Adet',
     birimFiyat: Number(k.birimFiyat) || 0,
     toplam: r2((Number(k.araToplam) || 0) * (1 + (Number(k.kdvOrani) || 0) / 100)),
-  })),
-})
+  }))
+  return {
+    musteriId: siparis.musteriId || null,
+    // siparisNo forma taşınmaz — alan kaldırıldı; siparisId bağlantı için kalıyor
+    siparisId: siparis.id,
+    teklifId: siparis.teklifId || null,
+    firmaAdi: musteri?.firma || '',
+    yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
+    telefon: musteri?.telefon || '', email: musteri?.email || '',
+    isinKonusu: siparis.konu || '',
+    paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
+    anaToplam: anaToplamCoz(siparis.genelToplam, urunListesi),
+    urunListesi,
+  }
+}
 
 // ---------- Bildirim (best-effort) ----------
 
