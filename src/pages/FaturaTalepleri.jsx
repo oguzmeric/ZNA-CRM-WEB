@@ -45,6 +45,9 @@ export default function FaturaTalepleri() {
   const [secili, setSecili] = useState(null)
 
   const yetkili = faturaYetkisi(kullanici)
+  // Tam iskelet YALNIZ ilk yüklemede. Eskiden her sekme tıklamasında tüm sayfa
+  // (sekmeler dahil) SkeletonList'e dönüp geri geliyordu — "yanıp sönme" buydu.
+  const [ilkYukleme, setIlkYukleme] = useState(true)
 
   const yukle = useCallback(async () => {
     if (!yetkili) { setYukleniyor(false); return }
@@ -52,25 +55,38 @@ export default function FaturaTalepleri() {
     const veri = await faturaTalepleriGetir(sekme)
     setTalepler(veri || [])
     setYukleniyor(false)
+    setIlkYukleme(false)
   }, [sekme, yetkili])
 
   useEffect(() => { yukle(); setSecili(null) }, [yukle])
 
+  // MainLayout içerik alanına dolgu vermez — her sayfa kendini sarar
+  // (Teklifler ile aynı: padding 24 + maxWidth). Bu unutulmuştu, açıklama
+  // metni sol kenara yapışıktı.
+  const sayfaStil = {
+    padding: 24, maxWidth: 1440, margin: '0 auto',
+    display: 'flex', flexDirection: 'column', gap: 16,
+  }
+
   // Guard'a ek ikinci savunma — rota bypass edilse bile veri görünmesin
   if (!yetkili) {
     return (
-      <EmptyState
-        icon={<Receipt size={40} strokeWidth={1.2} />}
-        title="Bu sayfayı görme yetkiniz yok"
-        description="Fatura Oluşturulacak kuyruğu yalnızca fatura yetkililerine açıktır."
-      />
+      <div style={sayfaStil}>
+        <EmptyState
+          icon={<Receipt size={40} strokeWidth={1.2} />}
+          title="Bu sayfayı görme yetkiniz yok"
+          description="Fatura Oluşturulacak kuyruğu yalnızca fatura yetkililerine açıktır."
+        />
+      </div>
     )
   }
 
-  if (yukleniyor) return <SkeletonList />
+  if (yukleniyor && ilkYukleme) {
+    return <div style={sayfaStil}><SkeletonList /></div>
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={sayfaStil}>
       {/* Başlık MainLayout'ta zaten yazıyor — sayfada tekrar etmiyoruz. */}
       <p className="t-caption" style={{ margin: 0, color: 'var(--text-tertiary)' }}>
         Satıştan gelen fatura talepleri. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
@@ -115,7 +131,17 @@ export default function FaturaTalepleri() {
         />
       )}
 
-      {!secili && (
+      {/* Sekme geçişinde YALNIZ içerik alanı yüklenir — sekmeler yerinde kalır.
+          Eski sekmenin verisi de gösterilmez (yanıltıcı olurdu). */}
+      {!secili && yukleniyor && (
+        <Card>
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
+            Yükleniyor…
+          </div>
+        </Card>
+      )}
+
+      {!secili && !yukleniyor && (
         talepler.length === 0 ? (
           <EmptyState
             icon={<Receipt size={40} strokeWidth={1.2} />}
