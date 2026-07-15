@@ -11,6 +11,26 @@ export const musteriKisileriniGetir = async (musteriId) => {
   return arrayToCamel(data) ?? []
 }
 
+/**
+ * Birden fazla müşterinin kişilerini tek sorguda getirir (takvim davetinde
+ * çoklu müşteri seçimi için). Müşterinin ana kişisi mig 163 trigger'ı ile
+ * musteri_kisiler'e senkron tutuluyor — bu tablo tek kaynaktır, ayrıca
+ * musteriler.ad/email okumaya gerek yok.
+ */
+export const musteriKisileriToplu = async (musteriIdler = []) => {
+  const idler = [...new Set((musteriIdler || []).map(Number).filter(Boolean))]
+  if (!idler.length) return []
+  const { data, error } = await supabase
+    .from('musteri_kisiler')
+    .select('*')
+    .in('musteri_id', idler)
+    .order('musteri_id', { ascending: true })
+    .order('ana_kisi', { ascending: false })
+    .order('olusturma_tarih', { ascending: true })
+  if (error) { console.error('[musteriKisileriToplu]', error.message); return [] }
+  return arrayToCamel(data) ?? []
+}
+
 export const musteriKisiEkle = async (kisi) => {
   const { id, olusturmaTarih, ...rest } = kisi
   const { data, error } = await supabase

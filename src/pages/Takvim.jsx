@@ -13,9 +13,22 @@ import {
   hariciEtkinlikleriGetir, tazelikSyncTetikle,
   takvimBaglantilariniGetir, etkinlikOlustur, etkinlikSil,
 } from '../services/takvimBaglantiService'
+import { musterileriGetir } from '../services/musteriService'
+import { musteriKisileriToplu } from '../services/musteriKisiService'
+import { smsGonderVeLogla } from '../services/smsLogService'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../context/ConfirmContext'
+import CokluSelect from '../components/CokluSelect'
 import { Button, Card, Badge, EmptyState } from '../components/ui'
+
+// NetGSM Türkçe karakter kabul etmiyor — SMS gövdesi ASCII'ye çevrilir.
+const trAsciify = (s) => String(s || '')
+  .replace(/İ/g, 'I').replace(/ı/g, 'i')
+  .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+  .replace(/Ş/g, 'S').replace(/ş/g, 's')
+  .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+  .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+  .replace(/Ü/g, 'U').replace(/ü/g, 'u')
 
 const TIP = {
   gorusme: { label: 'Görüşme', C: Phone,       softBg: 'var(--info-soft)',    fg: 'var(--info)',    dot: 'var(--info)' },
@@ -967,6 +980,7 @@ function HariciEtkinlikDetay({ etkinlik, onKapat, onSilindi }) {
 
 function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }) {
   const navigate = useNavigate()
+  const { kullanici } = useAuth()   // SMS logunda "gönderen" için
   // Varsayılan başlangıç/bitiş hesapla:
   // - varsayilanTarih (YYYY-MM-DD) verilmişse o günü 09:00 - 10:00 olarak doldur
   // - Yoksa şimdiden 15 dk sonra başlat, 30 dk sürsün
@@ -1007,6 +1021,66 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
   const [sonuc, setSonuc] = useState(null)
   const [kopyalandi, setKopyalandi] = useState(false)
 
+  // ── Müşteri + kişi seçimi (opsiyonel) ──────────────────────────────────
+  // Kişilerin e-postası davetlilere eklenir; istenirse Meet linki SMS ile de
+  // gider ("mail ulaşmadı" şikâyeti — 2026-07-15).
+  const [musteriler, setMusteriler] = useState([])
+  const [seciliMusteriIdler, setSeciliMusteriIdler] = useState([])
+  const [kisiler, setKisiler] = useState([])
+  const [seciliKisiIdler, setSeciliKisiIdler] = useState([])
+  const [smsGonder, setSmsGonder] = useState(false)
+  const [smsSonuc, setSmsSonuc] = useState(null)
+
+  useEffect(() => {
+    musterileriGetir()
+      .then((d) => setMusteriler(d || []))
+      .catch(() => setMusteriler([]))
+  }, [])
+
+  // Müşteri seçimi değişince o müşterilerin kişilerini getir; seçimden çıkan
+  // müşterinin kişileri seçili kalmasın.
+  useEffect(() => {
+    let iptal = false
+    // Boş seçimde de aynı yol: musteriKisileriToplu([]) boş dizi döner ve
+    // aşağıdaki 'gecerli' filtresi seçili kişileri temizler.
+    musteriKisileriToplu(seciliMusteriIdler).then((d) => {
+      if (iptal) return
+      setKisiler(d)
+      const gecerli = new Set(d.map((k) => k.id))
+      setSeciliKisiIdler((onceki) => onceki.filter((id) => gecerli.has(id)))
+    })
+    return () => { iptal = true }
+  }, [seciliMusteriIdler])
+
+  const musteriSecenekleri = useMemo(
+    () => (musteriler || [])
+      .map((m) => ({ id: m.id, ad: m.firma || [m.ad, m.soyad].filter(Boolean).join(' ') || `#${m.id}` }))
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr')),
+    [musteriler],
+  )
+
+  const musteriAdi = (id) => musteriSecenekleri.find((m) => m.id === id)?.ad || ''
+
+  // Kişi etiketinde e-posta/telefon eksikliği GÖRÜNSÜN — kullanıcı SMS'in
+  // kime gitmeyeceğini seçmeden önce bilsin.
+  const kisiSecenekleri = useMemo(
+    () => kisiler.map((k) => {
+      const ad = [k.ad, k.soyad].filter(Boolean).join(' ') || '(isimsiz)'
+      const eksik = [!k.email && 'e-posta yok', !k.telefon && 'telefon yok'].filter(Boolean)
+      return {
+        id: k.id,
+        ad: `${ad} — ${musteriAdi(k.musteriId)}${eksik.length ? ` · ${eksik.join(', ')}` : ''}`,
+      }
+    }),
+    [kisiler, musteriSecenekleri],
+  )
+
+  const seciliKisiler = useMemo(
+    () => kisiler.filter((k) => seciliKisiIdler.includes(k.id)),
+    [kisiler, seciliKisiIdler],
+  )
+  const smsAdaylari = seciliKisiler.filter((k) => (k.telefon || '').trim())
+
   const kaydet = async () => {
     setHata(null)
     if (!baglantiId) { setHata({ mesaj: 'Bağlantı seç' }); return }
@@ -1014,11 +1088,21 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
     if (!baslangic || !bitis) { setHata({ mesaj: 'Başlangıç ve bitiş zamanı zorunlu' }); return }
     if (new Date(bitis) <= new Date(baslangic)) { setHata({ mesaj: 'Bitiş, başlangıçtan sonra olmalı' }); return }
 
-    // Davetli mail listesi: virgül veya satır ile ayrılmış, geçerli mailler
-    const davetliler = davetlilerStr
+    // Davetli mail listesi: elle yazılanlar + seçili kişilerin e-postaları.
+    // Aynı adres iki kaynaktan gelebilir → tekilleştir (Google 400 döndürür).
+    const elleYazilan = davetlilerStr
       .split(/[\s,;]+/)
       .map((s) => s.trim())
       .filter((s) => s.includes('@'))
+    const kisiMailleri = seciliKisiler
+      .map((k) => (k.email || '').trim())
+      .filter((e) => e.includes('@'))
+    const davetliler = [...new Set([...elleYazilan, ...kisiMailleri].map((e) => e.toLowerCase()))]
+
+    if (smsGonder && !smsAdaylari.length) {
+      setHata({ mesaj: 'SMS seçili ama seçili kişilerin hiçbirinde telefon yok.' })
+      return
+    }
 
     setKaydediliyor(true)
     try {
@@ -1038,10 +1122,50 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
       })
 
       setSonuc(res)  // başarılı — Meet linki + HTML linki göster
+
+      // Etkinlik OLUŞTU; SMS ayrı bir adım. Burada patlarsa etkinliği geri
+      // almayız — kullanıcıya kimlere gidip kimlere gitmediğini söyleriz.
+      if (smsGonder) {
+        setSmsSonuc(await smsleriGonder(res?.meetLinki || res?.htmlLink || null))
+      }
     } catch (e) {
       setHata({ mesaj: e?.message ?? 'Etkinlik oluşturulamadı', scopeYok: !!e?.scopeYok })
     } finally {
       setKaydediliyor(false)
+    }
+  }
+
+  // Meet linkini seçili kişilere SMS ile gönder. NetGSM Türkçe karakter
+  // kabul etmiyor → trAsciify.
+  const smsleriGonder = async (link) => {
+    const ne = new Date(baslangic)
+    const tarihMetni = ne.toLocaleString('tr-TR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+    const govde = [
+      'ZNA Teknoloji - Toplanti daveti',
+      trAsciify(baslik.trim()),
+      tarihMetni,
+      link ? `Katilim: ${link}` : null,
+    ].filter(Boolean).join('\n')
+
+    const sonuclar = await Promise.all(smsAdaylari.map(async (k) => {
+      const ad = [k.ad, k.soyad].filter(Boolean).join(' ')
+      const r = await smsGonderVeLogla({
+        gsm: k.telefon,
+        mesaj: govde,
+        amac: 'toplanti_daveti',
+        refTablo: 'musteri_kisiler',
+        refId: k.id,
+        aliciAd: ad,
+        gonderenKullaniciId: kullanici?.id ?? null,
+      })
+      return { ad, ok: !!r?.ok, hata: r?.hata }
+    }))
+    return {
+      basarili: sonuclar.filter((s) => s.ok).length,
+      hatalilar: sonuclar.filter((s) => !s.ok),
+      telefonsuz: seciliKisiler.length - smsAdaylari.length,
     }
   }
 
@@ -1093,6 +1217,34 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
           <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 16 }}>
             Google Calendar'a yazıldı. Davetlilere e-posta gönderildi.
           </p>
+
+          {/* SMS sonucu — kısmi başarı da AÇIKÇA yazılır: kullanıcı kimin
+              linki almadığını bilmeli (mail zaten bu yüzden yetmiyordu). */}
+          {smsSonuc && (
+            <div style={{
+              marginBottom: 16, padding: 10,
+              borderRadius: 'var(--radius-sm)',
+              background: smsSonuc.hatalilar.length ? 'var(--warning-soft)' : 'var(--success-soft)',
+              border: `1px solid ${smsSonuc.hatalilar.length ? 'var(--warning)' : 'var(--success)'}`,
+              font: '400 12px/18px var(--font-sans)',
+              color: 'var(--text-secondary)',
+            }}>
+              <strong style={{ color: 'var(--text-primary)' }}>
+                SMS: {smsSonuc.basarili} gönderildi
+                {smsSonuc.hatalilar.length > 0 && ` · ${smsSonuc.hatalilar.length} başarısız`}
+              </strong>
+              {smsSonuc.hatalilar.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  {smsSonuc.hatalilar.map((h, i) => (
+                    <div key={i}>• {h.ad}: {h.hata || 'gönderilemedi'}</div>
+                  ))}
+                </div>
+              )}
+              {smsSonuc.telefonsuz > 0 && (
+                <div style={{ marginTop: 4 }}>• {smsSonuc.telefonsuz} kişide telefon kayıtlı değil (SMS gitmedi)</div>
+              )}
+            </div>
+          )}
 
           {sonuc.meetLinki && (
             <div style={{ marginBottom: 12 }}>
@@ -1288,11 +1440,54 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
           </div>
         </div>
 
+        {/* Müşteri + kişi seçimi (opsiyonel) — kayıtlı kişilerin maili
+            davetlilere eklenir, istenirse Meet linki SMS ile de gider */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            MÜŞTERİ (opsiyonel · birden fazla seçilebilir)
+          </label>
+          <CokluSelect
+            degerler={seciliMusteriIdler}
+            onChange={setSeciliMusteriIdler}
+            secenekler={musteriSecenekleri}
+            placeholder="Müşteri ara ve seç…"
+          />
+        </div>
+
+        {seciliMusteriIdler.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+              KİŞİLER {kisiler.length > 0 && <span style={{ color: 'var(--text-tertiary)' }}>({seciliKisiIdler.length}/{kisiler.length} seçili)</span>}
+            </label>
+            {kisiler.length === 0 ? (
+              <p style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--warning)', margin: 0 }}>
+                Seçili müşterilerde kayıtlı kişi yok — müşteri kartından kişi ekleyin.
+              </p>
+            ) : (
+              <CokluSelect
+                degerler={seciliKisiIdler}
+                onChange={setSeciliKisiIdler}
+                secenekler={kisiSecenekleri}
+                placeholder="Kişi seç…"
+              />
+            )}
+          </div>
+        )}
+
         {/* Davetliler */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
             DAVETLİLER (virgül veya satır ile ayır)
           </label>
+          {seciliKisiler.length > 0 && (
+            <p style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 6px' }}>
+              Seçili kişilerden{' '}
+              <strong style={{ color: 'var(--text-secondary)' }}>
+                {seciliKisiler.filter((k) => (k.email || '').includes('@')).length} e-posta
+              </strong>{' '}
+              otomatik eklenecek — aşağıya ayrıca yazabilirsin.
+            </p>
+          )}
           <textarea
             value={davetlilerStr}
             onChange={(e) => setDavetlilerStr(e.target.value)}
@@ -1373,6 +1568,34 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
             Google Meet linki otomatik oluştur
           </span>
         </label>
+
+        {/* SMS — "mail ulaşmadı" diyen müşteriler için ikinci kanal.
+            Yalnız kişi seçiliyse anlamlı: SMS numarası kişi kartından gelir. */}
+        {seciliKisiler.length > 0 && (
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: 12, marginBottom: 12,
+            background: smsGonder ? 'var(--success-soft)' : 'var(--surface-sunken)',
+            border: `1px solid ${smsGonder ? 'var(--success)' : 'var(--border-default)'}`,
+            borderRadius: 'var(--radius-sm)',
+            cursor: smsAdaylari.length ? 'pointer' : 'not-allowed',
+            opacity: smsAdaylari.length ? 1 : 0.6,
+          }}>
+            <input
+              type="checkbox"
+              checked={smsGonder}
+              disabled={!smsAdaylari.length}
+              onChange={(e) => setSmsGonder(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'inherit' }}
+            />
+            <Phone size={16} color={smsGonder ? 'var(--success)' : 'var(--text-tertiary)'} />
+            <span style={{ font: '500 13px/18px var(--font-sans)', color: smsGonder ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+              {smsAdaylari.length
+                ? <>Meet linkini SMS ile de gönder <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>({smsAdaylari.length} kişiye)</span></>
+                : 'Seçili kişilerin hiçbirinde telefon yok — SMS gönderilemez'}
+            </span>
+          </label>
+        )}
 
         {/* Hata */}
         {hata && (
