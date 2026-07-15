@@ -17,12 +17,20 @@ const trAsciify = (s) => String(s || '')
   .replace(/Ü/g, 'U').replace(/ü/g, 'u')
 
 /**
- * Ön sipariş oluşturulduğunda Sipariş Onayı yetkilerine (kullanicilar.siparis_onay_yetkili=true)
- * hem sistem bildirimi hem SMS gönderir. Best-effort — bir kullanıcı bulunamaz
- * veya SMS başarısız olursa akış bozulmaz.
+ * Ön sipariş oluşturulduğunda Sipariş Onayı yetkililerine hem sistem bildirimi
+ * hem SMS gönderir. Best-effort — bir kullanıcı bulunamaz veya SMS başarısız
+ * olursa akış bozulmaz.
  *
- * Yetkili listesi DB'de yönetilir (mig 132). Personel değişikliğinde:
- *   update kullanicilar set siparis_onay_yetkili = true/false where id = X;
+ * TEK KAYNAK: kullanicilar.siparis_onay_yetkilisi (mig 050) — sayfayı/guard'ı
+ * açan bayrağın AYNISI. Eskiden burası ayrı bir `siparis_onay_yetkili` kolonuna
+ * (mig 132, sondaki "si" yok) bakıyordu: bildirim alan kişilerle sayfayı görebilen
+ * kişiler birbirinden bağımsız iki listeydi. Değerleri şans eseri aynıydı, ama
+ * birini güncelleyip diğerini unutmak an meselesiydi — "onay bildirimi geliyor
+ * ama sayfaya giremiyorum" (veya tersi) sessizce ortaya çıkardı. mig 169 o
+ * kolonu kaldırdı.
+ *
+ * Personel değişikliğinde tek yer: Kullanıcı Yönetimi (ya da
+ *   update kullanicilar set siparis_onay_yetkilisi = true/false where id = X;)
  */
 export async function onSiparisOnayaBildir(onSiparis, { firmaAdi, olusturanAd } = {}) {
   if (!onSiparis?.id) return
@@ -31,10 +39,12 @@ export async function onSiparisOnayaBildir(onSiparis, { firmaAdi, olusturanAd } 
     const { data: yetkiler, error } = await supabase
       .from('kullanicilar')
       .select('id, ad, cep_telefon')
-      .eq('siparis_onay_yetkili', true)
+      .eq('siparis_onay_yetkilisi', true)
+      .eq('tip', 'zna')
+      .neq('durum', 'pasif')
     if (error) { console.warn('[onSiparisOnayaBildir] yetkili çekilemedi:', error.message); return }
     if (!yetkiler || yetkiler.length === 0) {
-      console.warn('[onSiparisOnayaBildir] siparis_onay_yetkili=true kullanıcı yok')
+      console.warn('[onSiparisOnayaBildir] siparis_onay_yetkilisi=true kullanıcı yok')
       return
     }
 
