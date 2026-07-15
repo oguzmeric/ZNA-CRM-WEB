@@ -18,7 +18,7 @@ import { useAuth } from '../context/AuthContext'
 import { belgePaylas } from '../services/belgePaylasimService'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
 import { siparisGetir, kalemleriGetir } from '../services/siparisService'
-import { musteriGetir } from '../services/musteriService'
+import { musteriGetir, musterileriGetir } from '../services/musteriService'
 import { gorusmeGetir, gorusmeleriGetir } from '../services/gorusmeService'
 import {
   satisSozlesmeGetir, satisSozlesmeEkle, satisSozlesmeGuncelle, hesapVeIcerikHazirla,
@@ -59,6 +59,26 @@ const BOLUM = {
 }
 
 const trTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
+
+const trNorm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+
+// Teklif/siparişin müşteri kartını bul. Tekliflerin ~yarısında musteri_id BOŞ
+// (firma yalnız isimle yazılmış) — bu durumda firma adından eşleştiriyoruz,
+// yoksa künye otomatiği tekliflerin yarısında sessizce çalışmaz.
+// Not: musterileriGetir liste sorgusu vergi_no/adres kolonlarını çekmez; id'yi
+// bulup tam kaydı musteriGetir ile alıyoruz.
+const musteriKartiBul = async ({ musteriId, firmaAdi }) => {
+  if (musteriId) {
+    const m = await musteriGetir(Number(musteriId)).catch(() => null)
+    if (m) return m
+  }
+  const hedef = trNorm(firmaAdi)
+  if (!hedef) return null
+  const liste = await musterileriGetir().catch(() => [])
+  const eslesen = (liste || []).filter(m => trNorm(m.firma) === hedef)
+  if (!eslesen.length) return null
+  return musteriGetir(eslesen[0].id).catch(() => null)
+}
 
 export default function SatisSozlesmeForm() {
   const { id } = useParams()
@@ -163,7 +183,7 @@ export default function SatisSozlesmeForm() {
     // müşteriyi de çekip birleştiriyoruz.
     const [g, musteri] = await Promise.all([
       t.gorusmeId ? gorusmeGetir(t.gorusmeId).catch(() => null) : Promise.resolve(null),
-      t.musteriId ? musteriGetir(Number(t.musteriId)).catch(() => null) : Promise.resolve(null),
+      musteriKartiBul({ musteriId: t.musteriId, firmaAdi: t.firmaAdi }),
     ])
     const veri = tekliftenForm(t, g?.gorusmeNo || '')
     const kunye = musteridenKunye(musteri)
@@ -172,6 +192,8 @@ export default function SatisSozlesmeForm() {
       // Teklifteki değer önce; boşsa müşteri kartından
       firmaAdi:   veri.firmaAdi   || kunye.firmaAdi   || f.firmaAdi,
       yetkiliAdi: veri.yetkiliAdi || kunye.yetkiliAdi || f.yetkiliAdi,
+      // Teklifte bağ yoksa isimden bulduğumuz kartı sözleşmeye bağla
+      musteriId:  veri.musteriId  || musteri?.id      || f.musteriId,
     }))
     setGonderEmail(kunye.email || '')
     const eksik = ['tcVergiNo', 'vergiDairesi', 'adres'].filter(k => !kunye[k])
@@ -186,7 +208,7 @@ export default function SatisSozlesmeForm() {
     // ÇEKMEZ (MUSTERI_LISTE_KOLONLARI) — künye boş kalırdı. Tek kaydı tam çekiyoruz.
     const [kalemler, musteri] = await Promise.all([
       kalemleriGetir(sip.id).catch(() => []),
-      sip.musteriId ? musteriGetir(Number(sip.musteriId)).catch(() => null) : Promise.resolve(null),
+      musteriKartiBul({ musteriId: sip.musteriId }),
     ])
     let ek = {}
     if (sip.gorusmeId) {
