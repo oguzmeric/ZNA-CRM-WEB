@@ -4,8 +4,8 @@
 // Kayit edilen alanlar formun cikti komponentine (ServisFormu.jsx) yansir.
 // Migration: 045_servis_form_alanlari.sql
 
-import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, Save } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Save } from 'lucide-react'
 import { Card, CardTitle, Button, Input, Label, Textarea } from './ui'
 
 const SERVIS_TIPI = [
@@ -26,8 +26,6 @@ const SERVIS_YERI = [
   { id: 'online',  label: 'Online' },
   { id: 'diger',   label: 'Diğer' },
 ]
-
-const bosParca = () => ({ aciklama: '', birim_fiyat: 0, miktar: 1, tutar: 0 })
 
 // 'ariza,bakim' -> Set('ariza','bakim')
 const setOlustur = (s) => new Set((s || '').split(',').map(x => x.trim()).filter(Boolean))
@@ -81,9 +79,6 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
   const [model, setModel]              = useState(talep?.model || '')
   const [kunye, setKunye]              = useState(talep?.kunyeNumarasi || '')
   const [cozumAciklamasi, setCozumAciklamasi] = useState(talep?.cozumAciklamasi || '')
-  const [yedekParcalar, setYedekParcalar] = useState(() =>
-    Array.isArray(talep?.yedekParcalar) ? talep.yedekParcalar : [],
-  )
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [basariMsg, setBasariMsg] = useState(null)
   const [hata, setHata] = useState(null)
@@ -98,27 +93,9 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
     setModel(talep?.model || '')
     setKunye(talep?.kunyeNumarasi || '')
     setCozumAciklamasi(talep?.cozumAciklamasi || '')
-    setYedekParcalar(Array.isArray(talep?.yedekParcalar) ? talep.yedekParcalar : [])
   }, [talep?.id, talep?.servisTipi, talep?.yukumluluk, talep?.servisYeri,
       talep?.seriNumarasi, talep?.marka, talep?.model, talep?.kunyeNumarasi,
-      talep?.cozumAciklamasi, talep?.yedekParcalar])
-
-  // Yedek parcalar otomatik tutar hesabi
-  const parcaGuncelle = (idx, alan, deger) => {
-    setYedekParcalar(prev => prev.map((p, i) => {
-      if (i !== idx) return p
-      const guncel = { ...p, [alan]: deger }
-      if (alan === 'birim_fiyat' || alan === 'miktar') {
-        guncel.tutar = Number(guncel.birim_fiyat || 0) * Number(guncel.miktar || 0)
-      }
-      return guncel
-    }))
-  }
-
-  const genelToplam = useMemo(
-    () => yedekParcalar.reduce((s, p) => s + Number(p.tutar || 0), 0),
-    [yedekParcalar],
-  )
+      talep?.cozumAciklamasi])
 
   const kaydet = async () => {
     setHata(null); setBasariMsg(null); setKaydediliyor(true)
@@ -132,7 +109,8 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
         model: model.trim() || null,
         kunyeNumarasi: kunye.trim() || null,
         cozumAciklamasi: cozumAciklamasi.trim() || null,
-        yedekParcalar: yedekParcalar.filter(p => (p.aciklama || '').trim() || Number(p.birim_fiyat) > 0),
+        // yedekParcalar BİLEREK yazılmıyor: artık servis_malzemeleri'nden DB
+        // trigger'ı türetiyor. Buradan yazmak trigger'la yarışır ve listeyi ezerdi.
       })
       setBasariMsg('Form bilgileri kaydedildi.')
       setTimeout(() => setBasariMsg(null), 3000)
@@ -210,80 +188,17 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
           </div>
         </div>
 
-        {/* Yedek Parcalar */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ ...labelStil, marginBottom: 0 }}>Yedek Parçalar / Hizmetler</span>
-            <Button
-              variant="tertiary"
-              size="sm"
-              iconLeft={<Plus size={12} strokeWidth={2} />}
-              onClick={() => setYedekParcalar(p => [...p, bosParca()])}
-            >
-              Satır Ekle
-            </Button>
-          </div>
-
-          {yedekParcalar.length === 0 ? (
-            <div style={{
-              padding: 18, textAlign: 'center', fontSize: 12,
-              color: 'var(--text-tertiary)', background: 'var(--surface-subtle)',
-              borderRadius: 8, border: '1px dashed var(--border-subtle)',
-            }}>
-              Yedek parça veya hizmet eklenmemiş. "Satır Ekle" ile başlayın.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '32px 1fr 120px 80px 120px 36px',
-                gap: 8, padding: '0 8px', fontSize: 11, fontWeight: 700,
-                color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4,
-              }}>
-                <div>#</div>
-                <div>Açıklama</div>
-                <div style={{ textAlign: 'right' }}>Birim Fiyat (₺)</div>
-                <div style={{ textAlign: 'right' }}>Miktar</div>
-                <div style={{ textAlign: 'right' }}>Tutar (₺)</div>
-                <div></div>
-              </div>
-              {yedekParcalar.map((p, i) => (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '32px 1fr 120px 80px 120px 36px',
-                  gap: 8, alignItems: 'center',
-                }}>
-                  <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>{i + 1}</div>
-                  <Input value={p.aciklama || ''} onChange={e => parcaGuncelle(i, 'aciklama', e.target.value)} placeholder="Parça / hizmet açıklaması" />
-                  <Input type="number" step="0.01" value={p.birim_fiyat ?? 0} onChange={e => parcaGuncelle(i, 'birim_fiyat', Number(e.target.value))} style={{ textAlign: 'right' }} />
-                  <Input type="number" step="1" value={p.miktar ?? 0} onChange={e => parcaGuncelle(i, 'miktar', Number(e.target.value))} style={{ textAlign: 'right' }} />
-                  <Input value={Number(p.tutar || 0).toFixed(2)} readOnly style={{ textAlign: 'right', background: 'var(--surface-subtle)', fontWeight: 600 }} />
-                  <button
-                    type="button"
-                    onClick={() => setYedekParcalar(prev => prev.filter((_, idx) => idx !== i))}
-                    title="Sil"
-                    style={{
-                      width: 32, height: 32, borderRadius: 6,
-                      border: '1px solid var(--border-default)', background: 'transparent',
-                      color: 'var(--text-tertiary)', cursor: 'pointer',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-
-              <div style={{
-                display: 'flex', justifyContent: 'flex-end', gap: 12,
-                paddingTop: 8, borderTop: '1px solid var(--border-subtle)',
-                fontSize: 13, fontWeight: 700, color: 'var(--text-primary)',
-              }}>
-                <span>Genel Toplam:</span>
-                <span style={{ minWidth: 120, textAlign: 'right' }}>
-                  {genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                </span>
-              </div>
-            </div>
-          )}
+        {/* Yedek parca girisi buradan KALKTI (mig 170): artik "Kullanilan
+            Malzemeler" karti tek kaynak. Iki ayri editor olsaydi biri stogu,
+            digeri musteri formunu yazacak ve ikisi surekli birbirini ezecekti. */}
+        <div style={{
+          padding: "10px 14px", borderRadius: 8, fontSize: 12,
+          background: "var(--surface-subtle)", border: "1px dashed var(--border-subtle)",
+          color: "var(--text-tertiary)",
+        }}>
+          Yedek parça / hizmet satırları artık yukarıdaki <strong>Kullanılan Malzemeler</strong>
+          {" "}kartından girilir — oradan eklenen malzemeler stoktan düşer ve müşteri formuna
+          {" "}aynen basılır.
         </div>
 
         {/* Hata/Basari */}

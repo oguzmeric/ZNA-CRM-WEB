@@ -22,6 +22,7 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import { gorevEkle } from '../services/gorevService'
 import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
+import { kesiftenMalzemePlanla } from '../services/servisMalzemeService'
 import CustomSelect from '../components/CustomSelect'
 import CokluSelect from '../components/CokluSelect'
 import { SkeletonDetay } from '../components/Skeleton'
@@ -241,7 +242,9 @@ export default function KesifDetay() {
   const servisOlustur = async () => {
     const onay = await confirm({
       baslik: 'Servis Talebi Oluştur',
-      mesaj: `${kesif.kesifNo} için "Kurulum" türünde servis talebi açılacak (keşif notları ve malzeme listesi açıklamaya eklenir). Devam?`,
+      mesaj: kalemler.length
+        ? `${kesif.kesifNo} için "Kurulum" türünde servis talebi açılacak. ${kalemler.length} malzeme kalemi servise "planlanan" olarak aktarılacak — teknisyen kullandıkça işaretler, stok o an düşer. Devam?`
+        : `${kesif.kesifNo} için "Kurulum" türünde servis talebi açılacak (keşif notları açıklamaya eklenir). Devam?`,
       onayMetin: 'Talebi Oluştur', iptalMetin: 'Vazgeç',
     })
     if (!onay) return
@@ -276,10 +279,22 @@ export default function KesifDetay() {
           aciklama: `${kesif.kesifNo} keşfinden oluşturuldu`,
         }],
       })
+      // Keşif kalemleri servise "planlanan malzeme" olarak taşınır. Eskiden yalnız
+      // açıklamaya metin olarak yapışıyordu; teknisyen listeyi elle yeniden
+      // yazmak zorunda kalıyordu (2026-07-15 şikayeti).
+      let aktarilan = 0
+      if (kalemler.length) {
+        try {
+          aktarilan = (await kesiftenMalzemePlanla(talep.id, kalemler)).length
+        } catch (e) {
+          // Talep açıldı — malzeme aktarımı patlarsa akışı durdurma, ama SUSMA.
+          toast.error('Servis açıldı ama keşif malzemeleri aktarılamadı: ' + (e?.message || 'bilinmeyen hata'))
+        }
+      }
       await kesifGuncelle(id, { servisTalepId: talep.id })
       setKesif(k => ({ ...k, servisTalepId: talep.id }))
       servisTalebiBildirimGonder(talep, kullanici?.id).catch(() => {})
-      toast.success(`Servis talebi oluşturuldu (${talep.talepNo || '#' + talep.id}).`)
+      toast.success(`Servis talebi oluşturuldu (${talep.talepNo || '#' + talep.id})${aktarilan ? ` · ${aktarilan} malzeme planlandı` : ''}.`)
     } catch (e) {
       toast.error('Servis talebi oluşturulamadı: ' + (e?.message || 'bilinmeyen hata'))
     } finally {

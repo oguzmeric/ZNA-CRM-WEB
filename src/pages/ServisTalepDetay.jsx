@@ -306,15 +306,20 @@ export default function ServisTalepDetay() {
         {/* Sol — Ana içerik */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Form Bilgileri — tamamlanmış taleplerde EN ÜSTTE (en önemli iş yapma alanı) */}
-          {talep.durum === 'tamamlandi' && (
-            <ServisFormBilgileriCard
-              talep={talep}
-              onKaydet={async (yeniler) => {
-                await talepGuncelle(talep.id, yeniler, kullanici?.ad)
-              }}
-            />
-          )}
+          {/* Kullanılan malzemeler — müşteri formundaki "Yedek Parçalar" listesini
+              besleyen TEK yer (mig 170). Talep hangi durumda olursa olsun görünür:
+              teknisyen malzemeyi işi YAPARKEN ekler. Eskiden bu kart ve form
+              bilgileri yalnız durum='tamamlandi' iken açılıyordu — iş sırasında
+              malzeme girilemiyordu (2026-07-15 şikayeti). */}
+          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo} />
+
+          {/* Form Bilgileri — yapılan işlem / çözüm açıklaması */}
+          <ServisFormBilgileriCard
+            talep={talep}
+            onKaydet={async (yeniler) => {
+              await talepGuncelle(talep.id, yeniler, kullanici?.ad)
+            }}
+          />
 
           {/* Açıklama */}
           <Card>
@@ -640,10 +645,6 @@ export default function ServisTalepDetay() {
               </div>
             </div>
           </Card>
-
-          {/* Kullanılan malzemeler (Stok v2 Faz 4) — SN'li kullanım teknisyen
-              deposundan otomatik düşer */}
-          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo} />
 
           {/* Durum geçmişi */}
           <Card>
