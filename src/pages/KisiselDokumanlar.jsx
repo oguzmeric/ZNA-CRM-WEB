@@ -503,7 +503,8 @@ export default function KisiselDokumanlar() {
 // ---------------- OneDrive'dan Ekle ----------------
 // Client ID uygulama_ayarlari'nda ('onedrive_client_id'). Yoksa kurulum ekranı
 // gösterilir (admin ID'yi buradan yapıştırır). Varsa Microsoft seçicisi açılır,
-// seçilen dosyalar CRM deposuna kopyalanır (8 MB üstü ise OneDrive linki olarak eklenir).
+// seçilen dosyalar CRM deposuna kopyalanır (MAX_BOYUT_MB üstü ise OneDrive linki
+// olarak eklenir — sınırı burada TEKRAR YAZMA, kisiDokumanService tek kaynak).
 
 function OneDriveModal({ kategoriler, kullanici, onKapat, onAktarildi }) {
   const { toast } = useToast()
