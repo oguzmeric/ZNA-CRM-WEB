@@ -49,6 +49,8 @@ export default function ProformaYazdir() {
           tr { page-break-inside: avoid; }
         }
         .sayfa { max-width: 800px; margin: 0 auto; padding: 28px; position: relative; }
+        /* ekranda sabit Yazdir/Kapat butonlari basliga binmesin; ciktida bosluk yok */
+        @media screen { .sayfa { margin-top: 56px; } }
         table { width: 100%; border-collapse: collapse; }
         .kalem th { background: ${MAVI}; color: #fff; font-size: 10.5px; font-weight: 700;
           text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; text-align: left; }
