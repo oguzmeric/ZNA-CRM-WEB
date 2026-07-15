@@ -898,7 +898,7 @@ function TeklifDetay() {
       toast.success(`${kayit.talepNo} oluşturuldu — fatura yetkilisine bildirildi.`)
     } catch (e) {
       const mesaj = e?.code === '23505'
-        ? 'Bu teklif için zaten bekleyen bir fatura talebi var.'
+        ? 'Bu teklif için zaten bekleyen bir proforma var.'
         : 'Talep oluşturulamadı: ' + (e?.message || 'bilinmeyen hata')
       toast.error(mesaj)
     } finally {
@@ -1216,7 +1216,7 @@ function TeklifDetay() {
                 onClick={() => navigate('/fatura-talepleri')}
                 title={`${faturaTalebi.talepNo} — fatura yetkilisinde`}
               >
-                Fatura Talebi Gönderildi
+                Proforma Gönderildi
               </Button>
             ) : (
               <Button
@@ -1224,9 +1224,9 @@ function TeklifDetay() {
                 iconLeft={<Receipt size={14} strokeWidth={1.5} />}
                 onClick={faturaTalebiAc}
                 disabled={faturaTalepMesgul}
-                title="Fatura yetkilisine numarasız fatura talebi gönder"
+                title="Fatura yetkilisine proforma gönder — gerçek faturayı muhasebe keser"
               >
-                {faturaTalepMesgul ? 'Hazırlanıyor…' : 'Fatura Oluştur'}
+                {faturaTalepMesgul ? 'Hazırlanıyor…' : 'Proforma Oluştur'}
               </Button>
             )
           )}
@@ -2205,7 +2205,7 @@ function TeklifDetay() {
         ]
         const eksik = ['vergiNo', 'vergiDairesi', 'adres'].filter(k => !t[k])
         return (
-          <Modal open onClose={() => setFaturaTalepAcik(false)} title="Fatura Talebi Oluştur" width={720}>
+          <Modal open onClose={() => setFaturaTalepAcik(false)} title="Proforma Fatura Oluştur" width={720}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{
                 background: 'var(--info-soft)', border: '1px solid var(--info)',
@@ -2290,7 +2290,7 @@ function TeklifDetay() {
                 <Button variant="secondary" onClick={() => setFaturaTalepAcik(false)}>Vazgeç</Button>
                 <Button variant="primary" onClick={faturaTalebiGonder} disabled={faturaTalepMesgul}
                   iconLeft={<Receipt size={14} strokeWidth={1.5} />}>
-                  {faturaTalepMesgul ? 'Gönderiliyor…' : 'Fatura Talebini Gönder'}
+                  {faturaTalepMesgul ? 'Gönderiliyor…' : 'Proformayı Gönder'}
                 </Button>
               </div>
             </div>

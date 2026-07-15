@@ -85,7 +85,7 @@ export default function FaturaYazdir() {
                 {[
                   // Gerçek fatura no kesilene kadar boş olabilir; iç takip no her zaman var
                   ['Fatura No', satis.faturaNo || '— (kesilmedi)'],
-                  ...(satis.istekNo ? [['İstek No', satis.istekNo]] : []),
+                  ...(satis.istekNo ? [['Proforma No', satis.istekNo]] : []),
                   ['Fatura Tarihi', satis.faturaTarihi],
                   ['Vade Tarihi', satis.vadeTarihi || '—'],
                   ['Para Birimi', satis.paraBirimi],

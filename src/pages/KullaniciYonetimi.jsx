@@ -1263,7 +1263,7 @@ export default function KullaniciYonetimi() {
                     </span>
                   </label>
                   <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    "Fatura Oluşturulacak" kuyruğunu görür; fatura no + PDF girip satışa dönüştürebilir.
+                    "Proforma Fatura" kuyruğunu görür; fatura no + PDF girip satışa dönüştürebilir.
                     Adminler bu kutudan bağımsız olarak zaten görür.
                   </div>
 

@@ -97,7 +97,7 @@ async function faturaYetkililerineBildir(talep) {
     const alicilar = [...new Set((data || []).map(k => k.id))]
     if (!alicilar.length) return
     await cokluBildirimEkle(alicilar, {
-      baslik: `Fatura talebi — ${talep.firmaAdi}`,
+      baslik: `Proforma fatura — ${talep.firmaAdi}`,
       mesaj: `${talep.talepNo} · ${talep.teklifNo || 'teklif'} · ${talep.genelToplam} ${talep.paraBirimi}`,
       tip: 'uyari',
       link: '/fatura-talepleri',

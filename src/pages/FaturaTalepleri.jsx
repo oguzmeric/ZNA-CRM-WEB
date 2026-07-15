@@ -22,9 +22,11 @@ import {
   faturaDosyaUrl, faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
 
+// Sayfa "Proforma Fatura" (2026-07-15 terim düzeltmesi: numarasız ön fatura =
+// proforma). DB tarafı değişmedi — tablo fatura_talepleri, numara FTL- kalır.
 const SEKMELER = [
-  { id: 'bekliyor',    label: 'Fatura Bekleyen' },
-  { id: 'faturalandi', label: 'Faturalandı' },
+  { id: 'bekliyor',    label: 'Bekleyen' },
+  { id: 'faturalandi', label: 'Faturalanan' },
   { id: 'reddedildi',  label: 'Reddedilen' },
 ]
 
@@ -75,7 +77,7 @@ export default function FaturaTalepleri() {
         <EmptyState
           icon={<Receipt size={40} strokeWidth={1.2} />}
           title="Bu sayfayı görme yetkiniz yok"
-          description="Fatura Oluşturulacak kuyruğu yalnızca fatura yetkililerine açıktır."
+          description="Proforma Fatura kuyruğu yalnızca fatura yetkililerine açıktır."
         />
       </div>
     )
@@ -89,7 +91,7 @@ export default function FaturaTalepleri() {
     <div style={sayfaStil}>
       {/* Başlık MainLayout'ta zaten yazıyor — sayfada tekrar etmiyoruz. */}
       <p className="t-caption" style={{ margin: 0, color: 'var(--text-tertiary)' }}>
-        Satıştan gelen fatura talepleri. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
+        Tekliften kesilen proforma faturalar. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
         satış kaydı ancak o zaman oluşur.
       </p>
 
@@ -145,10 +147,10 @@ export default function FaturaTalepleri() {
         talepler.length === 0 ? (
           <EmptyState
             icon={<Receipt size={40} strokeWidth={1.2} />}
-            title={sekme === 'bekliyor' ? 'Bekleyen fatura talebi yok'
-              : sekme === 'faturalandi' ? 'Henüz faturalanmış talep yok'
-              : 'Reddedilmiş talep yok'}
-            description={sekme === 'bekliyor' ? 'Satış ekibi teklif üzerinden talep açtığında burada görünür.' : ''}
+            title={sekme === 'bekliyor' ? 'Bekleyen proforma yok'
+              : sekme === 'faturalandi' ? 'Henüz faturalanmış proforma yok'
+              : 'Reddedilmiş proforma yok'}
+            description={sekme === 'bekliyor' ? 'Satış ekibi tekliften proforma kestiğinde burada görünür.' : ''}
           />
         ) : (
           <Card>
@@ -160,7 +162,7 @@ export default function FaturaTalepleri() {
                       'faturalandi' değilken 8 başlık / 7 hücre = sütunlar kayıyordu. */}
                   <tr style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textAlign: 'left' }}>
                     {[
-                      'Talep No', 'Müşteri', 'Teklif', 'Tutar', 'Talep Eden', 'Tarih',
+                      'Proforma No', 'Müşteri', 'Teklif', 'Tutar', 'Oluşturan', 'Tarih',
                       ...(sekme === 'faturalandi' ? ['Fatura No'] : []),
                       '',
                     ].map((h, i) => (
@@ -235,7 +237,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
     try {
       const sonuc = await faturaTalebiReddet({ talep, redNedeni, kullanici })
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
-      toast.success('Talep reddedildi — satış ekibine bildirildi.')
+      toast.success('Proforma reddedildi — satış ekibine bildirildi.')
       onTamamlandi()
     } finally {
       setMesgul(false)
@@ -244,7 +246,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
 
   const geriAl = async () => {
     const onay = await confirm({
-      baslik: 'Talebi Kuyruğa Al',
+      baslik: 'Proformayı Kuyruğa Al',
       mesaj: `${talep.talepNo} tekrar "fatura bekleyen" durumuna dönecek. Devam edilsin mi?`,
       onayMetin: 'Kuyruğa al', iptalMetin: 'Vazgeç',
     })
@@ -318,7 +320,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
             </table>
             {eksik.length > 0 && bekliyor && (
               <div style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--warning)', marginTop: 6 }}>
-                ⚠ Vergi/adres bilgisi eksik — gerekirse talebi reddedip satıştan tamamlamasını isteyin.
+                ⚠ Vergi/adres bilgisi eksik — gerekirse proformayı reddedip satıştan tamamlamasını isteyin.
               </div>
             )}
           </div>
@@ -418,7 +420,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
                   </Button>
                   <Button variant="secondary" onClick={() => setRedAcik(true)}
                     iconLeft={<XCircle size={14} strokeWidth={1.5} />}>
-                    Talebi Reddet
+                    Proformayı Reddet
                   </Button>
                 </>
               ) : (

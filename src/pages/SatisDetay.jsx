@@ -676,7 +676,7 @@ function SatisDetay() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* İç takip numaramız — DB trigger üretir, elle değiştirilmez */}
             <div>
-              <Label>Fatura istek no</Label>
+              <Label>Proforma no</Label>
               <Input
                 value={form.istekNo || (yeniMod ? 'Kaydedince otomatik verilecek' : '—')}
                 disabled

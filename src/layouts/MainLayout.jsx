@@ -128,7 +128,7 @@ const menuItems = [
   // Satıştan gelen numarasız fatura talepleri burada karşılanır.
   {
     id: 'fatura_talepleri',
-    isim: 'Fatura Oluşturulacak',
+    isim: 'Proforma Fatura',
     Icon: Receipt,
     modul: '_fatura_yetkisi',
     grup: 'satis',
@@ -243,7 +243,7 @@ const sayfaIsimleri = {
   '/teklifler': 'Teklifler',
   '/siparisler': 'Siparişler',
   '/satislar': 'Satış Faturaları',
-  '/fatura-talepleri': 'Fatura Oluşturulacak',
+  '/fatura-talepleri': 'Proforma Fatura',
   '/kesifler': 'Keşifler',
   '/gunluk-ozet': 'Günlük Özet',
   '/sozlesmeler': 'Sözleşmeler',
