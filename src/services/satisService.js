@@ -109,11 +109,14 @@ export const satisGuncelle = async (id, satis) => {
   const tumSnake = { ...toSnake(rest), updated_at: new Date().toISOString() }
 
   // Sadece bilinen satislar sütunlarını gönder
+  // DİKKAT: yeni kolon eklenince BURAYA da eklenmeli — aksi halde alan sessizce
+  // yazılmaz (kayıt "başarılı" görünür, veri kaybolur).
   const izinliSutunlar = [
-    'fatura_no', 'firma_adi', 'musteri_yetkili', 'musteri_email', 'musteri_telefon',
+    'fatura_no', 'istek_no', 'firma_adi', 'musteri_yetkili', 'musteri_email', 'musteri_telefon',
+    'vergi_no', 'vergi_dairesi',
     'fatura_tarihi', 'vade_tarihi', 'durum', 'para_birimi', 'notlar', 'aciklama',
     'teklif_id', 'teklif_no', 'ara_toplam', 'iskonto_toplam', 'kdv_toplam',
-    'genel_toplam', 'odenen_toplam', 'updated_at',
+    'genel_toplam', 'odenen_toplam', 'fatura_pdf_yol', 'fatura_pdf_ad', 'updated_at',
   ]
   const guncellenecek = Object.fromEntries(
     Object.entries(tumSnake).filter(([k]) => izinliSutunlar.includes(k))

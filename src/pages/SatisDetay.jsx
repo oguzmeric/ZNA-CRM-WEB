@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import {
   ArrowLeft, Plus, Trash2, Printer, Mail, Save, Send, CheckCircle2,
   Search, Package, Link as LinkIcon, Inbox,
 } from 'lucide-react'
 import {
   satisGetir, satisEkle, satisGuncelle, satisSil,
-  tahsilatEkle, tahsilatSil, yeniFaturaNo, stokDusumYap,
+  tahsilatEkle, tahsilatSil, stokDusumYap,
 } from '../services/satisService'
-import { musterileriGetir } from '../services/musteriService'
+import { musterileriGetir, musteriGetir } from '../services/musteriService'
+import { faturaYetkisi, faturaDosyaYukle, faturaDosyaUrl } from '../services/faturaTalepService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { useConfirm } from '../context/ConfirmContext'
 import { useToast } from '../context/ToastContext'
@@ -27,11 +29,18 @@ const trNormalize = (str = '') =>
     .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
 
 const bosForm = {
+  // istekNo = bizim iç takip numaramız (FI-/FTL-, DB trigger üretir).
+  // faturaNo = muhasebenin girdiği GERÇEK fatura numarası; kesilene kadar boş.
+  istekNo: '',
   faturaNo: '',
   firmaAdi: '',
   musteriYetkili: '',
   musteriEmail: '',
   musteriTelefon: '',
+  vergiNo: '',
+  vergiDairesi: '',
+  faturaPdfYol: '',
+  faturaPdfAd: '',
   faturaTarihi: new Date().toISOString().split('T')[0],
   vadeTarihi: '',
   durum: 'taslak',
@@ -144,6 +153,12 @@ function SatisDetay() {
 
   const [form, setForm] = useState({ ...bosForm })
   const [yukleniyor, setYukleniyor] = useState(!yeniMod)
+  // Gerçek fatura no + PDF — sadece fatura yetkilisi (Abdullah) ve adminler.
+  // Yetki mantığı tek kaynak: faturaYetkisi() (mig 165).
+  const { kullanici } = useAuth()
+  const faturaYetkilisiMi = faturaYetkisi(kullanici)
+  const faturaPdfRef = useRef(null)
+  const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [musteriler, setMusteriler] = useState([])
   const [musteriArama, setMusteriArama] = useState('')
@@ -170,9 +185,10 @@ function SatisDetay() {
 
   useEffect(() => {
     if (yeniMod) {
-      yeniFaturaNo().then((no) => {
-        setForm((prev) => ({ ...prev, faturaNo: no }))
-      })
+      // Fatura no ARTIK burada üretilmiyor. Eskiden yeniFaturaNo() istemcide
+      // FAT-YYYY-NNN uydurup "Fatura no" alanına yazıyordu — o numaranın gerçek
+      // faturayla ilgisi yoktu. Artık iç takip numarasını (FI-) DB trigger'ı
+      // üretir; fatura_no'yu muhasebe gerçek faturayı kesince girer (mig 167).
       const onDoldurum = localStorage.getItem('satis_on_doldurum')
       if (onDoldurum) {
         try {
@@ -230,7 +246,7 @@ function SatisDetay() {
   )
 
   const kaydet = async () => {
-    if (!form.firmaAdi && !form.faturaNo) {
+    if (!form.firmaAdi) {
       toast.error('Firma adı gereklidir.')
       return
     }
@@ -260,13 +276,13 @@ function SatisDetay() {
     try {
       if (yeniMod) {
         const yeni = await satisEkle(payload)
-        await stokDusumYap(form.satirlar, form.faturaNo, form.firmaAdi)
+        await stokDusumYap(form.satirlar, form.faturaNo || form.istekNo, form.firmaAdi)
         toast.success('Fatura gönderildi olarak kaydedildi.')
         navigate(`/satislar/${yeni.id}`)
       } else {
         await satisGuncelle(id, payload)
         setForm((prev) => ({ ...prev, durum: 'gonderildi' }))
-        await stokDusumYap(form.satirlar, form.faturaNo, form.firmaAdi)
+        await stokDusumYap(form.satirlar, form.faturaNo || form.istekNo, form.firmaAdi)
         toast.success('Durum "Gönderildi" olarak güncellendi.')
       }
     } catch (err) {
@@ -298,7 +314,7 @@ function SatisDetay() {
   const handleSil = async () => {
     const onay = await confirm({
       baslik: 'Faturayı Sil',
-      mesaj: `${form.faturaNo} numaralı fatura kalıcı olarak silinecek. Emin misiniz?`,
+      mesaj: `${form.faturaNo || form.istekNo} numaralı fatura kalıcı olarak silinecek. Emin misiniz?`,
       onayMetin: 'Evet, sil',
       iptalMetin: 'Vazgeç',
       tip: 'tehlikeli',
@@ -377,12 +393,37 @@ function SatisDetay() {
     toast.success('Email istemciniz açıldı.')
   }
 
+  // Gerçek fatura PDF'i — kuyruktakiyle aynı private bucket (fatura-belge)
+  const faturaPdfYukle = async (dosya) => {
+    if (!dosya) return
+    const pdfMi = dosya.type === 'application/pdf' || /\.pdf$/i.test(dosya.name)
+    if (!pdfMi) { toast.error('Fatura dosyası PDF olmalıdır.'); return }
+    setPdfYukleniyor(true)
+    try {
+      const yol = await faturaDosyaYukle(id, dosya)
+      if (!yol) { toast.error('PDF yüklenemedi.'); return }
+      await satisGuncelle(id, { faturaPdfYol: yol, faturaPdfAd: dosya.name })
+      setForm(p => ({ ...p, faturaPdfYol: yol, faturaPdfAd: dosya.name }))
+      toast.success('Fatura PDF’i yüklendi.')
+    } catch (e) {
+      toast.error('Yüklenemedi: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setPdfYukleniyor(false)
+    }
+  }
+
+  const faturaPdfAc = async () => {
+    const url = await faturaDosyaUrl(form.faturaPdfYol)
+    if (!url) { toast.error('PDF açılamadı.'); return }
+    window.open(url, '_blank', 'noopener')
+  }
+
   if (yukleniyor) {
     return <SkeletonDetay />
   }
 
   // Aranabilir müşteri açılır listesi
-  const musteriSec = (m) => {
+  const musteriSec = async (m) => {
     setForm((p) => ({
       ...p,
       firmaAdi: m.firma || '',
@@ -392,6 +433,19 @@ function SatisDetay() {
     }))
     setMusteriArama('')
     setMusteriListAcik(false)
+    // Vergi no / vergi dairesi fatura için ŞART ama liste sorgusu bu kolonları
+    // ÇEKMEZ (MUSTERI_LISTE_KOLONLARI) — tam kaydı ayrıca çekiyoruz.
+    try {
+      const tam = await musteriGetir(m.id)
+      if (!tam) return
+      setForm((p) => ({
+        ...p,
+        vergiNo: tam.vergiNo || p.vergiNo || '',
+        vergiDairesi: tam.vergiDairesi || p.vergiDairesi || '',
+      }))
+    } catch (e) {
+      console.warn('[SatisDetay] müşteri künyesi çekilemedi:', e?.message)
+    }
   }
 
   const filtreliMusteriler = (() => {
@@ -422,7 +476,7 @@ function SatisDetay() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <h1 className="t-h1">{yeniMod ? 'Yeni fatura' : form.faturaNo}</h1>
+          <h1 className="t-h1">{yeniMod ? 'Yeni fatura' : (form.faturaNo || form.istekNo)}</h1>
           {!yeniMod && <CodeBadge>{form.faturaNo}</CodeBadge>}
           <Badge tone={durum.tone}>{durum.label}</Badge>
         </div>
@@ -592,20 +646,83 @@ function SatisDetay() {
                 placeholder="ornek@firma.com"
               />
             </div>
+            {/* Fatura için ŞART — müşteri kartından otomatik gelir (mig 167) */}
+            <div>
+              <Label>Vergi no / T.C. kimlik</Label>
+              <Input
+                value={form.vergiNo}
+                onChange={(e) => setForm((p) => ({ ...p, vergiNo: e.target.value }))}
+                placeholder="1234567890"
+              />
+            </div>
+            <div>
+              <Label>Vergi dairesi</Label>
+              <Input
+                value={form.vergiDairesi}
+                onChange={(e) => setForm((p) => ({ ...p, vergiDairesi: e.target.value }))}
+                placeholder="İkitelli V.D."
+              />
+            </div>
+            {(!form.vergiNo || !form.vergiDairesi) && form.firmaAdi && (
+              <div style={{ gridColumn: 'span 2', font: '400 11.5px/16px var(--font-sans)', color: 'var(--warning)' }}>
+                ⚠ Vergi bilgisi eksik — müşteri kartını güncelleyip firmayı tekrar seçin.
+              </div>
+            )}
           </div>
         </Card>
 
         <Card>
           <h2 className="t-h2" style={{ marginBottom: 16 }}>Fatura bilgileri</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* İç takip numaramız — DB trigger üretir, elle değiştirilmez */}
             <div>
-              <Label>Fatura no</Label>
+              <Label>Fatura istek no</Label>
+              <Input
+                value={form.istekNo || (yeniMod ? 'Kaydedince otomatik verilecek' : '—')}
+                disabled
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}
+              />
+            </div>
+            {/* GERÇEK fatura numarası — muhasebe girer. Eskiden burada istemcinin
+                uydurduğu FAT-YYYY-NNN vardı; gerçek faturayla ilgisi yoktu. */}
+            <div>
+              <Label>Gerçek fatura no</Label>
               <Input
                 value={form.faturaNo}
                 onChange={(e) => setForm((p) => ({ ...p, faturaNo: e.target.value }))}
+                disabled={!faturaYetkilisiMi}
+                placeholder={faturaYetkilisiMi ? 'Kesilen faturanın numarası' : 'Muhasebe girecek'}
                 style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--brand-primary)' }}
               />
+              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                {faturaYetkilisiMi
+                  ? 'Gerçek faturayı kestikten sonra numarasını girin ve PDF’ini yükleyin.'
+                  : 'Bu alanı muhasebe (fatura yetkilisi) doldurur.'}
+              </div>
             </div>
+            {/* Gerçek fatura PDF'i — kuyruktakiyle aynı bucket */}
+            {faturaYetkilisiMi && !yeniMod && (
+              <div>
+                <Label>Gerçek fatura PDF</Label>
+                <input
+                  ref={faturaPdfRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={(e) => faturaPdfYukle(e.target.files?.[0])}
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Button variant="secondary" size="sm" onClick={() => faturaPdfRef.current?.click()} disabled={pdfYukleniyor}>
+                    {pdfYukleniyor ? 'Yükleniyor…' : (form.faturaPdfAd ? 'PDF Değiştir' : 'PDF Yükle')}
+                  </Button>
+                  {form.faturaPdfYol && (
+                    <Button variant="tertiary" size="sm" onClick={faturaPdfAc}>
+                      {form.faturaPdfAd || 'PDF’i aç'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <Label>Fatura tarihi</Label>
               <Input

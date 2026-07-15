@@ -71,13 +71,21 @@ export default function FaturaYazdir() {
             {satis.musteriYetkili && <p style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{satis.musteriYetkili}</p>}
             {satis.musteriEmail && <p style={{ fontSize: 12, color: '#475569' }}>{satis.musteriEmail}</p>}
             {satis.musteriTelefon && <p style={{ fontSize: 12, color: '#475569' }}>{satis.musteriTelefon}</p>}
+            {/* Vergi künyesi — faturada zorunlu (mig 167) */}
+            {(satis.vergiNo || satis.vergiDairesi) && (
+              <p style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
+                {[satis.vergiDairesi, satis.vergiNo].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </div>
           <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Fatura Bilgileri</p>
             <table style={{ fontSize: 12 }}>
               <tbody>
                 {[
-                  ['Fatura No', satis.faturaNo],
+                  // Gerçek fatura no kesilene kadar boş olabilir; iç takip no her zaman var
+                  ['Fatura No', satis.faturaNo || '— (kesilmedi)'],
+                  ...(satis.istekNo ? [['İstek No', satis.istekNo]] : []),
                   ['Fatura Tarihi', satis.faturaTarihi],
                   ['Vade Tarihi', satis.vadeTarihi || '—'],
                   ['Para Birimi', satis.paraBirimi],

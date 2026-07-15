@@ -159,10 +159,17 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kul
   try {
     satis = await satisEkle({
       faturaNo: no,
+      // Talebin FTL- numarası satışa iç takip numarası olarak taşınır; DB
+      // trigger'ı dolu istek_no'ya dokunmaz (mig 167).
+      istekNo: talep.talepNo || null,
       firmaAdi: talep.firmaAdi,
       musteriYetkili: talep.yetkiliAdi || '',
       musteriEmail: talep.email || '',
       musteriTelefon: talep.telefon || '',
+      vergiNo: talep.vergiNo || '',
+      vergiDairesi: talep.vergiDairesi || '',
+      faturaPdfYol: pdfYol,
+      faturaPdfAd: pdfAd,
       faturaTarihi: faturaTarihi || new Date().toISOString().slice(0, 10),
       vadeTarihi: talep.vadeTarihi || null,
       durum: 'gonderildi',
