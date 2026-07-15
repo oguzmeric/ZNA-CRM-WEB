@@ -6,6 +6,7 @@ import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
   GripVertical, Percent, Copy, History, LayoutTemplate, Eye, FileSignature, Clock,
+  ShoppingCart,
 } from 'lucide-react'
 // Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
