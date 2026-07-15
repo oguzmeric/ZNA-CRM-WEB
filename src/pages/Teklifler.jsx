@@ -230,7 +230,8 @@ export default function Teklifler() {
                 borderBottom: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
                 marginBottom: -1,
                 color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                // agirlik HEP 600: aktifken degisirse sekme genisligi zipliyor (FaturaTalepleri'ndeki ayni fix)
+                font: '600 13px/18px var(--font-sans)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 fontSize: 11,
