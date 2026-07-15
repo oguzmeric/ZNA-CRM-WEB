@@ -93,6 +93,70 @@ export const servisTalepEkle = async (talep) => {
   return toCamel(data)
 }
 
+/**
+ * Montaj sorumlusu (mig 168) — sipariş tamamlanınca açılan montaj servisinin
+ * varsayılan atananı. Sabit id yerine bayrak: kişi değişince kod değişmesin.
+ * (Bu dosyada FERDI_ID = 16 gömülüydü; Ferdi Kalkan aslında id 33 — o sabit
+ * artık ölü kod, doğru kaynak bu bayrak.)
+ */
+export const montajSorumlusuGetir = async () => {
+  const { data, error } = await supabase
+    .from('kullanicilar')
+    .select('id, ad')
+    .eq('tip', 'zna')
+    .eq('montaj_sorumlusu', true)
+    .neq('durum', 'pasif')
+    .limit(1)
+  if (error) { console.error('[montajSorumlusuGetir]', error.message); return null }
+  return data?.[0] ? toCamel(data[0]) : null
+}
+
+/**
+ * Sipariş → montaj servis talebi (mig 168). Zincirin son halkası:
+ * görüşme → teklif → sözleşme → sipariş → (tamamlanınca) MONTAJ.
+ * Desen: KesifDetay.servisOlustur — anaTur 'kurulum' (canlı veride görünen
+ * 'montaj' değeri eski; UI listesi ANA_TURLER'de 'kurulum' var).
+ */
+export const siparistenMontajServisi = async ({ siparis, kalemler, atanan, planliTarih, ekNot, kullanici }) => {
+  const kalemOzet = (kalemler || [])
+    .map(k => `• ${k.urunAd || k.urunAdi || '—'}${k.urunMarka ? ` (${k.urunMarka})` : ''} × ${k.miktar || 1} ${k.birim || 'Adet'}`)
+    .join('\n')
+
+  const talep = await servisTalepEkle({
+    talepNo: null,                       // DB trigger üretir (mig 046)
+    siparisId: siparis.id,               // geri bağ (mig 168)
+    musteriId: siparis.musteriId || null,
+    musteriAd: '',
+    firmaAdi: siparis.firmaAdi || '',
+    anaTur: 'kurulum',
+    altKategori: '',
+    konu: `${siparis.siparisNo} — ${siparis.konu || siparis.firmaAdi || 'sipariş'} montajı`,
+    lokasyon: siparis.lokasyon || '',
+    aciklama: [
+      `Kaynak sipariş: ${siparis.siparisNo}`,
+      siparis.konu ? `Sipariş konusu: ${siparis.konu}` : null,
+      kalemOzet ? `Montaj kapsamı:\n${kalemOzet}` : null,
+      ekNot ? `Not: ${ekNot}` : null,
+    ].filter(Boolean).join('\n\n'),
+    aciliyet: 'normal',
+    ilgiliKisi: kullanici?.ad || '',
+    planliTarih: planliTarih || null,
+    // Atanan varsa 'atandi', yoksa 'bekliyor' — ServisTalebiContext deseni
+    durum: atanan?.id ? 'atandi' : 'bekliyor',
+    kaynak: 'personel',
+    atananKullaniciId: atanan?.id ?? null,
+    atananKullaniciAd: atanan?.ad ?? '',
+    notlar: [],
+    durumGecmisi: [{
+      durum: atanan?.id ? 'atandi' : 'bekliyor',
+      tarih: new Date().toISOString(),
+      kullanici: kullanici?.ad || '',
+      not: `${siparis.siparisNo} siparişi tamamlandı — montaj servisi açıldı.`,
+    }],
+  })
+  return talep
+}
+
 export const servisTalepGuncelle = async (id, guncellenmis) => {
   const { id: _id, olusturmaTarihi, guncellemeTarihi, ...rest } = guncellenmis
   const { data, error } = await supabase.from('servis_talepleri').update({

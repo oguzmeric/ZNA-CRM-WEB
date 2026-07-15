@@ -29,7 +29,7 @@ const tumModuller = [
   { id: 'arac_takip',        isim: 'Araç Takip (Mobiltek)' },
 ]
 
-const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [], musteriId: null, faturaYetkilisi: false }
+const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [], musteriId: null, faturaYetkilisi: false, montajSorumlusu: false }
 
 const LOG_TIP = {
   kullanici_giris: { isim: 'Giriş',           tone: 'aktif',     C: LogIn },
@@ -1265,6 +1265,30 @@ export default function KullaniciYonetimi() {
                   <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
                     "Fatura Oluşturulacak" kuyruğunu görür; fatura no + PDF girip satışa dönüştürebilir.
                     Adminler bu kutudan bağımsız olarak zaten görür.
+                  </div>
+
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                    padding: '8px 12px', maxWidth: 420, marginTop: 8,
+                    borderRadius: 'var(--radius-sm)',
+                    background: form.montajSorumlusu ? 'var(--brand-primary-soft)' : 'var(--surface-sunken)',
+                    border: `1px solid ${form.montajSorumlusu ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={!!form.montajSorumlusu}
+                      onChange={e => setForm(f => ({ ...f, montajSorumlusu: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
+                    />
+                    <span style={{
+                      font: form.montajSorumlusu ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                      color: form.montajSorumlusu ? 'var(--brand-primary)' : 'var(--text-primary)',
+                    }}>
+                      Montaj sorumlusu
+                    </span>
+                  </label>
+                  <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    Sipariş tamamlanınca açılan montaj servis talebi varsayılan olarak bu kişiye atanır.
                   </div>
                 </div>
               )}

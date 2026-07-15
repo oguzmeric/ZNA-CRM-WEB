@@ -151,6 +151,48 @@ export const siparisIptalEt = async (id, { iptalSebebi, kullaniciAd } = {}) => {
   return true
 }
 
+/**
+ * Siparişi tamamla — zincirin (görüşme→teklif→sözleşme→sipariş) son adımı.
+ * Şema 'tamamlandi'yi baştan beri kabul ediyordu (mig 126) ama bu değeri SET
+ * eden hiçbir kod yoktu; Siparişler'deki "Tamamlandı" sekmesi hep boştu.
+ * Tamamlama, montaj servisi köprüsünün de tetikleyicisi (mig 168).
+ */
+export const siparisTamamla = async (id, { kullanici } = {}) => {
+  const { data: siparis, error: eGet } = await supabase
+    .from('siparisler')
+    .select('id, durum')
+    .eq('id', id)
+    .single()
+  if (eGet || !siparis) throw eGet || new Error('Sipariş bulunamadı')
+  if (siparis.durum === 'iptal') throw new Error('İptal edilmiş sipariş tamamlanamaz.')
+  if (siparis.durum === 'tamamlandi') throw new Error('Sipariş zaten tamamlanmış.')
+
+  const { data, error } = await supabase
+    .from('siparisler')
+    .update({
+      durum: 'tamamlandi',
+      tamamlanma_tarihi: new Date().toISOString(),
+      tamamlayan_id: kullanici?.id ?? null,
+      tamamlayan_ad: kullanici?.ad ?? '',
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  invalidate('siparisler:list', `siparis:${id}`)
+  return toCamel(data)
+}
+
+// Montaj servisi açıldıktan sonra siparişe geri bağla
+export const siparisServisBagla = async (siparisId, servisTalepId) => {
+  const { error } = await supabase
+    .from('siparisler')
+    .update({ servis_talep_id: servisTalepId })
+    .eq('id', siparisId)
+  if (error) console.error('[siparisServisBagla]', error.message)
+  invalidate('siparisler:list', `siparis:${siparisId}`)
+}
+
 // ==================== KALEMLER ====================
 export const kalemleriGetir = (siparisId) => cached(`siparis-kalem:${siparisId}`, async () => {
   const { data, error } = await supabase

@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle } from 'lucide-react'
-import { Card, CardTitle, Button, Badge, EmptyState, Textarea } from '../components/ui'
+import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench } from 'lucide-react'
+import { Card, CardTitle, Button, Badge, EmptyState, Textarea, Input, Label, Modal } from '../components/ui'
 import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam, siparisIptalEt,
+  siparisTamamla, siparisServisBagla,
 } from '../services/siparisService'
+import { siparistenMontajServisi, montajSorumlusuGetir, servisTalebiBildirimGonder } from '../services/servisService'
+import { useConfirm } from '../context/ConfirmContext'
 import { musteriGetir } from '../services/musteriService'
 import { gorusmeGetir } from '../services/gorusmeService'
 import { useAuth } from '../context/AuthContext'
@@ -48,6 +51,10 @@ export default function SiparisDetay() {
   const [iptalModalAcik, setIptalModalAcik] = useState(false)
   const [iptalSebebi, setIptalSebebi] = useState('')
   const [iptalIsleniyor, setIptalIsleniyor] = useState(false)
+  // Sipariş tamamlama → montaj servisi köprüsü (mig 168)
+  const { confirm } = useConfirm()
+  const [mesgul, setMesgul] = useState(false)
+  const [montajModal, setMontajModal] = useState(null)  // null | { planliTarih, ekNot, atanan }
 
   useEffect(() => {
     (async () => {
@@ -105,6 +112,57 @@ export default function SiparisDetay() {
     }
   }
 
+  // Montaj modalını aç — atanan varsayılanı montaj sorumlusu (Ferdi, mig 168)
+  const montajModaliAc = async () => {
+    const sorumlu = await montajSorumlusuGetir()
+    setMontajModal({ planliTarih: '', ekNot: '', atanan: sorumlu })
+  }
+
+  const tamamlaTikla = async () => {
+    const onay = await confirm({
+      baslik: 'Siparişi Tamamla',
+      mesaj: `${siparis.siparisNo} tamamlandı olarak işaretlenecek. Ardından montaj servisi açabilirsiniz.`,
+      onayMetin: 'Tamamla', iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    setMesgul(true)
+    try {
+      const g = await siparisTamamla(siparis.id, { kullanici })
+      setSiparis(s => ({ ...s, ...g }))
+      toast.success('Sipariş tamamlandı.')
+      // Zincirin devamı: montaj servisi. Her sipariş montaj gerektirmez —
+      // otomatik açmıyoruz, ön-dolu modalla soruyoruz.
+      await montajModaliAc()
+    } catch (e) {
+      toast.error('Tamamlanamadı: ' + (e?.message || 'hata'))
+    } finally {
+      setMesgul(false)
+    }
+  }
+
+  const montajOlustur = async () => {
+    setMesgul(true)
+    try {
+      const talep = await siparistenMontajServisi({
+        siparis: { ...siparis, firmaAdi: musteri?.firma || '', lokasyon: musteri?.adres || '' },
+        kalemler,
+        atanan: montajModal.atanan,
+        planliTarih: montajModal.planliTarih || null,
+        ekNot: montajModal.ekNot,
+        kullanici,
+      })
+      await siparisServisBagla(siparis.id, talep.id)
+      setSiparis(s => ({ ...s, servisTalepId: talep.id }))
+      try { await servisTalebiBildirimGonder(talep, kullanici?.id) } catch (e) { console.warn('[montaj bildirim]', e?.message) }
+      setMontajModal(null)
+      toast.success(`${talep.talepNo} montaj servisi açıldı${montajModal.atanan?.ad ? ` — ${montajModal.atanan.ad}` : ''}.`)
+    } catch (e) {
+      toast.error('Servis açılamadı: ' + (e?.message || 'hata'))
+    } finally {
+      setMesgul(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       {/* Üst bar */}
@@ -120,6 +178,31 @@ export default function SiparisDetay() {
           <Button variant="secondary" iconLeft={<FileText size={14} />} onClick={() => navigate(`/sozlesmeler/satis/yeni?siparisId=${siparis.id}`)}>
             Satış Sözleşmesi Oluştur
           </Button>
+        )}
+        {/* Zincirin son adımı: tamamlama → montaj servisi köprüsü (mig 168).
+            Şema 'tamamlandi'yi kabul ediyordu ama SET eden kod yoktu. */}
+        {siparis.durum === 'aktif' && (
+          <Button
+            variant="primary"
+            iconLeft={<CheckCircle2 size={14} />}
+            onClick={tamamlaTikla}
+            disabled={mesgul}
+            title="Siparişi tamamla — ardından montaj servisi açabilirsin"
+          >
+            {mesgul ? 'İşleniyor…' : 'Siparişi Tamamla'}
+          </Button>
+        )}
+        {siparis.durum === 'tamamlandi' && (
+          siparis.servisTalepId ? (
+            <Button variant="secondary" iconLeft={<Wrench size={14} />}
+              onClick={() => navigate(`/servis-talepleri/${siparis.servisTalepId}`)}>
+              Montaj Servisine Git
+            </Button>
+          ) : (
+            <Button variant="secondary" iconLeft={<Wrench size={14} />} onClick={montajModaliAc}>
+              Montaj Servisi Oluştur
+            </Button>
+          )
         )}
         {siparis.durum === 'aktif' && (
           <Button
@@ -298,6 +381,58 @@ export default function SiparisDetay() {
           )}
         </div>
       </div>
+
+      {/* Montaj servisi — sipariş tamamlanınca ön-dolu açılır (mig 168) */}
+      {montajModal && (
+        <Modal open onClose={() => !mesgul && setMontajModal(null)} title="Montaj Servisi Oluştur" width={560}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{
+              background: 'var(--info-soft)', border: '1px solid var(--info)', borderRadius: 8,
+              padding: '10px 12px', font: '400 12.5px/1.5 var(--font-sans)',
+            }}>
+              <strong>{siparis.siparisNo}</strong> için "Kurulum" türünde servis talebi açılacak.
+              Sipariş kalemleri montaj kapsamı olarak açıklamaya eklenir.
+            </div>
+
+            <div>
+              <Label>Atanacak kişi</Label>
+              <div style={{
+                padding: '9px 12px', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+                font: '500 13px/18px var(--font-sans)',
+              }}>
+                {montajModal.atanan?.ad || 'Atanmadı — talep "bekliyor" olarak açılacak'}
+              </div>
+              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                Montaj sorumlusu Kullanıcı Yönetimi'nden değiştirilir.
+              </div>
+            </div>
+
+            <div>
+              <Label>Planlı montaj tarihi</Label>
+              <Input type="date" value={montajModal.planliTarih}
+                onChange={e => setMontajModal(m => ({ ...m, planliTarih: e.target.value }))} />
+            </div>
+
+            <div>
+              <Label>Montaj notu (isteğe bağlı)</Label>
+              <Textarea rows={2} value={montajModal.ekNot}
+                onChange={e => setMontajModal(m => ({ ...m, ekNot: e.target.value }))}
+                placeholder="Ör. Sahaya giriş için önceden randevu alınmalı" />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={() => setMontajModal(null)} disabled={mesgul}>
+                Şimdi Değil
+              </Button>
+              <Button variant="primary" onClick={montajOlustur} disabled={mesgul}
+                iconLeft={<Wrench size={14} />}>
+                {mesgul ? 'Oluşturuluyor…' : 'Montaj Servisini Aç'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* İptal Modal */}
       {iptalModalAcik && (

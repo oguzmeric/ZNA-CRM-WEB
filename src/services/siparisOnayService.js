@@ -172,9 +172,30 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
     .single()
   if (eT || !teklif) throw eT || new Error('Teklif bulunamadı')
 
+  // siparisler.musteri_id NOT NULL — ama tekliflerin ~yarısında musteri_id BOŞ
+  // (firma yalnız isim olarak yazılmış). Eskiden insert sessizce not-null
+  // ihlaliyle patlıyor, teklif siparişe geçemiyordu. Firma adından çözüyoruz.
+  let musteriId = teklif.musteri_id
+  if (!musteriId && teklif.firma_adi) {
+    const norm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+    const { data: adaylar } = await supabase
+      .from('musteriler')
+      .select('id, firma')
+      .ilike('firma', teklif.firma_adi.trim())
+      .limit(5)
+    const tam = (adaylar || []).find(m => norm(m.firma) === norm(teklif.firma_adi))
+    musteriId = tam?.id ?? adaylar?.[0]?.id ?? null
+  }
+  if (!musteriId) {
+    throw new Error(
+      `"${teklif.firma_adi || 'Bu teklif'}" için müşteri kartı bulunamadı. ` +
+      'Siparişte müşteri kaydı zorunlu — önce müşteriyi oluşturun veya teklifi müşteriye bağlayın.'
+    )
+  }
+
   // siparisler INSERT
   const payload = {
-    musteri_id: teklif.musteri_id,
+    musteri_id: musteriId,
     gorusme_id: teklif.gorusme_id,
     kaynak_tipi: 'teklif',
     teklif_id: teklifId,

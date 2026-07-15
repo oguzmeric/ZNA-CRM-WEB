@@ -12,7 +12,7 @@ import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import BelgePaylasModal from '../components/BelgePaylasModal'
-import { siparisOnayNotuKaydet, siparisOnayGeriAl } from '../services/siparisOnayService'
+import { siparisOnayNotuKaydet, siparisOnayGeriAl, tekliftenSiparisiOlustur } from '../services/siparisOnayService'
 import { useAuth } from '../context/AuthContext'
 import { useDovizKuru } from '../hooks/useDovizKuru'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -25,7 +25,8 @@ import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablon
 import { bayiTeklifKontrol } from '../services/bayiService'
 import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
-import { tekliftenDurum, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
+import { toCamel } from '../lib/mapper'
+import { tekliftenDurum, TEKLIF_DURUM, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musterileriGetir, musteriGetir } from '../services/musteriService'
@@ -157,6 +158,9 @@ function TeklifDetay() {
   const [faturaTalepTaslak, setFaturaTalepTaslak] = useState(null)
   const [faturaTalepNotu, setFaturaTalepNotu] = useState('')
   const [faturaTalepMesgul, setFaturaTalepMesgul] = useState(false)
+  // Siparişe aktarma (mig 168 zinciri) — early return'ün ÜSTÜNDE (Rules of Hooks)
+  const [ilgiliSiparis, setIlgiliSiparis] = useState(null)
+  const [siparisMesgul, setSiparisMesgul] = useState(false)
   // Hızlı stok ekleme modal'ı state — early return'ün ÜSTÜNDE olmalı
   // (Rules of Hooks: tüm hook'lar her render'da aynı sırada çağrılmalı)
   const [hizliStokAcik, setHizliStokAcik] = useState(false)
@@ -293,6 +297,15 @@ function TeklifDetay() {
       }))
       // Bu teklif için açılmış fatura talebi var mı? (tek sorgu — tüm liste değil)
       promises.push(teklifFaturaTalebiGetir(id).then(setFaturaTalebi))
+      // Teklif zaten siparişe aktarılmış mı?
+      promises.push(
+        supabase.from('siparisler')
+          .select('id, siparis_no, durum')
+          .eq('teklif_id', Number(id))
+          .neq('durum', 'iptal')
+          .limit(1)
+          .then(({ data }) => setIlgiliSiparis(data?.[0] ? toCamel(data[0]) : null))
+      )
     }
     Promise.all(promises)
       .catch(err => console.error('[TeklifDetay yükle]', err))
@@ -785,6 +798,15 @@ function TeklifDetay() {
       setDurumModalAcik(false)
       return
     }
+    // "Siparişe Aktarıldı" SADECE kolon yazmak değildir — gerçek sipariş kaydı
+    // doğmalı. Eskiden burası yalnız spek_durum/onay_durumu yazıyordu: teklif
+    // "Siparişe Aktarıldı" görünüyor ama siparisler'de kayıt yok, Siparişler
+    // listesi boş kalıyordu (sessiz kopukluk). Artık aynı fonksiyon hem butondan
+    // hem durum modalından gerçek siparişi üretiyor.
+    if (yeniDurum === TEKLIF_DURUM.SIPARISE_AKTARILDI) {
+      await siparisiOlustur()
+      return
+    }
     try {
       await teklifGuncelle(id, alanlar)
       setForm(f => ({ ...f, ...alanlar }))
@@ -794,6 +816,39 @@ function TeklifDetay() {
     } catch (err) {
       const detay = [err?.message, err?.details, err?.hint].filter(Boolean).join(' · ')
       toast.error('Durum güncellenemedi: ' + (detay || 'bilinmeyen'))
+    }
+  }
+
+  // Teklif → gerçek sipariş kaydı. tekliftenSiparisiOlustur kalemleri de taşır
+  // ve teklif_id ile idempotenttir (aynı teklif iki kez siparişe dönüşmez).
+  const siparisiOlustur = async () => {
+    const onay = await confirm({
+      baslik: 'Siparişe Aktar',
+      mesaj: `${form.teklifNo} siparişe aktarılacak; kalemleriyle birlikte sipariş kaydı oluşturulacak. Devam edilsin mi?`,
+      onayMetin: 'Siparişe Aktar', iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    setSiparisMesgul(true)
+    try {
+      // NOT: bu fonksiyon obje değil sipariş NUMARASI (string) döner
+      const siparisNo = await tekliftenSiparisiOlustur(id, {
+        onaylayanId: kullanici?.id ?? null,
+        onaylayanAd: kullanici?.ad ?? '',
+      })
+      const alanlar = durumdanDbAlanlar(TEKLIF_DURUM.SIPARISE_AKTARILDI)
+      await teklifGuncelle(id, alanlar)
+      setForm(f => ({ ...f, ...alanlar }))
+      setMevcutTeklif(t => t ? { ...t, ...alanlar } : t)
+      // "Siparişe git" için id lazım — kaydı geri çekiyoruz
+      const { data } = await supabase.from('siparisler')
+        .select('id, siparis_no, durum').eq('teklif_id', Number(id)).neq('durum', 'iptal').limit(1)
+      setIlgiliSiparis(data?.[0] ? toCamel(data[0]) : { siparisNo, durum: 'aktif' })
+      setDurumModalAcik(false)
+      toast.success(`${siparisNo || 'Sipariş'} oluşturuldu.`)
+    } catch (e) {
+      toast.error('Siparişe aktarılamadı: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setSiparisMesgul(false)
     }
   }
 
@@ -1127,6 +1182,31 @@ function TeklifDetay() {
               Faturaya git
             </Button>
           )}
+          {/* Siparişe Aktar — zincirin eksik halkası. Müşteri onayladıysa görünür;
+              zaten sipariş varsa "Siparişe git" olur. */}
+          {!yeni && form?.onayDurumu === 'kabul' && (
+            ilgiliSiparis ? (
+              <Button
+                variant="secondary"
+                iconLeft={<ShoppingCart size={14} strokeWidth={1.5} />}
+                onClick={() => ilgiliSiparis.id ? navigate(`/siparisler/${ilgiliSiparis.id}`) : navigate('/siparisler')}
+                title={`${ilgiliSiparis.siparisNo} — siparişe git`}
+              >
+                {ilgiliSiparis.siparisNo || 'Siparişe git'}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                iconLeft={<ShoppingCart size={14} strokeWidth={1.5} />}
+                onClick={siparisiOlustur}
+                disabled={siparisMesgul}
+                title="Teklifi kalemleriyle birlikte siparişe aktar"
+              >
+                {siparisMesgul ? 'Aktarılıyor…' : 'Siparişe Aktar'}
+              </Button>
+            )
+          )}
+
           {/* Fatura talebi — bekleyen/red talep varsa kuyruğa götür, yoksa talep aç */}
           {!yeni && !ilgiliFatura && form?.onayDurumu === 'kabul' && (
             faturaTalebi && faturaTalebi.durum === 'bekliyor' ? (
