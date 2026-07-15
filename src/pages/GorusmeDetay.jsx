@@ -327,7 +327,7 @@ function GorusmeDetay() {
                   // Muhatabın telefon/e-postası kişi kartından çekilir (varsa).
                   let tel = '', email = ''
                   if (gorusme.muhatapId) {
-                    const { data: kisi } = await supabase.from('musteri_kisileri')
+                    const { data: kisi } = await supabase.from('musteri_kisiler')
                       .select('telefon, email').eq('id', gorusme.muhatapId).maybeSingle()
                     tel = kisi?.telefon || ''
                     email = kisi?.email || ''

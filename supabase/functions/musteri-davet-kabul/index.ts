@@ -78,14 +78,30 @@ serve(async (req) => {
       const sifre: string = (body?.sifre ?? '').toString()
       if (sifre.length < 8) return err(req,400, 'Şifre en az 8 karakter olmalı.')
 
-      // Bu email icin auth user var mi? Varsa update, yoksa create.
-      const { data: mevcutKullanici } = await supa
+      // Bu email icin profil var mi? Email karsilastirmasi buyuk/kucuk harf duyarsiz
+      // olmali — davet lowercase yazilir ama kullanicilar.email baska akislardan
+      // mixed-case gelmis olabilir.
+      const { data: kullaniciListe } = await supa
         .from('kullanicilar')
         .select('id, auth_id, email_dogrulandi, musteri_id, onay_durum')
-        .eq('email', davet.email)
-        .maybeSingle()
+        .ilike('email', davet.email)
+        .limit(1)
+      const mevcutKullanici = kullaniciListe?.[0] ?? null
 
       let authUserId: string | null = mevcutKullanici?.auth_id ?? null
+
+      // Profil yok ya da auth_id bos: auth.users'ta bu email zaten kayitli olabilir
+      // (orphan). Dogrudan createUser denenirse "already been registered" ile kalici
+      // olarak patlar — once auth tarafina bakip mevcut hesabi baglayalim.
+      if (!authUserId) {
+        const { data: mevcutAuthId, error: rpcErr } = await supa
+          .rpc('auth_user_id_by_email', { p_email: davet.email })
+        if (rpcErr) console.error('[musteri-davet-kabul] auth_user_id_by_email:', rpcErr.message)
+        if (mevcutAuthId) authUserId = mevcutAuthId as string
+      }
+
+      // Profil insert'i patlarsa yeni acilan auth kullanicisini geri alabilmek icin
+      let authYeniAcildi = false
 
       if (!authUserId) {
         const { data: authData, error: authErr } = await supa.auth.admin.createUser({
@@ -99,6 +115,7 @@ serve(async (req) => {
           return err(req,502, 'Hesap oluşturulamadı: ' + (authErr?.message ?? 'bilinmeyen'))
         }
         authUserId = authData.user.id
+        authYeniAcildi = true
       } else {
         const { error: updErr } = await supa.auth.admin.updateUserById(authUserId, {
           password: sifre,
@@ -114,9 +131,22 @@ serve(async (req) => {
       let kullaniciId = mevcutKullanici?.id
       if (!mevcutKullanici) {
         const adAday = davet.ad?.trim() || davet.email.split('@')[0]
-        const kullaniciAdiAday = davet.email.split('@')[0]
+        const kokAd = davet.email.split('@')[0]
           .toLowerCase()
-          .replace(/[^a-z0-9.]/g, '')
+          .replace(/[^a-z0-9.]/g, '') || 'musteri'
+
+        // kullanici_adi benzersiz olmali — cakisirsa son ek ver
+        let kullaniciAdiAday = kokAd
+        for (let i = 2; i <= 50; i++) {
+          const { data: cakisma } = await supa
+            .from('kullanicilar')
+            .select('id')
+            .ilike('kullanici_adi', kullaniciAdiAday)
+            .limit(1)
+          if (!cakisma?.length) break
+          kullaniciAdiAday = `${kokAd}${i}`
+        }
+
         const { data: yeni, error: insertErr } = await supa
           .from('kullanicilar')
           .insert({
@@ -128,12 +158,19 @@ serve(async (req) => {
             tip: 'musteri',
             musteri_id: davet.musteri_id,
             durum: 'cevrimdisi',
-            onay_durum: 'onayli',     // admin davet ettigi icin auto-approved
+            onay_durum: 'onaylandi',  // admin davet ettigi icin auto-approved
           })
           .select('id')
           .single()
         if (insertErr) {
           console.error('[musteri-davet-kabul] kullanicilar.insert:', insertErr.message)
+          // Profil acilamadiysa yeni auth kullanicisini geri al — aksi halde
+          // auth.users'ta orphan kalir ve sonraki her deneme
+          // "already been registered" ile kalici olarak patlar.
+          if (authYeniAcildi && authUserId) {
+            const { error: silErr } = await supa.auth.admin.deleteUser(authUserId)
+            if (silErr) console.error('[musteri-davet-kabul] auth rollback:', silErr.message)
+          }
           return err(req,502, 'Kullanıcı profili oluşturulamadı: ' + insertErr.message)
         }
         kullaniciId = yeni.id
@@ -145,7 +182,7 @@ serve(async (req) => {
             auth_id: authUserId,
             musteri_id: davet.musteri_id,
             tip: 'musteri',
-            onay_durum: 'onayli',
+            onay_durum: 'onaylandi',
           })
           .eq('id', mevcutKullanici.id)
       }

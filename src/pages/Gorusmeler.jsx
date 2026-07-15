@@ -169,19 +169,35 @@ function Gorusmeler() {
   // Muhatap önerileri: seçili firmanın ana kişileri + musteri_kisiler eklentileri +
   // o firmada geçmişte yazılmış muhatap adları
   const muhatapOnerileri = useMemo(() => {
-    const kisiler = firmaKisileri.map(m => `${m.ad} ${m.soyad}`.trim()).filter(Boolean)
-    const eklentiAdlari = firmaKisilerEklenti.map(m => `${m.ad || ''} ${m.soyad || ''}`.trim()).filter(Boolean)
+    // Aynı kişi hem musteri_kisiler kartında hem musteriler.ad/soyad alanında
+    // durabiliyor (mig 163 ikisini senkronlar). Yazım büyük/küçük harf farkı
+    // yüzünden listede çift görünmesin diye normalize ederek dedupe ediyoruz.
+    const anahtar = (s) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+    const gorulen = new Set()
+    const sonuc = []
+    const ekle = (ham) => {
+      const isim = (ham || '').replace(/\s+/g, ' ').trim()
+      if (!isim) return
+      const k = anahtar(isim)
+      if (gorulen.has(k)) return
+      gorulen.add(k)
+      sonuc.push(isim)
+    }
+
+    // Öncelik musteri_kisiler kartlarında — kullanıcının elle girdiği yazım korunur
+    firmaKisilerEklenti.forEach(m => ekle(`${m.ad || ''} ${m.soyad || ''}`))
+    firmaKisileri.forEach(m => ekle(`${m.ad || ''} ${m.soyad || ''}`))
+
     const gecmis = secilenFirma
-      ? [...new Set((gorusmeler || [])
+      ? (gorusmeler || [])
           .filter(g => g.firmaAdi === secilenFirma)
           .map(g => g.muhatapAd)
-          .filter(Boolean))]
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, 'tr'))
       : []
-    const set = new Set(kisiler)
-    const eklenti = eklentiAdlari.filter(m => !set.has(m))
-    eklenti.forEach(m => set.add(m))
-    const eklenen = gecmis.filter(m => !set.has(m))
-    return [...kisiler, ...eklenti, ...eklenen.sort((a, b) => a.localeCompare(b, 'tr'))]
+    gecmis.forEach(ekle)
+
+    return sonuc
   }, [firmaKisileri, firmaKisilerEklenti, gorusmeler, secilenFirma])
 
   // Seçili firmanın lokasyonları — firma adıyla eşleşen tüm musteri kayıtlarının lokasyonları (deduped)
