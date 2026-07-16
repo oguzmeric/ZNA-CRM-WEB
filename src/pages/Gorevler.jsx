@@ -651,14 +651,14 @@ function Gorevler() {
               </button>
             ))}
           </div>
-          {!sadeceBenim && (
-            <div style={{ minWidth: 180 }}>
-              <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)}>
-                <option value="">Tüm kişiler</option>
-                {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
-              </CustomSelect>
-            </div>
-          )}
+          {/* Kişi açılırı her zaman render edilir (kaldırılırsa layout sağa kayıyordu).
+              "Görevlerim" aktifken devre dışı + soluk — filtrede zaten yok sayılıyor. */}
+          <div style={{ minWidth: 180, opacity: sadeceBenim ? 0.4 : 1, pointerEvents: sadeceBenim ? 'none' : 'auto' }}>
+            <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)} disabled={sadeceBenim}>
+              <option value="">Tüm kişiler</option>
+              {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
+            </CustomSelect>
+          </div>
           <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
             <button
               onClick={() => setGorunumModu('kanban')}
