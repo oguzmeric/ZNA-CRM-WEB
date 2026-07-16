@@ -2,12 +2,20 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cached, invalidate } from '../lib/cache'
 
+// LİSTE kolonları: notlar + yorumlar jsonb HARİÇ — mobil not/foto geçmişi
+// büyüdükçe listeyi şişiriyordu; liste/kanban bu alanları hiç okumuyor.
+// Detay sayfası gorevGetir(id) ile tam kaydı alır. Yeni kolon eklerken buraya da ekle.
+const GOREV_LISTE_KOLONLARI = `id, baslik, aciklama, durum, oncelik, atanan_id, atanan_ad,
+  olusturan_ad, bitis_tarihi, tamamlanma_tarihi, firma_adi, musteri_id, olusturma_tarih,
+  musteri_adi, atanan, son_tarih, lokasyon_id, gorusme_id, servis_talep_id,
+  baslama_tarih, bitis_tarih, devam_sebep, ekip`
+
 export const gorevleriGetir = () => cached('gorevler:list', async () => {
   const hepsi = []
   const sayfa = 1000
   let off = 0
   while (true) {
-    const { data, error } = await supabase.from('gorevler').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
+    const { data, error } = await supabase.from('gorevler').select(GOREV_LISTE_KOLONLARI).order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
     if (error) { console.error('gorevleriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)

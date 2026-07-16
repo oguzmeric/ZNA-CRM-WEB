@@ -66,12 +66,28 @@ export const servisTalebiBildirimGonder = async (talep, olusturanId = null) => {
   }
 }
 
+// LİSTE kolonları: musteri_imza + personel_imza HARİÇ her şey.
+// İmzalar base64 data-URI (satır başına 95-195KB!) — select('*') 21 talep için
+// 2.3MB / ~2sn çekiyordu; imzasız ~50KB. İmza gereken yerler (servis formu
+// çıktısı) tek kaydı servisTalepGetir(id) ile alır. Yeni kolon eklerken buraya
+// da eklemeyi unutma (whitelist tuzağı).
+const SERVIS_LISTE_KOLONLARI = `id, talep_no, musteri_id, musteri_ad, firma_adi, ana_tur,
+  alt_kategori, konu, lokasyon, cihaz_turu, aciklama, aciliyet, ilgili_kisi, telefon,
+  uygun_zaman, durum, atanan_kullanici_id, atanan_kullanici_ad, planli_tarih, notlar,
+  durum_gecmisi, musteri_onay, olusturma_tarihi, guncelleme_tarihi, operator_onay,
+  operator_onay_tarihi, operator_onay_kullanici_id, operator_onay_kullanici_ad,
+  periyodik_mi, periyodik_araligi, dosyalar, kok_sebep, yapilan_mudahale, teslim_alan_ad,
+  gorev_id, gorusme_id, degerlendirme_puan, degerlendirme_yorum, degerlendirme_tarihi,
+  degerlendirme_kullanici_id, servis_tipi, yukumluluk, servis_yeri, seri_numarasi, marka,
+  model, kunye_numarasi, yedek_parcalar, cozum_aciklamasi, personel_imza_ad, kaynak,
+  email, tamamlanma_tarihi, siparis_id, fatura_talep_id`
+
 export const servisTalepleriniGetir = async () => {
   const hepsi = []
   const sayfa = 1000
   let off = 0
   while (true) {
-    const { data, error } = await supabase.from('servis_talepleri').select('*').order('id', { ascending: false }).range(off, off + sayfa - 1)
+    const { data, error } = await supabase.from('servis_talepleri').select(SERVIS_LISTE_KOLONLARI).order('id', { ascending: false }).range(off, off + sayfa - 1)
     if (error) { console.error('servisTalepleriniGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)

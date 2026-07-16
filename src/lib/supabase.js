@@ -11,11 +11,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // koyuyoruz — istek uzun sürerse AbortError'la rejekte olur, .catch çalışır,
 // .finally setYukleniyor(false) yapar. Kullanıcı deneyimi: en fazla 20sn
 // bekleme sonrası empty state veya hata toast'u gelir.
-// 8sn — idle dönüşünde HTTP/2 keep-alive ölmüş olabilir, hızlı timeout'la
-// kullanıcıyı 20sn değil 8sn'de kurtaralım. Page-level useEffect .finally
-// setYukleniyor(false) yapacak, kullanıcı menüden tekrar tıklayabilir
-// (browser yeni HTTP bağlantısı kurar).
-const DEFAULT_TIMEOUT_MS = 8000
+// 5sn ilk deneme + GET'lerde otomatik 1 tekrar (8sn): idle dönüşünde HTTP/2
+// keep-alive ölmüşse ilk istek askıda kalır. Eskiden 8sn bekleyip TimeoutError
+// ile BOŞ EKRAN kalıyordu, kullanıcı elle tekrar tıklamak zorundaydı
+// ("menüye tıklayınca 8-10sn bekliyoruz" şikayetinin ana sebebi). Artık ilk
+// deneme 5sn'de kesilir ve GET istekleri otomatik yeniden denenir — retry
+// tarayıcıda taze bağlantı kurar, tipik olarak ~1sn'de veri gelir.
+const DEFAULT_TIMEOUT_MS = 5000
+const RETRY_TIMEOUT_MS = 8000
 
 // Aktif fetch'leri başlangıç timestamp'i ile takip et.
 // abortStaleInFlight ile sadece eski (>= eşik) olanları iptal ediyoruz —
@@ -54,13 +57,8 @@ const isStorageRequest = (input) => {
   } catch { return false }
 }
 
-const fetchWithTimeout = (input, init = {}) => {
-  // Çağıran kendi signal'ını geçiriyorsa ona dokunma
-  if (init.signal) return fetch(input, init)
-
-  // Storage istekleri timeout'tan muaf — büyük dosya transferi için
-  if (isStorageRequest(input)) return fetch(input, init)
-
+// Tek deneme — verilen süre içinde bitmezse TimeoutError ile abort
+const zamanAsimliDeneme = (input, init, ms) => {
   const controller = new AbortController()
   activeControllers.set(controller, Date.now())
 
@@ -68,11 +66,34 @@ const fetchWithTimeout = (input, init = {}) => {
     try {
       controller.abort(new DOMException('Request timed out', 'TimeoutError'))
     } catch { controller.abort() }
-  }, DEFAULT_TIMEOUT_MS)
+  }, ms)
 
   return fetch(input, { ...init, signal: controller.signal }).finally(() => {
     clearTimeout(timer)
     activeControllers.delete(controller)
+  })
+}
+
+const fetchWithTimeout = (input, init = {}) => {
+  // Çağıran kendi signal'ını geçiriyorsa ona dokunma
+  if (init.signal) return fetch(input, init)
+
+  // Storage istekleri timeout'tan muaf — büyük dosya transferi için
+  if (isStorageRequest(input)) return fetch(input, init)
+
+  const method = (init.method || 'GET').toUpperCase()
+  const ilk = zamanAsimliDeneme(input, init, DEFAULT_TIMEOUT_MS)
+
+  // Yalnız GET/HEAD tekrar denenir (idempotent — mutasyonlarda tekrar
+  // duplicate kayıt riski). Yalnız TIMEOUT'ta: abortStaleInFlight gibi
+  // bilinçli iptaller (AbortError) yeniden diriltilmez.
+  if (method !== 'GET' && method !== 'HEAD') return ilk
+  return ilk.catch((err) => {
+    if (err?.name === 'TimeoutError') {
+      console.info('[fetch] timeout → otomatik tekrar:', typeof input === 'string' ? input.slice(0, 90) : '')
+      return zamanAsimliDeneme(input, init, RETRY_TIMEOUT_MS)
+    }
+    throw err
   })
 }
 

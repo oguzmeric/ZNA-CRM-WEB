@@ -95,11 +95,15 @@ function Gorusmeler() {
   const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
   const [mevcutDosyalar, setMevcutDosyalar] = useState([]) // Sunucudaki dosyalar
   const [bagliGorevler, setBagliGorevler] = useState([])   // Bu gorusme'den acilan gorevler
-  // Edit modunda gorusme_id'ye bagli gorevleri yukle
+  // Edit modunda gorusme_id'ye bagli gorevleri yukle — dar sorgu
+  // (eskiden TÜM gorevler tablosunu çekip istemcide filtreliyordu)
   useEffect(() => {
     if (!duzenleId) { setBagliGorevler([]); return }
-    gorevleriGetir()
-      .then(tum => setBagliGorevler((tum || []).filter(g => String(g.gorusmeId) === String(duzenleId))))
+    supabase.from('gorevler')
+      .select('id, baslik, durum, atanan_ad, son_tarih, bitis_tarih, olusturma_tarih')
+      .eq('gorusme_id', duzenleId)
+      .order('olusturma_tarih', { ascending: false })
+      .then(({ data }) => setBagliGorevler(arrayToCamel(data || [])))
       .catch(e => console.warn('[bagliGorevler]', e?.message))
   }, [duzenleId])
 
@@ -125,8 +129,8 @@ function Gorusmeler() {
     Promise.all([
       gorusmeleriGetir(),
       musterileriGetir(),
-      // Lokasyonları tek seferde çek — N+1 olmasın
-      supabase.from('musteri_lokasyonlari').select('*').then(({ data }) => arrayToCamel(data || [])),
+      // Lokasyonları tek seferde çek — N+1 olmasın (sadece lookup alanları)
+      supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) => arrayToCamel(data || [])),
     ])
       .then(([g, m, l]) => { setGorusmeler(g || []); setMusteriler(m || []); setTumLokasyonlar(l || []) })
       .catch(err => console.error('[Gorusmeler yükle]', err))

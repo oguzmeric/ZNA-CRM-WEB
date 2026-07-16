@@ -13,7 +13,7 @@ import {
   teklifleriGetir, teklifSil as dbTeklifSil,
   musteriTalepleriniGetir, musteriTalepGuncelle,
 } from '../services/teklifService'
-import { satislariGetir } from '../services/satisService'
+import { satisTeklifRozetleri } from '../services/satisService'
 import {
   TEKLIF_DURUM_META, tekliftenDurum,
 } from '../lib/teklifDurumlari'
@@ -97,7 +97,7 @@ export default function Teklifler() {
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
 
   useEffect(() => {
-    Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satislariGetir()])
+    Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satisTeklifRozetleri()])
       .then(([t, tl, s]) => { setTeklifler(t || []); setMusteriTalepleri(tl || []); setSatislar(s || []) })
       .catch(err => console.error('[Teklifler yükle]', err))
       .finally(() => setYukleniyor(false))

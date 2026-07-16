@@ -108,6 +108,17 @@ export function invalidateAll() {
   pending.clear()
 }
 
+/**
+ * Değerleri SİLMEDEN bayatlat — idle dönüşü için.
+ * invalidateAll idle dönüşünde cache'i tamamen boşaltıyordu: kullanıcı menüye
+ * tıkladığında sayfa SIFIRDAN fetch bekliyordu (ölü bağlantıda 5-8sn boş ekran).
+ * expireAll ise TTL damgasını sıfırlar: stale-while-revalidate eski veriyi
+ * ANINDA gösterir, arkada sessizce tazeler. Kullanıcı asla boş ekran görmez.
+ */
+export function expireAll() {
+  for (const v of store.values()) v.at = 0
+}
+
 // Debug için — console.debug('cache', cacheStats())
 export function cacheStats() {
   const now = Date.now()

@@ -16,6 +16,15 @@ export const yeniFaturaNo = async () => {
   return `FAT-${yil}-${String(sonSira + 1).padStart(3, '0')}`
 }
 
+// Teklifler listesi "Fatura oluşturuldu" rozeti için HAFİF sorgu.
+// satislariGetir 3 tam tabloyu (satislar + satis_satirlari + tahsilatlar)
+// çekiyordu; rozet yalnız id + teklifId eşleşmesi kullanır.
+export const satisTeklifRozetleri = () => cached('satislar:rozet', async () => {
+  const { data, error } = await supabase.from('satislar').select('id, teklif_id')
+  if (error) { console.error('[satisTeklifRozetleri]', error.message); return [] }
+  return arrayToCamel(data || [])
+})
+
 // Satışları getir (satirlarla birlikte)
 export const satislariGetir = () => cached('satislar:list', async () => {
   const satisData = []

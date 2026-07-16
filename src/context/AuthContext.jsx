@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
-import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
+import { invalidateAll as cacheInvalidateAll, expireAll as cacheExpireAll } from '../lib/cache'
 import { aktiviteDamgala, aktiviteTemizle } from '../lib/idleAktivite'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import {
@@ -116,7 +116,9 @@ export function AuthProvider({ children }) {
       console.info(`[${sebep}] soft recovery — cache+abort+refresh`)
       try {
         abortAllInFlight('soft-recovery')
-        cacheInvalidateAll()
+        // expire (invalidate DEĞİL): eldeki veri bayatlar ama SİLİNMEZ —
+        // SWR anında eski veriyi gösterip arkada tazeler, boş ekran olmaz.
+        cacheExpireAll()
         // Auth refresh — başarılıysa state korunur, başarısızsa reload
         const { error } = await supabase.auth.refreshSession()
         if (error) {
@@ -153,9 +155,10 @@ export function AuthProvider({ children }) {
       // "hatalı" gibi düşüyordu → tekrar tekrar login döngüsü.
       if (!kullaniciRef.current) return
 
-      // 5sn-10dk: soft recovery — cache temizle, eski fetch'leri iptal et
+      // 5sn-10dk: eski fetch'leri iptal et, cache'i bayatlat (silme —
+      // SWR eski veriyi anında gösterip arkada tazeler, boş ekran olmaz)
       abortAllInFlight('tab-idle-recovery')
-      cacheInvalidateAll()
+      cacheExpireAll()
 
       // 10+ dk gizliyse: HTTP/2 keep-alive ölmüş olabilir, soft recovery
       // (auth refresh dene; fail olursa reload). Sayfa state korunmaya çalışır.
@@ -189,8 +192,8 @@ export function AuthProvider({ children }) {
       }
       sonAktivite = simdi
       if (bosluk >= IDLE_ESIK_HAFIF) {
-        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache+abort`)
-        cacheInvalidateAll()
+        console.info(`[idle] ${Math.round(bosluk/1000)}sn idle → cache bayat + stale abort`)
+        cacheExpireAll()
         abortStaleInFlight(5000, 'idle-stale')
       }
     }
@@ -206,7 +209,7 @@ export function AuthProvider({ children }) {
         return
       }
       if (bosluk >= IDLE_ESIK_HAFIF) {
-        cacheInvalidateAll()
+        cacheExpireAll()
         abortStaleInFlight(5000, 'focus-stale')
       }
     }
