@@ -558,23 +558,9 @@ function Gorevler() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Rol bazlı görünürlük — admin her şeyi görür, diğerleri kendi görevlerini
-  // ("atanan" veya "olusturan" kullanıcı).
-  const isAdmin = kullanici?.rol === 'admin'
-  const gorunurGorevler = isAdmin
-    ? gorevler
-    : gorevler.filter(g => {
-        if (!g) return false
-        const uidStr = String(kullanici?.id ?? '___')
-        const banaAtanmis =
-          String(g.atanan ?? '') === uidStr ||
-          String(g.atananId ?? '') === uidStr ||
-          g.atananAd === kullanici?.ad
-        // Ekip üyesiysem de görevi göreyim
-        const ekiptenim = Array.isArray(g.ekip) && g.ekip.some(x => String(x) === uidStr)
-        const benYarattim = g.olusturanAd === kullanici?.ad
-        return banaAtanmis || ekiptenim || benYarattim
-      })
+  // Görünürlük: HERKES tüm görevleri görür (mig 174 — RLS SELECT is_staff()).
+  // Kişiye göre daraltmak isteyen "kisiFiltre" açılırını kullanır.
+  const gorunurGorevler = gorevler
 
   const filtreliGorevler = gorunurGorevler.filter(g => {
     if (!g) return false
@@ -596,11 +582,11 @@ function Gorevler() {
           <p className="t-caption" style={{ marginTop: 4 }}>
             {kisiFiltre
               ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — {kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad}</>
-              : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev{!isAdmin && ' (kendi görevleriniz)'}</>}
+              : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev</>}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {isAdmin && (
+          {(
             <div style={{ minWidth: 180 }}>
               <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)}>
                 <option value="">Tüm kişiler</option>

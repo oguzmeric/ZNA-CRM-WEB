@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { gorevGetir, gorevGuncelle, gorevSil } from '../services/gorevService'
+import { gorevYorumlariGetir, gorevYorumEkle, gorevYorumGuncelle, gorevYorumSil } from '../services/gorevYorumService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions, segmentMetin } from '../lib/mention'
@@ -49,6 +50,7 @@ function GorevDetay() {
   const [gorev, setGorev] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [yeniYorum, setYeniYorum] = useState('')
+  const [yorumlar, setYorumlar] = useState([])
   const [duzenleYorumId, setDuzenleYorumId] = useState(null)
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
   const [devamSebepModal, setDevamSebepModal] = useState(false)
@@ -72,6 +74,9 @@ function GorevDetay() {
       .then(d => setGorev(d))
       .catch(err => console.error('[GorevDetay yükle]', err))
       .finally(() => setYukleniyor(false))
+    gorevYorumlariGetir(id)
+      .then(setYorumlar)
+      .catch(err => console.error('[GorevDetay yorum yükle]', err))
   }, [id])
 
   if (yukleniyor) return <SkeletonDetay />
@@ -93,6 +98,18 @@ function GorevDetay() {
   const oncelik = oncelikler.find(o => o.id === gorev.oncelik)
   const durum   = durumlar.find(d => d.id === gorev.durum)
   const atananKisi = kullanicilar.find(k => k.id?.toString() === gorev.atanan?.toString())
+
+  // Görevi DÜZENLEME yetkisi (RLS UPDATE ile aynı: admin + atanan + ekip).
+  // SELECT herkese açık (mig 174) olduğundan artık herkes bu detayı açabilir;
+  // ama yalnız yetkili düzenleyebilsin — aksi halde durum değişikliği sessizce
+  // kaybolurdu (RLS UPDATE bloklar). Herkes YORUM yapabilir (ayrı tablo/policy).
+  const uid = String(kullanici?.id ?? '___')
+  const duzenleyebilirMi =
+    kullanici?.rol === 'admin' ||
+    String(gorev.atanan ?? '') === uid ||
+    String(gorev.atananId ?? '') === uid ||
+    gorev.atananAd === kullanici?.ad ||
+    (Array.isArray(gorev.ekip) && gorev.ekip.some(x => String(x) === uid))
 
   const durumGuncelle = async (yeniDurum) => {
     const eskiDurum = gorev.durum
@@ -121,15 +138,17 @@ function GorevDetay() {
 
   const yorumEkle = async () => {
     if (!yeniYorum.trim()) return
-    const yorum = {
-      id: crypto.randomUUID(),
-      yazar: kullanici.ad, yazarId: kullanici.id,
-      icerik: yeniYorum,
-      tarih: new Date().toLocaleString('tr-TR'),
+    let eklenen
+    try {
+      eklenen = await gorevYorumEkle({
+        gorevId: gorev.id, kullaniciId: kullanici.id,
+        yazarAd: kullanici.ad, icerik: yeniYorum.trim(),
+      })
+    } catch {
+      toast.error('Yorum eklenemedi. Bağlantıyı kontrol edip tekrar deneyin.')
+      return
     }
-    const yeniYorumlar = [...(gorev.yorumlar || []), yorum]
-    await gorevGuncelle(gorev.id, { yorumlar: yeniYorumlar })
-    setGorev(prev => ({ ...prev, yorumlar: yeniYorumlar }))
+    setYorumlar(prev => [...prev, eklenen])
 
     // @mention bildirimleri — mention edilen herkese bildirim gider
     // (kendine mention yapsa bile filtreleme: mention === yazar atlanır)
@@ -178,13 +197,13 @@ function GorevDetay() {
 
   const yorumGuncelle = async () => {
     if (!duzenleIcerik.trim()) return
-    const yeniYorumlar = (gorev.yorumlar || []).map(y =>
-      y.id === duzenleYorumId
-        ? { ...y, icerik: duzenleIcerik.trim(), duzenlendi: true, duzenlemeTarihi: new Date().toLocaleString('tr-TR') }
-        : y
-    )
-    await gorevGuncelle(gorev.id, { yorumlar: yeniYorumlar })
-    setGorev(prev => ({ ...prev, yorumlar: yeniYorumlar }))
+    try {
+      const guncel = await gorevYorumGuncelle(duzenleYorumId, duzenleIcerik.trim())
+      setYorumlar(prev => prev.map(y => (y.id === duzenleYorumId ? guncel : y)))
+    } catch {
+      toast.error('Yorum güncellenemedi.')
+      return
+    }
     duzenlemeIptal()
     toast.success('Yorum güncellendi.')
   }
@@ -196,9 +215,13 @@ function GorevDetay() {
       onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    const yeniYorumlar = (gorev.yorumlar || []).filter(y => y.id !== yorumId)
-    await gorevGuncelle(gorev.id, { yorumlar: yeniYorumlar })
-    setGorev(prev => ({ ...prev, yorumlar: yeniYorumlar }))
+    try {
+      await gorevYorumSil(yorumId)
+      setYorumlar(prev => prev.filter(y => y.id !== yorumId))
+    } catch {
+      toast.error('Yorum silinemedi.')
+      return
+    }
     toast.success('Yorum silindi.')
   }
 
@@ -232,39 +255,41 @@ function GorevDetay() {
             {oncelik && <Badge tone={oncelik.tone}>{oncelik.isim}</Badge>}
             {durum   && <Badge tone={durum.tone}>{durum.isim}</Badge>}
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <Button
-              variant="secondary"
-              iconLeft={<Pencil size={14} strokeWidth={1.5} />}
-              onClick={() => navigate('/gorevler', { state: { duzenleGorevId: gorev.id } })}
-            >
-              Düzenle
-            </Button>
-            <Button
-              variant="secondary"
-              iconLeft={<Trash2 size={14} strokeWidth={1.5} />}
-              onClick={async () => {
-                const onay = await confirm({
-                  baslik: 'Görevi Sil',
-                  mesaj: `"${gorev.baslik}" görevi silinecek. Geri alınamaz. Emin misin?`,
-                  onayText: 'Evet, sil',
-                  iptalText: 'Vazgeç',
-                  tehlikeli: true,
-                })
-                if (!onay) return
-                try {
-                  await gorevSil(gorev.id)
-                  toast.success('Görev silindi.')
-                  navigate('/gorevler', { replace: true })
-                } catch (err) {
-                  toast.error('Görev silinemedi: ' + (err?.message ?? 'bilinmeyen hata'))
-                }
-              }}
-              style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
-            >
-              Sil
-            </Button>
-          </div>
+          {duzenleyebilirMi && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <Button
+                variant="secondary"
+                iconLeft={<Pencil size={14} strokeWidth={1.5} />}
+                onClick={() => navigate('/gorevler', { state: { duzenleGorevId: gorev.id } })}
+              >
+                Düzenle
+              </Button>
+              <Button
+                variant="secondary"
+                iconLeft={<Trash2 size={14} strokeWidth={1.5} />}
+                onClick={async () => {
+                  const onay = await confirm({
+                    baslik: 'Görevi Sil',
+                    mesaj: `"${gorev.baslik}" görevi silinecek. Geri alınamaz. Emin misin?`,
+                    onayText: 'Evet, sil',
+                    iptalText: 'Vazgeç',
+                    tehlikeli: true,
+                  })
+                  if (!onay) return
+                  try {
+                    await gorevSil(gorev.id)
+                    toast.success('Görev silindi.')
+                    navigate('/gorevler', { replace: true })
+                  } catch (err) {
+                    toast.error('Görev silinemedi: ' + (err?.message ?? 'bilinmeyen hata'))
+                  }
+                }}
+                style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
+              >
+                Sil
+              </Button>
+            </div>
+          )}
         </div>
         <h1 className="t-h1" style={{ marginBottom: 12 }}>{gorev.baslik}</h1>
         {gorev.aciklama ? (
@@ -419,7 +444,18 @@ function GorevDetay() {
         </div>
       </Card>
 
-      {/* Durum güncelle */}
+      {/* Durum güncelle — yalnız yetkili (atanan/ekip/admin) */}
+      {!duzenleyebilirMi ? (
+        <Card style={{ marginBottom: 16 }}>
+          <p className="t-label" style={{ marginBottom: 6 }}>DURUM</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
+            <span className="t-caption" style={{ fontStyle: 'italic' }}>
+              Bu görevi yalnızca sahibi ve ekibi düzenleyebilir — siz görüntüleyebilir ve yorum yapabilirsiniz.
+            </span>
+          </div>
+        </Card>
+      ) : (
       <Card style={{ marginBottom: 16 }}>
         <p className="t-label" style={{ marginBottom: 8 }}>DURUMU GÜNCELLE</p>
         <SegmentedControl
@@ -459,6 +495,7 @@ function GorevDetay() {
           </div>
         )}
       </Card>
+      )}
 
       {/* Devam sebep seçim modalı — Portal ile document.body'ye render */}
       {devamSebepModal && createPortal(
@@ -628,15 +665,15 @@ function GorevDetay() {
         <div style={{ marginBottom: 16 }}>
           <CardTitle>Yorumlar</CardTitle>
           <p className="t-caption" style={{ marginTop: 2 }}>
-            <span className="tabular-nums">{gorev.yorumlar?.length || 0}</span> yorum
+            <span className="tabular-nums">{yorumlar.length}</span> yorum · herkes görür ve yazabilir
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-          {(gorev.yorumlar || []).length === 0 && (
+          {yorumlar.length === 0 && (
             <p className="t-caption">Henüz yorum yok.</p>
           )}
-          {(gorev.yorumlar || []).map(yorum => {
+          {yorumlar.map(yorum => {
             const benimMi = kendisiMi(yorum)
             const duzenlemede = duzenleYorumId === yorum.id
             return (
