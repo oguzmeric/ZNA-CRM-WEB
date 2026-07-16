@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench } from 'lucide-react'
+import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench, Receipt } from 'lucide-react'
 import { Card, CardTitle, Button, Badge, EmptyState, Textarea, Input, Label, Modal } from '../components/ui'
 import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam, siparisIptalEt,
   siparisTamamla, siparisServisBagla,
 } from '../services/siparisService'
 import { siparistenMontajServisi, montajSorumlusuGetir, servisTalebiBildirimGonder } from '../services/servisService'
+import { siparistenFaturaTalebiAc, siparisFaturaTalebiGetir } from '../services/faturaTalepService'
 import { useConfirm } from '../context/ConfirmContext'
 import { musteriGetir } from '../services/musteriService'
 import { gorusmeGetir } from '../services/gorusmeService'
@@ -55,6 +56,11 @@ export default function SiparisDetay() {
   const { confirm } = useConfirm()
   const [mesgul, setMesgul] = useState(false)
   const [montajModal, setMontajModal] = useState(null)  // null | { planliTarih, ekNot, atanan }
+  // Sipariş → proforma fatura köprüsü (mig 182)
+  const [faturaTalebi, setFaturaTalebi] = useState(null)
+  const [faturaModalAcik, setFaturaModalAcik] = useState(false)
+  const [faturaNot, setFaturaNot] = useState('')
+  const [faturaMesgul, setFaturaMesgul] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -71,6 +77,8 @@ export default function SiparisDetay() {
         setKalemler(k || [])
         setMusteri(m)
         setGorusme(g)
+        // Fatura talebi rozeti (best-effort)
+        siparisFaturaTalebiGetir(s.id).then(setFaturaTalebi).catch(() => {})
       } catch (e) {
         console.error('[siparis detay]', e)
       } finally { setYukleniyor(false) }
@@ -163,6 +171,24 @@ export default function SiparisDetay() {
     }
   }
 
+  // "Fatura Kesilecek" — siparişten proforma aç (kalem anlık görüntüsüyle)
+  const faturaKesilecekOnayla = async () => {
+    setFaturaMesgul(true)
+    try {
+      const sonuc = await siparistenFaturaTalebiAc({
+        siparis, kalemler, kullanici, not: faturaNot.trim(),
+      })
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      setFaturaTalebi(sonuc)
+      setFaturaModalAcik(false)
+      toast.success(`${sonuc.talepNo} proforma kuyruğa eklendi — muhasebe faturayı kesince bildirim gelir.`)
+    } catch (e) {
+      toast.error('Proforma açılamadı: ' + (e?.message || 'hata'))
+    } finally {
+      setFaturaMesgul(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       {/* Üst bar */}
@@ -192,7 +218,8 @@ export default function SiparisDetay() {
             {mesgul ? 'İşleniyor…' : 'Siparişi Tamamla'}
           </Button>
         )}
-        {siparis.durum === 'tamamlandi' && (
+        {/* Montaj: onaylanan (aktif) siparişte de açılabilir — tamamlanmayı beklemek şart değil (madde 23) */}
+        {['aktif', 'tamamlandi'].includes(siparis.durum) && (
           siparis.servisTalepId ? (
             <Button variant="secondary" iconLeft={<Wrench size={14} />}
               onClick={() => navigate(`/servis-talepleri/${siparis.servisTalepId}`)}>
@@ -201,6 +228,31 @@ export default function SiparisDetay() {
           ) : (
             <Button variant="secondary" iconLeft={<Wrench size={14} />} onClick={montajModaliAc}>
               Montaj Servisi Oluştur
+            </Button>
+          )
+        )}
+        {/* Proforma / fatura köprüsü (mig 182) — servis detayındaki desenle aynı */}
+        {['aktif', 'tamamlandi'].includes(siparis.durum) && (
+          faturaTalebi ? (
+            <Button
+              variant="secondary"
+              iconLeft={<Receipt size={14} />}
+              onClick={() => navigate('/fatura-talepleri')}
+              title={faturaTalebi.durum === 'faturalandi'
+                ? `Fatura kesildi: ${faturaTalebi.faturaNo || faturaTalebi.talepNo}`
+                : `Proforma kuyrukta: ${faturaTalebi.talepNo}`}
+              style={faturaTalebi.durum === 'faturalandi'
+                ? { color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }
+                : { color: '#f59e0b', borderColor: 'rgba(245,158,11,0.4)' }}
+            >
+              {faturaTalebi.durum === 'faturalandi'
+                ? `Faturalandı ✓ ${faturaTalebi.faturaNo || ''}`.trim()
+                : `Proforma: ${faturaTalebi.talepNo}`}
+            </Button>
+          ) : (
+            <Button variant="secondary" iconLeft={<Receipt size={14} />}
+              onClick={() => { setFaturaNot(''); setFaturaModalAcik(true) }}>
+              Fatura Kesilecek
             </Button>
           )
         )}
@@ -381,6 +433,30 @@ export default function SiparisDetay() {
           )}
         </div>
       </div>
+
+      {/* Fatura Kesilecek — siparişten proforma (mig 182) */}
+      {faturaModalAcik && (
+        <Modal open onClose={() => !faturaMesgul && setFaturaModalAcik(false)} title="Fatura Kesilecek" width={520}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              <strong>{siparis.siparisNo}</strong> siparişi {kalemler.length} kalemiyle proforma
+              kuyruğuna eklenecek. Muhasebe gerçek faturayı kesip PDF + ödeme yöntemini girecek.
+            </p>
+            <div>
+              <Label>Not (isteğe bağlı)</Label>
+              <Textarea rows={2} value={faturaNot} onChange={e => setFaturaNot(e.target.value)}
+                placeholder="Muhasebeye iletmek istediğin not…" />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button variant="secondary" onClick={() => setFaturaModalAcik(false)} disabled={faturaMesgul}>Vazgeç</Button>
+              <Button variant="primary" onClick={faturaKesilecekOnayla} disabled={faturaMesgul}
+                iconLeft={<Receipt size={14} />}>
+                {faturaMesgul ? 'Açılıyor…' : 'Proforma Aç'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Montaj servisi — sipariş tamamlanınca ön-dolu açılır (mig 168) */}
       {montajModal && (

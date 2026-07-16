@@ -69,6 +69,73 @@ export const musteriSiparisleri = async (musteriId, firma) => {
   return arrayToCamel(data || [])
 }
 
+// ==================== KULLANILAN MALZEMELER (madde 23) ====================
+// Müşteri bazında sipariş kalemleri + fatura durumu (mig 182 köprüsü) +
+// teslimat durumu (mig 168 montaj servisi köprüsü). Tek çağrıda 4 sorgu,
+// istemci tarafında birleştirilir (siparisler↔fatura_talepleri arası çift FK
+// olduğundan PostgREST embed belirsizliğine girmemek için ayrı sorgular).
+export const kullanilanMalzemeVerisi = async () => {
+  // 1) İptal olmayan siparişler + müşteri künyesi (tek FK — embed güvenli)
+  const { data: sipData, error: sipErr } = await supabase
+    .from('siparisler')
+    .select('id, siparis_no, musteri_id, durum, konu, kaynak_tipi, para_birimi, genel_toplam, onay_tarihi, tamamlanma_tarihi, servis_talep_id, fatura_talep_id, olusturma_tarih, musteriler ( id, firma, ad, soyad )')
+    .neq('durum', 'iptal')
+    .order('olusturma_tarih', { ascending: false })
+  if (sipErr) { console.error('[kullanilanMalzeme] siparisler:', sipErr.message); throw sipErr }
+  const siparisler = (sipData || []).map(s => ({ ...toCamel(s), musteri: s.musteriler ? toCamel(s.musteriler) : null }))
+  if (!siparisler.length) return []
+
+  const sipIds = siparisler.map(s => s.id)
+
+  // 2) Kalemler
+  const { data: kalemData } = await supabase
+    .from('siparis_kalemleri')
+    .select('id, siparis_id, stok_kodu, urun_ad, urun_marka, urun_model, birim, miktar, birim_fiyat, iskonto_orani, kdv_orani, ara_toplam, siralama')
+    .in('siparis_id', sipIds)
+    .order('siralama', { ascending: true })
+  const kalemMap = new Map()
+  for (const k of arrayToCamel(kalemData || [])) {
+    if (!kalemMap.has(k.siparisId)) kalemMap.set(k.siparisId, [])
+    kalemMap.get(k.siparisId).push(k)
+  }
+
+  // 3) Fatura talepleri (siparişe bağlı — en yenisi kazanır)
+  const { data: fatData } = await supabase
+    .from('fatura_talepleri')
+    .select('id, siparis_id, talep_no, durum, fatura_no, fatura_tarihi')
+    .in('siparis_id', sipIds)
+    .order('id', { ascending: true })
+  const fatMap = new Map()
+  for (const f of arrayToCamel(fatData || [])) fatMap.set(f.siparisId, f) // sonrakiler öncekini ezer = en yeni
+
+  // 4) Montaj servisleri (teslimat durumu)
+  const servisIds = siparisler.map(s => s.servisTalepId).filter(Boolean)
+  const servisMap = new Map()
+  if (servisIds.length) {
+    const { data: srvData } = await supabase
+      .from('servis_talepleri')
+      .select('id, talep_no, durum')
+      .in('id', servisIds)
+    for (const s of arrayToCamel(srvData || [])) servisMap.set(s.id, s)
+  }
+
+  return siparisler.map(s => {
+    const fatura = fatMap.get(s.id) || null
+    const servis = s.servisTalepId ? (servisMap.get(s.servisTalepId) || null) : null
+    return {
+      ...s,
+      kalemler: kalemMap.get(s.id) || [],
+      fatura,
+      // faturaDurum: 'faturalandi' | 'bekliyor' | 'yok'
+      faturaDurum: fatura?.durum === 'faturalandi' ? 'faturalandi'
+        : fatura?.durum === 'bekliyor' ? 'bekliyor' : 'yok',
+      montajServisi: servis,
+      // Teslim edildi = bağlı montaj servisi tamamlandı (madde 23 kuralı)
+      teslimEdildi: servis?.durum === 'tamamlandi',
+    }
+  })
+}
+
 // ==================== YAZ ====================
 export const siparisEkle = async (payload) => {
   const { id, siparisNo, olusturmaTarih, guncellemeTarih, ...rest } = payload

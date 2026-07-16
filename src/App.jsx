@@ -42,6 +42,7 @@ const Teklifler = lazy(() => import('./pages/Teklifler'))
 const SiparisOnaylari = lazy(() => import('./pages/SiparisOnaylari'))
 const Siparisler = lazy(() => import('./pages/Siparisler'))
 const SiparisDetay = lazy(() => import('./pages/SiparisDetay'))
+const KullanilanMalzemeler = lazy(() => import('./pages/KullanilanMalzemeler'))
 const TeklifOnaylari = lazy(() => import('./pages/TeklifOnaylari'))
 const FaturaTalepleri = lazy(() => import('./pages/FaturaTalepleri'))
 const TeklifDetay = lazy(() => import('./pages/TeklifDetay'))
@@ -362,6 +363,7 @@ function App() {
           <Route path="/siparis-onaylari" element={<SiparisOnayGuard><SiparisOnaylari /></SiparisOnayGuard>} />
           <Route path="/siparisler" element={<Siparisler />} />
           <Route path="/siparisler/:id" element={<SiparisDetay />} />
+          <Route path="/kullanilan-malzemeler" element={<KullanilanMalzemeler />} />
           <Route path="/teklif-onaylari" element={<TeklifOnayGuard><TeklifOnaylari /></TeklifOnayGuard>} />
           <Route path="/fatura-talepleri" element={<FaturaYetkiGuard><FaturaTalepleri /></FaturaYetkiGuard>} />
           <Route path="/satislar" element={<Satislar />} />

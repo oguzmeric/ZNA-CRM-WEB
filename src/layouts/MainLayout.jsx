@@ -148,6 +148,7 @@ const menuItems = [
     grup: 'tedarik',
     altMenu: [
       { id: 'siparisler_tedarik', isim: 'Siparişler', yol: '/siparisler' },
+      { id: 'kullanilan_malzemeler', isim: 'Kullanılan Malzemeler', yol: '/kullanilan-malzemeler' },
     ],
   },
   { id: 'demolar', isim: 'Demolar', Icon: Boxes, yol: '/demolar', modul: 'demolar', grup: 'satis' },

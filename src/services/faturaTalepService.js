@@ -426,3 +426,98 @@ export const servisFaturaTalebiGetir = async (servisId) => {
     .limit(1)
   return data?.[0] ? toCamel(data[0]) : null
 }
+
+// ---------- Siparişten proforma (mig 182, madde 23) ----------
+
+/**
+ * Siparişten fatura_talebi payload'ı. Servisten farkı: sipariş FİYATLI kalem
+ * taşır (siparis_kalemleri) — proforma kalem anlık görüntüsüyle dolu açılır.
+ * kalemler param = siparisService.kalemleriGetir() çıktısı (camelCase).
+ */
+export const siparistenTalep = (siparis, kalemler, musteri, kullanici, not = '') => {
+  const r2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
+  const fKalemler = (kalemler || []).map(k => {
+    const miktar = Number(k.miktar) || 0
+    const birimFiyat = Number(k.birimFiyat) || 0
+    const iskonto = Number(k.iskontoOrani) || 0
+    const kdv = Number(k.kdvOrani) || 0
+    const ara = r2(miktar * birimFiyat * (1 - iskonto / 100))
+    const kdvTutar = r2(ara * kdv / 100)
+    return {
+      stokKodu: k.stokKodu || '',
+      urunAdi: k.urunAd || [k.urunMarka, k.urunModel].filter(Boolean).join(' ') || '',
+      aciklama: k.aciklama || '',
+      miktar, birim: k.birim || 'Adet', birimFiyat,
+      iskontoOran: iskonto, kdvOran: kdv,
+      araToplam: ara, kdvTutar, satirToplam: r2(ara + kdvTutar),
+    }
+  })
+  const araToplam = r2(fKalemler.reduce((a, k) => a + k.araToplam, 0))
+  const kdvToplam = r2(fKalemler.reduce((a, k) => a + k.kdvTutar, 0))
+  // Siparişin kendi genel toplamı otorite (genel iskonto orada uygulanmış olabilir)
+  const genel = Number(siparis.genelToplam)
+  return {
+    siparisId: siparis.id ? Number(siparis.id) : null,
+    teklifId: null,
+    teklifNo: siparis.siparisNo || '',   // kuyrukta kaynak no görünsün (kolon adı tarihsel)
+    musteriId: musteri?.id ? Number(musteri.id) : (siparis.musteriId ? Number(siparis.musteriId) : null),
+    firmaAdi: musteri?.firma || '',
+    yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
+    vergiNo: musteri?.vergiNo || '',
+    vergiDairesi: musteri?.vergiDairesi || '',
+    adres: [musteri?.adres, musteri?.sehir].filter(Boolean).join(' · '),
+    telefon: musteri?.telefon || '',
+    email: musteri?.email || '',
+    konu: siparis.konu ? `Sipariş: ${siparis.konu}` : `Sipariş ${siparis.siparisNo || ''}`.trim(),
+    paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
+    dovizKuru: Number(siparis.dovizKuru) || null,
+    kalemler: fKalemler,
+    araToplam, kdvToplam,
+    genelToplam: Number.isFinite(genel) && genel > 0 ? r2(genel) : r2(araToplam + kdvToplam),
+    odemeSekli: '',
+    vadeTarihi: null,
+    talepNotu: not || '',
+    talepEdenId: kullanici?.id ?? null,
+    talepEdenAd: kullanici?.ad ?? '',
+  }
+}
+
+/**
+ * Sipariş için "Fatura Kesilecek" — proforma açar + siparişe geri-link yazar.
+ * Aynı siparişe ikinci açık proforma engeli (uq_fatura_talep_acik_siparis).
+ */
+export const siparistenFaturaTalebiAc = async ({ siparis, kalemler, kullanici, not = '' }) => {
+  const { data: mevcut } = await supabase
+    .from('fatura_talepleri')
+    .select('id, talep_no, durum')
+    .eq('siparis_id', siparis.id)
+    .eq('durum', 'bekliyor')
+    .maybeSingle()
+  if (mevcut) return { _hata: `Bu siparişe zaten açık bir proforma var (${mevcut.talep_no}).` }
+
+  const musteri = siparis.musteriId ? await musteriGetir(siparis.musteriId).catch(() => null) : null
+  const payload = siparistenTalep(siparis, kalemler, musteri, kullanici, not)
+  let kayit
+  try {
+    kayit = await faturaTalebiEkle(payload)
+  } catch (e) {
+    if (String(e?.message || '').includes('uq_fatura_talep_acik_siparis')) {
+      return { _hata: 'Bu siparişe zaten açık bir proforma var.' }
+    }
+    return { _hata: 'Proforma açılamadı: ' + (e?.message || 'bilinmeyen') }
+  }
+  // Siparişe geri-link (rozet + Kullanılan Malzemeler ekranı için)
+  await supabase.from('siparisler').update({ fatura_talep_id: kayit.id }).eq('id', siparis.id)
+  return kayit
+}
+
+// Siparişin fatura talebi durumunu getir (SiparisDetay rozeti için)
+export const siparisFaturaTalebiGetir = async (siparisId) => {
+  const { data } = await supabase
+    .from('fatura_talepleri')
+    .select('id, talep_no, durum, fatura_no')
+    .eq('siparis_id', siparisId)
+    .order('id', { ascending: false })
+    .limit(1)
+  return data?.[0] ? toCamel(data[0]) : null
+}
