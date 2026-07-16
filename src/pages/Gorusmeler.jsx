@@ -17,6 +17,7 @@ import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import ComboBox from '../components/ComboBox'
 import KonuYonetimModal from '../components/KonuYonetimModal'
 import { supabase } from '../lib/supabase'
+import { invalidate } from '../lib/cache'
 import { arrayToCamel } from '../lib/mapper'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { trContains } from '../lib/trSearch'
@@ -129,6 +130,21 @@ function Gorusmeler() {
       .then(([g, m, l]) => { setGorusmeler(g || []); setMusteriler(m || []); setTumLokasyonlar(l || []) })
       .catch(err => console.error('[Gorusmeler yükle]', err))
       .finally(() => setYukleniyor(false))
+  }, [])
+
+  // Realtime: telefondan görüşme eklenince/değişince liste anında güncellensin
+  // (mig 175 — gorusmeler publication'da). Kısa throttle ile art arda olayları birleştir.
+  useEffect(() => {
+    let zaman = null
+    const kanal = supabase
+      .channel('gorusmeler-canli')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gorusmeler' }, () => {
+        if (zaman) return
+        zaman = setTimeout(() => { zaman = null; invalidate('gorusmeler:list'); gorusmeleriYenile() }, 600)
+      })
+      .subscribe()
+    return () => { if (zaman) clearTimeout(zaman); kanal.unsubscribe() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const benzersizFirmalar = [...new Map(

@@ -16,6 +16,7 @@ import {
 import {
   gorevleriGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
 } from '../services/gorevService'
+import { invalidate } from '../lib/cache'
 import { gorevAtamaSMSGonderVeIsaretle } from '../services/smsService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
@@ -315,6 +316,25 @@ function Gorevler() {
 
   // İlk yükleme
   useEffect(() => { veriYukle({ ilkYukleme: true }) }, [veriYukle])
+
+  // Realtime: telefondan (veya başka kullanıcıdan) görev eklenince/değişince
+  // liste anında güncellensin (mig 175 — gorevler publication'da). Cache'i
+  // temizleyip yeniden çek; kısa throttle ile art arda olayları tek çekime indir.
+  useEffect(() => {
+    let zaman = null
+    const tazele = () => {
+      if (zaman) return
+      zaman = setTimeout(() => { zaman = null; invalidate('gorevler:list'); veriYukle() }, 600)
+    }
+    let kanal
+    import('../lib/supabase').then(({ supabase }) => {
+      kanal = supabase
+        .channel('gorevler-canli')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gorevler' }, tazele)
+        .subscribe()
+    })
+    return () => { if (zaman) clearTimeout(zaman); if (kanal) kanal.unsubscribe() }
+  }, [veriYukle])
 
   // GorevDetay'dan "Düzenle" tıklayınca state.duzenleGorevId ile gelir → form aç
   useEffect(() => {

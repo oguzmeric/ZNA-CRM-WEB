@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare, FileText,
+  ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare, FileText, Smartphone,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { gorevGetir, gorevGuncelle, gorevSil } from '../services/gorevService'
 import { gorevYorumlariGetir, gorevYorumEkle, gorevYorumGuncelle, gorevYorumSil } from '../services/gorevYorumService'
+import { invalidate } from '../lib/cache'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions, segmentMetin } from '../lib/mention'
@@ -36,6 +37,16 @@ const DEVAM_SEBEPLERI = [
   { id: 'tamir_ariza',        isim: 'Tamir / Arıza',      ikon: '🔧' },
   { id: 'uretici_tedarik',    isim: 'Üretici / Tedarik',  ikon: '📦' },
 ]
+
+// Mobil, görüşmeden görev oluştururken açıklamaya "Firma: …\nGörüşme tarihi: …\n
+// \nNotlar:\n<not>" blob'u basıyor. Görev zaten müşteri + bağlı görüşme linkiyle
+// gösterildiği için Firma/tarih tekrarını ayıklayıp yalnız asıl notu döndür.
+const temizleGorusmeBlob = (aciklama) => {
+  if (!aciklama) return aciklama
+  const m = /(?:^|\n)Notlar:\s*\n?([\s\S]*)$/.exec(aciklama)
+  if (m && /^Firma:|Görüşme tarihi:/m.test(aciklama)) return m[1].trim()
+  return aciklama
+}
 
 function GorevDetay() {
   const { id } = useParams()
@@ -79,6 +90,24 @@ function GorevDetay() {
       .catch(err => console.error('[GorevDetay yorum yükle]', err))
   }, [id])
 
+  // Realtime: bu göreve (web yorumu gorev_yorumlari, mobil not gorevler.notlar)
+  // biri yorum eklerse açık detayda anında görünsün (mig 175).
+  useEffect(() => {
+    let zaman = null
+    const tazele = (fn) => { if (zaman) return; zaman = setTimeout(() => { zaman = null; fn() }, 500) }
+    let kanal
+    import('../lib/supabase').then(({ supabase }) => {
+      kanal = supabase
+        .channel(`gorev-${id}-canli`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gorev_yorumlari', filter: `gorev_id=eq.${id}` },
+          () => tazele(() => gorevYorumlariGetir(id).then(setYorumlar).catch(() => {})))
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gorevler', filter: `id=eq.${id}` },
+          () => tazele(() => { invalidate(`gorev:${id}`); gorevGetir(id).then(d => d && setGorev(d)).catch(() => {}) }))
+        .subscribe()
+    })
+    return () => { if (zaman) clearTimeout(zaman); if (kanal) kanal.unsubscribe() }
+  }, [id])
+
   if (yukleniyor) return <SkeletonDetay />
 
   if (!gorev) return (
@@ -110,6 +139,23 @@ function GorevDetay() {
     String(gorev.atananId ?? '') === uid ||
     gorev.atananAd === kullanici?.ad ||
     (Array.isArray(gorev.ekip) && gorev.ekip.some(x => String(x) === uid))
+
+  // MOBİL yorumları da göster: mobil, görev yorumlarını gorevler.notlar (jsonb)
+  // dizisine yazıyor; web ise gorev_yorumlari tablosunu. İkisini tek zaman
+  // çizelgesinde birleştir ki telefondan yazılan yorumlar webde de görünsün.
+  const mobilNotlar = (gorev.notlar || []).map((n, i) => ({
+    id: 'mobilnot-' + i,
+    yazar: n.kullanici || '—',
+    yazarId: null,
+    icerik: n.metin || '',
+    tarih: n.tarih ? new Date(n.tarih).toLocaleString('tr-TR') : '',
+    zaman: n.tarih || null,
+    duzenlendi: !!n.duzenlendiTarih,
+    fotoUrls: Array.isArray(n.fotoUrls) ? n.fotoUrls : [],
+    kaynak: 'mobil',
+  }))
+  const tumYorumlar = [...yorumlar.map(y => ({ ...y, kaynak: y.kaynak || 'web' })), ...mobilNotlar]
+    .sort((a, b) => new Date(a.zaman || 0) - new Date(b.zaman || 0))
 
   const durumGuncelle = async (yeniDurum) => {
     const eskiDurum = gorev.durum
@@ -302,7 +348,7 @@ function GorevDetay() {
           }}>
             <div className="t-label" style={{ marginBottom: 6 }}>AÇIKLAMA</div>
             <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0, whiteSpace: 'pre-wrap' }}>
-              {gorev.aciklama}
+              {temizleGorusmeBlob(gorev.aciklama)}
             </p>
           </div>
         ) : (
@@ -665,16 +711,19 @@ function GorevDetay() {
         <div style={{ marginBottom: 16 }}>
           <CardTitle>Yorumlar</CardTitle>
           <p className="t-caption" style={{ marginTop: 2 }}>
-            <span className="tabular-nums">{yorumlar.length}</span> yorum · herkes görür ve yazabilir
+            <span className="tabular-nums">{tumYorumlar.length}</span> yorum · web + mobil, herkes görür ve yazabilir
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-          {yorumlar.length === 0 && (
+          {tumYorumlar.length === 0 && (
             <p className="t-caption">Henüz yorum yok.</p>
           )}
-          {yorumlar.map(yorum => {
-            const benimMi = kendisiMi(yorum)
+          {tumYorumlar.map(yorum => {
+            const mobilMi = yorum.kaynak === 'mobil'
+            // Düzenle/sil yalnız web kaynaklı kendi yorumunda (mobil notlar
+            // gorevler.notlar'da; webden düzenlenmez, mobil tarafın işi)
+            const benimMi = !mobilMi && kendisiMi(yorum)
             const duzenlemede = duzenleYorumId === yorum.id
             return (
               <div
@@ -691,6 +740,16 @@ function GorevDetay() {
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Avatar name={yorum.yazar} size="xs" />
                     <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{yorum.yazar}</span>
+                    {mobilMi && (
+                      <span title="Mobil uygulamadan eklendi" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '1px 6px', borderRadius: 'var(--radius-pill)',
+                        background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                        font: '600 10px/14px var(--font-sans)',
+                      }}>
+                        <Smartphone size={10} strokeWidth={2} /> Mobil
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
@@ -767,6 +826,19 @@ function GorevDetay() {
                       )
                     )}
                   </p>
+                )}
+                {/* Mobil nottaki fotoğraflar (varsa) */}
+                {mobilMi && yorum.fotoUrls?.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {yorum.fotoUrls.filter(u => /^https?:\/\//.test(u)).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt="not fotoğrafı" style={{
+                          width: 72, height: 72, objectFit: 'cover',
+                          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)',
+                        }} />
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
             )

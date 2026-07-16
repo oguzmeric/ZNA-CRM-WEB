@@ -6,6 +6,7 @@ import { toCamel, toSnake } from '../lib/mapper'
 // kaldığı için "herkes yorum yapar ama herkes görevi düzenleyemez" sağlanır.
 
 // Render'ın beklediği eski şekle indir: {id, yazar, yazarId, icerik, tarih, duzenlendi}
+// zaman = ISO (sıralama için — mobil notlarla birleşik zaman çizelgesinde kullanılır)
 const yorumBicim = (r) => {
   const c = toCamel(r)
   return {
@@ -15,7 +16,9 @@ const yorumBicim = (r) => {
     icerik: c.icerik,
     // eski kayıtlarda orijinal tr-TR metni korundu; yenilerde tarihi biçimlendir
     tarih: c.zamanMetin || (c.olusturmaTarih ? new Date(c.olusturmaTarih).toLocaleString('tr-TR') : ''),
+    zaman: c.olusturmaTarih || null,
     duzenlendi: !!c.duzenlendi,
+    kaynak: 'web',
   }
 }
 
