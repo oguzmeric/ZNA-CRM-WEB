@@ -139,13 +139,14 @@ const menuItems = [
     grup: 'satis',
     yol: '/fatura-talepleri',
   },
-  // ── Tedarik Süreçleri — Sipariş takibi ──
+  // ── Tedarik Süreçleri — Sipariş takibi (SADECE ADMİN: tutar/kâr içerir) ──
   {
     id: 'tedarik_surecleri',
     isim: 'Sipariş Yönetimi',
     Icon: ShoppingCart,
     modul: 'musteriler',
     grup: 'tedarik',
+    sadeceAdmin: true,
     altMenu: [
       { id: 'siparisler_tedarik', isim: 'Siparişler', yol: '/siparisler' },
       { id: 'kullanilan_malzemeler', isim: 'Kullanılan Malzemeler', yol: '/kullanilan-malzemeler' },
@@ -384,6 +385,8 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
+    // Yalnız admin rolü görür (App.jsx AdminGuard ile paralel — Sipariş Yönetimi)
+    if (m.sadeceAdmin) return kullanici?.rol === 'admin'
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel
     if (m.sadeceSabahOzeti) return [1, 2].includes(Number(kullanici?.id))
     // Onay menüleri: yetki bayrağı ŞART — admin rolü bile bypass edemez

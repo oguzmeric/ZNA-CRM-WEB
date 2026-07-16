@@ -138,6 +138,14 @@ function FaturaYetkiGuard({ children }) {
   return children
 }
 
+// Sipariş Yönetimi (Siparişler + Kullanılan Malzemeler) — SADECE admin rolü.
+// Tutar/kâr bilgisi içerir; MainLayout sadeceAdmin menü filtresiyle paralel.
+function AdminGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (kullanici?.rol !== 'admin') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 // Duyuru yayınlama sadece Oğuz'a — Yönetim'den bir tık daha sıkı.
 function OguzGuard({ children }) {
   const { kullanici } = useAuth()
@@ -283,7 +291,7 @@ function App() {
           <Route path="/satislar/:id/yazdir" element={<FaturaYazdir />} />
           <Route path="/fatura-talepleri/:id/yazdir" element={<ProformaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
-          <Route path="/siparisler/:id/yazdir" element={<SiparisYazdir />} />
+          <Route path="/siparisler/:id/yazdir" element={<AdminGuard><SiparisYazdir /></AdminGuard>} />
         </Routes>
       </Suspense>
     )
@@ -361,9 +369,9 @@ function App() {
           <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />
           <Route path="/teklifler/:id" element={<TeklifDetay />} />
           <Route path="/siparis-onaylari" element={<SiparisOnayGuard><SiparisOnaylari /></SiparisOnayGuard>} />
-          <Route path="/siparisler" element={<Siparisler />} />
-          <Route path="/siparisler/:id" element={<SiparisDetay />} />
-          <Route path="/kullanilan-malzemeler" element={<KullanilanMalzemeler />} />
+          <Route path="/siparisler" element={<AdminGuard><Siparisler /></AdminGuard>} />
+          <Route path="/siparisler/:id" element={<AdminGuard><SiparisDetay /></AdminGuard>} />
+          <Route path="/kullanilan-malzemeler" element={<AdminGuard><KullanilanMalzemeler /></AdminGuard>} />
           <Route path="/teklif-onaylari" element={<TeklifOnayGuard><TeklifOnaylari /></TeklifOnayGuard>} />
           <Route path="/fatura-talepleri" element={<FaturaYetkiGuard><FaturaTalepleri /></FaturaYetkiGuard>} />
           <Route path="/satislar" element={<Satislar />} />
