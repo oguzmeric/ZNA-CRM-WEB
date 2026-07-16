@@ -191,6 +191,43 @@ export default function SiparisDetay() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      {/* Başlık — buton satırından AYRI (butonlar çoğalınca flex:1 başlığı
+          sıfıra kadar eziyor, sipariş no harf harf alt alta kırılıyordu) */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'monospace' }}>{siparis.siparisNo}</h1>
+          <Badge style={{ background: `${durumObj?.renk}22`, color: durumObj?.renk, border: `1px solid ${durumObj?.renk}55` }}>
+            {durumObj?.isim || siparis.durum}
+          </Badge>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
+            background: isTeklif ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+            color: isTeklif ? '#3b82f6' : '#10b981',
+          }}>
+            {isTeklif ? <FileText size={11} /> : <ShoppingCart size={11} />}
+            {isTeklif ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'}
+          </span>
+        </div>
+        {gorusme?.aktNo && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <button
+              onClick={() => navigate(`/gorusmeler/${gorusme.id}`)}
+              style={{
+                fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                color: '#3b82f6', padding: '2px 6px',
+                background: 'rgba(59,130,246,0.10)', borderRadius: 4,
+                border: 'none', cursor: 'pointer',
+              }}
+              title="Kaynak görüşmeye git"
+            >{gorusme.aktNo}</button>
+            <span>Kaynak görüşme</span>
+            {gorusme.tarih && <>· {fmtSadeceTarih(gorusme.tarih)}</>}
+            {gorusme.gorusen && <>· {gorusme.gorusen}</>}
+          </div>
+        )}
+      </div>
+
       {/* Üst bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/siparisler')}>Geri</Button>
@@ -266,40 +303,6 @@ export default function SiparisDetay() {
             İptal Et
           </Button>
         )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'monospace' }}>{siparis.siparisNo}</h1>
-            <Badge style={{ background: `${durumObj?.renk}22`, color: durumObj?.renk, border: `1px solid ${durumObj?.renk}55` }}>
-              {durumObj?.isim || siparis.durum}
-            </Badge>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
-              background: isTeklif ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
-              color: isTeklif ? '#3b82f6' : '#10b981',
-            }}>
-              {isTeklif ? <FileText size={11} /> : <ShoppingCart size={11} />}
-              {isTeklif ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'}
-            </span>
-          </div>
-          {gorusme?.aktNo && (
-            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
-              <button
-                onClick={() => navigate(`/gorusmeler/${gorusme.id}`)}
-                style={{
-                  fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
-                  color: '#3b82f6', padding: '2px 6px',
-                  background: 'rgba(59,130,246,0.10)', borderRadius: 4,
-                  border: 'none', cursor: 'pointer',
-                }}
-                title="Kaynak görüşmeye git"
-              >{gorusme.aktNo}</button>
-              <span>Kaynak görüşme</span>
-              {gorusme.tarih && <>· {fmtSadeceTarih(gorusme.tarih)}</>}
-              {gorusme.gorusen && <>· {gorusme.gorusen}</>}
-            </div>
-          )}
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 16 }}>
