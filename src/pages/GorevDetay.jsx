@@ -138,7 +138,9 @@ function GorevDetay() {
     String(gorev.atanan ?? '') === uid ||
     String(gorev.atananId ?? '') === uid ||
     gorev.atananAd === kullanici?.ad ||
-    (Array.isArray(gorev.ekip) && gorev.ekip.some(x => String(x) === uid))
+    (Array.isArray(gorev.ekip) && gorev.ekip.some(x => String(x) === uid)) ||
+    // Görevi AÇAN da düzenleyebilir (mig 178 ile RLS UPDATE'te açıldı; UI de eşleşsin)
+    (!!gorev.olusturanAd && (gorev.olusturanAd === kullanici?.ad || gorev.olusturanAd === kullanici?.kullaniciAdi))
 
   // MOBİL yorumları da göster: mobil, görev yorumlarını gorevler.notlar (jsonb)
   // dizisine yazıyor; web ise gorev_yorumlari tablosunu. İkisini tek zaman
