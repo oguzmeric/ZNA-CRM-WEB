@@ -23,7 +23,7 @@ const CORS = {
 const MOBILTEK_BASE = 'https://api.mobiltek.com.tr/v1'
 const MOBILTEK_TOKEN_URL = 'https://api.mobiltek.com.tr/auth/realms/mobiltek/protocol/openid-connect/token'
 const BAKIM_YAKLASMA_KM = 1000
-const BELGE_YAKLASMA_GUN = 30
+const BELGE_YAKLASMA_GUN = 15  // muayene/sigorta/kasko bitişine 15 gün kala bildir
 
 async function mobiltekToken(sb: any): Promise<string | null> {
   const { data: cache } = await sb.from('mobiltek_token_cache').select('access_token, expires_at').eq('id', true).maybeSingle()
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     // 2) DB'deki araçları çek
     const { data: dbAraclar } = await svc
       .from('sirket_araclari')
-      .select('id, plaka, mobiltek_id, guncel_km, sonraki_bakim_km, bakim_araligi_km, muayene_bitis, sigorta_bitis, kasko_bitis')
+      .select('id, plaka, mobiltek_id, guncel_km, sonraki_bakim_km, bakim_araligi_km, muayene_bitis, sigorta_bitis, kasko_bitis, sorumlu_kullanici_idler')
 
     // 3) Eşleştir + KM güncelle
     let kmGuncelleme = 0
@@ -158,6 +158,10 @@ Deno.serve(async (req) => {
     let yeniBildirim = 0
 
     const { data: adminler } = await svc.from('kullanicilar').select('id').eq('rol', 'admin')
+    const adminIds = (adminler ?? []).map((x: any) => x.id)
+    // Bir aracın bildirim alıcıları = adminler + o araca atanmış sorumlular (tekil)
+    const alicilar = (a: any) =>
+      [...new Set([...adminIds, ...((a.sorumlu_kullanici_idler ?? []) as number[])])].map((id) => ({ id }))
 
     const belgeKontrol = async (a: any, alan: string, tip: string, etiket: string, ikon: string) => {
       if (!a[alan]) return
@@ -170,7 +174,7 @@ Deno.serve(async (req) => {
         mesaj: gun < 0
           ? `${a.plaka} aracının ${etiket.toLowerCase()} bitişi ${Math.abs(gun)} gün önce geçti (${a[alan]}).`
           : `${a.plaka} aracının ${etiket.toLowerCase()} bitişine ${gun} gün kaldı (${a[alan]}).`,
-        adminler: adminler ?? [],
+        adminler: alicilar(a),
       })
       if (ok) yeniBildirim++
     }
@@ -184,7 +188,7 @@ Deno.serve(async (req) => {
             mesaj: kalan < 0
               ? `${a.plaka} bakım hedefini ${Math.abs(kalan)} km geçti (mevcut ${a.guncel_km} km).`
               : `${a.plaka} bakımına ${kalan} km kaldı (mevcut ${a.guncel_km} / hedef ${a.sonraki_bakim_km} km).`,
-            adminler: adminler ?? [],
+            adminler: alicilar(a),
           })
           if (ok) yeniBildirim++
         }
