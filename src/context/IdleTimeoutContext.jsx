@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
+import { AKTIVITE_KEY, aktiviteDamgala, aktiviteOku, aktiviteTemizle } from '../lib/idleAktivite'
 
 /**
  * Idle Timeout — X dakika hareketsizlik sonrası oturumu otomatik kapat.
@@ -13,7 +14,6 @@ import { useAuth } from './AuthContext'
 const UYARI_MS = 55 * 60 * 1000
 const KAPATMA_MS = 60 * 60 * 1000
 const KONTROL_MS = 15 * 1000
-const AKTIVITE_KEY = 'zna-son-aktivite'
 const KISIM_MS = 500  // Aktivite güncelleme throttle
 
 const IdleTimeoutContext = createContext(null)
@@ -31,7 +31,7 @@ export function IdleTimeoutProvider({ children }) {
     sonAktiviteRef.current = simdi
     if (simdi - sonYayinRef.current > KISIM_MS) {
       sonYayinRef.current = simdi
-      try { localStorage.setItem(AKTIVITE_KEY, String(simdi)) } catch { /* ignore */ }
+      aktiviteDamgala(simdi)
     }
     if (uyariGorunur) setUyariGorunur(false)
   }, [uyariGorunur])
@@ -67,18 +67,16 @@ export function IdleTimeoutProvider({ children }) {
     return () => window.removeEventListener('storage', dinle)
   }, [kullanici, uyariGorunur])
 
-  // İlk yükleme: localStorage'daki son aktiviteyi al
+  // İlk yükleme: localStorage'daki son aktiviteyi al.
+  // Damga bilerek kalıcıdır: sayfa yenilenince (softRecovery otomatik reload
+  // dahil) sayaç sıfırlanmasın, başında olunmayan sekme gerçekten kapansın.
+  // Önceki oturumdan miras kalmaması AuthContext'in sorumluluğu: girisYap
+  // damgayı tazeler, cikisYap siler.
   useEffect(() => {
     if (!kullanici) return
-    try {
-      const stored = localStorage.getItem(AKTIVITE_KEY)
-      if (stored) {
-        const zaman = parseInt(stored, 10)
-        if (!isNaN(zaman)) sonAktiviteRef.current = zaman
-      } else {
-        localStorage.setItem(AKTIVITE_KEY, String(Date.now()))
-      }
-    } catch { /* ignore */ }
+    const zaman = aktiviteOku()
+    if (zaman !== null) sonAktiviteRef.current = zaman
+    else aktiviteDamgala()
   }, [kullanici])
 
   // Kontrol döngüsü — uyarı ve kapatma
@@ -91,7 +89,7 @@ export function IdleTimeoutProvider({ children }) {
       const gecen = Date.now() - sonAktiviteRef.current
       if (gecen >= KAPATMA_MS) {
         setUyariGorunur(false)
-        try { localStorage.removeItem(AKTIVITE_KEY) } catch { /* ignore */ }
+        aktiviteTemizle()
         cikisYap()
       } else if (gecen >= UYARI_MS) {
         setUyariGorunur(true)

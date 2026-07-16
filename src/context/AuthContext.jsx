@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
+import { aktiviteDamgala, aktiviteTemizle } from '../lib/idleAktivite'
 import {
   kullanicilariGetir,
   kullaniciGirisKontrol,
@@ -236,6 +237,11 @@ export function AuthProvider({ children }) {
   const girisYap = async (kullaniciAdi, sifre) => {
     const bulunan = await kullaniciGirisKontrol(kullaniciAdi, sifre)
     if (bulunan) {
+      // Giriş yapmak AKTİVİTEDİR — damgayı setKullanici'dan ÖNCE tazele.
+      // IdleTimeout oturum kurulur kurulmaz kontrol ediyor; önceki oturumdan
+      // kalan damga (ör. dün akşam) 60dk'yı aşık görünüp kullanıcıyı tam
+      // giriş anında login'e geri atıyordu ("sabahları login'e atıyor" bug'ı).
+      aktiviteDamgala()
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
       // Aktivite logu — 'kullanici_giris' kaydi (Profilim/KullaniciYonetimi
@@ -279,6 +285,9 @@ export function AuthProvider({ children }) {
 
     // Diğer kullanıcılara stale data sızmasın
     cacheInvalidateAll()
+    // Oturum bitti — idle damgası bir sonraki oturuma miras kalmasın
+    // (kalırsa yeni giriş anında "60dk aşıldı" sanılıp çıkış tetikleniyordu).
+    aktiviteTemizle()
     setKullanici(null)
   }
 
