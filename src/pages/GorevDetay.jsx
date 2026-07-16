@@ -711,7 +711,7 @@ function GorevDetay() {
         <div style={{ marginBottom: 16 }}>
           <CardTitle>Yorumlar</CardTitle>
           <p className="t-caption" style={{ marginTop: 2 }}>
-            <span className="tabular-nums">{tumYorumlar.length}</span> yorum · web + mobil, herkes görür ve yazabilir
+            <span className="tabular-nums">{tumYorumlar.length}</span> yorum
           </p>
         </div>
 
