@@ -235,13 +235,18 @@ export function AuthProvider({ children }) {
   }, [kullanici])
 
   const girisYap = async (kullaniciAdi, sifre) => {
+    // Şifresini yazan kullanıcı AKTİFTİR — damgayı HER ŞEYDEN ÖNCE tazele.
+    // Buraya değil de kullaniciGirisKontrol sonrasına konursa YARIŞI KAYBEDER:
+    // signInWithPassword başarılı olur olmaz Supabase SIGNED_IN fırlatıyor ve
+    // onAuthStateChange tek ağ çağrısıyla setKullanici yapıyor; girisYap ise
+    // önce giris_denemesi_kaydet + profilGetirRetry'ı bekliyor. Oturum, damga
+    // tazelenmeden kuruluyor → IdleTimeout dünkü damgayı görüp anında çıkış
+    // yaptırıyordu ("sabah ilk giriş login'e atıyor" bug'ı).
+    // Giriş başarısız olsa bile damga tazelenmiş olur; zararsız (oturum yokken
+    // IdleTimeout çalışmaz) ve klavye başındaki kişi zaten aktiftir.
+    aktiviteDamgala()
     const bulunan = await kullaniciGirisKontrol(kullaniciAdi, sifre)
     if (bulunan) {
-      // Giriş yapmak AKTİVİTEDİR — damgayı setKullanici'dan ÖNCE tazele.
-      // IdleTimeout oturum kurulur kurulmaz kontrol ediyor; önceki oturumdan
-      // kalan damga (ör. dün akşam) 60dk'yı aşık görünüp kullanıcıyı tam
-      // giriş anında login'e geri atıyordu ("sabahları login'e atıyor" bug'ı).
-      aktiviteDamgala()
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
       // Aktivite logu — 'kullanici_giris' kaydi (Profilim/KullaniciYonetimi
