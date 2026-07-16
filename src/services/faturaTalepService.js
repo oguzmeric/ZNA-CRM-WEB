@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cokluBildirimEkle } from './bildirimService'
 import { satisEkle } from './satisService'
+import { musteriGetir } from './musteriService'
 
 export const FATURA_TALEP_DURUM = {
   BEKLIYOR:    'bekliyor',
@@ -132,7 +133,7 @@ export const faturaDosyaUrl = async (yol) => {
  * Talebi gerçek faturaya dönüştürür: satislar kaydını AÇAR ve talebi kapatır.
  * Satış kaydı yalnız burada oluşur — talep aşamasında ciro/raporlara sızmasın.
  */
-export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kullanici }) => {
+export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kullanici, odemeSekli }) => {
   const no = (faturaNo || '').trim()
   if (!no) return { _hata: 'Fatura numarası zorunludur.' }
 
@@ -209,6 +210,9 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kul
       fatura_tarihi: faturaTarihi || new Date().toISOString().slice(0, 10),
       fatura_pdf_yol: pdfYol,
       fatura_pdf_ad: pdfAd,
+      // Ödeme yöntemi kesim anında muhasebe tarafından belirlenebilir (servis
+      // kaynaklı taleplerde teklif olmadığı için boş gelir).
+      odeme_sekli: odemeSekli || talep.odemeSekli || null,
       faturalayan_id: kullanici?.id ?? null,
       faturalayan_ad: kullanici?.ad ?? '',
       faturalama_tarihi: new Date().toISOString(),
@@ -220,8 +224,29 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kul
     .single()
   if (error) { console.error('[faturayiKaydet]', error.message); return { _hata: error.message } }
 
-  await talepEdeneBildir(toCamel(data), 'faturalandi')
-  return toCamel(data)
+  const kesilen = toCamel(data)
+  await talepEdeneBildir(kesilen, 'faturalandi')
+  await adminlereFaturaKesildiBildir(kesilen)
+  // Servis kaynaklıysa servisin fatura durumu geri-link zaten var; ek işlem yok.
+  return kesilen
+}
+
+// Fatura kesilince adminlere bildir ("Fatura bizim bilgimiz olmalı")
+async function adminlereFaturaKesildiBildir(talep) {
+  try {
+    const { data } = await supabase.from('kullanicilar').select('id').eq('rol', 'admin')
+    const alicilar = [...new Set((data || []).map(k => k.id))].filter(id => id !== talep.faturalayanId)
+    if (!alicilar.length) return
+    await cokluBildirimEkle(alicilar, {
+      baslik: `🧾 Fatura kesildi — ${talep.faturaNo}`,
+      mesaj: `${talep.firmaAdi} · ${talep.talepNo}${talep.genelToplam ? ` · ${talep.genelToplam} ${talep.paraBirimi}` : ''}`,
+      tip: 'basari',
+      link: '/fatura-talepleri',
+      meta: { kaynak: 'fatura_talebi', talep_id: talep.id, olay: 'faturalandi' },
+    })
+  } catch (e) {
+    console.warn('[faturaTalebi] admin bildirim:', e?.message)
+  }
 }
 
 export const faturaTalebiReddet = async ({ talep, redNedeni, kullanici }) => {
@@ -328,4 +353,76 @@ export const tekliftenTalep = (teklif, musteri, kullanici) => {
     talepEdenId: kullanici?.id ?? null,
     talepEdenAd: kullanici?.ad ?? '',
   }
+}
+
+// ---------- Servisten proforma ----------
+
+/**
+ * Servisten fatura_talebi payload'ı. Servislerin fiyatlı kalemi YOK — proforma
+ * müşteri künyesi + servis konusuyla, tutarlar BOŞ açılır; muhasebe gerçek
+ * faturayı keserken tutar + ödeme + PDF girer.
+ */
+export const servistenTalep = (servis, musteri, kullanici, not = '') => ({
+  servisTalepId: servis.id ? Number(servis.id) : null,
+  teklifId: null,
+  teklifNo: '',
+  musteriId: musteri?.id ? Number(musteri.id) : (servis.musteriId ? Number(servis.musteriId) : null),
+  firmaAdi: servis.firmaAdi || musteri?.firma || servis.musteriAd || '',
+  yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' ') || servis.musteriAd || '',
+  vergiNo: musteri?.vergiNo || '',
+  vergiDairesi: musteri?.vergiDairesi || '',
+  adres: [musteri?.adres, musteri?.sehir].filter(Boolean).join(' · '),
+  telefon: musteri?.telefon || '',
+  email: musteri?.email || '',
+  konu: servis.konu ? `Servis: ${servis.konu}` : 'Servis faturası',
+  paraBirimi: 'TL',
+  dovizKuru: null,
+  kalemler: [],
+  araToplam: 0, kdvToplam: 0, genelToplam: 0,
+  odemeSekli: '',
+  vadeTarihi: null,
+  talepNotu: not || '',
+  talepEdenId: kullanici?.id ?? null,
+  talepEdenAd: kullanici?.ad ?? '',
+})
+
+/**
+ * Servis için "Fatura Kesilecek" — proforma açar + servise geri-link yazar.
+ * Aynı servise ikinci açık proforma engeli (uq_fatura_talep_acik_servis).
+ */
+export const servistenFaturaTalebiAc = async ({ servis, kullanici, not = '' }) => {
+  // Zaten açık talep var mı?
+  const { data: mevcut } = await supabase
+    .from('fatura_talepleri')
+    .select('id, talep_no, durum')
+    .eq('servis_talep_id', servis.id)
+    .eq('durum', 'bekliyor')
+    .maybeSingle()
+  if (mevcut) return { _hata: `Bu servise zaten açık bir proforma var (${mevcut.talep_no}).` }
+
+  const musteri = servis.musteriId ? await musteriGetir(servis.musteriId).catch(() => null) : null
+  const payload = servistenTalep(servis, musteri, kullanici, not)
+  let kayit
+  try {
+    kayit = await faturaTalebiEkle(payload)
+  } catch (e) {
+    if (String(e?.message || '').includes('uq_fatura_talep_acik_servis')) {
+      return { _hata: 'Bu servise zaten açık bir proforma var.' }
+    }
+    return { _hata: 'Proforma açılamadı: ' + (e?.message || 'bilinmeyen') }
+  }
+  // Servise geri-link (durum gösterimi için)
+  await supabase.from('servis_talepleri').update({ fatura_talep_id: kayit.id }).eq('id', servis.id)
+  return kayit
+}
+
+// Servisin fatura talebi durumunu getir (ServisTalepDetay rozetleri için)
+export const servisFaturaTalebiGetir = async (servisId) => {
+  const { data } = await supabase
+    .from('fatura_talepleri')
+    .select('id, talep_no, durum, fatura_no')
+    .eq('servis_talep_id', servisId)
+    .order('id', { ascending: false })
+    .limit(1)
+  return data?.[0] ? toCamel(data[0]) : null
 }

@@ -15,8 +15,9 @@ import { useConfirm } from '../context/ConfirmContext'
 import { SkeletonList } from '../components/Skeleton'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import {
-  Button, Card, Badge, CodeBadge, EmptyState, Input, Label, Textarea,
+  Button, Card, Badge, CodeBadge, EmptyState, Input, Label, Textarea, Select,
 } from '../components/ui'
+import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
   faturaDosyaUrl, faturaYetkisi, FATURA_TALEP_DURUM_META,
@@ -210,6 +211,7 @@ const hucre = { padding: '10px 12px', borderBottom: '1px solid var(--border-defa
 function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, confirm }) {
   const [faturaNo, setFaturaNo] = useState(talep.faturaNo || '')
   const [faturaTarihi, setFaturaTarihi] = useState(talep.faturaTarihi || bugun())
+  const [odemeSekli, setOdemeSekli] = useState(talep.odemeSekli || '')
   const [dosya, setDosya] = useState(null)
   const [redAcik, setRedAcik] = useState(false)
   const [redNedeni, setRedNedeni] = useState('')
@@ -223,7 +225,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
   const kaydet = async () => {
     setMesgul(true)
     try {
-      const sonuc = await faturayiKaydet({ talep, faturaNo, faturaTarihi, dosya, kullanici })
+      const sonuc = await faturayiKaydet({ talep, faturaNo, faturaTarihi, dosya, kullanici, odemeSekli })
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
       toast.success(`${faturaNo} kaydedildi — Satış Faturaları'na eklendi.`)
       onTamamlandi()
@@ -394,6 +396,13 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
               <div>
                 <Label>Fatura Tarihi</Label>
                 <Input type="date" value={faturaTarihi} onChange={e => setFaturaTarihi(e.target.value)} />
+              </div>
+              <div>
+                <Label>Ödeme Yöntemi</Label>
+                <Select value={odemeSekli} onChange={e => setOdemeSekli(e.target.value)}>
+                  <option value="">Seç…</option>
+                  {ODEME_TIPLERI_SS.map(o => <option key={o.id} value={o.isim}>{o.isim}</option>)}
+                </Select>
               </div>
               <div>
                 <Label>Fatura PDF</Label>

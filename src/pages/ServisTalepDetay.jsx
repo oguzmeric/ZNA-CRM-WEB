@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
-  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer,
+  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
+import { useToast } from '../context/ToastContext'
+import { servistenFaturaTalebiAc, servisFaturaTalebiGetir } from '../services/faturaTalepService'
 import { gorevGetir } from '../services/gorevService'
 import { parseMentions } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
@@ -40,7 +42,14 @@ export default function ServisTalepDetay() {
   const { kullanici, kullanicilar } = useAuth()
   const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const { bildirimEkle, talepBildirimleriniOku } = useBildirim()
+  const toast = useToast()
   const navigate = useNavigate()
+
+  // Servis → Proforma Fatura köprüsü
+  const [faturaTalebi, setFaturaTalebi] = useState(null)
+  const [faturaModalAcik, setFaturaModalAcik] = useState(false)
+  const [faturaNot, setFaturaNot] = useState('')
+  const [faturaMesgul, setFaturaMesgul] = useState(false)
 
   const [yeniNot, setYeniNot] = useState('')
   const [notTip, setNotTip] = useState('ic')
@@ -73,6 +82,25 @@ export default function ServisTalepDetay() {
       setBagliGorev(null)
     }
   }, [talep?.gorevId])
+
+  // Bu servise açılmış proforma fatura talebi var mı? (durum rozeti için)
+  useEffect(() => {
+    if (talep?.id) servisFaturaTalebiGetir(talep.id).then(setFaturaTalebi).catch(() => {})
+  }, [talep?.id])
+
+  const faturaKesilecekAc = async () => {
+    setFaturaMesgul(true)
+    try {
+      const sonuc = await servistenFaturaTalebiAc({ servis: talep, kullanici, not: faturaNot })
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      setFaturaTalebi(sonuc)
+      setFaturaModalAcik(false)
+      setFaturaNot('')
+      toast.success('Fatura kesilecek — Proforma Fatura kuyruğuna eklendi.')
+    } finally {
+      setFaturaMesgul(false)
+    }
+  }
 
   if (!talep) {
     return (
@@ -279,11 +307,60 @@ export default function ServisTalepDetay() {
                 Müşteriye Gönder
               </Button>
             )}
+            {/* Fatura Kesilecek — proforma açılmışsa durum rozeti, değilse buton */}
+            {talep.durum === 'tamamlandi' && (
+              faturaTalebi ? (
+                <Button
+                  variant="secondary" size="md"
+                  iconLeft={<Receipt size={14} strokeWidth={1.5} />}
+                  onClick={() => navigate('/fatura-talepleri')}
+                >
+                  {faturaTalebi.durum === 'faturalandi'
+                    ? `Fatura kesildi · ${faturaTalebi.faturaNo || ''}`
+                    : faturaTalebi.durum === 'reddedildi'
+                      ? 'Proforma reddedildi'
+                      : `Fatura bekliyor · ${faturaTalebi.talepNo}`}
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary" size="md"
+                  iconLeft={<Receipt size={14} strokeWidth={1.5} />}
+                  onClick={() => setFaturaModalAcik(true)}
+                >
+                  Fatura Kesilecek
+                </Button>
+              )
+            )}
             <Button variant="tertiary" size="md" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={() => setSilOnayGoster(true)}>
               Sil
             </Button>
           </div>
         </div>
+
+        {/* Fatura Kesilecek modalı */}
+        {faturaModalAcik && (
+          <Alert
+            variant="info"
+            title="Bu servis için fatura kesilsin"
+            action={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8, minWidth: 280 }}>
+                <p className="t-caption" style={{ margin: 0 }}>
+                  Müşteri künyesiyle bir proforma açılır ve <strong>Proforma Fatura → Bekleyen</strong> kuyruğuna
+                  düşer. Muhasebe gerçek faturayı kesip tutar / ödeme / PDF girer.
+                </p>
+                <Textarea rows={2} value={faturaNot} onChange={e => setFaturaNot(e.target.value)}
+                  placeholder="Muhasebeye not (isteğe bağlı) — ör. tutar, hizmet açıklaması" />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <Button variant="secondary" size="sm" disabled={faturaMesgul} onClick={() => setFaturaModalAcik(false)}>İptal</Button>
+                  <Button variant="primary" size="sm" iconLeft={<Receipt size={13} strokeWidth={1.5} />} disabled={faturaMesgul} onClick={faturaKesilecekAc}>
+                    {faturaMesgul ? 'Açılıyor…' : 'Fatura Kesilecek'}
+                  </Button>
+                </div>
+              </div>
+            }
+            style={{ marginTop: 16 }}
+          />
+        )}
 
         {/* Silme onayı */}
         {silOnayGoster && (
