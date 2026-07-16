@@ -158,6 +158,7 @@ function GorevDetay() {
     zaman: n.tarih || null,
     duzenlendi: !!n.duzenlendiTarih,
     fotoUrls: Array.isArray(n.fotoUrls) ? n.fotoUrls : [],
+    dosyalar: Array.isArray(n.dosyalar) ? n.dosyalar : [],   // mobil belge ekleri (mig 184)
     kaynak: 'mobil',
   }))
   const tumYorumlar = [...yorumlar.map(y => ({ ...y, kaynak: y.kaynak || 'web' })), ...mobilNotlar]
@@ -842,8 +843,8 @@ function GorevDetay() {
                     )}
                   </p>
                 )}
-                {/* Web yorum ekleri (mig 184) */}
-                {!mobilMi && <EkListesi dosyalar={yorum.dosyalar} />}
+                {/* Yorum ekleri (mig 184) — hem web yorumu hem mobil not belgeleri */}
+                <EkListesi dosyalar={yorum.dosyalar} />
                 {/* Mobil nottaki fotoğraflar (varsa) */}
                 {mobilMi && yorum.fotoUrls?.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
