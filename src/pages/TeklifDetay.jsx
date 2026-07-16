@@ -805,6 +805,12 @@ function TeklifDetay() {
 
   // Durum değiştirme (spec 10 durum) — durumModalAcik state yukarıda Rules of Hooks uyumlu
   const durumuDegistir = async (yeniDurum) => {
+    // YÖNETİCİ ONAYI yalnız admin verebilir — modal herkese açık olduğundan
+    // buton gizlense bile fonksiyon seviyesinde de kilitli (çift katman).
+    if (yeniDurum === TEKLIF_DURUM.YON_ONAYLADI && kullanici?.rol !== 'admin') {
+      toast.error('Yönetici onayını yalnız admin yetkisine sahip kullanıcılar verebilir.')
+      return
+    }
     const alanlar = durumdanDbAlanlar(yeniDurum) // { spekDurum, onayDurumu }
     if (yeni) {
       // Kayıt edilmemiş: sadece form state güncelle, kaydet'e basınca DB'ye yazılacak
@@ -2641,25 +2647,33 @@ function TeklifDetay() {
                 }
                 return secenekler.map(k => {
                   const meta = TEKLIF_DURUM_META[k]
+                  // Yönetici onayı yalnız admin — diğerleri kilitli görür
+                  const kilitli = k === TEKLIF_DURUM.YON_ONAYLADI && kullanici?.rol !== 'admin'
                   return (
                     <button
                       key={k}
-                      onClick={() => durumuDegistir(k)}
+                      onClick={() => !kilitli && durumuDegistir(k)}
+                      disabled={kilitli}
+                      title={kilitli ? 'Yönetici onayını yalnız admin verebilir' : undefined}
                       style={{
                         padding: '10px 12px', borderRadius: 8,
-                        background: `${meta.renk}18`, color: meta.renk,
-                        border: `1px solid ${meta.renk}55`,
-                        cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                        textAlign: 'left',
+                        background: kilitli ? 'var(--surface-subtle)' : `${meta.renk}18`,
+                        color: kilitli ? 'var(--text-tertiary)' : meta.renk,
+                        border: `1px solid ${kilitli ? 'var(--border-default)' : meta.renk + '55'}`,
+                        cursor: kilitli ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13,
+                        textAlign: 'left', opacity: kilitli ? 0.6 : 1,
                       }}
                     >
-                      → {meta.isim}
+                      → {meta.isim}{kilitli ? '  🔒 yalnız admin' : ''}
                     </button>
                   )
                 })
               })()}
             </div>
 
+            {/* Serbest geçiş listesi adı üstünde ADMIN — herkese görünüyordu,
+                Hasan/Tarık gibi personel buradan onay verebiliyordu. */}
+            {kullanici?.rol === 'admin' && (
             <details style={{ marginBottom: 12 }}>
               <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.3 }}>
                 TÜM DURUMLAR (ADMIN GEÇIŞ)
@@ -2688,6 +2702,7 @@ function TeklifDetay() {
                 })}
               </div>
             </details>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button variant="ghost" onClick={() => setDurumModalAcik(false)}>Kapat</Button>
