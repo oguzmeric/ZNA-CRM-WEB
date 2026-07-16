@@ -6,8 +6,8 @@ import {
   Plus, Pencil, Trash2, User, Phone, MessageCircle, Mail, Handshake,
   Building2, Monitor, Link2, Video, Send, Lightbulb, X,
   Paperclip, Upload, FileText, Image as ImageIcon, Download,
-  MapPin, Settings, Clock, AlertTriangle, ReceiptText, CheckSquare,
-  History, Zap, ArrowRight,
+  MapPin, Settings, Clock, AlertTriangle, CheckSquare,
+  History,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
@@ -959,12 +959,6 @@ function Gorusmeler() {
           <GecmisGorusmeler firma={form.firmaAdi || secilenFirma} gorusmeler={gorusmeler} navigate={navigate} mevcutId={duzenleId} />
         </Card>
         </div>
-        <HizliAksiyon
-          musteriId={form.musteriId}
-          firmaAdi={form.firmaAdi || secilenFirma}
-          navigate={navigate}
-          onayli={!!(form.firmaAdi || secilenFirma)}
-        />
       </div>
       )}
 
@@ -1311,50 +1305,6 @@ function GecmisGorusmeler({ firma, gorusmeler, navigate, mevcutId }) {
         </button>
       )}
     </div>
-  )
-}
-
-// Hızlı aksiyon — bu görüşmeden direkt yeni iş başlat
-function HizliAksiyon({ musteriId, firmaAdi, navigate, onayli }) {
-  const stilB = (renk) => ({
-    flex: 1,
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: '10px 14px',
-    background: 'var(--surface-card)',
-    border: `1.5px solid ${renk}`,
-    color: renk,
-    borderRadius: 8,
-    cursor: onayli ? 'pointer' : 'not-allowed',
-    opacity: onayli ? 1 : 0.45,
-    font: '600 13px/18px var(--font-sans)',
-    transition: 'background 120ms',
-  })
-  const handler = (yol) => () => {
-    if (!onayli) return
-    const params = new URLSearchParams()
-    if (musteriId) params.set('musteriId', String(musteriId))
-    if (firmaAdi)  params.set('firma', firmaAdi)
-    navigate(`${yol}?${params.toString()}`)
-  }
-  return (
-    <Card style={{ marginTop: 14, background: 'var(--brand-primary-soft)', border: '1px solid var(--brand-primary)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <Zap size={14} strokeWidth={1.8} style={{ color: 'var(--brand-primary)' }} />
-        <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>Bu görüşmeden →</span>
-        {!onayli && <span style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 6 }}>(önce firma seçin)</span>}
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button style={stilB('var(--success)')} onClick={handler('/gorevler')} disabled={!onayli}>
-          <CheckSquare size={14} strokeWidth={1.8} /> Görev oluştur <ArrowRight size={12} strokeWidth={1.5} />
-        </button>
-        <button style={stilB('var(--warning)')} onClick={handler('/servis-talepleri/yeni')} disabled={!onayli}>
-          <AlertTriangle size={14} strokeWidth={1.8} /> Servis talebi aç <ArrowRight size={12} strokeWidth={1.5} />
-        </button>
-        <button style={stilB('var(--brand-primary)')} onClick={handler('/teklifler/yeni')} disabled={!onayli}>
-          <ReceiptText size={14} strokeWidth={1.8} /> Teklif başlat <ArrowRight size={12} strokeWidth={1.5} />
-        </button>
-      </div>
-    </Card>
   )
 }
 
