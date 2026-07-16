@@ -16,6 +16,7 @@ import {
   Button, Input, Label, Card, Badge, Avatar, EmptyState, SearchInput,
 } from '../components/ui'
 import { trContains } from '../lib/trSearch'
+import { aktiviteLoglariGetir, aktiviteLoglariTemizle } from '../services/aktiviteService'
 
 const tumModuller = [
   { id: 'musteriler',        isim: 'Müşteri & Satış' },
@@ -681,11 +682,15 @@ export default function KullaniciYonetimi() {
     setTimeout(() => setAyarKaydedildi(false), 2000)
   }
 
-  const tumLoglar = useMemo(() =>
-    JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
-      .sort((a, b) => new Date(b.tarih) - new Date(a.tarih)),
-    [aktifSekme]
-  )
+  // Aktivite logları artık DB'den (mig 181) — admin RLS gereği HERKESİN logunu
+  // görür (eskiden localStorage cihaz-yereldi, yalnız kendini görüyordun).
+  const [tumLoglar, setTumLoglar] = useState([])
+  useEffect(() => {
+    if (aktifSekme !== 'aktivite' && aktifSekme !== 'ozet') return
+    aktiviteLoglariGetir({ gun: 'hepsi', limit: 3000 })
+      .then(setTumLoglar)
+      .catch(() => setTumLoglar([]))
+  }, [aktifSekme])
 
   const filtreliLoglar = useMemo(() =>
     tumLoglar
@@ -849,9 +854,13 @@ export default function KullaniciYonetimi() {
       onayMetin: 'Evet, temizle', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    localStorage.removeItem('aktiviteLog')
-    toast.success('Aktivite logları temizlendi.')
-    setTimeout(() => window.location.reload(), 800)
+    const ok = await aktiviteLoglariTemizle()
+    if (ok) {
+      setTumLoglar([])
+      toast.success('Aktivite logları temizlendi.')
+    } else {
+      toast.error('Loglar temizlenemedi.')
+    }
   }
 
   const SEKMELER = [

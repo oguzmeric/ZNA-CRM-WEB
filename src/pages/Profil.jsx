@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
+import { aktiviteLoglariGetir } from '../services/aktiviteService'
 import { sifreDegistir as authSifreDegistir, kullaniciGirisKontrol } from '../services/kullaniciService'
 import {
   Button, Input, Label, Card, CardTitle, Badge, Avatar, Alert, EmptyState,
@@ -126,14 +127,20 @@ function Profil() {
   const [gorevler, setGorevler] = useState([])
   const [gorusmeler, setGorusmeler] = useState([])
 
-  const aktiviteLoglari = JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
+  // Aktivite logları artık DB'den (mig 181); RLS gereği personel yalnız kendi
+  // logunu alır (eskiden localStorage cihaz-yereldi).
+  const [aktiviteLoglari, setAktiviteLoglari] = useState([])
 
   useEffect(() => {
     (async () => {
       setYukleniyor(true)
       try {
-        const [t, g, gr] = await Promise.all([teklifleriGetir(), gorevleriGetir(), gorusmeleriGetir()])
+        const [t, g, gr, loglar] = await Promise.all([
+          teklifleriGetir(), gorevleriGetir(), gorusmeleriGetir(),
+          aktiviteLoglariGetir({ limit: 5000 }),
+        ])
         setTeklifler(t || []); setGorevler(g || []); setGorusmeler(gr || [])
+        setAktiviteLoglari(loglar || [])
       } catch (err) {
         console.error('[Profil yükle]', err)
       } finally {

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll } from '../lib/cache'
 import { aktiviteDamgala, aktiviteTemizle } from '../lib/idleAktivite'
+import { aktiviteLogEkle } from '../services/aktiviteService'
 import {
   kullanicilariGetir,
   kullaniciGirisKontrol,
@@ -250,19 +251,13 @@ export function AuthProvider({ children }) {
       const guncel = { ...bulunan, durum: 'cevrimici' }
       setKullanici(guncel)
       // Aktivite logu — 'kullanici_giris' kaydi (Profilim/KullaniciYonetimi
-      // 'Toplam Giriş' sayaclarinin dolmasi icin gerekli)
-      try {
-        const kayitlar = JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
-        kayitlar.push({
-          id: crypto.randomUUID(),
-          kullaniciId: bulunan.id.toString(),
-          kullaniciAd: bulunan.ad,
-          tip: 'kullanici_giris',
-          tarih: new Date().toISOString(),
-          aciklama: 'Sisteme giriş yapıldı',
-        })
-        localStorage.setItem('aktiviteLog', JSON.stringify(kayitlar))
-      } catch (e) { console.warn('[girisYap] aktivite logu yazilamadi:', e) }
+      // 'Toplam Giriş' sayaclarinin dolmasi icin). DB tabanli (mig 181).
+      aktiviteLogEkle({
+        kullaniciId: bulunan.id,
+        kullaniciAd: bulunan.ad,
+        tip: 'kullanici_giris',
+        aciklama: 'Sisteme giriş yapıldı',
+      })
       // Durum güncelleme best-effort — login'i engellemez
       try { await kullaniciDurumGuncelle(bulunan.id, 'cevrimici') } catch (e) { console.warn('[girisYap] durum güncellenemedi:', e) }
       setKullanicilar((prev) =>

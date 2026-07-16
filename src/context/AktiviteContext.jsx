@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import { useLocation } from 'react-router-dom'
+import { aktiviteLogEkle } from '../services/aktiviteService'
 
 const AktiviteContext = createContext(null)
 
@@ -25,19 +26,17 @@ export function AktiviteProvider({ children }) {
   const sayfaGirisZamani = useRef(null)
   const oncekiSayfa = useRef(null)
 
+  // DB'ye yaz (mig 181) — eskiden localStorage'daydı, admin başkasını göremiyordu.
   const logKaydet = (tip, veri = {}) => {
     if (!kullanici) return
-    const kayitlar = JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
-    const yeniKayit = {
-      id: crypto.randomUUID(),
-      kullaniciId: kullanici.id.toString(),
+    aktiviteLogEkle({
+      kullaniciId: kullanici.id,
       kullaniciAd: kullanici.ad,
       tip,
-      tarih: new Date().toISOString(),
-      ...veri,
-    }
-    kayitlar.push(yeniKayit)
-    localStorage.setItem('aktiviteLog', JSON.stringify(kayitlar))
+      sayfa: veri.sayfa ?? null,
+      sureSaniye: veri.sureSaniye ?? null,
+      aciklama: veri.aciklama ?? null,
+    })
   }
 
   // Sayfa değişikliği takibi

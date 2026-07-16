@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { faturaYetkisi } from '../services/faturaTalepService'
+import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -335,35 +336,21 @@ function MainLayout({ children }) {
   const sayfaGirisZamani = useRef(null)
   const oncekiSayfa = useRef(null)
 
+  // Aktivite logu artık DB tabanlı (mig 181) ve SAYFA takibi tek yerde:
+  // AktiviteContext. MainLayout yalnız giriş/çıkış olayını yazar; buradaki
+  // eski localStorage + sayfa-takip useEffect'i (AktiviteContext ile ÇİFT
+  // kayıt üretiyordu) kaldırıldı.
   const logKaydet = (tip, veri = {}) => {
     if (!kullanici) return
-    const kayitlar = JSON.parse(localStorage.getItem('aktiviteLog') || '[]')
-    kayitlar.push({
-      id: crypto.randomUUID(),
-      kullaniciId: kullanici.id.toString(),
+    aktiviteLogEkle({
+      kullaniciId: kullanici.id,
       kullaniciAd: kullanici.ad,
       tip,
-      tarih: new Date().toISOString(),
-      ...veri,
+      sayfa: veri.sayfa ?? null,
+      sureSaniye: veri.sureSaniye ?? null,
+      aciklama: veri.aciklama ?? null,
     })
-    localStorage.setItem('aktiviteLog', JSON.stringify(kayitlar))
   }
-
-  useEffect(() => {
-    if (!kullanici) return
-    const simdi = Date.now()
-    const sayfaAdi = Object.entries(sayfaIsimleri).find(
-      ([yol]) => location.pathname === yol || location.pathname.startsWith(yol + '/')
-    )?.[1] || location.pathname
-
-    if (oncekiSayfa.current && sayfaGirisZamani.current) {
-      const sure = Math.round((simdi - sayfaGirisZamani.current) / 1000)
-      if (sure > 2) logKaydet('sayfa_cikis', { sayfa: oncekiSayfa.current, sureSaniye: sure })
-    }
-    sayfaGirisZamani.current = simdi
-    oncekiSayfa.current = sayfaAdi
-    logKaydet('sayfa_giris', { sayfa: sayfaAdi })
-  }, [location.pathname, kullanici])
 
   // Görevler sayfasına girildiğinde görev bildirimleri okundu işaretle
   // (rozet düşsün) — kullanıcı gördü demektir.
