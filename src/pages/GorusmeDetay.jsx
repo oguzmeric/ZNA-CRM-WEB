@@ -13,6 +13,9 @@ import CustomSelect from '../components/CustomSelect'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import { SkeletonDetay } from '../components/Skeleton'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
+import { gorusmeYorumlariGetir, gorusmeYorumEkle, gorusmeYorumSil } from '../services/gorusmeYorumService'
+import { EkSecici, EkListesi } from '../components/EkAlani'
+import { ekleriYukle } from '../lib/ekDosya'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { musterileriGetir } from '../services/musteriService'
@@ -23,7 +26,7 @@ import OnSiparisModal from '../components/OnSiparisModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
-  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal,
+  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal, Avatar,
 } from '../components/ui'
 
 const varsayilanKonular = [
@@ -79,6 +82,11 @@ function GorusmeDetay() {
   const [gorusme, setGorusme] = useState(null)
   const [gorevler, setGorevler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  // Yorumlar (mig 184 — görev yorumları deseni)
+  const [yorumlar, setYorumlar] = useState([])
+  const [yeniYorum, setYeniYorum] = useState('')
+  const [yorumEkleri, setYorumEkleri] = useState([])
+  const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false)
 
   const [duzenleAcik, setDuzenleAcik] = useState(false)
   const [duzenleForm, setDuzenleForm] = useState({})
@@ -108,6 +116,8 @@ function GorusmeDetay() {
         }
         // Bu görüşmeye bağlı ön siparişler
         gorusmeninOnSiparisleri(id).then(setOnSiparisler).catch(() => setOnSiparisler([]))
+        // Yorumlar
+        gorusmeYorumlariGetir(id).then(setYorumlar).catch(() => setYorumlar([]))
       } finally { setYukleniyor(false) }
     })()
   }, [id])
@@ -759,6 +769,102 @@ function GorusmeDetay() {
             })}
           </div>
         )}
+      </Card>
+
+      {/* Yorumlar (mig 184) — görev detayındaki yorum bölümünün görüşme karşılığı */}
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ marginBottom: 16 }}>
+          <CardTitle>Yorumlar</CardTitle>
+          <p className="t-caption" style={{ marginTop: 2 }}>
+            <span className="tabular-nums">{yorumlar.length}</span> yorum
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {yorumlar.length === 0 && <p className="t-caption">Henüz yorum yok.</p>}
+          {yorumlar.map(yorum => {
+            const benimMi = yorum.yazarId?.toString() === kullanici?.id?.toString()
+            return (
+              <div key={yorum.id} style={{
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                padding: 12,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar name={yorum.yazar} size="xs" />
+                    <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{yorum.yazar}</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>{yorum.tarih}</span>
+                    {benimMi && (
+                      <button
+                        aria-label="Sil"
+                        onClick={async () => {
+                          try {
+                            await gorusmeYorumSil(yorum.id)
+                            setYorumlar(prev => prev.filter(y => y.id !== yorum.id))
+                          } catch { toast.error('Yorum silinemedi.') }
+                        }}
+                        style={{
+                          width: 24, height: 24,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'transparent', border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                        }}
+                      >
+                        <X size={11} strokeWidth={1.5} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {yorum.icerik}
+                </p>
+                <EkListesi dosyalar={yorum.dosyalar} />
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+          <Textarea
+            rows={3}
+            value={yeniYorum}
+            onChange={e => setYeniYorum(e.target.value)}
+            placeholder="Yorum yaz…"
+            style={{ marginBottom: 8 }}
+          />
+          <div style={{ marginBottom: 8 }}>
+            <EkSecici dosyalar={yorumEkleri} onChange={setYorumEkleri} disabled={yorumGonderiliyor} />
+          </div>
+          <Button
+            variant="primary"
+            disabled={yorumGonderiliyor}
+            onClick={async () => {
+              if (!yeniYorum.trim() && yorumEkleri.length === 0) return
+              setYorumGonderiliyor(true)
+              try {
+                const dosyalar = yorumEkleri.length ? await ekleriYukle('yorum-ekleri', yorumEkleri) : []
+                const eklenen = await gorusmeYorumEkle({
+                  gorusmeId: gorusme.id, kullaniciId: kullanici.id,
+                  yazarAd: kullanici.ad, icerik: yeniYorum.trim() || '(ek)',
+                  dosyalar,
+                })
+                setYorumlar(prev => [...prev, eklenen])
+                setYeniYorum('')
+                setYorumEkleri([])
+              } catch (e) {
+                toast.error('Yorum eklenemedi: ' + (e?.message || 'bağlantıyı kontrol edin'))
+              } finally {
+                setYorumGonderiliyor(false)
+              }
+            }}
+          >
+            {yorumGonderiliyor ? 'Gönderiliyor…' : 'Yorum ekle'}
+          </Button>
+        </div>
       </Card>
 
       {/* Hatırlatma modalı — preset gün veya özel tarih */}

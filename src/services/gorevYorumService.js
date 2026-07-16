@@ -14,6 +14,7 @@ const yorumBicim = (r) => {
     yazar: c.yazarAd,
     yazarId: c.kullaniciId,
     icerik: c.icerik,
+    dosyalar: Array.isArray(c.dosyalar) ? c.dosyalar : [],   // ekler (mig 184)
     // eski kayıtlarda orijinal tr-TR metni korundu; yenilerde tarihi biçimlendir
     tarih: c.zamanMetin || (c.olusturmaTarih ? new Date(c.olusturmaTarih).toLocaleString('tr-TR') : ''),
     zaman: c.olusturmaTarih || null,
@@ -32,10 +33,10 @@ export const gorevYorumlariGetir = async (gorevId) => {
   return (data || []).map(yorumBicim)
 }
 
-export const gorevYorumEkle = async ({ gorevId, kullaniciId, yazarAd, icerik }) => {
+export const gorevYorumEkle = async ({ gorevId, kullaniciId, yazarAd, icerik, dosyalar = [] }) => {
   const { data, error } = await supabase
     .from('gorev_yorumlari')
-    .insert(toSnake({ gorevId, kullaniciId, yazarAd, icerik }))
+    .insert(toSnake({ gorevId, kullaniciId, yazarAd, icerik, dosyalar }))
     .select()
     .single()
   if (error) { console.error('[gorevYorumEkle]', error.message); throw error }

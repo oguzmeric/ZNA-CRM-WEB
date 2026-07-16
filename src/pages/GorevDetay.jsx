@@ -14,6 +14,8 @@ import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions, segmentMetin } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
+import { EkSecici, EkListesi } from '../components/EkAlani'
+import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonDetay } from '../components/Skeleton'
 import {
   Button, Textarea, Card, CardTitle, Badge, Avatar, EmptyState, SegmentedControl,
@@ -61,6 +63,8 @@ function GorevDetay() {
   const [gorev, setGorev] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [yeniYorum, setYeniYorum] = useState('')
+  const [yorumEkleri, setYorumEkleri] = useState([])       // henüz yüklenmemiş File[]
+  const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false)
   const [yorumlar, setYorumlar] = useState([])
   const [duzenleYorumId, setDuzenleYorumId] = useState(null)
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
@@ -185,17 +189,24 @@ function GorevDetay() {
   }
 
   const yorumEkle = async () => {
-    if (!yeniYorum.trim()) return
+    if (!yeniYorum.trim() && yorumEkleri.length === 0) return
+    setYorumGonderiliyor(true)
     let eklenen
     try {
+      // Önce ekleri yükle (varsa) — sonra yorumu ek listesiyle kaydet
+      const dosyalar = yorumEkleri.length ? await ekleriYukle('yorum-ekleri', yorumEkleri) : []
       eklenen = await gorevYorumEkle({
         gorevId: gorev.id, kullaniciId: kullanici.id,
-        yazarAd: kullanici.ad, icerik: yeniYorum.trim(),
+        yazarAd: kullanici.ad, icerik: yeniYorum.trim() || '(ek)',
+        dosyalar,
       })
-    } catch {
-      toast.error('Yorum eklenemedi. Bağlantıyı kontrol edip tekrar deneyin.')
+    } catch (e) {
+      toast.error('Yorum eklenemedi: ' + (e?.message || 'bağlantıyı kontrol edin'))
+      setYorumGonderiliyor(false)
       return
     }
+    setYorumGonderiliyor(false)
+    setYorumEkleri([])
     setYorumlar(prev => [...prev, eklenen])
 
     // @mention bildirimleri — mention edilen herkese bildirim gider
@@ -352,6 +363,8 @@ function GorevDetay() {
             <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-primary)', margin: 0, whiteSpace: 'pre-wrap' }}>
               {temizleGorusmeBlob(gorev.aciklama)}
             </p>
+            {/* Görev oluştururken eklenen dosyalar (mig 184) */}
+            <EkListesi dosyalar={gorev.dosyalar} />
           </div>
         ) : (
           <div style={{
@@ -829,6 +842,8 @@ function GorevDetay() {
                     )}
                   </p>
                 )}
+                {/* Web yorum ekleri (mig 184) */}
+                {!mobilMi && <EkListesi dosyalar={yorum.dosyalar} />}
                 {/* Mobil nottaki fotoğraflar (varsa) */}
                 {mobilMi && yorum.fotoUrls?.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
@@ -856,7 +871,12 @@ function GorevDetay() {
             placeholder="Yorum yaz… (kullanıcı etiketlemek için @ yazın)"
             style={{ marginBottom: 8 }}
           />
-          <Button variant="primary" onClick={yorumEkle}>Yorum ekle</Button>
+          <div style={{ marginBottom: 8 }}>
+            <EkSecici dosyalar={yorumEkleri} onChange={setYorumEkleri} disabled={yorumGonderiliyor} />
+          </div>
+          <Button variant="primary" onClick={yorumEkle} disabled={yorumGonderiliyor}>
+            {yorumGonderiliyor ? 'Gönderiliyor…' : 'Yorum ekle'}
+          </Button>
         </div>
       </Card>
     </div>

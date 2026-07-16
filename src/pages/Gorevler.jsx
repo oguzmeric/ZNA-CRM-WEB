@@ -23,6 +23,8 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import CustomSelect from '../components/CustomSelect'
+import { EkSecici } from '../components/EkAlani'
+import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonList } from '../components/Skeleton'
 import {
   Button, Card, Input, Textarea, Label,
@@ -288,6 +290,8 @@ function Gorevler() {
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
   const [sadeceBenim, setSadeceBenim] = useState(false) // "Görevlerim" — bana atanan + ekip
+  const [gorevEkleri, setGorevEkleri] = useState([])    // yeni görev ekleri (File[], mig 184)
+  const [kaydetMesgul, setKaydetMesgul] = useState(false)
 
   // Liste görünümü için sütun filtreleri + sayfalama
   const [kolonFiltre, setKolonFiltre] = useState({
@@ -506,7 +510,20 @@ function Gorevler() {
       }
     } else {
       const { servisTalebiOlustur, ...gorevAlanlari } = form
-      const yeniGorev = { ...gorevAlanlari, ekip: ekipIds, durum: gorevAlanlari.durum || 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
+      // Görev ekleri (mig 184) — önce yükle, meta listesini kayda göm
+      let gorevDosyalari = []
+      if (gorevEkleri.length) {
+        setKaydetMesgul(true)
+        try {
+          gorevDosyalari = await ekleriYukle('gorev-dosyalar', gorevEkleri)
+        } catch (e) {
+          toast.error('Dosya yüklenemedi: ' + (e?.message || 'hata'))
+          setKaydetMesgul(false)
+          return
+        }
+        setKaydetMesgul(false)
+      }
+      const yeniGorev = { ...gorevAlanlari, dosyalar: gorevDosyalari, ekip: ekipIds, durum: gorevAlanlari.durum || 'bekliyor', olusturanAd: kullanici.ad, olusturmaTarih: new Date().toISOString() }
       const eklenen = await gorevEkle(yeniGorev)
       if (eklenen) {
         setGorevler(prev => [eklenen, ...prev])
@@ -538,11 +555,11 @@ function Gorevler() {
         }
       } else { toast.error('Görev kaydedilemedi.'); return }
     }
-    setForm(bosForm); setDuzenleId(null); setGoster(false)
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([])
   }
 
   const iptal = () => {
-    setForm(bosForm); setDuzenleId(null); setGoster(false)
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([])
     // Garantiye al: detay sayfasından gelinmişse de listeye dön
     if (location.pathname !== '/gorevler') navigate('/gorevler', { replace: true })
   }
@@ -895,11 +912,18 @@ function Gorevler() {
             </div>
           )}
 
+          {/* Ekler — yeni görevde dosya/resim (mig 184) */}
+          {!duzenleId && (
+            <div style={{ marginBottom: 16 }}>
+              <EkSecici dosyalar={gorevEkleri} onChange={setGorevEkleri} disabled={kaydetMesgul} />
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={kaydet}>
-              {duzenleId ? 'Güncelle' : (form.servisTalebiOlustur ? 'Görev + Servis talebi oluştur' : 'Kaydet')}
+            <Button variant="primary" onClick={kaydet} disabled={kaydetMesgul}>
+              {kaydetMesgul ? 'Kaydediliyor…' : (duzenleId ? 'Güncelle' : (form.servisTalebiOlustur ? 'Görev + Servis talebi oluştur' : 'Kaydet'))}
             </Button>
-            <Button variant="secondary" onClick={iptal}>İptal</Button>
+            <Button variant="secondary" onClick={iptal} disabled={kaydetMesgul}>İptal</Button>
           </div>
         </Card>
       )}
