@@ -362,6 +362,16 @@ function Gorevler() {
     }
   }, [veriYukle])
 
+  // Güvenlik ağı: realtime event'i kaçarsa (arka plan sekme, uyuyan soket,
+  // WS reconnect penceresi) telefondan açılan görev dakikalarca görünmeyebiliyordu.
+  // Sayfa GÖRÜNÜRken 30sn'de bir sessizce tazele — liste en fazla 30sn bayat kalır.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') { invalidate('gorevler:list'); veriYukle() }
+    }, 30000)
+    return () => clearInterval(id)
+  }, [veriYukle])
+
   const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
