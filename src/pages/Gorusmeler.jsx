@@ -86,6 +86,7 @@ function Gorusmeler() {
   const [filtre, setFiltre] = useState('hepsi')
   const [gorusenFiltre, setGorusenFiltre] = useState('')
   const [konuFiltre, setKonuFiltre] = useState('')
+  const [benimGorusmelerim, setBenimGorusmelerim] = useState(false) // "Görüşmelerim" — görüşen benim
   const [konuYonetimAcik, setKonuYonetimAcik] = useState(false)
   const [arama, setArama] = useState('')
   const [sayfa, setSayfa] = useState(1)
@@ -414,9 +415,20 @@ function Gorusmeler() {
       .map(s => s.trim().toLocaleLowerCase('tr'))
       .some(ad => ad === kullaniciAdiKucuk)
   }
-  const bazGorusmeler = sadeceKendisi
+  // "Görüşmelerim": görüşen alanında (virgülle ayrılmış olabilir) benim adım geçiyorsa.
+  const banaAitGorusme = (gorusen) => {
+    if (!gorusen) return false
+    return gorusen
+      .split(',')
+      .map(s => s.trim().toLocaleLowerCase('tr'))
+      .some(ad => ad === kullaniciAdiKucuk)
+  }
+  const bazGorusmeler0 = sadeceKendisi
     ? gorusmeler.filter(g => gorusendeGecerMi(g.gorusen))
     : gorusmeler
+  const bazGorusmeler = benimGorusmelerim
+    ? bazGorusmeler0.filter(g => banaAitGorusme(g.gorusen))
+    : bazGorusmeler0
 
   const gorusenler = [...new Set(bazGorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 
@@ -437,7 +449,7 @@ function Gorusmeler() {
   )
 
   // Filtre değişince sayfa 1'e dön
-  useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu])
+  useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu, benimGorusmelerim])
 
   const sayilari = {
     hepsi: bazGorusmeler.length,
@@ -461,9 +473,33 @@ function Gorusmeler() {
             <span className="tabular-nums">{bazGorusmeler.length}</span> aktivite
           </p>
         </div>
-        <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={formAc}>
-          Yeni görüşme
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Kapsam: Tümü | Görüşmelerim (görüşen benim) */}
+          {!sadeceKendisi && (
+            <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+              {[{ v: false, l: 'Tümü' }, { v: true, l: 'Görüşmelerim' }].map(s => (
+                <button
+                  key={s.l}
+                  onClick={() => setBenimGorusmelerim(s.v)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'calc(var(--radius-sm) - 2px)',
+                    background: benimGorusmelerim === s.v ? 'var(--surface-card)' : 'transparent',
+                    boxShadow: benimGorusmelerim === s.v ? 'var(--shadow-sm)' : 'none',
+                    color: benimGorusmelerim === s.v ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    border: 'none', cursor: 'pointer',
+                    font: '500 13px/18px var(--font-sans)',
+                  }}
+                >
+                  {s.l}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={formAc}>
+            Yeni görüşme
+          </Button>
+        </div>
       </div>
 
       {/* Form acikken filtreler gizlensin — odaklanma icin */}

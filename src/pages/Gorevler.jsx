@@ -287,6 +287,7 @@ function Gorevler() {
   const [gorunumModu, setGorunumModu] = useState('liste')
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
+  const [sadeceBenim, setSadeceBenim] = useState(false) // "Görevlerim" — bana atanan + ekip
 
   // Liste görünümü için sütun filtreleri + sayfalama
   const [kolonFiltre, setKolonFiltre] = useState({
@@ -589,12 +590,24 @@ function Gorevler() {
   }
 
   // Görünürlük: HERKES tüm görevleri görür (mig 174 — RLS SELECT is_staff()).
-  // Kişiye göre daraltmak isteyen "kisiFiltre" açılırını kullanır.
+  // Kişiye göre daraltmak isteyen "kisiFiltre" açılırını, hızlı "sadece
+  // bana atanan/ekip" için "Görevlerim" segmentini kullanır.
   const gorunurGorevler = gorevler
+
+  // "Görevlerim": bana atanan VEYA ekip üyesi olduğum görevler (oluşturan hariç).
+  const banaAitGorev = (g) => {
+    const uid = kullanici?.id?.toString()
+    if (!uid) return false
+    return String(g.atanan ?? '') === uid
+      || String(g.atananId ?? '') === uid
+      || (Array.isArray(g.ekip) && g.ekip.some(x => String(x) === uid))
+  }
 
   const filtreliGorevler = gorunurGorevler.filter(g => {
     if (!g) return false
-    if (kisiFiltre && g.atanan?.toString() !== kisiFiltre) return false
+    if (sadeceBenim && !banaAitGorev(g)) return false
+    // "Görevlerim" açıkken kişi açılırı yok sayılır (aynı boyut).
+    if (!sadeceBenim && kisiFiltre && g.atanan?.toString() !== kisiFiltre) return false
     if (gorunumModu === 'kanban') return true
     if (filtre === 'hepsi') return true
     return g.durum === filtre
@@ -610,13 +623,35 @@ function Gorevler() {
         <div>
           <h1 className="t-h1">Görevler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            {kisiFiltre
-              ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — {kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad}</>
-              : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev</>}
+            {sadeceBenim
+              ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — Görevlerim</>
+              : kisiFiltre
+                ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — {kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad}</>
+                : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev</>}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {(
+          {/* Kapsam: Tümü | Görevlerim (bana atanan + ekip) */}
+          <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+            {[{ v: false, l: 'Tümü' }, { v: true, l: 'Görevlerim' }].map(s => (
+              <button
+                key={s.l}
+                onClick={() => setSadeceBenim(s.v)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'calc(var(--radius-sm) - 2px)',
+                  background: sadeceBenim === s.v ? 'var(--surface-card)' : 'transparent',
+                  boxShadow: sadeceBenim === s.v ? 'var(--shadow-sm)' : 'none',
+                  color: sadeceBenim === s.v ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  border: 'none', cursor: 'pointer',
+                  font: '500 13px/18px var(--font-sans)',
+                }}
+              >
+                {s.l}
+              </button>
+            ))}
+          </div>
+          {!sadeceBenim && (
             <div style={{ minWidth: 180 }}>
               <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)}>
                 <option value="">Tüm kişiler</option>
