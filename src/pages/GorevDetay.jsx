@@ -400,6 +400,17 @@ function GorevDetay() {
             <div className="t-label" style={{ marginBottom: 4 }}>OLUŞTURAN</div>
             <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.olusturanAd || '—'}</span>
           </div>
+          {/* Ekip üyeleri — görünmediği için "bu görev neden bende?" karışıklığı oluyordu */}
+          {Array.isArray(gorev.ekip) && gorev.ekip.length > 0 && (
+            <div>
+              <div className="t-label" style={{ marginBottom: 4 }}>EKİP</div>
+              <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                {gorev.ekip
+                  .map(uid => kullanicilar?.find(k => String(k.id) === String(uid))?.ad || `#${uid}`)
+                  .join(', ')}
+              </span>
+            </div>
+          )}
           {gorev.musteriAdi && (
             <div>
               <div className="t-label" style={{ marginBottom: 4 }}>İLGİLİ MÜŞTERİ</div>
