@@ -875,8 +875,9 @@ function GorusmeDetay() {
             value={yeniYorum}
             onChange={setYeniYorum}
             kullanicilar={kullanicilar || []}
-            placeholder="Yorum yaz… @ ile arkadaşını etiketle"
+            placeholder="Yorum yaz… (@ ile etiketle, Ctrl+V ile ekran görüntüsü yapıştır)"
             style={{ marginBottom: 8 }}
+            onResimYapistir={(resimler) => setYorumEkleri(prev => [...prev, ...resimler])}
           />
           <div style={{ marginBottom: 8 }}>
             <EkSecici dosyalar={yorumEkleri} onChange={setYorumEkleri} disabled={yorumGonderiliyor} />

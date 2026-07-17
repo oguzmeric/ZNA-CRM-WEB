@@ -15,6 +15,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { trNormalize } from '../lib/trSearch'
 import { adToMentionToken } from '../lib/mention'
+import { panodanResimler } from './EkAlani'
 import { Textarea } from './ui'
 
 export default function MentionTextarea({
@@ -24,6 +25,9 @@ export default function MentionTextarea({
   placeholder,
   rows = 3,
   style,
+  // Ctrl+V ile panodan resim yapıştırılınca File[] ile çağrılır (ekran
+  // görüntüsünü kaydetmeden ek olarak iliştirme). Verilmezse davranış eski.
+  onResimYapistir,
   ...rest
 }) {
   const taRef = useRef(null)
@@ -126,6 +130,10 @@ export default function MentionTextarea({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onPaste={onResimYapistir ? (e) => {
+          const resimler = panodanResimler(e)
+          if (resimler.length) { e.preventDefault(); onResimYapistir(resimler) }
+        } : undefined}
         onBlur={() => setTimeout(() => setPickerAcik(false), 150)}
         placeholder={placeholder}
         rows={rows}

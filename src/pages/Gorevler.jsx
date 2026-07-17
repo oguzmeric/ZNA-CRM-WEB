@@ -23,7 +23,7 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import CustomSelect from '../components/CustomSelect'
-import { EkSecici } from '../components/EkAlani'
+import { EkSecici, panodanResimler } from '../components/EkAlani'
 import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonList } from '../components/Skeleton'
 import {
@@ -894,7 +894,16 @@ function Gorevler() {
           </div>
           <div style={{ marginBottom: 16 }}>
             <Label>Açıklama</Label>
-            <Textarea value={form.aciklama} onChange={e => setForm({ ...form, aciklama: e.target.value })} rows={3} placeholder="Görev detayları…" />
+            <Textarea
+              value={form.aciklama}
+              onChange={e => setForm({ ...form, aciklama: e.target.value })}
+              rows={3}
+              placeholder="Görev detayları… (Ctrl+V ile ekran görüntüsü yapıştırabilirsin)"
+              onPaste={duzenleId ? undefined : (e) => {
+                const resimler = panodanResimler(e)
+                if (resimler.length) { e.preventDefault(); setGorevEkleri(prev => [...prev, ...resimler]) }
+              }}
+            />
           </div>
 
           {/* Servis talebi toggle — sadece müşteri seçiliyse + yeni görev oluşturuyorsa */}

@@ -881,8 +881,9 @@ function GorevDetay() {
             onChange={setYeniYorum}
             kullanicilar={kullanicilar || []}
             rows={3}
-            placeholder="Yorum yaz… (kullanıcı etiketlemek için @ yazın)"
+            placeholder="Yorum yaz… (@ ile etiketle, Ctrl+V ile ekran görüntüsü yapıştır)"
             style={{ marginBottom: 8 }}
+            onResimYapistir={(resimler) => setYorumEkleri(prev => [...prev, ...resimler])}
           />
           <div style={{ marginBottom: 8 }}>
             <EkSecici dosyalar={yorumEkleri} onChange={setYorumEkleri} disabled={yorumGonderiliyor} />

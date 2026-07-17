@@ -8,6 +8,24 @@
 import { useRef } from 'react'
 import { Paperclip, X, FileText } from 'lucide-react'
 
+// Panodaki (Ctrl+V) resimleri File[] olarak çıkarır — ekran görüntüsünü
+// kaydetmeden doğrudan yorum/form alanına yapıştırma için (WhatsApp gibi).
+// Resim yoksa boş dizi döner; metin yapıştırma normal akışında kalır.
+export function panodanResimler(e) {
+  const ogeler = Array.from(e.clipboardData?.items || [])
+  const resimler = ogeler
+    .filter(o => o.kind === 'file' && (o.type || '').startsWith('image/'))
+    .map(o => o.getAsFile())
+    .filter(Boolean)
+  if (!resimler.length) return []
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  return resimler.map((f, i) => new File(
+    [f],
+    `ekran-goruntusu-${ts}${resimler.length > 1 ? `-${i + 1}` : ''}.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`,
+    { type: f.type },
+  ))
+}
+
 export function EkSecici({ dosyalar, onChange, disabled = false }) {
   const inputRef = useRef(null)
   return (

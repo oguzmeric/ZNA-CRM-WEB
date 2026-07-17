@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { ekleriYukle } from '../lib/ekDosya'
+import { panodanResimler } from '../components/EkAlani'
 import {
   destekTalepleriGetir, destekTalepEkle, destekTalepCevapla, destekTalepKapat, destekTalepSil, DESTEK_DURUM,
 } from '../services/destekService'
@@ -231,8 +232,16 @@ function Destek() {
           rows={3}
           value={mesaj}
           onChange={e => setMesaj(e.target.value)}
-          placeholder="Sorunu anlatın: hangi sayfada, ne yaparken, hangi hata çıktı…"
+          placeholder="Sorunu anlatın: hangi sayfada, ne yaparken, hangi hata çıktı… (Ctrl+V ile ekran görüntüsü yapıştırabilirsiniz)"
           style={{ marginBottom: 8 }}
+          onPaste={(e) => {
+            const resimler = panodanResimler(e)
+            if (resimler.length) {
+              e.preventDefault()
+              setFoto(resimler[0])
+              setFotoOnizleme(URL.createObjectURL(resimler[0]))
+            }
+          }}
         />
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={fotoSec} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
