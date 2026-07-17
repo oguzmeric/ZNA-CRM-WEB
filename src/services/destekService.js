@@ -64,6 +64,12 @@ export const destekTalepCevapla = async (talep, cevap, cevaplayanAd) => {
   return toCamel(data)
 }
 
+export const destekTalepSil = async (id) => {
+  const { error } = await supabase.from('destek_talepleri').delete().eq('id', id)
+  if (error) { console.error('[destek] sil:', error.message); return false }
+  return true
+}
+
 export const destekTalepKapat = async (id) => {
   const { error } = await supabase
     .from('destek_talepleri')

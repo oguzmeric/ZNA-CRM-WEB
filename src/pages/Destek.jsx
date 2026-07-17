@@ -1,13 +1,13 @@
 // Destek — hata bildirimi + yönetici yanıtı. Mobil ile AYNI tablo (destek_talepleri),
 // realtime aboneliği sayesinde iki taraf da anlık senkron.
 import { useState, useEffect, useRef } from 'react'
-import { LifeBuoy, ImagePlus, X, Send, CheckCircle2 } from 'lucide-react'
+import { LifeBuoy, ImagePlus, X, Send, CheckCircle2, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { ekleriYukle } from '../lib/ekDosya'
 import {
-  destekTalepleriGetir, destekTalepEkle, destekTalepCevapla, destekTalepKapat, DESTEK_DURUM,
+  destekTalepleriGetir, destekTalepEkle, destekTalepCevapla, destekTalepKapat, destekTalepSil, DESTEK_DURUM,
 } from '../services/destekService'
 import { Button, Textarea, Card, CardTitle, EmptyState, SegmentedControl } from '../components/ui'
 
@@ -25,7 +25,7 @@ function DurumRozet({ durum }) {
   )
 }
 
-function TalepKarti({ t, adminMi, onCevapla, onKapat }) {
+function TalepKarti({ t, adminMi, onCevapla, onKapat, onSil }) {
   const [cevapMetni, setCevapMetni] = useState('')
   const [mesgul, setMesgul] = useState(false)
   return (
@@ -68,36 +68,54 @@ function TalepKarti({ t, adminMi, onCevapla, onKapat }) {
         </div>
       )}
 
-      {adminMi && t.durum !== 'kapandi' && (
+      {adminMi && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-          <Textarea
-            rows={2}
-            value={cevapMetni}
-            onChange={e => setCevapMetni(e.target.value)}
-            placeholder={t.cevap ? 'Yanıtı güncelle…' : 'Yanıt yaz…'}
-            style={{ marginBottom: 8 }}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button
-              variant="primary"
-              disabled={mesgul || !cevapMetni.trim()}
-              iconLeft={<Send size={14} strokeWidth={1.5} />}
-              onClick={async () => {
-                setMesgul(true)
-                await onCevapla(t, cevapMetni.trim())
-                setCevapMetni('')
-                setMesgul(false)
-              }}
-            >
-              Yanıtla
-            </Button>
+          {t.durum !== 'kapandi' && (
+            <Textarea
+              rows={2}
+              value={cevapMetni}
+              onChange={e => setCevapMetni(e.target.value)}
+              placeholder={t.cevap ? 'Yanıtı güncelle…' : 'Yanıt yaz…'}
+              style={{ marginBottom: 8 }}
+            />
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {t.durum !== 'kapandi' && (
+              <>
+                <Button
+                  variant="primary"
+                  disabled={mesgul || !cevapMetni.trim()}
+                  iconLeft={<Send size={14} strokeWidth={1.5} />}
+                  onClick={async () => {
+                    setMesgul(true)
+                    await onCevapla(t, cevapMetni.trim())
+                    setCevapMetni('')
+                    setMesgul(false)
+                  }}
+                >
+                  Yanıtla
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={mesgul}
+                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
+                  onClick={async () => { setMesgul(true); await onKapat(t); setMesgul(false) }}
+                >
+                  Kapat
+                </Button>
+              </>
+            )}
             <Button
               variant="secondary"
               disabled={mesgul}
-              iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
-              onClick={async () => { setMesgul(true); await onKapat(t); setMesgul(false) }}
+              iconLeft={<Trash2 size={14} strokeWidth={1.5} style={{ color: 'var(--danger)' }} />}
+              onClick={async () => {
+                if (!window.confirm('Bu destek talebi kalıcı olarak silinecek. Emin misiniz?')) return
+                setMesgul(true); await onSil(t); setMesgul(false)
+              }}
+              style={{ marginLeft: 'auto' }}
             >
-              Kapat
+              Sil
             </Button>
           </div>
         </div>
@@ -182,6 +200,12 @@ function Destek() {
     const ok = await destekTalepKapat(t.id)
     if (ok) { toast.success('Talep kapatıldı.'); yenile() }
     else toast.error('Kapatılamadı.')
+  }
+
+  const sil = async (t) => {
+    const ok = await destekTalepSil(t.id)
+    if (ok) { toast.success('Talep silindi.'); yenile() }
+    else toast.error('Silinemedi.')
   }
 
   const benimkiler = talepler.filter(t => String(t.kullaniciId) === String(kullanici?.id))
@@ -284,6 +308,7 @@ function Destek() {
             adminMi={adminMi && gorunum === 'hepsi'}
             onCevapla={cevapla}
             onKapat={kapat}
+            onSil={sil}
           />
         ))
       )}
