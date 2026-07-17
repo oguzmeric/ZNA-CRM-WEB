@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { faturaYetkisi } from '../services/faturaTalepService'
+import { siparisYonetimiGorebilirMi } from '../lib/siparisYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -399,8 +400,8 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
-    // Yalnız admin rolü görür (App.jsx AdminGuard ile paralel — Sipariş Yönetimi)
-    if (m.sadeceAdmin) return kullanici?.rol === 'admin'
+    // Sipariş Yönetimi: admin + izinli istisnalar (App.jsx AdminGuard ile paralel)
+    if (m.sadeceAdmin) return siparisYonetimiGorebilirMi(kullanici)
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel
     if (m.sadeceSabahOzeti) return [1, 2].includes(Number(kullanici?.id))
     // Onay menüleri: yetki bayrağı ŞART — admin rolü bile bypass edemez

@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { siparisYonetimiGorebilirMi } from './lib/siparisYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -139,11 +140,12 @@ function FaturaYetkiGuard({ children }) {
   return children
 }
 
-// Sipariş Yönetimi (Siparişler + Kullanılan Malzemeler) — SADECE admin rolü.
-// Tutar/kâr bilgisi içerir; MainLayout sadeceAdmin menü filtresiyle paralel.
+// Sipariş Yönetimi (Siparişler + Kullanılan Malzemeler) — admin + izinli
+// istisnalar (Abdullah İğde/muhasebe). Tutar/kâr bilgisi içerir; MainLayout
+// sadeceAdmin menü filtresiyle AYNI kaynak: siparisYonetimiGorebilirMi.
 function AdminGuard({ children }) {
   const { kullanici } = useAuth()
-  if (kullanici?.rol !== 'admin') return <Navigate to="/dashboard" replace />
+  if (!siparisYonetimiGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
