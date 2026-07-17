@@ -16,7 +16,8 @@ import { SkeletonList } from '../components/Skeleton'
 
 const bugunStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' })
 const fmtT = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
-const gunFarki = (t) => Math.ceil((new Date(t + 'T23:59:59') - new Date()) / 86400000)
+// Takvim günü farkı — saat bazlı hesap dün biten görevde 0 veriyordu ("0 gün gecikti")
+const gecikmeGunu = (t) => Math.max(1, Math.round((new Date(bugunStr()) - new Date(String(t).slice(0, 10))) / 86400000))
 
 export default function GunlukOzet() {
   const navigate = useNavigate()
@@ -30,7 +31,8 @@ export default function GunlukOzet() {
       supabase.from('kesifler').select('id, kesif_no, firma_adi, kesif_basligi').eq('kesif_tarihi', bugun).neq('durum', 'iptal').limit(15),
       supabase.from('servis_talepleri').select('id, talep_no, firma_adi, konu').gte('olusturma_tarihi', bugun + 'T00:00:00').limit(15),
       supabase.from('servis_talepleri').select('id, talep_no, firma_adi, konu, durum').in('durum', ['atandi', 'inceleniyor', 'devam_ediyor']).limit(15),
-      supabase.from('gorevler').select('id, baslik, atanan_ad, bitis_tarihi').lt('bitis_tarihi', bugun).neq('durum', 'tamamlandi').order('bitis_tarihi').limit(15),
+      // son_tarih = kanonik teslim tarihi (Panel/Görevler/gecikme SMS de bunu okur; mig 185)
+      supabase.from('gorevler').select('id, baslik, atanan_ad, son_tarih').lt('son_tarih', bugun).neq('durum', 'tamamlandi').order('son_tarih').limit(15),
       supabase.from('teklifler').select('id, teklif_no, firma_adi, genel_toplam').eq('spek_durum', 'yon_onay_bekliyor').limit(15),
       supabase.from('satislar').select('id, firma_adi, genel_toplam, vade_tarihi').lt('vade_tarihi', bugun).neq('durum', 'odendi').neq('durum', 'iptal').order('vade_tarihi').limit(15),
       supabase.from('sozlesmeler').select('id, baslik, firma_adi, bitis_tarih, musteri:musteri_id (firma)').eq('aktif', true).lte('bitis_tarih', gun30).order('bitis_tarih').limit(15),
@@ -84,7 +86,7 @@ export default function GunlukOzet() {
     {
       baslik: 'Geciken Görevler', ikon: AlertTriangle, renk: '#dc2626',
       satirlar: veri.gecikenGorevler.map(g => ({
-        id: g.id, ana: g.baslik, alt: `${g.atanan_ad || '—'} · ${-gunFarki(g.bitis_tarihi)} gün gecikti`, hedef: `/gorevler/${g.id}`,
+        id: g.id, ana: g.baslik, alt: `${g.atanan_ad || '—'} · ${gecikmeGunu(g.son_tarih)} gün gecikti`, hedef: `/gorevler/${g.id}`,
       })),
       bos: 'Geciken görev yok 🎉',
     },

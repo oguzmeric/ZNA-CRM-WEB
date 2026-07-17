@@ -64,7 +64,8 @@ Deno.serve(async (req) => {
       svc.from('servis_talepleri').select('id', { count: 'exact', head: true })
         .in('durum', ['atandi', 'inceleniyor', 'devam_ediyor']),
       svc.from('gorevler').select('id', { count: 'exact', head: true })
-        .lt('bitis_tarihi', bugun).neq('durum', 'tamamlandi'),
+        // son_tarih = kanonik teslim tarihi (mig 185); bitis_tarihi bayat kalabiliyordu
+        .lt('son_tarih', bugun).neq('durum', 'tamamlandi'),
       svc.from('teklifler').select('id', { count: 'exact', head: true })
         .eq('spek_durum', 'yon_onay_bekliyor'),
       svc.from('satislar').select('id', { count: 'exact', head: true })
