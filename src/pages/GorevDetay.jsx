@@ -216,12 +216,13 @@ function GorevDetay() {
       .filter(mid => mid?.toString() !== kullanici.id?.toString())
     const alanlar = new Set(mentionIdler.map(x => x?.toString()))
 
-    // Görevi açan + atanan kişiye bildirim — yorumu kendisi yazmıyorsa ve mention'da yoksa.
-    // olusturan_id kolonu yok, olusturanAd üzerinden kullanicilar tablosuyla eşleniyor.
+    // Görevi açan + atanan + EKİP üyelerine bildirim — yorumu kendisi yazmıyorsa
+    // ve mention'da yoksa. olusturan_id kolonu yok, olusturanAd üzerinden eşleniyor.
     const paydaslar = []
     const olusturan = kullanicilar.find(k => k.ad === gorev.olusturanAd)
     if (olusturan?.id) paydaslar.push(olusturan.id)
     if (gorev.atanan) paydaslar.push(gorev.atanan)
+    for (const eid of (gorev.ekip || [])) paydaslar.push(eid)
 
     for (const pid of paydaslar) {
       const idStr = pid?.toString()
