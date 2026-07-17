@@ -144,7 +144,7 @@ function FirmaGecmisi() {
   const [gorevler, setGorevler] = useState([])
   const [musteri, setMusteri] = useState(null)
   const [toplantilar, setToplantilar] = useState([])
-  const { kullanicilar } = useAuth()
+  const { kullanici, kullanicilar } = useAuth()
   const { talepler } = useServisTalebi()
 
   useEffect(() => {
@@ -154,7 +154,10 @@ function FirmaGecmisi() {
         const [g, t, l, gr, m] = await Promise.all([
           gorusmeleriGetir(), teklifleriGetir(), lisanslariGetir(), gorevleriGetir(), musterileriGetir(),
         ])
-        setGorusmeler((g || []).filter(i => i.firmaAdi === firma))
+        // "Sadece yönetici" görüşmeler (mig 188): RLS + bayat önbelleğe karşı istemci süzgeci
+        setGorusmeler((g || []).filter(i =>
+          i.firmaAdi === firma && (kullanici?.rol === 'admin' || !i.yalnizYonetici)
+        ))
         setTeklifler((t || []).filter(i => i.firmaAdi === firma))
         setLisanslar((l || []).filter(i => i.firmaAdi === firma))
         setGorevler((gr || []).filter(i => i.firmaAdi === firma))

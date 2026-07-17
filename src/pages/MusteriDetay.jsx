@@ -65,7 +65,7 @@ function MusteriDetay() {
   const location = useLocation()
   const { toast } = useToast()
   const { confirm } = useConfirm()
-  const { kullanicilar } = useAuth()
+  const { kullanici, kullanicilar } = useAuth()
   const { talepler } = useServisTalebi()
   const personelListesi = (kullanicilar || []).filter(k => k.tip === 'zna')
   const lokasyonBolumRef = useRef(null)
@@ -119,7 +119,12 @@ function MusteriDetay() {
           const sipFirma = await musteriSiparisleri(musteriIdNum, m.firma).catch(() => sip || [])
           setSiparisler(sipFirma || [])
           const firma = m.firma.toLowerCase().trim()
-          setGorusmeler((g || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
+          // "Sadece yönetici" görüşmeler (mig 188): RLS zaten personelden saklar;
+          // bayat istemci önbelleğine karşı burada da süz (admin görür)
+          setGorusmeler((g || []).filter(x =>
+            x.firmaAdi?.toLowerCase().trim() === firma &&
+            (kullanici?.rol === 'admin' || !x.yalnizYonetici)
+          ))
           setTeklifler((t || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
           setSatislar((s || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
           setGorevler((gv || []).filter(x => x.firmaAdi?.toLowerCase().trim() === firma))
