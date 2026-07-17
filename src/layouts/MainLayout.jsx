@@ -668,13 +668,13 @@ function MainLayout({ children }) {
                 >
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1,
-                    font: '800 10.5px/14px var(--font-sans)',
+                    font: '800 13px/18px var(--font-sans)',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.16em',
+                    letterSpacing: '0.12em',
                     paddingBottom: 3,
                   }}>
                     <span style={{
-                      width: 3, height: 10, borderRadius: 2, flexShrink: 0,
+                      width: 3, height: 13, borderRadius: 2, flexShrink: 0,
                       background: 'var(--brand-primary)', opacity: 0.7,
                     }} />
                     {entry.baslik}
