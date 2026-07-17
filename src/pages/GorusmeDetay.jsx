@@ -157,6 +157,7 @@ function GorusmeDetay() {
       firmaAdi: gorusme.firmaAdi || '',
       musteriId: gorusme.musteriId || '',
       takipNotu: gorusme.notlar || gorusme.takipNotu || '',
+      gorusmeSonucu: gorusme.gorusmeSonucu || '',
       konu: manuelMi ? '' : gorusme.konu,
       manuelKonu: manuelMi ? gorusme.konu : '',
       durum: gorusme.durum,
@@ -174,6 +175,7 @@ function GorusmeDetay() {
       firmaAdi: duzenleForm.firmaAdi || null,
       musteriId: duzenleForm.musteriId || null,
       notlar: duzenleForm.takipNotu,
+      gorusmeSonucu: duzenleForm.gorusmeSonucu || null,
       konu: sonKonu,
       durum: duzenleForm.durum,
       muhatapAd: (duzenleForm.muhatapAd || '').trim(),
@@ -421,9 +423,18 @@ function GorusmeDetay() {
 
             {(gorusme.notlar || gorusme.takipNotu) && (
               <div style={{ paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
-                <div className="t-label" style={{ marginBottom: 4 }}>NOTLAR</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>GÖRÜŞME AÇIKLAMASI</div>
                 <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
                   {gorusme.notlar || gorusme.takipNotu}
+                </p>
+              </div>
+            )}
+
+            {gorusme.gorusmeSonucu && (
+              <div style={{ paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                <div className="t-label" style={{ marginBottom: 4 }}>GÖRÜŞME SONUCU</div>
+                <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {gorusme.gorusmeSonucu}
                 </p>
               </div>
             )}
@@ -525,12 +536,21 @@ function GorusmeDetay() {
                 />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <Label>Notlar</Label>
+                <Label>Görüşme Açıklaması</Label>
                 <Textarea
                   value={duzenleForm.takipNotu}
                   onChange={e => setDuzenleForm({ ...duzenleForm, takipNotu: e.target.value })}
                   rows={4}
                   placeholder="Görüşme detayları, takip edilecek konular…"
+                />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Label>Görüşme Sonucu</Label>
+                <Textarea
+                  value={duzenleForm.gorusmeSonucu || ''}
+                  onChange={e => setDuzenleForm({ ...duzenleForm, gorusmeSonucu: e.target.value })}
+                  rows={2}
+                  placeholder="Görüşme neticesi — varılan karar, anlaşılan adımlar…"
                 />
               </div>
             </div>

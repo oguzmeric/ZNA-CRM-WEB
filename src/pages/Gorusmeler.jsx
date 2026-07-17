@@ -60,7 +60,7 @@ const durumlar = [
 const bosForm = {
   firmaAdi: '', musteriId: '', muhatapId: '', muhatapAd: '',
   konu: '', manuelKonu: '', irtibatSekli: '',
-  gorusen: '', takipNotu: '', durum: 'acik',
+  gorusen: '', takipNotu: '', gorusmeSonucu: '', durum: 'acik',
   tarih: new Date().toISOString().split('T')[0],
   lokasyonId: '',
 }
@@ -265,6 +265,7 @@ function Gorusmeler() {
       irtibatSekli: g.irtibatSekli || '',
       gorusen: g.gorusen,
       takipNotu: g.takipNotu,
+      gorusmeSonucu: g.gorusmeSonucu || '',
       durum: g.durum,
       tarih: g.tarih,
       lokasyonId: g.lokasyonId || '',
@@ -441,7 +442,7 @@ function Gorusmeler() {
     .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
     .filter(g => trContains(
-      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.gorusmeNo || ''} ${g.muhatapAd || ''} ${g.takipNotu || ''}`,
+      `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.gorusmeNo || ''} ${g.muhatapAd || ''} ${g.takipNotu || ''} ${g.gorusmeSonucu || ''}`,
       arama,
     ))
 
@@ -727,12 +728,22 @@ function Gorusmeler() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <Label>Takip edilecek konular / not</Label>
+            <Label>Görüşme Açıklaması</Label>
             <Textarea
               value={form.takipNotu}
               onChange={e => setForm({ ...form, takipNotu: e.target.value })}
               rows={3}
               placeholder="Görüşme detayları, takip edilecek konular…"
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <Label>Görüşme Sonucu</Label>
+            <Textarea
+              value={form.gorusmeSonucu}
+              onChange={e => setForm({ ...form, gorusmeSonucu: e.target.value })}
+              rows={2}
+              placeholder="Görüşme neticesi — varılan karar, anlaşılan adımlar…"
             />
           </div>
 
@@ -991,7 +1002,7 @@ function Gorusmeler() {
               </colgroup>
               <thead>
                 <tr>
-                  {['No', 'Firma / Muhatap', 'Takip Notu', 'Konu', 'Görüşen', 'Tarih', 'Durum', ''].map((h, i) => (
+                  {['No', 'Firma / Muhatap', 'Görüşme Açıklaması', 'Konu', 'Görüşen', 'Tarih', 'Durum', ''].map((h, i) => (
                     <th key={i} style={{
                       background: 'var(--surface-sunken)',
                       padding: '10px 10px',
@@ -1090,6 +1101,11 @@ function Gorusmeler() {
                       <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {g.takipNotu || g.notlar || '—'}
                       </p>
+                      {g.gorusmeSonucu && (
+                        <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--success)', margin: '2px 0 0', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={g.gorusmeSonucu}>
+                          Sonuç: {g.gorusmeSonucu}
+                        </p>
+                      )}
                     </td>
                     <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }} title={g.konu || ''}>
                       <Badge tone="brand" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'middle' }}>{g.konu}</Badge>
@@ -1293,6 +1309,11 @@ function GecmisGorusmeler({ firma, gorusmeler, navigate, mevcutId }) {
                 {(g.takipNotu || g.notlar) && (
                   <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                     {g.takipNotu || g.notlar}
+                  </div>
+                )}
+                {g.gorusmeSonucu && (
+                  <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--success)', marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    Sonuç: {g.gorusmeSonucu}
                   </div>
                 )}
               </button>
