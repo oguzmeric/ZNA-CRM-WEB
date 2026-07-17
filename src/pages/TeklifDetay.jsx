@@ -815,6 +815,12 @@ function TeklifDetay() {
       toast.error('Yönetici onayını yalnız admin yetkisine sahip kullanıcılar verebilir.')
       return
     }
+    // Teklif yönetici onayındayken durum tamamen adminin elinde — personelin
+    // "Revizyon İstendi"ye basıp süreci karıştırması engellenir (Tarık vakası).
+    if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && kullanici?.rol !== 'admin') {
+      toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız admin değiştirebilir.')
+      return
+    }
     const alanlar = durumdanDbAlanlar(yeniDurum) // { spekDurum, onayDurumu }
     if (yeni) {
       // Kayıt edilmemiş: sadece form state güncelle, kaydet'e basınca DB'ye yazılacak
@@ -1018,7 +1024,14 @@ function TeklifDetay() {
             {!yeni && spekDurumMeta && (
               <button
                 type="button"
-                onClick={() => setDurumModalAcik(true)}
+                onClick={() => {
+                  // Yönetici onayı aşamasında durum rozetine yalnız admin dokunur
+                  if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && kullanici?.rol !== 'admin') {
+                    toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız admin değiştirebilir.')
+                    return
+                  }
+                  setDurumModalAcik(true)
+                }}
                 title="Durumu değiştirmek için tıkla"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -2663,14 +2676,16 @@ function TeklifDetay() {
                 }
                 return secenekler.map(k => {
                   const meta = TEKLIF_DURUM_META[k]
-                  // Yönetici onayı yalnız admin — diğerleri kilitli görür
-                  const kilitli = k === TEKLIF_DURUM.YON_ONAYLADI && kullanici?.rol !== 'admin'
+                  // Yönetici onayı yalnız admin; onay AŞAMASINDAYKEN de tüm geçişler
+                  // (Revizyon İstendi dahil) yalnız admin — personel karıştıramaz
+                  const kilitli = kullanici?.rol !== 'admin' &&
+                    (k === TEKLIF_DURUM.YON_ONAYLADI || spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR)
                   return (
                     <button
                       key={k}
                       onClick={() => !kilitli && durumuDegistir(k)}
                       disabled={kilitli}
-                      title={kilitli ? 'Yönetici onayını yalnız admin verebilir' : undefined}
+                      title={kilitli ? 'Teklif yönetici onayında — bu geçişi yalnız admin yapabilir' : undefined}
                       style={{
                         padding: '10px 12px', borderRadius: 8,
                         background: kilitli ? 'var(--surface-subtle)' : `${meta.renk}18`,
