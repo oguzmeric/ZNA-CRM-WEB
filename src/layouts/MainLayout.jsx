@@ -10,7 +10,7 @@ import {
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
-  Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car,
+  Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
@@ -99,6 +99,7 @@ const menuItems = [
   { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler', grup: 'gunluk' },
   { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null, grup: 'gunluk' },
   { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null, grup: 'gunluk' },
+  { id: 'destek', isim: 'Destek', Icon: LifeBuoy, yol: '/destek', modul: null, grup: 'gunluk' },
   {
     id: 'satislar',
     isim: 'Satışlar',
