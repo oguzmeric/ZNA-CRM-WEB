@@ -274,11 +274,21 @@ function MainLayout({ children }) {
   const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
   const musteriTalepOkunmamis  = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
   const servisTalebiOkunmamis  = personelTalepOkunmamis + musteriTalepOkunmamis
-  // Görev atama bildirimleri — Görevler menüsünde sayı rozeti göster
+  // Görev bildirimleri (atama + yorum + @etiket) — Görevler menüsünde sayı rozeti.
+  // link '/gorevler/...' olan her okunmamış bildirim modüle sayılır (mention'lar dahil).
   const gorevBildirimleri = (bildirimler || []).filter(b =>
-    !b.okundu && (b.tip === 'gorev' || /görev atandı/i.test(b.baslik || ''))
+    !b.okundu && (
+      b.tip === 'gorev' ||
+      /görev atandı/i.test(b.baslik || '') ||
+      (b.link || '').startsWith('/gorevler')
+    )
   )
   const gorevOkunmamis = gorevBildirimleri.length
+  // Görüşme bildirimleri (@etiket + yorum) — Görüşmeler menüsünde sayı rozeti
+  const gorusmeBildirimleri = (bildirimler || []).filter(b =>
+    !b.okundu && (b.tip === 'gorusme' || (b.link || '').startsWith('/gorusmeler'))
+  )
+  const gorusmeOkunmamis = gorusmeBildirimleri.length
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -354,14 +364,17 @@ function MainLayout({ children }) {
     })
   }
 
-  // Görevler sayfasına girildiğinde görev bildirimleri okundu işaretle
-  // (rozet düşsün) — kullanıcı gördü demektir.
+  // Görevler/Görüşmeler sayfasına girildiğinde o modülün bildirimleri okundu
+  // işaretlenir (rozet düşsün) — kullanıcı gördü demektir.
   useEffect(() => {
     if (location.pathname.startsWith('/gorevler') && gorevBildirimleri.length > 0) {
       gorevBildirimleri.forEach(b => bildirimOku?.(b.id))
     }
+    if (location.pathname.startsWith('/gorusmeler') && gorusmeBildirimleri.length > 0) {
+      gorusmeBildirimleri.forEach(b => bildirimOku?.(b.id))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, gorevBildirimleri.length])
+  }, [location.pathname, gorevBildirimleri.length, gorusmeBildirimleri.length])
 
   const handleCikis = async () => {
     if (kullanici) {
@@ -824,7 +837,7 @@ function MainLayout({ children }) {
                 )}
                 {item.id === 'gorevler' && gorevOkunmamis > 0 && (
                   <span
-                    title={`${gorevOkunmamis} yeni görev`}
+                    title={`${gorevOkunmamis} yeni görev bildirimi (atama / yorum / etiket)`}
                     style={{
                       minWidth: 18, height: 18, padding: '0 5px',
                       borderRadius: 'var(--radius-pill)',
@@ -835,6 +848,21 @@ function MainLayout({ children }) {
                     }}
                   >
                     {gorevOkunmamis > 99 ? '99+' : gorevOkunmamis}
+                  </span>
+                )}
+                {item.id === 'gorusmeler' && gorusmeOkunmamis > 0 && (
+                  <span
+                    title={`${gorusmeOkunmamis} yeni görüşme bildirimi (yorum / etiket)`}
+                    style={{
+                      minWidth: 18, height: 18, padding: '0 5px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'var(--danger)', color: '#fff',
+                      fontSize: 11, fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      animation: 'nabizYansin 1.6s ease-in-out infinite',
+                    }}
+                  >
+                    {gorusmeOkunmamis > 99 ? '99+' : gorusmeOkunmamis}
                   </span>
                 )}
               </button>

@@ -14,6 +14,8 @@ import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import { SkeletonDetay } from '../components/Skeleton'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorusmeYorumlariGetir, gorusmeYorumEkle, gorusmeYorumSil } from '../services/gorusmeYorumService'
+import MentionTextarea from '../components/MentionTextarea'
+import { parseMentions } from '../lib/mention'
 import { EkSecici, EkListesi } from '../components/EkAlani'
 import { ekleriYukle } from '../lib/ekDosya'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
@@ -868,11 +870,12 @@ function GorusmeDetay() {
         </div>
 
         <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-          <Textarea
+          <MentionTextarea
             rows={3}
             value={yeniYorum}
-            onChange={e => setYeniYorum(e.target.value)}
-            placeholder="Yorum yaz…"
+            onChange={setYeniYorum}
+            kullanicilar={kullanicilar || []}
+            placeholder="Yorum yaz… @ ile arkadaşını etiketle"
             style={{ marginBottom: 8 }}
           />
           <div style={{ marginBottom: 8 }}>
@@ -892,6 +895,38 @@ function GorusmeDetay() {
                   dosyalar,
                 })
                 setYorumlar(prev => [...prev, eklenen])
+
+                // Bildirimler (görev yorumu deseni): @mention'lar + görüşen kişiler.
+                // Yazan kendisi ve mention'da zaten olanlar atlanır.
+                const metin = yeniYorum
+                const mentionIdler = parseMentions(metin, kullanicilar || [])
+                  .filter(mid => mid?.toString() !== kullanici.id?.toString())
+                const alanlar = new Set(mentionIdler.map(x => x?.toString()))
+                for (const aliciId of mentionIdler) {
+                  bildirimEkle(
+                    aliciId,
+                    `${kullanici.ad} sizi bir görüşmede etiketledi`,
+                    `"${gorusme.firmaAdi || gorusme.konu}" görüşmesinde: ${metin.slice(0, 80)}${metin.length > 80 ? '…' : ''}`,
+                    'mention',
+                    `/gorusmeler/${gorusme.id}`,
+                  ).catch(() => {})
+                }
+                // Görüşen kişilere de haber ver (yorum onların kaydına yazıldı)
+                const gorusenAdlar = String(gorusme.gorusen || '').split(',').map(a => a.trim().toLocaleLowerCase('tr')).filter(Boolean)
+                for (const u of (kullanicilar || [])) {
+                  const idStr = u.id?.toString()
+                  if (!idStr || idStr === kullanici.id?.toString() || alanlar.has(idStr)) continue
+                  if (!gorusenAdlar.includes((u.ad || '').trim().toLocaleLowerCase('tr'))) continue
+                  alanlar.add(idStr)
+                  bildirimEkle(
+                    u.id,
+                    `${kullanici.ad} görüşmeye yorum ekledi`,
+                    `"${gorusme.firmaAdi || gorusme.konu}": ${metin.slice(0, 80)}${metin.length > 80 ? '…' : ''}`,
+                    'gorusme',
+                    `/gorusmeler/${gorusme.id}`,
+                  ).catch(() => {})
+                }
+
                 setYeniYorum('')
                 setYorumEkleri([])
               } catch (e) {
