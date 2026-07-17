@@ -303,20 +303,20 @@ function Gorevler() {
   const SAYFA_BOYUT = 50
 
   const veriYukle = useCallback(({ ilkYukleme = false } = {}) => {
-    Promise.all([
-      gorevleriGetir(),
-      musterileriGetir(),
-      // Lookup için tüm lokasyonları çek
-      import('../lib/supabase').then(({ supabase }) =>
-        supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) => data || [])
-      ),
-    ])
-      .then(([g, m, l]) => {
-        setGorevler(g || []); setMusteriler(m || [])
-        setTumLokasyonlar((l || []).map(r => ({ id: r.id, ad: r.ad, musteriId: r.musteri_id })))
-      })
+    // Liste yalnız GÖREV verisini bekler (63 kayıt, hızlı) — müşteri listesi
+    // (1.885 kayıt, form lookup'ı) sayfayı BEKLETMESİN; arkada paralel iner.
+    gorevleriGetir()
+      .then(g => setGorevler(g || []))
       .catch(err => console.error('[Gorevler yükle]', err))
       .finally(() => { if (ilkYukleme) setYukleniyor(false) })
+    musterileriGetir()
+      .then(m => setMusteriler(m || []))
+      .catch(() => {})
+    import('../lib/supabase').then(({ supabase }) =>
+      supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) =>
+        setTumLokasyonlar((data || []).map(r => ({ id: r.id, ad: r.ad, musteriId: r.musteri_id })))
+      )
+    ).catch(() => {})
   }, [])
 
   // İlk yükleme
