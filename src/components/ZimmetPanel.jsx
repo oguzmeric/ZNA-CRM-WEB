@@ -92,6 +92,14 @@ export default function ZimmetPanel({ onKapat }) {
     return () => window.removeEventListener('keydown', h)
   }, [onKapat])
 
+  // Panel açıkken arkadaki sayfanın scroll'unu kilitle — sağda çift kaydırma
+  // çubuğu görünüyordu (panelin + gövdenin çubuğu yan yana)
+  useEffect(() => {
+    const onceki = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = onceki }
+  }, [])
+
   const teknisyeneGoreGrupla = (liste) => {
     const map = new Map()
     for (const kayit of liste) {
@@ -107,12 +115,19 @@ export default function ZimmetPanel({ onKapat }) {
   const demirbasGruplu = yonetim ? teknisyeneGoreGrupla(demirbasListe) : null
 
   const icerik = (
-    <div style={{
+    <div className="zimmet-panel-kaydirma" style={{
       position: 'fixed', inset: 0, zIndex: 100000,
       background: R.bg, color: R.metin,
       fontFamily: 'system-ui, -apple-system, sans-serif',
       overflow: 'auto',
+      scrollbarColor: '#334155 #0B1220',
     }}>
+      <style>{`
+        .zimmet-panel-kaydirma::-webkit-scrollbar { width: 10px; }
+        .zimmet-panel-kaydirma::-webkit-scrollbar-track { background: #0B1220; }
+        .zimmet-panel-kaydirma::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+        .zimmet-panel-kaydirma::-webkit-scrollbar-thumb:hover { background: #475569; }
+      `}</style>
       <div style={{ padding: '24px 40px', maxWidth: 1400, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, borderBottom: `1px solid ${R.border}`, paddingBottom: 20 }}>
