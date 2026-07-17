@@ -301,12 +301,50 @@ function EnvanterSatir({ kayit }) {
   )
 }
 
+// Foto lightbox — küçük resme tıklayınca tam boy görüntüle (tıklayınca kapanır)
+function FotoBuyutOverlay({ url, onKapat }) {
+  return (
+    <div
+      onClick={onKapat}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24, cursor: 'zoom-out',
+      }}
+    >
+      <img
+        src={url}
+        alt=""
+        style={{ maxWidth: '92vw', maxHeight: '92vh', borderRadius: 12, boxShadow: '0 12px 48px rgba(0,0,0,0.6)' }}
+      />
+      <button
+        onClick={onKapat}
+        style={{
+          position: 'fixed', top: 16, right: 16,
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.12)', color: '#fff',
+          border: '1px solid rgba(255,255,255,0.25)', cursor: 'pointer', fontSize: 18,
+        }}
+        aria-label="Kapat"
+      >✕</button>
+    </div>
+  )
+}
+
 function DemirbasSatir({ kayit, yonetim, onIade }) {
   const kat = DEMIRBAS_KATEGORI.find(k => k.id === kayit.kategori)
+  const [fotoAcik, setFotoAcik] = useState(false)
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 12, background: R.panel2, borderRadius: 8, marginBottom: 6 }}>
       {kayit.foto_url ? (
-        <img src={kayit.foto_url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
+        <img
+          src={kayit.foto_url}
+          alt=""
+          title="Büyütmek için tıkla"
+          onClick={() => setFotoAcik(true)}
+          style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', cursor: 'zoom-in' }}
+        />
       ) : (
         <div style={{ width: 60, height: 60, borderRadius: 8, background: '#0B1220', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{kat?.ikon}</div>
       )}
@@ -320,6 +358,7 @@ function DemirbasSatir({ kayit, yonetim, onIade }) {
           padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
         }}>İade Al</button>
       )}
+      {fotoAcik && <FotoBuyutOverlay url={kayit.foto_url} onKapat={() => setFotoAcik(false)} />}
     </div>
   )
 }
