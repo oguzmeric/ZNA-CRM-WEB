@@ -26,7 +26,7 @@ serve(async (req) => {
     // Bildirimi al — alici_id = bildirimi alacak kullanıcı
     const { data: bildirim, error: bErr } = await supa
       .from('bildirimler')
-      .select('id, alici_id, baslik, mesaj, tip')
+      .select('id, alici_id, baslik, mesaj, tip, link')
       .eq('id', bildirimId)
       .single()
 
@@ -69,7 +69,8 @@ serve(async (req) => {
       title: bildirim.baslik ?? 'Bildirim',
       body: bildirim.mesaj ?? '',
       badge: typeof okunmamis === 'number' ? okunmamis : undefined,
-      data: { bildirimId: bildirim.id, tip: bildirim.tip },
+      // link: push'a dokununca uygulama ilgili ekrana gitsin (App.js yönlendirir)
+      data: { bildirimId: bildirim.id, tip: bildirim.tip, link: bildirim.link ?? '' },
     }))
 
     const res = await fetch(EXPO_PUSH_URL, {
