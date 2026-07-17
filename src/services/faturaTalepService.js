@@ -10,6 +10,7 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 import { cokluBildirimEkle } from './bildirimService'
+import { smsGonderVeLogla } from './smsLogService'
 import { satisEkle } from './satisService'
 import { musteriGetir } from './musteriService'
 
@@ -88,14 +89,16 @@ export const faturaTalebiEkle = async (talep) => {
 }
 
 // Fatura yetkililerine bildirim (bildirimler INSERT → trigger → Expo push)
+// + fatura yetkililerine (muhasebe — Abdullah İğde) SMS ve MAİL
 async function faturaYetkililerineBildir(talep) {
   try {
     const { data } = await supabase
       .from('kullanicilar')
-      .select('id')
+      .select('id, ad, cep_telefon, fatura_yetkilisi')
       .eq('tip', 'zna')
       .or('fatura_yetkilisi.eq.true,rol.eq.admin')
-    const alicilar = [...new Set((data || []).map(k => k.id))]
+    const kisiler = data || []
+    const alicilar = [...new Set(kisiler.map(k => k.id))]
     if (!alicilar.length) return
     await cokluBildirimEkle(alicilar, {
       baslik: `Proforma fatura — ${talep.firmaAdi}`,
@@ -104,6 +107,34 @@ async function faturaYetkililerineBildir(talep) {
       link: '/fatura-talepleri',
       meta: { kaynak: 'fatura_talebi', talep_id: talep.id },
     })
+
+    // SMS — yalnız fatura YETKİLİLERİNE (muhasebe); adminlere in-app yeter.
+    // Telefonu boş olan yetkili sms_gonderim_log'a 'atlandi' düşer.
+    const smsMesaj = `ZNA CRM: Yeni proforma fatura talebi ${talep.talepNo} - ${(talep.firmaAdi || '').slice(0, 40)}. Tutar: ${talep.genelToplam} ${talep.paraBirimi}. Detay: talep.znateknoloji.com/fatura-talepleri`
+    for (const k of kisiler.filter(x => x.faturaYetkilisi ?? x.fatura_yetkilisi)) {
+      smsGonderVeLogla({
+        gsm: k.cep_telefon || '',
+        mesaj: smsMesaj,
+        amac: 'proforma_bildirim',
+        refTablo: 'fatura_talepleri',
+        refId: talep.id,
+        aliciKullaniciId: k.id,
+        aliciAd: k.ad,
+        gonderenKullaniciId: talep.talepEdenId || null,
+      }).catch(() => {})
+    }
+
+    // MAİL — alıcı listesi edge fn içinde sunucu tarafında belirlenir
+    // (fatura_yetkilisi=true + abdullahigde@znateknoloji.com fallback)
+    supabase.functions.invoke('proforma-mail', {
+      body: {
+        talepNo: talep.talepNo,
+        firmaAdi: talep.firmaAdi,
+        teklifNo: talep.teklifNo,
+        genelToplam: talep.genelToplam,
+        paraBirimi: talep.paraBirimi,
+      },
+    }).catch(e => console.warn('[faturaTalebi] mail gönderilemedi:', e?.message))
   } catch (e) {
     console.warn('[faturaTalebi] bildirim gönderilemedi:', e?.message)
   }
