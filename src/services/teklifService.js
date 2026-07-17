@@ -20,6 +20,18 @@ export const teklifleriGetir = () => cached('teklifler:list', async () => {
   return arrayToCamel(hepsi)
 })
 
+// Hibrit yükleme AŞAMA 1: en yeni ~60 teklif + toplam sayı (anında boyama).
+// Tam liste teklifleriGetir ile arkada iner (Gorusmeler ile aynı desen).
+export const tekliflerIlkSayfa = async (limit = 60) => {
+  const { data, count, error } = await supabase
+    .from('teklifler')
+    .select(TEKLIF_LISTE_KOLONLARI, { count: 'exact' })
+    .order('olusturma_tarih', { ascending: false })
+    .range(0, limit - 1)
+  if (error) { console.error('tekliflerIlkSayfa hata:', error.message); return { satirlar: [], toplam: 0 } }
+  return { satirlar: arrayToCamel(data || []), toplam: count || 0 }
+}
+
 export const teklifGetir = (id) => cached(`teklif:${id}`, async () => {
   const { data } = await supabase.from('teklifler').select('*').eq('id', id).single()
   return toCamel(data)

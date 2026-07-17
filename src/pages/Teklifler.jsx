@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
@@ -10,9 +10,10 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import {
-  teklifleriGetir, teklifSil as dbTeklifSil,
+  teklifleriGetir, tekliflerIlkSayfa, teklifSil as dbTeklifSil,
   musteriTalepleriniGetir, musteriTalepGuncelle,
 } from '../services/teklifService'
+import { useAuth } from '../context/AuthContext'
 import { satisTeklifRozetleri } from '../services/satisService'
 import {
   TEKLIF_DURUM_META, tekliftenDurum,
@@ -85,25 +86,62 @@ export default function Teklifler() {
   const { confirm } = useConfirm()
   const { teklifHatirlatmasi, hatirlatmaSil } = useHatirlatma()
 
+  const { kullanici } = useAuth()
+
   const [teklifler, setTeklifler] = useState([])
   const [musteriTalepleri, setMusteriTalepleri] = useState([])
   const [satislar, setSatislar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [tamListeHazir, setTamListeHazir] = useState(false)
+  const [sunucuToplam, setSunucuToplam] = useState(0)
+  const tamListeHazirRef = useRef(false)
 
   const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
   const [gosterilecek, setGosterilecek] = useState(100)
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
+  const [benimTekliflerim, setBenimTekliflerim] = useState(false) // "Tekliflerim" — hazırlayan/temsilci benim
 
   useEffect(() => {
-    Promise.all([teklifleriGetir(), musteriTalepleriniGetir(), satisTeklifRozetleri()])
-      .then(([t, tl, s]) => { setTeklifler(t || []); setMusteriTalepleri(tl || []); setSatislar(s || []) })
-      .catch(err => console.error('[Teklifler yükle]', err))
-      .finally(() => setYukleniyor(false))
+    let iptal = false
+    // AŞAMA 1 — hızlı ilk boyama: en yeni ~60 teklif + toplam (Gorusmeler deseni).
+    // Önbellek doluysa tam liste zaten senkron gelir; ilk sayfa onu ezmesin.
+    tekliflerIlkSayfa()
+      .then(({ satirlar, toplam }) => {
+        if (iptal || tamListeHazirRef.current) return
+        setTeklifler(satirlar)
+        setSunucuToplam(toplam)
+        setYukleniyor(false)
+      })
+      .catch(() => {})
+    // AŞAMA 2 — tam liste arka planda
+    teklifleriGetir()
+      .then(t => {
+        if (iptal) return
+        tamListeHazirRef.current = true
+        setTeklifler(t || [])
+        setTamListeHazir(true)
+        setYukleniyor(false)
+      })
+      .catch(err => { console.error('[Teklifler yükle]', err); if (!iptal) setYukleniyor(false) })
+    // Yan veriler liste render'ını BEKLETMEZ
+    musteriTalepleriniGetir().then(tl => { if (!iptal) setMusteriTalepleri(tl || []) }).catch(() => {})
+    satisTeklifRozetleri().then(s => { if (!iptal) setSatislar(s || []) }).catch(() => {})
+    return () => { iptal = true }
   }, [])
 
   if (yukleniyor) return <SkeletonList />
+
+  // "Tekliflerim": hazırlayan veya müşteri temsilcisi alanında benim adım
+  // (TR büyük/küçük harf duyarsız)
+  const benimAdim = String(kullanici?.ad || '').trim().toLocaleLowerCase('tr')
+  const teklifBenimMi = (t) => {
+    if (!benimAdim) return false
+    return [t.hazirlayan, t.musteriTemsilcisi]
+      .some(a => String(a || '').trim().toLocaleLowerCase('tr') === benimAdim)
+  }
+  const bazTeklifler = benimTekliflerim ? teklifler.filter(teklifBenimMi) : teklifler
 
   const bekleyenSayisi = musteriTalepleri.filter(t => t.durum === 'bekliyor').length
 
@@ -157,7 +195,7 @@ export default function Teklifler() {
     tutar_dusuk:   (a, b) => Number(a.genelToplam || 0) - Number(b.genelToplam || 0),
   }
 
-  const filtreli = [...teklifler]
+  const filtreli = [...bazTeklifler]
     .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
     .filter(t => trContains(`${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`, arama))
     .sort(siralayici[siralama] || siralayici.yeni)
@@ -173,11 +211,32 @@ export default function Teklifler() {
         <div>
           <h1 className="t-h1">Teklifler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{teklifler.length}</span> teklif
+            <span className="tabular-nums">{tamListeHazir ? bazTeklifler.length : sunucuToplam}</span> teklif
+            {!tamListeHazir && <span style={{ opacity: 0.6 }}> · tüm kayıtlar yükleniyor…</span>}
           </p>
         </div>
         {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Kapsam: Tümü | Tekliflerim (hazırlayan/temsilci benim) */}
+            <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+              {[{ v: false, l: 'Tümü' }, { v: true, l: 'Tekliflerim' }].map(s => (
+                <button
+                  key={s.l}
+                  onClick={() => { setBenimTekliflerim(s.v); setGosterilecek(100) }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'calc(var(--radius-sm) - 2px)',
+                    background: benimTekliflerim === s.v ? 'var(--surface-card)' : 'transparent',
+                    boxShadow: benimTekliflerim === s.v ? 'var(--shadow-sm)' : 'none',
+                    color: benimTekliflerim === s.v ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    border: 'none', cursor: 'pointer',
+                    font: '500 13px/18px var(--font-sans)',
+                  }}
+                >
+                  {s.l}
+                </button>
+              ))}
+            </div>
             <EsnCekButonu />
             <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
               Yeni teklif
