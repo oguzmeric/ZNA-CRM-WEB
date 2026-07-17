@@ -2,11 +2,12 @@
 // UI: grid layout (Google Keep tarzı), kart tıklayınca modal'da düzenle.
 // Web tarafında sadece metin oluşturma/düzenleme. Mobile'dan eklenen çizimleri görüntüler.
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Plus, Trash2, StickyNote, Image as ImageIcon, X, Building2, Search,
-  Paperclip, FileText, File as FileIcon, Bell, Upload,
+  Paperclip, FileText, File as FileIcon, Bell, Upload, Mic, Square, Loader2,
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import ReactQuill, { Quill } from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
 
@@ -127,6 +128,101 @@ function Notlarim() {
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   const [acikCizim, setAcikCizim] = useState(null)
+
+  // ── Sesli not (Groq Whisper) ────────────────────────────────────────────
+  // Tarayıcı mikrofonuyla kayıt → sesten-metin edge fn → metin içeriğe eklenir,
+  // ses dosyası da nota ek olarak iliştirilir (orijinali dinlenebilsin).
+  const [sesDurum, setSesDurum] = useState('bos') // bos | kayit | cozuluyor
+  const [sesSure, setSesSure] = useState(0)
+  const kayitciRef = useRef(null)
+  const parcalarRef = useRef([])
+  const sesTimerRef = useRef(null)
+
+  const htmlKacir = (s) => String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  const sesKaydiBaslat = async () => {
+    try {
+      const akis = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '')
+      const kayitci = new MediaRecorder(akis, mime ? { mimeType: mime } : undefined)
+      parcalarRef.current = []
+      kayitci.ondataavailable = (e) => { if (e.data?.size) parcalarRef.current.push(e.data) }
+      kayitci.onstop = async () => {
+        akis.getTracks().forEach((t) => t.stop())
+        clearInterval(sesTimerRef.current)
+        const blob = new Blob(parcalarRef.current, { type: kayitci.mimeType || 'audio/webm' })
+        parcalarRef.current = []
+        if (blob.size < 1000) { setSesDurum('bos'); setSesSure(0); return } // boş/anlık tık
+        await sesiCoz(blob)
+      }
+      kayitciRef.current = kayitci
+      kayitci.start()
+      setSesSure(0)
+      setSesDurum('kayit')
+      sesTimerRef.current = setInterval(() => setSesSure((s) => s + 1), 1000)
+    } catch (e) {
+      toast.error('Mikrofona erişilemedi — tarayıcı izni gerekli')
+    }
+  }
+
+  const sesKaydiDurdur = () => {
+    if (kayitciRef.current?.state === 'recording') kayitciRef.current.stop()
+  }
+
+  const sesiCoz = async (blob) => {
+    setSesDurum('cozuluyor')
+    try {
+      const uzanti = blob.type.includes('mp4') ? 'm4a' : 'webm'
+      const dosya = new File([blob], `sesli-not-${Date.now()}.${uzanti}`, { type: blob.type })
+
+      const fd = new FormData()
+      fd.append('ses', dosya)
+      fd.append('dil', 'tr')
+      const { data, error } = await supabase.functions.invoke('sesten-metin', { body: fd })
+      if (error || !data?.ok) {
+        const hata = data?.hata === 'limit'
+          ? 'Günlük ücretsiz çeviri limiti doldu — yarın tekrar dene'
+          : (data?.hata || error?.message || 'çevrilemedi')
+        throw new Error(hata)
+      }
+      const metin = (data.metin || '').trim()
+      if (!metin) {
+        toast.error('Kayıtta konuşma algılanamadı')
+        return
+      }
+
+      // Metni içeriğin sonuna paragraf olarak ekle; ses dosyasını da ek yap
+      const ek = await ekYukleWeb({ file: dosya, kullaniciId: kullanici.id, notId: duzenleId })
+      setForm((f) => ({
+        ...f,
+        icerik: `${f.icerik || ''}<p>${htmlKacir(metin)}</p>`,
+        ekler: ek ? [...(f.ekler || []), { ...ek, tip: 'ses' }] : (f.ekler || []),
+      }))
+      toast.success('Sesli not metne çevrildi')
+    } catch (e) {
+      toast.error('Ses çözülemedi: ' + (e?.message ?? 'bilinmeyen'))
+    } finally {
+      setSesDurum('bos')
+      setSesSure(0)
+    }
+  }
+
+  // Modal kapanırsa aktif kaydı iptal et (çözmeye çalışma)
+  useEffect(() => {
+    if (!modalAcik && kayitciRef.current?.state === 'recording') {
+      kayitciRef.current.onstop = null
+      kayitciRef.current.stop()
+      kayitciRef.current.stream?.getTracks?.().forEach((t) => t.stop())
+      clearInterval(sesTimerRef.current)
+      setSesDurum('bos')
+      setSesSure(0)
+    }
+  }, [modalAcik])
+
+  const sureFormat = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   const yukle = useCallback(async ({ ilkYukleme = false } = {}) => {
     if (!kullanici?.id) { setYukleniyor(false); return }
@@ -508,7 +604,54 @@ function Notlarim() {
           </div>
 
           <div>
-            <Label>İçerik</Label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <Label style={{ marginBottom: 0 }}>İçerik</Label>
+              {sesDurum === 'bos' && (
+                <button
+                  type="button"
+                  onClick={sesKaydiBaslat}
+                  title="Konuş, yazıya çevrilsin (ses dosyası da nota eklenir)"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '4px 12px', cursor: 'pointer',
+                    background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                    border: '1px solid var(--brand-primary)', borderRadius: 'var(--radius-sm)',
+                    font: '600 12px/16px var(--font-sans)',
+                  }}
+                >
+                  <Mic size={13} /> Sesli Not
+                </button>
+              )}
+              {sesDurum === 'kayit' && (
+                <button
+                  type="button"
+                  onClick={sesKaydiDurdur}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '4px 12px', cursor: 'pointer',
+                    background: 'var(--danger)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-sm)',
+                    font: '600 12px/16px var(--font-sans)',
+                  }}
+                >
+                  <Square size={12} fill="#fff" />
+                  Kaydı Bitir · <span className="tabular-nums">{sureFormat(sesSure)}</span>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', background: '#fff',
+                    animation: 'pulse 1s ease-in-out infinite',
+                  }} />
+                </button>
+              )}
+              {sesDurum === 'cozuluyor' && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 12px',
+                  color: 'var(--text-tertiary)', font: '500 12px/16px var(--font-sans)',
+                }}>
+                  <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Metne çevriliyor…
+                </span>
+              )}
+            </div>
             <div className="not-quill-wrap">
               <ReactQuill
                 theme="snow"
@@ -542,6 +685,8 @@ function Notlarim() {
               />
             </div>
             <style>{`
+              @keyframes spin { to { transform: rotate(360deg); } }
+              @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
               .not-quill-wrap .ql-toolbar {
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
