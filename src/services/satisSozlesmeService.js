@@ -25,8 +25,27 @@ export const satisSozlesmeGetir = async (id) => {
 export const satisSozlesmeEkle = async (payload) => {
   const { data, error } = await supabase
     .from('satis_sozlesmeleri').insert(toSnake(payload)).select().single()
-  if (error) return { _hata: error.message }
+  if (error) {
+    // mig 186 unique index — aynı tekliften ikinci aktif sözleşme
+    if (error.code === '23505' || error.message?.includes('uq_satis_sozlesme_aktif_teklif')) {
+      return { _hata: 'Bu tekliften zaten bir sözleşme oluşturulmuş. Aynı teklife ikinci sözleşme açılamaz.' }
+    }
+    return { _hata: error.message }
+  }
   return toCamel(data)
+}
+
+// Teklif başına tek sözleşme kuralı — iptal edilmemiş sözleşmeyi bulur (mig 186)
+export const teklifinAktifSozlesmesi = async (teklifId) => {
+  if (!teklifId) return null
+  const { data, error } = await supabase
+    .from('satis_sozlesmeleri')
+    .select('id, sozlesme_no, durum')
+    .eq('teklif_id', Number(teklifId))
+    .neq('durum', 'iptal')
+    .limit(1)
+  if (error) { console.error('teklifinAktifSozlesmesi hata:', error.message); return null }
+  return data?.[0] ? toCamel(data[0]) : null
 }
 
 export const satisSozlesmeGuncelle = async (id, patch) => {

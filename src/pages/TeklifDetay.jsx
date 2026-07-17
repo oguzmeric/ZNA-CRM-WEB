@@ -35,6 +35,7 @@ import {
   tekliftenTalep, faturaTalebiEkle, teklifFaturaTalebiGetir,
 } from '../services/faturaTalepService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
+import { teklifinAktifSozlesmesi } from '../services/satisSozlesmeService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
@@ -155,6 +156,7 @@ function TeklifDetay() {
   const [ilgiliFatura, setIlgiliFatura] = useState(null)
   // Fatura talebi (mig 165) — early return'ün ÜSTÜNDE (Rules of Hooks)
   const [faturaTalebi, setFaturaTalebi] = useState(null)
+  const [mevcutSozlesme, setMevcutSozlesme] = useState(null)
   const [faturaTalepAcik, setFaturaTalepAcik] = useState(false)
   const [faturaTalepTaslak, setFaturaTalepTaslak] = useState(null)
   const [faturaTalepNotu, setFaturaTalepNotu] = useState('')
@@ -298,6 +300,8 @@ function TeklifDetay() {
       }))
       // Bu teklif için açılmış fatura talebi var mı? (tek sorgu — tüm liste değil)
       promises.push(teklifFaturaTalebiGetir(id).then(setFaturaTalebi))
+      // Tekliften zaten sözleşme oluşturulmuş mu? (teklif başına tek sözleşme, mig 186)
+      promises.push(teklifinAktifSozlesmesi(id).then(setMevcutSozlesme))
       // Teklif zaten siparişe aktarılmış mı?
       promises.push(
         supabase.from('siparisler')
@@ -1253,15 +1257,27 @@ function TeklifDetay() {
               </Button>
             )
           )}
-          {/* Satış sözleşmesi (spec: teklif onaylandıktan sonra tek tuşla üretim) */}
+          {/* Satış sözleşmesi (spec: teklif onaylandıktan sonra tek tuşla üretim).
+              Zaten oluşturulmuşsa buton kilitlenir, mevcut sözleşmeye götürür (mig 186). */}
           {!yeni && form?.onayDurumu === 'kabul' && (
-            <Button
-              variant="secondary"
-              iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
-              onClick={() => navigate(`/sozlesmeler/satis/yeni?teklifId=${id}`)}
-            >
-              Satış Sözleşmesi Oluştur
-            </Button>
+            mevcutSozlesme ? (
+              <Button
+                variant="secondary"
+                iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
+                onClick={() => navigate(`/sozlesmeler/satis/${mevcutSozlesme.id}`)}
+                title="Bu tekliften zaten sözleşme oluşturuldu — görüntülemek için tıklayın"
+              >
+                🔒 Sözleşme: {mevcutSozlesme.sozlesmeNo}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
+                onClick={() => navigate(`/sozlesmeler/satis/yeni?teklifId=${id}`)}
+              >
+                Satış Sözleşmesi Oluştur
+              </Button>
+            )
           )}
           <Button variant="primary" onClick={kaydet}>Kaydet</Button>
         </div>

@@ -24,7 +24,7 @@ import {
   satisSozlesmeGetir, satisSozlesmeEkle, satisSozlesmeGuncelle, hesapVeIcerikHazirla,
   onayaGonder, sozlesmeOnayla, sozlesmeReddet, gonderildiIsaretle, sozlesmeIptalEt, kilidiAc,
   imzaliSozlesmeYukleSS, ssDosyaUrl, ssDosyaYukle, kurFarkiKaydet,
-  tekliftenForm, siparistenForm, musteridenKunye,
+  tekliftenForm, siparistenForm, musteridenKunye, teklifinAktifSozlesmesi,
 } from '../services/satisSozlesmeService'
 import { sozlesmeHesapla, kurFarkiHesapla, paraFmt } from '../lib/satisSozlesmeHesap'
 import {
@@ -165,6 +165,13 @@ export default function SatisSozlesmeForm() {
       const s = await satisSozlesmeGetir(Number(id))
       if (s) { setKayit(s); setForm(kayittanForma(s)); setGonderEmail(s.email || '') }
     } else if (params.get('teklifId')) {
+      // Teklif başına tek sözleşme (mig 186) — varsa yenisini açma, mevcuda git
+      const mevcut = await teklifinAktifSozlesmesi(params.get('teklifId'))
+      if (mevcut) {
+        toast.info(`Bu tekliften zaten sözleşme oluşturulmuş: ${mevcut.sozlesmeNo}`)
+        navigate(`/sozlesmeler/satis/${mevcut.id}`, { replace: true })
+        return
+      }
       const t = await teklifGetir(Number(params.get('teklifId')))
       if (t) await tekliftenDoldur(t)
     } else if (params.get('siparisId')) {
