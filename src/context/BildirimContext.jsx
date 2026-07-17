@@ -59,8 +59,14 @@ export function BildirimProvider({ children }) {
   const subRef = useRef(null)
   // İlk yükleme bittikten sonra mı? — eski bildirimler için toast atmamak için
   const hazirRef = useRef(false)
+  // Realtime websocket uykuda/uzun boşta KOPUYOR ve popup'lar sessizce
+  // kaçıyordu (destek bildirimi raporu, 2026-07-17). Sekme görünür olunca
+  // aboneliği sıfırla + listeyi tazele; kaçan okunmamışlar için tek toast.
+  const [baglantiTik, setBaglantiTik] = useState(0)
+  const sonYenilemeRef = useRef(0)
+  const bilinenEnYeniRef = useRef(0)
 
-  // Kullanıcı değişince bildirimleri çek + realtime subscribe
+  // Kullanıcı değişince veya bağlantı tazelenince bildirimleri çek + subscribe
   useEffect(() => {
     if (!kullanici?.id) {
       setBildirimler([])
@@ -73,6 +79,18 @@ export function BildirimProvider({ children }) {
         setBildirimler(data)
         // İlk yükleme bitti — sonraki realtime event'ler "yeni" sayılır
         hazirRef.current = true
+        // Bağlantı kopukken kaçırılan bildirim var mı? (yalnız yeniden bağlanmada)
+        const enYeni = Math.max(0, ...data.map(b => Number(b.id) || 0))
+        if (baglantiTik > 0 && bilinenEnYeniRef.current > 0 && enYeni > bilinenEnYeniRef.current) {
+          const kacan = data.filter(b => (Number(b.id) || 0) > bilinenEnYeniRef.current && !b.okundu)
+          if (kacan.length > 0) {
+            toastCtx?.toast?.info(
+              kacan[0].baslik + (kacan.length > 1 ? ` (+${kacan.length - 1} bildirim daha)` : ''),
+              { baslik: '🔔 Siz yokken bildirim geldi', sure: 15000 },
+            )
+          }
+        }
+        bilinenEnYeniRef.current = enYeni
       }
     })
     // Realtime — yeni bildirim gelince listeye ekle + sağ üstte toast göster
@@ -83,6 +101,7 @@ export function BildirimProvider({ children }) {
         if (prev.some(b => b.id === yeni.id)) return prev
         return [yeni, ...prev].slice(0, 50)
       })
+      bilinenEnYeniRef.current = Math.max(bilinenEnYeniRef.current, Number(yeni.id) || 0)
       // Sayfa ilk açılışındaki backlog'u toast yapma — sadece gerçek "yeni" olanı
       if (!hazirRef.current) return
 
@@ -90,13 +109,14 @@ export function BildirimProvider({ children }) {
       const mesaj  = (yeni.mesaj || '').slice(0, 160)
       const tip = yeni.tip || 'bilgi'
 
-      // Görev atamaları için daha belirgin, uzun süreli toast
+      // Görev atamaları + destek talepleri için daha belirgin, uzun süreli toast
       const gorevTipi = tip === 'gorev' || /görev atandı/i.test(baslik)
-      const sure = gorevTipi ? 15000 : 8000
+      const destekTipi = tip === 'destek'
+      const sure = (gorevTipi || destekTipi) ? 15000 : 8000
 
       const toast = toastCtx?.toast
       if (toast) {
-        if (tip === 'servis_talebi' || gorevTipi) {
+        if (tip === 'servis_talebi' || gorevTipi || destekTipi) {
           toast.info(mesaj, { baslik, sure })
         } else if (tip === 'hata' || tip === 'kritik') {
           toast.error(mesaj, { baslik, sure })
@@ -108,13 +128,32 @@ export function BildirimProvider({ children }) {
       }
 
       // Tarayıcı sistem bildirimi — sekme arka planda bile görünür
-      if (gorevTipi || tip === 'servis_talebi') {
+      if (gorevTipi || tip === 'servis_talebi' || destekTipi) {
         gonderTarayiciBildirimi(baslik, mesaj, yeni.link, navigate)
       }
     })
     return () => {
       iptal = true
       subRef.current?.unsubscribe?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kullanici?.id, baglantiTik])
+
+  // Sekme görünür olunca / pencere odak alınca bağlantıyı tazele (30sn kısıtlı)
+  useEffect(() => {
+    if (!kullanici?.id) return
+    const tazele = () => {
+      if (document.visibilityState !== 'visible') return
+      const simdi = Date.now()
+      if (simdi - sonYenilemeRef.current < 30_000) return
+      sonYenilemeRef.current = simdi
+      setBaglantiTik(t => t + 1)
+    }
+    document.addEventListener('visibilitychange', tazele)
+    window.addEventListener('focus', tazele)
+    return () => {
+      document.removeEventListener('visibilitychange', tazele)
+      window.removeEventListener('focus', tazele)
     }
   }, [kullanici?.id])
 
