@@ -21,6 +21,7 @@ import { satislariGetir } from '../services/satisService'
 import { musteriSiparisleri, SIPARIS_DURUMLARI } from '../services/siparisService'
 import { gorevleriGetir } from '../services/gorevService'
 import { musteriDemoZimmetleri } from '../services/demoService'
+import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
   Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState, SegmentedControl,
@@ -31,6 +32,15 @@ const durumMap = {
   lead:  { tone: 'lead',  isim: 'Lead' },
   pasif: { tone: 'pasif', isim: 'Pasif' },
   kayip: { tone: 'kayip', isim: 'Kayıp' },
+}
+
+const SERVIS_DURUM_META = {
+  bekliyor:     { isim: 'Bekliyor',      renk: '#f59e0b' },
+  atandi:       { isim: 'Atandı',        renk: '#3b82f6' },
+  inceleniyor:  { isim: 'İnceleniyor',   renk: '#8b5cf6' },
+  devam_ediyor: { isim: 'Devam Ediyor',  renk: '#0ea5e9' },
+  tamamlandi:   { isim: 'Tamamlandı',    renk: '#22c55e' },
+  iptal:        { isim: 'İptal',         renk: '#94a3b8' },
 }
 
 const bosKisi = { ad: '', soyad: '', unvan: '', telefon: '', email: '', anaKisi: false }
@@ -56,6 +66,7 @@ function MusteriDetay() {
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const { kullanicilar } = useAuth()
+  const { talepler } = useServisTalebi()
   const personelListesi = (kullanicilar || []).filter(k => k.tip === 'zna')
   const lokasyonBolumRef = useRef(null)
 
@@ -655,6 +666,70 @@ function MusteriDetay() {
           </div>
         </Card>
       )}
+
+      {/* Servis Talepleri — müşterinin tüm servis geçmişi (id veya firma adı eşleşmesi) */}
+      {(() => {
+        const musteriTalepleri = (talepler || [])
+          .filter(t => Number(t.musteriId) === Number(id) || (musteri?.firma && t.firmaAdi === musteri.firma))
+          .sort((a, b) => new Date(b.olusturmaTarihi || 0) - new Date(a.olusturmaTarihi || 0))
+        if (!musteriTalepleri.length) return null
+        const acik = musteriTalepleri.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
+        return (
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <CardTitle>Servis Talepleri</CardTitle>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                {acik.length > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{acik.length} açık · </span>}
+                {musteriTalepleri.length} toplam
+              </span>
+            </div>
+            <div>
+              {musteriTalepleri.slice(0, 8).map(t => {
+                const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => navigate(`/servis-talepleri/${t.id}`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)', flexShrink: 0 }}>
+                        {t.talepNo || `#${t.id}`}
+                      </span>
+                      <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
+                        {t.konu || '—'}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                        background: `${meta.renk}1f`, color: meta.renk,
+                      }}>
+                        {meta.isim.toUpperCase()}
+                      </span>
+                    </div>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {t.olusturmaTarihi ? new Date(t.olusturmaTarihi).toLocaleDateString('tr-TR') : ''}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            {musteriTalepleri.length > 8 && (
+              <button
+                onClick={() => navigate('/servis-talepleri')}
+                style={{ marginTop: 8, padding: '6px 12px', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: 6, cursor: 'pointer', font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)', width: '100%' }}
+              >
+                Tümünü gör ({musteriTalepleri.length})
+              </button>
+            )}
+          </Card>
+        )
+      })()}
 
       {/* Müşteri Cihaz Envanteri — SN/IP/MAC/kimlik takibi + arıza durumu */}
       <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} />

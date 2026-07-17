@@ -564,28 +564,41 @@ function FirmaGecmisi() {
             </div>
           </Card>
 
-          {acikTalepler.length > 0 && (
-            <Card style={{ marginBottom: 12, padding: 14, background: 'var(--danger-soft)', border: '1px solid var(--danger-border)' }}>
+          {firmaTalepleri.length > 0 && (
+            <Card style={{
+              marginBottom: 12, padding: 14,
+              background: acikTalepler.length ? 'var(--danger-soft)' : 'var(--surface-card)',
+              border: `1px solid ${acikTalepler.length ? 'var(--danger-border)' : 'var(--border-default)'}`,
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <AlertTriangle size={13} strokeWidth={1.8} style={{ color: 'var(--danger)' }} />
-                <span style={{ font: '600 11px/14px var(--font-sans)', color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Aktif Talepler</span>
+                <AlertTriangle size={13} strokeWidth={1.8} style={{ color: acikTalepler.length ? 'var(--danger)' : 'var(--text-tertiary)' }} />
+                <span style={{ font: '600 11px/14px var(--font-sans)', color: acikTalepler.length ? 'var(--danger)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Servis Talepleri
+                </span>
+                <span style={{ font: '400 10.5px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                  {acikTalepler.length ? `${acikTalepler.length} açık · ` : ''}{firmaTalepleri.length} toplam
+                </span>
               </div>
-              {acikTalepler.slice(0, 3).map(t => (
+              {/* Açık talepler önce, sonra en yeni kapananlar */}
+              {[...acikTalepler, ...firmaTalepleri.filter(t => ['tamamlandi', 'iptal'].includes(t.durum))]
+                .slice(0, 5).map(t => (
                 <button
                   key={t.id}
                   onClick={() => navigate(`/servis-talepleri/${t.id}`)}
                   style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-primary)', cursor: 'pointer', marginTop: 4 }}
                 >
                   <div style={{ font: '500 12px/16px var(--font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.konu}</div>
-                  <div style={{ font: '400 10.5px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 1 }}>{t.talepNo} · {t.durum}</div>
+                  <div style={{ font: '400 10.5px/14px var(--font-sans)', color: ['tamamlandi', 'iptal'].includes(t.durum) ? 'var(--text-tertiary)' : 'var(--danger)', marginTop: 1 }}>
+                    {t.talepNo} · {t.durum === 'tamamlandi' ? 'tamamlandı' : t.durum === 'devam_ediyor' ? 'devam ediyor' : t.durum}
+                  </div>
                 </button>
               ))}
-              {acikTalepler.length > 3 && (
+              {firmaTalepleri.length > 5 && (
                 <button
                   onClick={() => navigate('/servis-talepleri')}
-                  style={{ marginTop: 6, padding: 4, background: 'transparent', border: 'none', font: '500 11px/14px var(--font-sans)', color: 'var(--danger)', cursor: 'pointer' }}
+                  style={{ marginTop: 6, padding: 4, background: 'transparent', border: 'none', font: '500 11px/14px var(--font-sans)', color: 'var(--text-secondary)', cursor: 'pointer' }}
                 >
-                  +{acikTalepler.length - 3} tane daha
+                  +{firmaTalepleri.length - 5} tane daha
                 </button>
               )}
             </Card>
