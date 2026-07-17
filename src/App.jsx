@@ -186,16 +186,18 @@ function App() {
   // her zaman anlık açılır, veri arkada sessizce tazelenir.
   useEffect(() => {
     if (!kullanici) return
+    // 800ms: login/refresh sonrası kullanıcı daha ilk menüye tıklamadan ısıtma
+    // başlasın (2.5sn beklerken tıklanınca soğuk fetch'e denk geliyordu)
     const t = setTimeout(() => {
       const isit = [
-        () => import('./services/musteriService').then(m => m.musterileriGetir()),
         () => import('./services/gorusmeService').then(m => m.gorusmeleriGetir()),
         () => import('./services/gorevService').then(m => m.gorevleriGetir()),
+        () => import('./services/musteriService').then(m => m.musterileriGetir()),
         () => import('./services/teklifService').then(m => m.teklifleriGetir()),
         () => import('./services/satisService').then(m => m.satislariGetir()),
       ]
-      isit.forEach((fn, i) => setTimeout(() => fn().catch(() => {}), i * 400))
-    }, 2500)
+      isit.forEach((fn, i) => setTimeout(() => fn().catch(() => {}), i * 250))
+    }, 800)
     return () => clearTimeout(t)
   }, [kullanici])
 

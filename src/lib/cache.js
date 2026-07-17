@@ -8,7 +8,11 @@
 
 const store = new Map()                  // key -> { at: timestamp, value: any }
 const pending = new Map()                // key -> Promise (dedupe concurrent fetches)
-const DEFAULT_TTL = 60_000               // 60 sn
+// 5 dk: SWR olduğundan kullanıcı hiç beklemez; TTL yalnız arka plan tazeleme
+// sıklığını belirler. 60sn'de görüşmeler (~1.3MB) her gezintide yeniden iniyordu —
+// bant + ana iş parçacığı (JSON parse) yükü menü geçişlerinde takılma hissi veriyordu.
+// Kendi mutasyonların invalidate ile anında yansır; kritik ekranlar realtime.
+const DEFAULT_TTL = 300_000              // 5 dk
 
 // Invalidate token'ı: her invalidate çağrısı bunu artırır. In-flight fetch
 // resolve olduğunda token'ı karşılaştırır — değiştiyse store'a yazmaz.
