@@ -3,6 +3,7 @@ import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { siparisYonetimiGorebilirMi } from './lib/siparisYetki'
+import { filoGorebilirMi } from './lib/filoYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -107,6 +108,14 @@ function YonetimGuard({ children }) {
   const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
   const izinli = /\b(oğuz|oguz|ali|ferdi)\b/i.test(ad)
   if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// ZNA Filo Yönetimi guard'ı — yönetim erişimi + Ahmet Agun/Abdullah İğde.
+// MainLayout filo grubu filtresiyle AYNI kaynak: filoGorebilirMi.
+function FiloGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!filoGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -409,17 +418,17 @@ function App() {
           <Route path="/sla-ayarlari" element={<YonetimGuard><SlaAyarlari /></YonetimGuard>} />
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
           <Route path="/mobiltek" element={<Mobiltek />} />
-          <Route path="/arac-yonetimi" element={<YonetimGuard><AracYonetimi /></YonetimGuard>} />
+          <Route path="/arac-yonetimi" element={<FiloGuard><AracYonetimi /></FiloGuard>} />
           <Route path="/gunluk-ozet" element={<SabahOzetiGuard><GunlukOzet /></SabahOzetiGuard>} />
           {/* Eski push linkleri /sabah-ozeti'ne gidiyor — yeni adrese yönlendir */}
           <Route path="/sabah-ozeti" element={<Navigate to="/gunluk-ozet" replace />} />
           <Route path="/sozlesmeler" element={<YonetimGuard><Sozlesmeler /></YonetimGuard>} />
           <Route path="/sozlesmeler/satis/yeni" element={<YonetimGuard><SatisSozlesmeForm /></YonetimGuard>} />
           <Route path="/sozlesmeler/satis/:id" element={<YonetimGuard><SatisSozlesmeForm /></YonetimGuard>} />
-          <Route path="/filo/bakim" element={<YonetimGuard><FiloBakim /></YonetimGuard>} />
-          <Route path="/filo/belgeler" element={<YonetimGuard><FiloBelgeler /></YonetimGuard>} />
-          <Route path="/filo/yakit" element={<YonetimGuard><FiloYakit /></YonetimGuard>} />
-          <Route path="/filo/surucu" element={<YonetimGuard><FiloSurucu /></YonetimGuard>} />
+          <Route path="/filo/bakim" element={<FiloGuard><FiloBakim /></FiloGuard>} />
+          <Route path="/filo/belgeler" element={<FiloGuard><FiloBelgeler /></FiloGuard>} />
+          <Route path="/filo/yakit" element={<FiloGuard><FiloYakit /></FiloGuard>} />
+          <Route path="/filo/surucu" element={<FiloGuard><FiloSurucu /></FiloGuard>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>

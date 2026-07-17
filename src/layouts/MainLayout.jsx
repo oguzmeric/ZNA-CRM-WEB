@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 import { faturaYetkisi } from '../services/faturaTalepService'
 import { siparisYonetimiGorebilirMi } from '../lib/siparisYetki'
+import { filoGorebilirMi } from '../lib/filoYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -410,7 +411,9 @@ function MainLayout({ children }) {
     if (m.modul === '_siparis_onay_yetkilisi') return !!kullanici?.siparisOnayYetkilisi
     // Fatura kuyruğu — App.jsx FaturaYetkiGuard ile AYNI kaynak (faturaYetkisi)
     if (m.modul === '_fatura_yetkisi') return faturaYetkisi(kullanici)
-    if (m.grup === 'yonetim' || m.grup === 'filo') return yonetimErisimi
+    if (m.grup === 'yonetim') return yonetimErisimi
+    // Filo grubu: yönetim erişimi + izinli istisnalar (Ahmet Agun, Abdullah İğde)
+    if (m.grup === 'filo') return filoGorebilirMi(kullanici)
     return m.modul === null
       || kullanici?.rol === 'admin'
       || (m.modul === '_siparis_onay_yetkilisi' && kullanici?.siparisOnayYetkilisi)
