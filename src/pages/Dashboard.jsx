@@ -11,6 +11,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { gorevleriGetir } from '../services/gorevService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
+import { tekliftenDurum, TEKLIF_DURUM } from '../lib/teklifDurumlari'
 import { lisanslariGetir } from '../services/lisansService'
 import { gecikmisDemolar, yaklasanDemolar } from '../services/demoService'
 import {
@@ -266,15 +267,27 @@ export default function Dashboard() {
       }
     }), [gorusmeler])
 
-  const teklifGrafikData = useMemo(() => [
-    { label: 'Hazırlandı',  deger: teklifler.filter(t => t.durum === 'hazirlandi').length,  renk: 'var(--brand-primary)' },
-    { label: 'Gönderildi',  deger: teklifler.filter(t => t.durum === 'gonderildi').length,  renk: 'var(--info)' },
-    { label: 'Kazanıldı',   deger: teklifler.filter(t => t.durum === 'kazanildi').length,   renk: 'var(--success)' },
-    { label: 'Kaybedildi',  deger: teklifler.filter(t => t.durum === 'kaybedildi').length,  renk: 'var(--danger)' },
-  ], [teklifler])
+  // Eski t.durum kolonu (hazirlandi/gonderildi/kazanildi) artık yazılmıyor —
+  // spek_durum 10-durum sistemine geçildi; grafik kanonik tekliftenDurum ile sayar.
+  const teklifGrafikData = useMemo(() => {
+    const sayilar = { hazirlik: 0, gonderim: 0, kazanildi: 0, kaybedildi: 0 }
+    for (const t of teklifler) {
+      const d = tekliftenDurum(t)
+      if (d === TEKLIF_DURUM.MUSTERI_ONAYLADI || d === TEKLIF_DURUM.SIPARISE_AKTARILDI) sayilar.kazanildi++
+      else if (d === TEKLIF_DURUM.MUSTERI_REDDETTI || d === TEKLIF_DURUM.SURESI_DOLDU) sayilar.kaybedildi++
+      else if (d === TEKLIF_DURUM.YON_ONAYLADI || d === TEKLIF_DURUM.MUSTERIYE_GONDERILDI || d === TEKLIF_DURUM.MUSTERI_ONAY_BEKLIYOR) sayilar.gonderim++
+      else sayilar.hazirlik++ // taslak + yönetici onayı bekliyor + revizyon istendi
+    }
+    return [
+      { label: 'Hazırlıkta',  deger: sayilar.hazirlik,   renk: 'var(--brand-primary)' },
+      { label: 'Gönderimde',  deger: sayilar.gonderim,   renk: 'var(--info)' },
+      { label: 'Kazanıldı',   deger: sayilar.kazanildi,  renk: 'var(--success)' },
+      { label: 'Kaybedildi',  deger: sayilar.kaybedildi, renk: 'var(--danger)' },
+    ]
+  }, [teklifler])
 
   const kazanmaOrani = teklifler.length > 0
-    ? Math.round(teklifler.filter(t => t.durum === 'kazanildi').length / teklifler.length * 100)
+    ? Math.round((teklifGrafikData.find(d => d.label === 'Kazanıldı')?.deger || 0) / teklifler.length * 100)
     : 0
 
   const hizliAksiyonlar = useMemo(() => {
