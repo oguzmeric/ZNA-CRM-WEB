@@ -109,7 +109,8 @@ function TalepKarti({ t, adminMi, onCevapla, onKapat }) {
 function Destek() {
   const { kullanici } = useAuth()
   const { toast } = useToast()
-  const adminMi = kullanici?.rol === 'admin'
+  // Destek yöneticisi TEK kişi: Oğuz Meriç (id 2) — mig 189 RLS de aynı kuralı DB'de uygular
+  const adminMi = Number(kullanici?.id) === 2
 
   const [talepler, setTalepler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)

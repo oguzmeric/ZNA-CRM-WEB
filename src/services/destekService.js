@@ -29,20 +29,18 @@ export const destekTalepEkle = async ({ kullaniciId, kullaniciAd, mesaj, fotoUrl
     .select()
     .single()
   if (error) { console.error('[destek] ekle:', error.message); return null }
-  // Adminlere haber ver — panelden cevaplasınlar
+  // Destek yöneticisine (Oğuz Meriç, id 2) haber ver — tek cevaplayıcı o
   try {
-    const { data: adminler } = await supabase
-      .from('kullanicilar').select('id').eq('tip', 'zna').eq('rol', 'admin')
-    const alicilar = (adminler || []).map(k => k.id).filter(id => String(id) !== String(kullaniciId))
-    if (alicilar.length) {
-      await cokluBildirimEkle(alicilar, {
+    const DESTEK_YONETICISI_ID = 2
+    if (String(kullaniciId) !== String(DESTEK_YONETICISI_ID)) {
+      await cokluBildirimEkle([DESTEK_YONETICISI_ID], {
         baslik: `🆘 Yeni destek talebi — ${kullaniciAd}`,
         mesaj: (mesaj || '').slice(0, 90),
         tip: 'destek',
         link: '/destek',
       })
     }
-  } catch (e) { console.warn('[destek] admin bildirim:', e?.message) }
+  } catch (e) { console.warn('[destek] yönetici bildirimi:', e?.message) }
   return toCamel(data)
 }
 
