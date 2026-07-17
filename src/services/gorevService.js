@@ -30,9 +30,18 @@ export const gorevGetir = (id) => cached(`gorev:${id}`, async () => {
   return toCamel(data)
 })
 
+// Boş string tarih PG'de timestamptz/date cast hatası verir ve UPDATE komple
+// reddedilir (Elite Garden "güncellenmiyor" vakası, 2026-07-17) — '' → null.
+const TARIH_ALANLARI = ['baslamaTarih', 'bitisTarih', 'sonTarih', 'bitisTarihi', 'tamamlanmaTarihi']
+const tarihleriNormallestir = (g) => {
+  const out = { ...g }
+  for (const k of TARIH_ALANLARI) if (out[k] === '') out[k] = null
+  return out
+}
+
 export const gorevEkle = async (gorev) => {
   const { id, olusturmaTarih, yorumlar, ...rest } = gorev
-  const { data, error } = await supabase.from('gorevler').insert(toSnake(rest)).select().single()
+  const { data, error } = await supabase.from('gorevler').insert(toSnake(tarihleriNormallestir(rest))).select().single()
   if (error) { console.error('gorevEkle hata:', error.message); return null }
   invalidate('gorevler:list')
   return toCamel(data)
@@ -40,7 +49,7 @@ export const gorevEkle = async (gorev) => {
 
 export const gorevGuncelle = async (id, guncellenmis) => {
   const { id: _id, olusturmaTarih, ...rest } = guncellenmis
-  const { data, error } = await supabase.from('gorevler').update(toSnake(rest)).eq('id', id).select().single()
+  const { data, error } = await supabase.from('gorevler').update(toSnake(tarihleriNormallestir(rest))).eq('id', id).select().single()
   if (error) { console.error('gorevGuncelle hata:', error.message); return null }
   invalidate('gorevler:list', `gorev:${id}`)
   return toCamel(data)

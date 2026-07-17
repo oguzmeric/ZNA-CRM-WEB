@@ -478,8 +478,12 @@ function Gorevler() {
 
     if (duzenleId) {
       const eski = gorevler.find(g => g.id === duzenleId)
-      await dbGorevGuncelle(duzenleId, form)
-      setGorevler(prev => prev.map(g => g.id === duzenleId ? { ...g, ...form } : g))
+      const guncel = await dbGorevGuncelle(duzenleId, form)
+      if (!guncel) {
+        toast.error('Görev güncellenemedi — lütfen tekrar deneyin.')
+        return
+      }
+      setGorevler(prev => prev.map(g => g.id === duzenleId ? { ...g, ...form, ...guncel } : g))
       toast.success('Görev güncellendi.')
       if (eski?.atanan !== form.atanan) {
         bildirimEkle(form.atanan, 'Görev Güncellendi', `"${form.baslik}" görevi size yeniden atandı.`, 'bilgi', '/gorevler')
