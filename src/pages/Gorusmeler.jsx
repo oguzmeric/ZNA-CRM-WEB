@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -10,7 +10,7 @@ import {
   History,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
-import { gorusmeleriGetir, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
+import { gorusmeleriGetir, gorusmelerIlkSayfa, gorusmeGetir, gorusmeEkle, gorusmeGuncelle, gorusmeSil as dbGorusmeSil, dosyaYukle, dosyaLinkiAl, dosyaSil } from '../services/gorusmeService'
 import { musterileriGetir } from '../services/musteriService'
 import { gorevleriGetir, gorevGuncelle } from '../services/gorevService'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
@@ -79,6 +79,10 @@ function Gorusmeler() {
   const [musteriler, setMusteriler] = useState([])
   const [tumLokasyonlar, setTumLokasyonlar] = useState([]) // tüm lokasyonlar — list satırları + form dropdown'ı için
   const [yukleniyor, setYukleniyor] = useState(true)
+  // Hibrit yükleme: ilk sayfa anında gelir, tam liste arkada iner
+  const [tamListeHazir, setTamListeHazir] = useState(false)
+  const [sunucuToplam, setSunucuToplam] = useState(0)
+  const tamListeHazirRef = useRef(false)
   const [form, setForm] = useState(bosForm)
   const [secilenFirma, setSecilenFirma] = useState('')
   const [goster, setGoster] = useState(false)
@@ -121,20 +125,40 @@ function Gorusmeler() {
 
   const gorusmeleriYenile = () => {
     gorusmeleriGetir()
-      .then(g => setGorusmeler(g || []))
+      .then(g => { tamListeHazirRef.current = true; setTamListeHazir(true); setGorusmeler(g || []) })
       .catch(err => console.error('[Gorusmeler yenile]', err))
   }
 
   useEffect(() => {
-    Promise.all([
-      gorusmeleriGetir(),
-      musterileriGetir(),
-      // Lokasyonları tek seferde çek — N+1 olmasın (sadece lookup alanları)
-      supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) => arrayToCamel(data || [])),
-    ])
-      .then(([g, m, l]) => { setGorusmeler(g || []); setMusteriler(m || []); setTumLokasyonlar(l || []) })
-      .catch(err => console.error('[Gorusmeler yükle]', err))
-      .finally(() => setYukleniyor(false))
+    let iptal = false
+    // AŞAMA 1 — hızlı ilk boyama: en yeni ~60 kayıt + toplam (~20KB, anında).
+    // Önbellek doluysa (SWR) tam liste zaten senkron gelir; ilk sayfayı ezmesin
+    // diye tam liste her zaman ikinci aşamada set edilir.
+    gorusmelerIlkSayfa()
+      .then(({ satirlar, toplam }) => {
+        if (iptal || tamListeHazirRef.current) return
+        setGorusmeler(satirlar)
+        setSunucuToplam(toplam)
+        setYukleniyor(false)
+      })
+      .catch(() => {})
+    // AŞAMA 2 — tam liste arka planda: gelince filtre/arama/sayaçlar tam kapsama geçer
+    gorusmeleriGetir()
+      .then(g => {
+        if (iptal) return
+        tamListeHazirRef.current = true
+        setGorusmeler(g || [])
+        setTamListeHazir(true)
+        setYukleniyor(false)
+      })
+      .catch(err => { console.error('[Gorusmeler yükle]', err); if (!iptal) setYukleniyor(false) })
+    // Form lookup'ları liste render'ını BEKLETMEZ
+    musterileriGetir().then(m => { if (!iptal) setMusteriler(m || []) }).catch(() => {})
+    supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id')
+      .then(({ data }) => { if (!iptal) setTumLokasyonlar(arrayToCamel(data || [])) })
+      .catch(() => {})
+    return () => { iptal = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Realtime: telefondan görüşme eklenince/değişince liste anında güncellensin
@@ -473,12 +497,14 @@ function Gorusmeler() {
   // Filtre değişince sayfa 1'e dön
   useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu, benimGorusmelerim])
 
-  const sayilari = {
+  // Tam liste arkada inerken sekme sayıları ilk sayfadan YANLIŞ görünmesin:
+  // toplam sunucu sayısından, durum kırılımları tam liste gelince gösterilir.
+  const sayilari = tamListeHazir ? {
     hepsi: bazGorusmeler.length,
     acik: bazGorusmeler.filter(g => g.durum === 'acik').length,
     beklemede: bazGorusmeler.filter(g => g.durum === 'beklemede').length,
     kapali: bazGorusmeler.filter(g => g.durum === 'kapali').length,
-  }
+  } : { hepsi: sunucuToplam, acik: '…', beklemede: '…', kapali: '…' }
 
   if (yukleniyor) {
     return <SkeletonList />
@@ -492,7 +518,8 @@ function Gorusmeler() {
         <div>
           <h1 className="t-h1">Görüşmeler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
-            <span className="tabular-nums">{bazGorusmeler.length}</span> aktivite
+            <span className="tabular-nums">{tamListeHazir ? bazGorusmeler.length : sunucuToplam}</span> aktivite
+            {!tamListeHazir && <span style={{ opacity: 0.6 }}> · tüm kayıtlar yükleniyor…</span>}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

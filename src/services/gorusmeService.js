@@ -5,6 +5,18 @@ import { cached, invalidate } from '../lib/cache'
 // Liste kolonları — takip_notu listede kolon olarak görünüyor; notlar/dosyalar sadece detayda
 const GORUSME_LISTE_KOLONLARI = 'id, gorusme_no, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, hazirlayan, olusturma_tarih, gorusen, takip_notu, gorusme_sonucu, muhatap_id, muhatap_ad, olusturan_id, musteri_id, irtibat_sekli, lokasyon_id, yalniz_yonetici'
 
+// İlk boyama için hızlı sayfa: yalnız en yeni N kayıt + toplam sayı (~20KB).
+// Tam liste (gorusmeleriGetir) arka planda inerken kullanıcı bunu görür.
+export const gorusmelerIlkSayfa = async (limit = 60) => {
+  const { data, count, error } = await supabase
+    .from('gorusmeler')
+    .select(GORUSME_LISTE_KOLONLARI, { count: 'exact' })
+    .order('olusturma_tarih', { ascending: false })
+    .range(0, limit - 1)
+  if (error) { console.error('gorusmelerIlkSayfa hata:', error.message); return { satirlar: [], toplam: 0 } }
+  return { satirlar: arrayToCamel(data || []), toplam: count || 0 }
+}
+
 export const gorusmeleriGetir = () => cached('gorusmeler:list', async () => {
   const hepsi = []
   const sayfa = 1000
