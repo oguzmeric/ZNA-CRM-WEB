@@ -20,7 +20,7 @@ import {
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
-  faturaDosyaUrl, faturaYetkisi, FATURA_TALEP_DURUM_META,
+  faturaDosyaUrl, irsaliyeKaydet, faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
 
 // Sayfa "Proforma Fatura" (2026-07-15 terim düzeltmesi: numarasız ön fatura =
@@ -213,11 +213,14 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
   const [faturaTarihi, setFaturaTarihi] = useState(talep.faturaTarihi || bugun())
   const [odemeSekli, setOdemeSekli] = useState(talep.odemeSekli || '')
   const [dosya, setDosya] = useState(null)
+  const [irsaliyeDosya, setIrsaliyeDosya] = useState(null)
   const [redAcik, setRedAcik] = useState(false)
   const [redNedeni, setRedNedeni] = useState('')
   const [mesgul, setMesgul] = useState(false)
   const [gonderAcik, setGonderAcik] = useState(false)
   const dosyaRef = useRef(null)
+  const irsaliyeRef = useRef(null)
+  const irsaliyeSonradanRef = useRef(null)
 
   const bekliyor = talep.durum === 'bekliyor'
   const meta = FATURA_TALEP_DURUM_META[talep.durum] || FATURA_TALEP_DURUM_META.bekliyor
@@ -225,7 +228,7 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
   const kaydet = async () => {
     setMesgul(true)
     try {
-      const sonuc = await faturayiKaydet({ talep, faturaNo, faturaTarihi, dosya, kullanici, odemeSekli })
+      const sonuc = await faturayiKaydet({ talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli })
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
       toast.success(`${faturaNo} kaydedildi — Satış Faturaları'na eklendi.`)
       onTamamlandi()
@@ -262,6 +265,28 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
     const url = await faturaDosyaUrl(talep.faturaPdfYol)
     if (!url) { toast.error('PDF açılamadı.'); return }
     window.open(url, '_blank', 'noopener')
+  }
+
+  const irsaliyeAc = async () => {
+    const url = await faturaDosyaUrl(talep.irsaliyeYol)
+    if (!url) { toast.error('İrsaliye açılamadı.'); return }
+    window.open(url, '_blank', 'noopener')
+  }
+
+  // Faturalandıktan sonra irsaliye ekleme/değiştirme
+  const irsaliyeSonradanYukle = async (e) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setMesgul(true)
+    try {
+      const sonuc = await irsaliyeKaydet(talep, f)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('İrsaliye kaydedildi.')
+      onTamamlandi()
+    } finally {
+      setMesgul(false)
+    }
   }
 
   const kunye = [
@@ -414,10 +439,21 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
                   {dosya ? dosya.name.slice(0, 24) : 'PDF Seç'}
                 </Button>
               </div>
+              <div>
+                <Label>İrsaliye (opsiyonel)</Label>
+                <input ref={irsaliyeRef} type="file" accept="application/pdf,image/*" style={{ display: 'none' }}
+                  onChange={e => setIrsaliyeDosya(e.target.files?.[0] || null)} />
+                <Button variant="secondary" style={{ width: '100%' }}
+                  iconLeft={<FileUp size={14} strokeWidth={1.5} />}
+                  onClick={() => irsaliyeRef.current?.click()}>
+                  {irsaliyeDosya ? irsaliyeDosya.name.slice(0, 24) : 'İrsaliye Seç'}
+                </Button>
+              </div>
             </div>
             <p className="t-caption" style={{ margin: '6px 0 0', color: 'var(--text-tertiary)' }}>
               Gerçek fatura muhasebe / e-arşiv sisteminde kesilir — buraya o faturanın
               PDF'ini yükleyin. CRM'de saklanır ve "Müşteriye Gönder" bu dosyayı iletir.
+              İrsaliye (PDF veya fotoğraf) de aynı kayda eklenir.
             </p>
 
             {redAcik && (
@@ -463,6 +499,25 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
               {talep.faturaPdfYol && (
                 <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={pdfAc}>
                   {talep.faturaPdfAd || 'PDF'}
+                </Button>
+              )}
+              <input ref={irsaliyeSonradanRef} type="file" accept="application/pdf,image/*" style={{ display: 'none' }}
+                onChange={irsaliyeSonradanYukle} />
+              {talep.irsaliyeYol ? (
+                <>
+                  <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={irsaliyeAc}>
+                    📄 {talep.irsaliyeAd?.slice(0, 20) || 'İrsaliye'}
+                  </Button>
+                  <Button variant="tertiary" size="sm" disabled={mesgul}
+                    onClick={() => irsaliyeSonradanRef.current?.click()}>
+                    İrsaliyeyi Değiştir
+                  </Button>
+                </>
+              ) : (
+                <Button variant="secondary" size="sm" disabled={mesgul}
+                  iconLeft={<FileUp size={13} strokeWidth={1.5} />}
+                  onClick={() => irsaliyeSonradanRef.current?.click()}>
+                  İrsaliye Yükle
                 </Button>
               )}
               {talep.satisId && (

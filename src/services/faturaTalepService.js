@@ -150,6 +150,31 @@ export const faturaDosyaYukle = async (talepId, file) => {
   return yol
 }
 
+// İrsaliye — aynı private bucket, PDF veya resim (tarama/foto) kabul
+export const irsaliyeDosyaYukle = async (talepId, file) => {
+  const uzanti = (file.name.split('.').pop() || 'pdf').toLowerCase()
+  const yol = `${talepId}/irsaliye-${Date.now()}.${uzanti}`
+  const { error } = await supabase.storage.from('fatura-belge').upload(yol, file)
+  if (error) { console.error('[irsaliyeDosyaYukle]', error.message); return null }
+  return yol
+}
+
+// Faturalandıktan SONRA da irsaliye eklenebilsin (mig 191)
+export const irsaliyeKaydet = async (talep, file) => {
+  const uygun = file.type === 'application/pdf' || file.type.startsWith('image/')
+  if (!uygun) return { _hata: 'İrsaliye PDF veya resim olmalıdır.' }
+  const yol = await irsaliyeDosyaYukle(talep.id, file)
+  if (!yol) return { _hata: 'İrsaliye yüklenemedi.' }
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ irsaliye_yol: yol, irsaliye_ad: file.name })
+    .eq('id', talep.id)
+    .select()
+    .single()
+  if (error) { console.error('[irsaliyeKaydet]', error.message); return { _hata: error.message } }
+  return toCamel(data)
+}
+
 // Bucket private — gösterim için imzalı URL şart
 export const faturaDosyaUrl = async (yol) => {
   if (!yol) return null
@@ -164,13 +189,17 @@ export const faturaDosyaUrl = async (yol) => {
  * Talebi gerçek faturaya dönüştürür: satislar kaydını AÇAR ve talebi kapatır.
  * Satış kaydı yalnız burada oluşur — talep aşamasında ciro/raporlara sızmasın.
  */
-export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kullanici, odemeSekli }) => {
+export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli }) => {
   const no = (faturaNo || '').trim()
   if (!no) return { _hata: 'Fatura numarası zorunludur.' }
 
   if (dosya) {
     const pdfMi = dosya.type === 'application/pdf' || /\.pdf$/i.test(dosya.name)
     if (!pdfMi) return { _hata: 'Fatura dosyası PDF olmalıdır.' }
+  }
+  if (irsaliyeDosya) {
+    const uygun = irsaliyeDosya.type === 'application/pdf' || irsaliyeDosya.type.startsWith('image/')
+    if (!uygun) return { _hata: 'İrsaliye PDF veya resim olmalıdır.' }
   }
 
   // Aynı fatura no ile başka kayıt var mı? (satislar.fatura_no unique)
@@ -184,6 +213,13 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kul
     pdfYol = await faturaDosyaYukle(talep.id, dosya)
     if (!pdfYol) return { _hata: 'PDF yüklenemedi.' }
     pdfAd = dosya.name
+  }
+  let irsYol = talep.irsaliyeYol || null
+  let irsAd = talep.irsaliyeAd || null
+  if (irsaliyeDosya) {
+    irsYol = await irsaliyeDosyaYukle(talep.id, irsaliyeDosya)
+    if (!irsYol) return { _hata: 'İrsaliye yüklenemedi.' }
+    irsAd = irsaliyeDosya.name
   }
 
   // satislar kaydı — talebin anlık görüntüsünden
@@ -241,6 +277,8 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, kul
       fatura_tarihi: faturaTarihi || new Date().toISOString().slice(0, 10),
       fatura_pdf_yol: pdfYol,
       fatura_pdf_ad: pdfAd,
+      irsaliye_yol: irsYol,
+      irsaliye_ad: irsAd,
       // Ödeme yöntemi kesim anında muhasebe tarafından belirlenebilir (servis
       // kaynaklı taleplerde teklif olmadığı için boş gelir).
       odeme_sekli: odemeSekli || talep.odemeSekli || null,
