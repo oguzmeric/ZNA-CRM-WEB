@@ -6,6 +6,7 @@ import { kargolariGetir } from '../services/kargoService'
 import { servisTalepleriniGetir } from '../services/servisService'
 import { gorevleriGetir } from '../services/gorevService'
 import { teklifleriGetir } from '../services/teklifService'
+import { gorusmeleriGetir } from '../services/gorusmeService'
 
 // Durum geçmişinden belirli bir duruma ne zaman ulaşıldığını bul
 function ilkUlasmaTarihi(durumGecmisi, hedefDurum) {
@@ -89,6 +90,7 @@ function Performans() {
   const [servisler, setServisler] = useState([])
   const [gorevler, setGorevler] = useState([])
   const [teklifler, setTeklifler] = useState([])
+  const [gorusmeler, setGorusmeler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
 
   // Filtreler
@@ -106,12 +108,14 @@ function Performans() {
       servisTalepleriniGetir(),
       gorevleriGetir(),
       teklifleriGetir(),
-    ]).then(([sla, k, s, g, t]) => {
+      gorusmeleriGetir().catch(() => []),
+    ]).then(([sla, k, s, g, t, gr]) => {
       setSlaKurallari(sla.filter(r => r.aktif))
       setKargolar(k || [])
       setServisler(s || [])
       setGorevler(g || [])
       setTeklifler(t || [])
+      setGorusmeler(gr || [])
       setYukleniyor(false)
     })
   }, [])
@@ -260,27 +264,55 @@ function Performans() {
     return modulFiltre === 'tumu' ? hepsi : hepsi.filter(i => i.modul === modulFiltre)
   }, [slaKurallari, kargolar, servisler, gorevler, teklifler, kullanicilar, modulFiltre, bas, bit])
 
+  // Kişi başına görüşme sayısı — gorusen "A, B" çok kişili olabilir; her kişi
+  // kendi hanesine sayılır. Ad eşleşmesi TR büyük/küçük harf duyarsız.
+  const gorusmeSayaci = useMemo(() => {
+    const adIndex = new Map() // norm(ad) → kullanıcı id
+    for (const u of (kullanicilar || [])) {
+      if (u.ad) adIndex.set(u.ad.trim().toLocaleLowerCase('tr'), String(u.id))
+    }
+    const sayac = new Map() // kullanıcı id → görüşme sayısı
+    for (const g of gorusmeler) {
+      if (!g.tarih) continue
+      const d = new Date(g.tarih)
+      if (d < bas || d > bit) continue
+      const kisiler = new Set(
+        String(g.gorusen || '').split(',').map(p => p.trim().toLocaleLowerCase('tr')).filter(Boolean)
+      )
+      for (const ad of kisiler) {
+        const uid = adIndex.get(ad)
+        if (uid) sayac.set(uid, (sayac.get(uid) || 0) + 1)
+      }
+    }
+    return sayac
+  }, [gorusmeler, kullanicilar, bas, bit])
+
   // Kullanıcı bazlı rapor
   const rapor = useMemo(() => {
     const map = new Map()
+    const bosSatir = (k) => ({ kullaniciId: k, zamaninda: 0, gec: 0, acik: 0, kritik: 0, toplam: 0, gorusmeSayisi: 0, isler: [] })
     isler.forEach(is => {
       const k = is.kullaniciId
-      if (!map.has(k)) {
-        map.set(k, { kullaniciId: k, zamaninda: 0, gec: 0, acik: 0, kritik: 0, toplam: 0, isler: [] })
-      }
+      if (!map.has(k)) map.set(k, bosSatir(k))
       const r = map.get(k)
       r[is.sonuc.durum]++
       r.toplam++
       r.isler.push(is)
     })
+    // Görüşme sayıları — SLA işi olmayan ama görüşme yapan kişi de tabloya girsin
+    for (const [uid, adet] of gorusmeSayaci.entries()) {
+      if (!map.has(uid)) map.set(uid, bosSatir(uid))
+      map.get(uid).gorusmeSayisi = adet
+    }
     for (const [, r] of map.entries()) {
       const tamamlanan = r.zamaninda + r.gec
       r.tamamlanan = tamamlanan
       r.skor = tamamlanan > 0 ? Math.round((r.zamaninda / tamamlanan) * 100) : null
     }
-    // Skor > iş sayısı sırası; skorsuzlar en altta
-    return [...map.values()].sort((a, b) => (b.skor ?? -1) - (a.skor ?? -1) || b.toplam - a.toplam)
-  }, [isler])
+    // Skor > iş sayısı > görüşme sayısı sırası; skorsuzlar en altta
+    return [...map.values()].sort((a, b) =>
+      (b.skor ?? -1) - (a.skor ?? -1) || b.toplam - a.toplam || b.gorusmeSayisi - a.gorusmeSayisi)
+  }, [isler, gorusmeSayaci])
 
   // Ekip geneli özet
   const ozet = useMemo(() => {
@@ -289,8 +321,14 @@ function Performans() {
     const tamamlanan = s.zamaninda + s.gec
     s.skor = tamamlanan > 0 ? Math.round((s.zamaninda / tamamlanan) * 100) : null
     s.tamamlanan = tamamlanan
+    // Aralıktaki toplam görüşme (kayıt bazında — çok kişili görüşme 1 sayılır)
+    s.gorusme = gorusmeler.filter(g => {
+      if (!g.tarih) return false
+      const d = new Date(g.tarih)
+      return d >= bas && d <= bit
+    }).length
     return s
-  }, [isler])
+  }, [isler, gorusmeler, bas, bit])
 
   if (yukleniyor) {
     return (
@@ -367,6 +405,7 @@ function Performans() {
                   {r?.tamamlanan > 0
                     ? <>Tamamlanan <strong className="text-gray-600">{r.tamamlanan}</strong> işin <strong className="text-gray-600">{r.zamaninda}</strong>'i zamanında bitirildi</>
                     : 'Bu aralıkta tamamlanan iş yok'}
+                  <span className="text-blue-500 font-medium"> · 📞 {r?.gorusmeSayisi || 0} görüşme</span>
                 </p>
               </div>
               <SkorRozet skor={r?.skor} buyuk />
@@ -572,7 +611,7 @@ function Performans() {
       </div>
 
       {/* Ekip özeti */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs text-gray-400 font-medium">EKİP SKORU</p>
           <p className="text-2xl font-bold mt-1" style={{ color: skorRengi(ozet.skor) }}>
@@ -582,6 +621,10 @@ function Performans() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs text-gray-400 font-medium">TOPLAM İŞ</p>
           <p className="text-2xl font-bold text-gray-700 mt-1">{ozet.toplam}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p className="text-xs font-medium text-blue-500">GÖRÜŞME</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{ozet.gorusme}</p>
         </div>
         {['zamaninda', 'gec', 'kritik'].map(key => (
           <div key={key} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
@@ -622,6 +665,7 @@ function Performans() {
                       <span className="font-semibold text-gray-800 text-sm">{kullanici?.ad || 'Bilinmiyor'}</span>
                       <span className="text-xs text-gray-400">
                         {r.toplam} iş
+                        <span className="text-blue-500 font-medium"> · 📞 {r.gorusmeSayisi} görüşme</span>
                         {r.gec > 0 && <span className="text-red-500 font-medium"> · {r.gec} geç</span>}
                         {r.kritik > 0 && <span className="text-amber-500 font-medium"> · {r.kritik} kritik ⚠</span>}
                         {r.acik > 0 && <span> · {r.acik} açık</span>}
