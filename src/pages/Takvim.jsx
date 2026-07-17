@@ -52,6 +52,12 @@ const haftaBasi = (d) => {
   return c
 }
 
+// TAKVİM = KİŞİSEL GÖRÜNÜM: herkes (admin dahil) yalnız kendine ait kayıtları
+// görür. Şirket geneli listeler zaten kendi menülerinde var.
+
+// TR harf duyarsız isim karşılaştırma ("OĞUZ MERİÇ" ≡ "Oğuz Meriç")
+const adNorm = (s) => String(s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+
 // Görev bu kullanıcıya mı ait? (tekli atanan — eski 'atanan' id string'i,
 // yeni 'atanan_id' — veya ekip çoklu ataması)
 function gorevBenimMi(g, kullaniciId) {
@@ -63,10 +69,41 @@ function gorevBenimMi(g, kullaniciId) {
   return false
 }
 
-function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, hariciEvs, kullaniciId) {
+// Görüşme: oluşturan benim, ya da görüşen/hazırlayan alanında adım geçiyor
+// (gorusen virgüllü çoklu isim olabilir: "OĞUZ MERİÇ, Sadık Baloğlu")
+function gorusmeBenimMi(g, kullanici) {
+  if (!kullanici?.id) return false
+  if (String(g.olusturanId ?? '') === String(kullanici.id)) return true
+  const benimAd = adNorm(kullanici.ad)
+  if (!benimAd) return false
+  const gorusenler = String(g.gorusen || '').split(/[,;/]+/).map(adNorm)
+  if (gorusenler.includes(benimAd)) return true
+  if (adNorm(g.hazirlayan) === benimAd) return true
+  return false
+}
+
+// Servis: bana atanmış olanlar
+function servisBenimMi(s, kullanici) {
+  if (!kullanici?.id) return false
+  if (String(s.atananKullaniciId ?? '') === String(kullanici.id)) return true
+  return adNorm(s.atananKullaniciAd) === adNorm(kullanici.ad) && !!s.atananKullaniciAd
+}
+
+// Kargo: oluşturan benim veya ilgili kullanıcılar listesindeyim
+function kargoBenimMi(k, kullanici) {
+  if (!kullanici?.id) return false
+  const id = String(kullanici.id)
+  if (String(k.olusturanId ?? '') === id) return true
+  if (Array.isArray(k.ilgiliKullaniciIds) && k.ilgiliKullaniciIds.map(String).includes(id)) return true
+  return false
+}
+
+function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, hariciEvs, kullanici) {
+  const kullaniciId = kullanici?.id
   const evs = []
   ;(gorusmeler || []).forEach(g => {
     if (!g.tarih) return
+    if (!gorusmeBenimMi(g, kullanici)) return
     evs.push({ id: `g${g.id}`, tip: 'gorusme', baslik: g.konu || 'Görüşme', alt: g.firmaAd || g.muhatapAd || '', tarih: g.tarih.slice(0,10), link: `/gorusmeler/${g.id}` })
   })
   // Takvimde yalnız KENDİ görevlerin görünür (atanan veya ekipte olduğun) —
@@ -79,10 +116,12 @@ function etkinlikleriDonustur(gorusmeler, gorevler, servisTalepleri, kargolar, h
   ;(servisTalepleri || []).forEach(s => {
     const t = (s.tarih || s.olusturmaTarihi || '').slice(0,10)
     if (!t) return
+    if (!servisBenimMi(s, kullanici)) return
     evs.push({ id: `s${s.id}`, tip: 'servis', baslik: s.konu || 'Servis Talebi', alt: s.musteriAd || '', tarih: t, link: `/servis-talepleri/${s.id}` })
   })
   ;(kargolar || []).forEach(k => {
     if (!k.tahminiTeslim) return
+    if (!kargoBenimMi(k, kullanici)) return
     evs.push({ id: `k${k.id}`, tip: 'kargo', baslik: k.kargoNo || 'Kargo', alt: k.alici?.ad || '', tarih: k.tahminiTeslim.slice(0,10), link: `/kargolar/${k.id}` })
   })
   ;(hariciEvs || []).forEach(h => {
@@ -164,7 +203,7 @@ export default function Takvim() {
         kargolariGetir(),
         kullanici?.id ? hariciEtkinlikleriGetir(kullanici.id, baslangic, bitis) : Promise.resolve([]),
       ])
-      setEvs(etkinlikleriDonustur(g, gr, s, k, h, kullanici?.id))
+      setEvs(etkinlikleriDonustur(g, gr, s, k, h, kullanici))
     } catch (e) {
       console.warn('[Takvim yükle]', e?.message)
     } finally {
