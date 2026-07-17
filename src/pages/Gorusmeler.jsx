@@ -435,11 +435,27 @@ function Gorusmeler() {
     ? bazGorusmeler0.filter(g => banaAitGorusme(g.gorusen))
     : bazGorusmeler0
 
-  const gorusenler = [...new Set(bazGorusmeler.map(g => g.gorusen).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+  // Çok kişili görüşmelerde gorusen "A, B" tek metin — filtre KİŞİ bazlı olsun:
+  // virgülle ayır + Türkçe büyük/küçük harf farklarını tekilleştir (SADIK/Sadık tek kayıt)
+  const gorusenler = (() => {
+    const map = new Map() // norm → ilk görülen yazım
+    for (const g of bazGorusmeler) {
+      for (const parca of String(g.gorusen || '').split(',')) {
+        const ad = parca.trim()
+        if (!ad) continue
+        const k = ad.toLocaleLowerCase('tr')
+        if (!map.has(k)) map.set(k, ad)
+      }
+    }
+    return [...map.values()].sort((a, b) => a.localeCompare(b, 'tr'))
+  })()
+  const gorusenIceriyor = (g, ad) => String(g.gorusen || '')
+    .split(',')
+    .some(p => p.trim().toLocaleLowerCase('tr') === ad.toLocaleLowerCase('tr'))
 
   const gorunenGorusmeler = [...bazGorusmeler]
     .filter(g => filtre === 'hepsi' || g.durum === filtre)
-    .filter(g => gorusenFiltre === '' || g.gorusen === gorusenFiltre)
+    .filter(g => gorusenFiltre === '' || gorusenIceriyor(g, gorusenFiltre))
     .filter(g => konuFiltre === '' || g.konu === konuFiltre)
     .filter(g => trContains(
       `${g.firmaAdi} ${g.konu} ${g.gorusen} ${g.aktNo} ${g.gorusmeNo || ''} ${g.muhatapAd || ''} ${g.takipNotu || ''} ${g.gorusmeSonucu || ''}`,
