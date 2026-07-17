@@ -658,29 +658,33 @@ function MainLayout({ children }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: 8, width: '100%',
-                    padding: entryIdx === 0 ? '2px 12px 6px' : '14px 12px 6px',
+                    padding: entryIdx === 0 ? '2px 12px 4px' : '18px 12px 4px',
                     background: 'transparent', border: 'none',
-                    color: 'var(--text-on-dark-muted)',
+                    // Başlık = küçük silik ETİKET; alt öğeler (14px, parlak) net ayrışsın
+                    color: 'rgba(148, 163, 184, 0.75)',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                   title={entry.kapali ? 'Grubu aç' : 'Grubu kapat'}
                 >
                   <span style={{
-                    font: '700 12px/16px var(--font-sans)',
+                    display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1,
+                    font: '800 10.5px/14px var(--font-sans)',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    borderBottom: '1px solid rgba(255,255,255,0.12)',
-                    paddingBottom: 5,
-                    flex: 1,
+                    letterSpacing: '0.16em',
+                    paddingBottom: 3,
                   }}>
+                    <span style={{
+                      width: 3, height: 10, borderRadius: 2, flexShrink: 0,
+                      background: 'var(--brand-primary)', opacity: 0.7,
+                    }} />
                     {entry.baslik}
+                    <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
                   </span>
                   <ChevronRight
-                    size={12}
+                    size={11}
                     strokeWidth={2}
                     style={{
-                      color: 'var(--text-on-dark-muted)',
-                      opacity: 0.7,
+                      color: 'rgba(148, 163, 184, 0.6)',
                       transform: entry.kapali ? 'rotate(0deg)' : 'rotate(90deg)',
                       transition: 'transform 160ms ease',
                       flexShrink: 0,
