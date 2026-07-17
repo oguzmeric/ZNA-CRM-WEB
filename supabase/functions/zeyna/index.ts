@@ -268,7 +268,7 @@ const TOOLS = [
 
 // ─── Tool execution — DB sorguları ───────────────────────────────────────
 
-interface ToolContext { kullaniciId: number; kullaniciAd: string }
+interface ToolContext { kullaniciId: number; kullaniciAd: string; rolAdmin: boolean }
 
 async function toolCalistir(
   ad: string,
@@ -366,6 +366,9 @@ async function toolCalistir(
         .select('id, akt_no, tarih, saat, firma_adi, musteri_adi, konu, tip, durum, gorusen, olusturan_id, irtibat_sekli')
         .order('tarih', { ascending: false })
         .limit(limit)
+      // "Sadece yönetici" işaretli görüşmeler (mig 188) — service role RLS'i
+      // bypass ettiği için burada elle süzülür; admin olmayan göremez
+      if (!ctx.rolAdmin) q = q.eq('yalniz_yonetici', false)
       if (girdi.musteri_id) q = q.eq('musteri_id', Number(girdi.musteri_id))
       if (girdi.firma) q = q.ilike('firma_adi', `%${girdi.firma}%`)
       if (girdi.olusturan_id) q = q.eq('olusturan_id', Number(girdi.olusturan_id))
@@ -385,7 +388,11 @@ async function toolCalistir(
         supa.from('musteriler').select('id, firma, ad, soyad, sehir, telefon, email, sektor').eq('id', mid).maybeSingle(),
         supa.from('servis_talepleri').select('id, talep_no, konu, durum, olusturma_tarihi', { count: 'exact' }).eq('musteri_id', mid).order('olusturma_tarihi', { ascending: false }).limit(5),
         supa.from('teklifler').select('id, teklif_no, konu, durum, genel_toplam, para_birimi, tarih', { count: 'exact' }).eq('musteri_id', mid).order('tarih', { ascending: false }).limit(5),
-        supa.from('gorusmeler').select('id, akt_no, tarih, konu, tip, gorusen', { count: 'exact' }).eq('musteri_id', mid).order('tarih', { ascending: false }).limit(5),
+        (() => {
+          let g = supa.from('gorusmeler').select('id, akt_no, tarih, konu, tip, gorusen', { count: 'exact' }).eq('musteri_id', mid)
+          if (!ctx.rolAdmin) g = g.eq('yalniz_yonetici', false)  // mig 188 gizlilik
+          return g.order('tarih', { ascending: false }).limit(5)
+        })(),
         supa.from('satislar').select('id, fatura_no, fatura_tarihi, genel_toplam, durum, para_birimi', { count: 'exact' }).ilike('firma_adi', '%').order('fatura_tarihi', { ascending: false }).limit(5),
         supa.from('trassir_lisanslar').select('id, lisans_no, lisans_turu, bitis_tarihi, durum, kamera_sayisi').eq('musteri_id', mid),
       ])
@@ -500,6 +507,7 @@ async function toolCalistir(
       switch (tip) {
         case 'en_cok_ziyaret_edilen_musteri': {
           let q = supa.from('gorusmeler').select('musteri_id, firma_adi')
+          if (!ctx.rolAdmin) q = q.eq('yalniz_yonetici', false)  // mig 188 gizlilik
           if (baslangic) q = q.gte('tarih', String(baslangic))
           if (bitis) q = q.lte('tarih', String(bitis))
           const { data, error } = await q.limit(10000)
@@ -529,6 +537,7 @@ async function toolCalistir(
         }
         case 'en_aktif_personel': {
           let q = supa.from('gorusmeler').select('olusturan_id, gorusen')
+          if (!ctx.rolAdmin) q = q.eq('yalniz_yonetici', false)  // mig 188 gizlilik
           if (baslangic) q = q.gte('tarih', String(baslangic))
           if (bitis) q = q.lte('tarih', String(bitis))
           const { data, error } = await q.limit(10000)
@@ -617,13 +626,14 @@ async function kullaniciCek(authHeader: string): Promise<(ToolContext & { kalanS
     if (!ures?.user) return null
     const { data: krow } = await supa
       .from('kullanicilar')
-      .select('id, ad, tip, zeyna_kalan_soru')
+      .select('id, ad, tip, rol, zeyna_kalan_soru')
       .eq('auth_id', ures.user.id)
       .maybeSingle()
     if (!krow || krow.tip === 'musteri') return null
     return {
       kullaniciId: krow.id,
       kullaniciAd: krow.ad,
+      rolAdmin: krow.rol === 'admin',
       kalanSoru: Number(krow.zeyna_kalan_soru ?? 0),
     }
   } catch { return null }

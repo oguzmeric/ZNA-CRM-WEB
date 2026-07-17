@@ -267,6 +267,7 @@ function GorusmeDetay() {
                 </span>
               )}
               {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
+              {gorusme.yalnizYonetici && <Badge tone="kayip">🔒 Yalnız Yönetici</Badge>}
             </div>
             <h1 className="t-h1">{gorusme.firmaAdi}</h1>
             {gorusme.muhatapAd && (
@@ -276,6 +277,24 @@ function GorusmeDetay() {
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* Sadece Yönetici Görsün — RLS mig 188: personel bu kaydı DB'den hiç alamaz */}
+            {kullanici?.rol === 'admin' && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const yeni = !gorusme.yalnizYonetici
+                  await gorusmeGuncelle({ yalnizYonetici: yeni })
+                  toast.success(yeni
+                    ? 'Görüşme gizlendi — artık yalnız yöneticiler görebilir.'
+                    : 'Görüşme tüm personele açıldı.')
+                }}
+                title={gorusme.yalnizYonetici
+                  ? 'Şu an yalnız yöneticiler görüyor — tıklarsan herkese açılır'
+                  : 'Bu görüşmeyi personelden gizle (yalnız yöneticiler görsün)'}
+              >
+                {gorusme.yalnizYonetici ? '🔒 Gizli — Aç' : '🔒 Sadece Yönetici'}
+              </Button>
+            )}
             {(() => {
               const mevcutHat = gorusmeHatirlatmasi(gorusme.id)
               if (mevcutHat) {

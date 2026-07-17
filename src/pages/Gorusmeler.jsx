@@ -60,7 +60,7 @@ const durumlar = [
 const bosForm = {
   firmaAdi: '', musteriId: '', muhatapId: '', muhatapAd: '',
   konu: '', manuelKonu: '', irtibatSekli: '',
-  gorusen: '', takipNotu: '', gorusmeSonucu: '', durum: 'acik',
+  gorusen: '', takipNotu: '', gorusmeSonucu: '', durum: 'acik', yalnizYonetici: false,
   tarih: new Date().toISOString().split('T')[0],
   lokasyonId: '',
 }
@@ -266,6 +266,7 @@ function Gorusmeler() {
       gorusen: g.gorusen,
       takipNotu: g.takipNotu,
       gorusmeSonucu: g.gorusmeSonucu || '',
+      yalnizYonetici: !!g.yalnizYonetici,
       durum: g.durum,
       tarih: g.tarih,
       lokasyonId: g.lokasyonId || '',
@@ -763,6 +764,18 @@ function Gorusmeler() {
             />
           </div>
 
+          {/* Sadece yönetici görsün — RLS mig 188; yalnız admin işaretleyebilir */}
+          {kullanici?.rol === 'admin' && (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                checked={!!form.yalnizYonetici}
+                onChange={e => setForm({ ...form, yalnizYonetici: e.target.checked })}
+              />
+              🔒 Sadece yöneticiler görsün (personelden gizle)
+            </label>
+          )}
+
           {/* Dosyalar */}
           <div style={{ marginBottom: 16 }}>
             <Label>
@@ -1068,6 +1081,9 @@ function Gorusmeler() {
                         }}>
                           {g.firmaAdi}
                         </span>
+                        {g.yalnizYonetici && (
+                          <span title="Yalnız yöneticiler görür" style={{ flexShrink: 0, fontSize: 12 }}>🔒</span>
+                        )}
                         {(g.dosyalar?.length || 0) > 0 && (
                           <span title={`${g.dosyalar.length} dosya`} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 2,
