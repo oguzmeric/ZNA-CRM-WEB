@@ -286,6 +286,9 @@ export default function KullanilanMalzemeler() {
         ))}
       </div>
 
+      {/* Yönetici özeti (madde 23.15) — yalnız admin */}
+      {adminMi && <YoneticiOzeti hareketler={hareketler} sekmeyeGit={(esik) => { setSekme('sure'); setSureEsik(esik) }} />}
+
       {/* Sekmeler */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border-default)', overflowX: 'auto' }}>
         {SEKMELER.map(s => (
@@ -462,6 +465,132 @@ export default function KullanilanMalzemeler() {
         />
       )}
     </div>
+  )
+}
+
+// ── Yönetici özeti (madde 23.15) — kapalı başlar, tıklayınca açılır ─────────
+function YoneticiOzeti({ hareketler, sekmeyeGit }) {
+  const [acik, setAcik] = useState(false)
+
+  const ozet = useMemo(() => {
+    const bekleyenler = hareketler.filter(h => BEKLEYEN_DURUMLAR.includes(h.faturaDurumu))
+    const kesilenler = hareketler.filter(h => h.faturaDurumu === 'faturalandi')
+    const tutarToplam = (liste, fn) => {
+      const t = {}
+      for (const h of liste) {
+        const pb = h.paraBirimi || 'TL'
+        t[pb] = (t[pb] || 0) + fn(h)
+      }
+      return t
+    }
+    const kesilenTutar = (h) => Number(h.faturalananMiktar || 0) * Number(h.birimFiyat || 0)
+
+    // Kaynak kırılımı (bekleyenler)
+    const kaynakKirilim = {}
+    for (const h of bekleyenler) {
+      if (!kaynakKirilim[h.kaynak]) kaynakKirilim[h.kaynak] = { sayi: 0, tutarlar: {} }
+      kaynakKirilim[h.kaynak].sayi++
+      const pb = h.paraBirimi || 'TL'
+      kaynakKirilim[h.kaynak].tutarlar[pb] = (kaynakKirilim[h.kaynak].tutarlar[pb] || 0) + bekleyenTutar(h)
+    }
+
+    // En çok bekleten müşteriler (pb bazlı toplamların TL+döviz karışımı — sıralama kaba, gösterim pb'li)
+    const musteriler = new Map()
+    for (const h of bekleyenler) {
+      const ad = h.musteriAd || 'Bilinmeyen'
+      if (!musteriler.has(ad)) musteriler.set(ad, { tutarlar: {}, sayi: 0 })
+      const m = musteriler.get(ad)
+      m.sayi++
+      const pb = h.paraBirimi || 'TL'
+      m.tutarlar[pb] = (m.tutarlar[pb] || 0) + bekleyenTutar(h)
+    }
+    const enCokBekletenler = [...musteriler.entries()]
+      .sort((a, b) => Object.values(b[1].tutarlar).reduce((x, y) => x + y, 0) - Object.values(a[1].tutarlar).reduce((x, y) => x + y, 0))
+      .slice(0, 5)
+
+    const enEskiler = [...bekleyenler]
+      .sort((a, b) => new Date(a.teslimTarihi || a.olusturmaTarih) - new Date(b.teslimTarihi || b.olusturmaTarih))
+      .slice(0, 5)
+
+    return {
+      bekleyenTutarlar: tutarToplam(bekleyenler, bekleyenTutar),
+      kesilenTutarlar: tutarToplam(kesilenler, kesilenTutar),
+      kaynakKirilim,
+      g7: bekleyenler.filter(h => bekleyenGun(h) >= 7).length,
+      g15: bekleyenler.filter(h => bekleyenGun(h) >= 15).length,
+      g30: bekleyenler.filter(h => bekleyenGun(h) >= 30).length,
+      proformaBekleyen: hareketler.filter(h =>
+        ['proforma_hazirlandi', 'proforma_gonderildi', 'musteri_onayi_bekleniyor'].includes(h.faturaDurumu)).length,
+      enCokBekletenler, enEskiler,
+    }
+  }, [hareketler])
+
+  const tutarYaz = (t) => Object.entries(t).filter(([, v]) => v > 0)
+    .map(([pb, v]) => fmtPara(v, pb)).join(' + ') || '₺ 0,00'
+
+  const kutu = { padding: '10px 14px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }
+
+  return (
+    <Card padding={0} style={{ marginBottom: 16, overflow: 'hidden' }}>
+      <div
+        onClick={() => setAcik(a => !a)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer' }}
+      >
+        {acik ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>📊 Yönetici Özeti</span>
+        <span className="t-caption" style={{ marginLeft: 'auto' }}>
+          Bekleyen: <b style={{ color: '#f59e0b' }}>{tutarYaz(ozet.bekleyenTutarlar)}</b> · Kesilen: <b style={{ color: '#10b981' }}>{tutarYaz(ozet.kesilenTutarlar)}</b>
+        </span>
+      </div>
+      {acik && (
+        <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+          <div style={kutu}>
+            <div className="t-caption" style={{ fontWeight: 600, marginBottom: 6 }}>Gecikme Eşikleri</div>
+            {[[7, ozet.g7], [15, ozet.g15], [30, ozet.g30]].map(([esik, sayi]) => (
+              <div key={esik} onClick={() => sayi > 0 && sekmeyeGit(esik)}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', cursor: sayi > 0 ? 'pointer' : 'default', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                <span>{esik}+ gün bekleyen</span>
+                <b style={{ color: sayi > 0 ? (esik >= 15 ? '#dc2626' : '#f59e0b') : 'var(--text-tertiary)' }}>{sayi}</b>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+              <span>Proforma açık (fatura yok)</span>
+              <b style={{ color: ozet.proformaBekleyen > 0 ? '#f97316' : 'var(--text-tertiary)' }}>{ozet.proformaBekleyen}</b>
+            </div>
+          </div>
+          <div style={kutu}>
+            <div className="t-caption" style={{ fontWeight: 600, marginBottom: 6 }}>Kaynak Kırılımı (bekleyen)</div>
+            {Object.entries(ozet.kaynakKirilim).map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                <span>{KAYNAK_META[k]?.isim || k} ({v.sayi})</span>
+                <b>{tutarYaz(v.tutarlar)}</b>
+              </div>
+            ))}
+            {!Object.keys(ozet.kaynakKirilim).length && <div className="t-caption">Bekleyen yok 🎉</div>}
+          </div>
+          <div style={kutu}>
+            <div className="t-caption" style={{ fontWeight: 600, marginBottom: 6 }}>En Çok Bekleten Müşteriler</div>
+            {ozet.enCokBekletenler.map(([ad, v]) => (
+              <div key={ad} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '3px 0', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad} ({v.sayi})</span>
+                <b style={{ whiteSpace: 'nowrap' }}>{tutarYaz(v.tutarlar)}</b>
+              </div>
+            ))}
+            {!ozet.enCokBekletenler.length && <div className="t-caption">Bekleyen yok 🎉</div>}
+          </div>
+          <div style={kutu}>
+            <div className="t-caption" style={{ fontWeight: 600, marginBottom: 6 }}>En Eski Faturasız Hareketler</div>
+            {ozet.enEskiler.map(h => (
+              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '3px 0', font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.musteriAd} — {h.urunAd}</span>
+                <b style={{ whiteSpace: 'nowrap', color: bekleyenGun(h) >= 15 ? '#dc2626' : '#f59e0b' }}>{bekleyenGun(h)} gün</b>
+              </div>
+            ))}
+            {!ozet.enEskiler.length && <div className="t-caption">Bekleyen yok 🎉</div>}
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }
 
