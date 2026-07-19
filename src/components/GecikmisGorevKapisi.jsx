@@ -2,7 +2,7 @@
 // olan kullanıcı, her görev için sebep + açıklama + YENİ bitiş tarihi girmeden
 // (ya da görevi tamamlamadan) CRM'i kullanamaz. Amaç: "tarih girilip unutuluyor"
 // döngüsünü kırmak (2026-07-19 talebi). Girişte bir kez kontrol edilir.
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -42,23 +42,42 @@ export default function GecikmisGorevKapisi() {
   const [yeniTarih, setYeniTarih] = useState('')
   const [mesgul, setMesgul] = useState(false)
 
-  // Girişte bir kez tara — kendime atanmış, tamamlanmamış, tarihi geçmiş görevler
+  // Girişte tara + sekmeye her dönüşte yeniden tara (10 dk kısıtlı) —
+  // sekme günlerce açık kalsa da gün dönünce gecikmişe düşen görev yakalanır
+  const sonTaramaRef = useRef(0)
   useEffect(() => {
     if (!kullanici?.id) { setGecikmisler(null); return }
     let iptal = false
-    gorevleriGetir()
-      .then(liste => {
-        if (iptal) return
-        const bugun = bugunStr()
-        const geciken = (liste || [])
-          .filter(g => g.durum !== 'tamamlandi')
-          .filter(g => g.sonTarih && g.sonTarih.slice(0, 10) < bugun)
-          .filter(g => benimMi(g, kullanici.id))
-          .sort((a, b) => (a.sonTarih || '').localeCompare(b.sonTarih || ''))
-        setGecikmisler(geciken)
-      })
-      .catch(() => { if (!iptal) setGecikmisler([]) })
-    return () => { iptal = true }
+
+    const tara = () => {
+      sonTaramaRef.current = Date.now()
+      gorevleriGetir()
+        .then(liste => {
+          if (iptal) return
+          const bugun = bugunStr()
+          const geciken = (liste || [])
+            .filter(g => g.durum !== 'tamamlandi')
+            .filter(g => g.sonTarih && g.sonTarih.slice(0, 10) < bugun)
+            .filter(g => benimMi(g, kullanici.id))
+            .sort((a, b) => (a.sonTarih || '').localeCompare(b.sonTarih || ''))
+          setGecikmisler(geciken)
+        })
+        .catch(() => { if (!iptal) setGecikmisler(prev => prev ?? []) })
+    }
+
+    tara()
+    const odaklaninca = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - sonTaramaRef.current < 10 * 60_000) return
+      tara()
+    }
+    document.addEventListener('visibilitychange', odaklaninca)
+    window.addEventListener('focus', odaklaninca)
+    return () => {
+      iptal = true
+      document.removeEventListener('visibilitychange', odaklaninca)
+      window.removeEventListener('focus', odaklaninca)
+    }
   }, [kullanici?.id])
 
   const aktif = useMemo(() => (gecikmisler && gecikmisler.length > 0 ? gecikmisler[0] : null), [gecikmisler])
