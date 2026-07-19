@@ -665,8 +665,9 @@ function MainLayout({ children }) {
                     gap: 8, width: '100%',
                     padding: entryIdx === 0 ? '2px 12px 4px' : '18px 12px 4px',
                     background: 'transparent', border: 'none',
-                    // Başlık = küçük silik ETİKET; alt öğeler (14px, parlak) net ayrışsın
-                    color: 'rgba(148, 163, 184, 0.75)',
+                    // Başlık etiketi bir tık belirgin (2026-07-19 istek): daha açık renk,
+                    // tam opak marka çubuğu, görünür ayraç — ama alt öğelerden yine ayrışır
+                    color: '#cbd5e1',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                   title={entry.kapali ? 'Grubu aç' : 'Grubu kapat'}
@@ -679,17 +680,17 @@ function MainLayout({ children }) {
                     paddingBottom: 3,
                   }}>
                     <span style={{
-                      width: 3, height: 13, borderRadius: 2, flexShrink: 0,
-                      background: 'var(--brand-primary)', opacity: 0.7,
+                      width: 3.5, height: 14, borderRadius: 2, flexShrink: 0,
+                      background: 'var(--brand-primary)',
                     }} />
                     {entry.baslik}
-                    <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                    <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.14)' }} />
                   </span>
                   <ChevronRight
-                    size={11}
-                    strokeWidth={2}
+                    size={12}
+                    strokeWidth={2.2}
                     style={{
-                      color: 'rgba(148, 163, 184, 0.6)',
+                      color: 'rgba(203, 213, 225, 0.8)',
                       transform: entry.kapali ? 'rotate(0deg)' : 'rotate(90deg)',
                       transition: 'transform 160ms ease',
                       flexShrink: 0,
