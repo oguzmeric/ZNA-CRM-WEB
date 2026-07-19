@@ -10,7 +10,12 @@ import {
   Eraser, Undo2, Redo2, Trash2, Check, BrickWall, Cable, MapPin,
   Camera, Video, HardDrive, Server, Zap, Globe, RotateCw, LogIn,
 } from 'lucide-react'
-import { KROKI_SEMBOLLERI, krokiSembolBilgi } from '../../services/kesifService'
+import { KROKI_SEMBOLLERI, krokiSembolBilgi, KROKI_SEMBOL_PATH } from '../../services/kesifService'
+
+// Sembol path'lerini bir kez Path2D'ye çevir (her karede yeniden kurmayalım)
+const SEMBOL_PATH2D = Object.fromEntries(
+  Object.entries(KROKI_SEMBOL_PATH).map(([k, d]) => [k, new Path2D(d)]),
+)
 
 // Sembol ikon adı (Feather) → lucide bileşeni — palet çipi gerçek mini görselle
 const SEMBOL_IKON = {
@@ -97,21 +102,41 @@ function sekilCiz(ctx, s, olcek = 1) {
     ctx.setLineDash([])
   } else if (s.tip === 'sembol') {
     const b = krokiSembolBilgi(s.sembol)
-    const r = (s.boyut || 26) * olcek
-    ctx.beginPath()
-    ctx.arc(P(s.x), P(s.y), r, 0, Math.PI * 2)
-    ctx.fillStyle = b.renk
-    ctx.fill()
+    const r = (s.boyut || 28) * olcek
+    const cx = P(s.x), cy = P(s.y)
+    // renkli daire + halka (kaleme bağlıysa sarı)
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = b.renk; ctx.fill()
     ctx.lineWidth = 2.5 * olcek
-    ctx.strokeStyle = s.kalemId ? '#facc15' : '#ffffff' // kaleme bağlıysa sarı halka
+    ctx.strokeStyle = s.kalemId ? '#facc15' : '#ffffff'
     ctx.stroke()
+    // GERÇEK İKON — lucide 24×24 path, beyaz stroke, daire merkezine ölçekli
+    const p2d = SEMBOL_PATH2D[s.sembol]
+    if (p2d) {
+      const sc = (r * 1.35) / 24
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(sc, sc)
+      ctx.translate(-12, -12)
+      ctx.strokeStyle = '#ffffff'
+      ctx.fillStyle = 'transparent'
+      ctx.lineWidth = 2
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.stroke(p2d)
+      ctx.restore()
+    }
+    // numara rozeti — sağ-alt köşe (ikon tipini belirtir, K/N ayrımı ikonla)
+    const nr = r * 0.6
+    const nx = cx + r * 0.72, ny = cy + r * 0.72
+    ctx.beginPath(); ctx.arc(nx, ny, nr, 0, Math.PI * 2)
+    ctx.fillStyle = '#0f172a'; ctx.fill()
+    ctx.lineWidth = 1.5 * olcek; ctx.strokeStyle = '#ffffff'; ctx.stroke()
     ctx.fillStyle = '#ffffff'
-    ctx.font = `800 ${r * 0.78}px system-ui, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`${b.kod}${s.no}`, P(s.x), P(s.y) + r * 0.04)
-    ctx.textAlign = 'start'
-    ctx.textBaseline = 'alphabetic'
+    ctx.font = `800 ${nr * 1.15}px system-ui, sans-serif`
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(String(s.no), nx, ny + nr * 0.05)
+    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'
   } else if (s.tip === 'balon') {
     const r = (s.yaricap || 22) * olcek
     ctx.beginPath()
@@ -260,7 +285,7 @@ export default function KesifFotoCizim({
         }
       }
       const no = sekiller.filter(s => s.tip === 'sembol' && s.sembol === secSembol).length + 1
-      degistir([...sekiller, { tip: 'sembol', sembol: secSembol, x, y, no, boyut: 26 }])
+      degistir([...sekiller, { tip: 'sembol', sembol: secSembol, x, y, no, boyut: 28 }])
       return
     }
     if (arac === 'kalem' || arac === 'kablo') setTaslak({ tip: arac, noktalar: [{ x, y }], renk, kalinlik })
