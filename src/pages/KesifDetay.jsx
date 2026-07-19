@@ -15,10 +15,12 @@ import {
   kesifGetir, kesifGuncelle, kesifSil,
   kesifKalemleriGetir, kesifKalemEkle, kesifKalemSil,
   kesifFotolariGetir, kesifFotoUrlleri, kesifFotoEtiketBilgi,
+  kesifKrokileriGetir, krokiSembolBilgi,
   KESIF_KATEGORILERI, KESIF_DURUMLARI,
   KESIF_ONCELIKLERI, KESIF_TURLERI,
 } from '../services/kesifService'
 import KesifFotoBolumu from '../components/kesif/KesifFotoBolumu'
+import KesifKrokiBolumu from '../components/kesif/KesifKrokiBolumu'
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import { gorevEkle } from '../services/gorevService'
@@ -50,6 +52,7 @@ export default function KesifDetay() {
   const [kesif, setKesif] = useState(null)
   const [kalemler, setKalemler] = useState([])
   const [fotolar, setFotolar] = useState([])
+  const [krokiler, setKrokiler] = useState([])
   const [fotoUrlMap, setFotoUrlMap] = useState(new Map())
   const [stokUrunler, setStokUrunler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -63,18 +66,23 @@ export default function KesifDetay() {
   const yukle = async () => {
     setYukleniyor(true)
     try {
-      const [k, kal, fot, stok] = await Promise.all([
+      const [k, kal, fot, kro, stok] = await Promise.all([
         kesifGetir(id),
         kesifKalemleriGetir(id),
         kesifFotolariGetir(id),
+        kesifKrokileriGetir(id),
         stokUrunleriniGetir(),
       ])
       setKesif(k)
       setKalemler(kal)
       setFotolar(fot)
+      setKrokiler(kro)
       setStokUrunler((stok || []).filter(u => u.aktif !== false))  // pasif ürün keşfe eklenemez (mig 151)
-      // Orijinal + çizimli yollar birlikte imzalanır (lightbox/çizim/yazdır kullanır)
-      const urls = await kesifFotoUrlleri(fot.flatMap(f => [f.dosyaYolu, f.cizimYolu]).filter(Boolean))
+      // Orijinal + çizimli + kroki yolları birlikte imzalanır (lightbox/çizim/yazdır kullanır)
+      const urls = await kesifFotoUrlleri([
+        ...fot.flatMap(f => [f.dosyaYolu, f.cizimYolu]),
+        ...kro.map(x => x.gorselYolu),
+      ].filter(Boolean))
       setFotoUrlMap(urls)
     } catch (e) {
       console.error('[KesifDetay]', e)
@@ -209,6 +217,18 @@ export default function KesifDetay() {
       ].filter(Boolean).join('')
       return `<div class="foto"><img src="${url}"><div class="fmeta"><strong>${esc(f.baslik || 'Fotoğraf')}</strong>${f.cizimYolu ? ' <span class="ciz">✏ çizimli</span>' : ''}${satir}<div class="mut">${esc(f.olusturanAd || '')} · ${esc(new Date(f.olusturmaTarih).toLocaleString('tr-TR'))}</div></div></div>`
     }).join('')
+    // Krokiler: görsel + sembol lejantı + kalem bağları
+    const krokiBlok = krokiler.map(k => {
+      const url = fotoUrlMap.get(k.gorselYolu)
+      if (!url) return ''
+      const semboller = (k.veri?.sekiller || []).filter(s => s.tip === 'sembol')
+      const lejant = semboller.map(s => {
+        const b = krokiSembolBilgi(s.sembol)
+        const kalem = s.kalemId ? kalemler.find(x => String(x.id) === String(s.kalemId)) : null
+        return `<span class="lj"><span class="ljn" style="background:${b.renk}">${b.kod}${s.no}</span>${esc(b.ad)}${kalem ? ` → ${esc(kalem.urunAdi)}` : ''}</span>`
+      }).join('')
+      return `<div class="kroki"><strong>${esc(k.baslik)}</strong><img src="${url}">${lejant ? `<div class="ljs">${lejant}</div>` : ''}</div>`
+    }).join('')
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${esc(kesif.kesifNo)} — Keşif Raporu</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -226,6 +246,11 @@ export default function KesifDetay() {
   .foto img { width: 100%; max-height: 300px; object-fit: contain; background: #f6f6f6; display: block; }
   .fmeta { padding: 7px 9px; font-size: 11px; display: grid; gap: 2px; }
   .ciz { color: #16a34a; font-weight: 700; }
+  .kroki { break-inside: avoid; margin-bottom: 14px; }
+  .kroki img { width: 100%; max-height: 480px; object-fit: contain; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; display: block; background: #fff; }
+  .ljs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 11px; }
+  .lj { display: inline-flex; align-items: center; gap: 5px; }
+  .ljn { color: #fff; font-weight: 800; font-size: 9px; padding: 2px 6px; border-radius: 9px; }
   @media print { body { padding: 10mm; } }
 </style></head><body>
 <h1>${esc(kesif.kesifNo)} — Keşif Raporu</h1>
@@ -233,6 +258,7 @@ export default function KesifDetay() {
 <div class="bilgi">${bilgi.map(([a, v]) => `<div><strong>${esc(a)}:</strong> ${esc(v)}</div>`).join('')}</div>
 ${kesif.genelNot ? `<h2>Keşif Açıklaması</h2><div>${esc(kesif.genelNot)}</div>` : ''}
 ${kalemler.length ? `<h2>Malzeme Listesi (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
+${krokiBlok ? `<h2>Krokiler (${krokiler.length})</h2>${krokiBlok}` : ''}
 ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
 <script>window.onload = () => setTimeout(() => window.print(), 600)</scr` + `ipt></body></html>`
     const w = window.open('', '_blank', 'width=980,height=1000')
@@ -551,6 +577,17 @@ ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${f
           kesifId={id}
           fotolar={fotolar}
           setFotolar={setFotolar}
+          fotoUrlMap={fotoUrlMap}
+          setFotoUrlMap={setFotoUrlMap}
+          kalemler={kalemler}
+          kullanici={kullanici}
+        />
+
+        {/* Krokiler — saha yerleşim planı (mig 202) */}
+        <KesifKrokiBolumu
+          kesifId={id}
+          krokiler={krokiler}
+          setKrokiler={setKrokiler}
           fotoUrlMap={fotoUrlMap}
           setFotoUrlMap={setFotoUrlMap}
           kalemler={kalemler}

@@ -7,8 +7,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Pen, MoveUpRight, Minus, Circle, Square, Type, Hash,
-  Eraser, Undo2, Redo2, Trash2, Check,
+  Eraser, Undo2, Redo2, Trash2, Check, BrickWall, Cable, MapPin,
 } from 'lucide-react'
+import { KROKI_SEMBOLLERI, krokiSembolBilgi } from '../../services/kesifService'
 
 const RENKLER = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b', '#0f172a', '#ffffff']
 const KALINLIKLAR = [2, 4, 6, 10]
@@ -21,6 +22,12 @@ const ARACLAR = [
   { id: 'metin',      ikon: Type,       ad: 'Metin' },
   { id: 'balon',      ikon: Hash,       ad: 'Numara balonu' },
   { id: 'silgi',      ikon: Eraser,     ad: 'Silgi (şekle tıkla)' },
+]
+// Kroki moduna özel araçlar (2026-07-19 karar: boş tuval + duvar/kablo/sembol paleti)
+const KROKI_ARACLAR = [
+  { id: 'duvar',  ikon: BrickWall, ad: 'Duvar (kalın çizgi)' },
+  { id: 'kablo',  ikon: Cable,     ad: 'Kablo güzergahı (kesikli)' },
+  { id: 'sembol', ikon: MapPin,    ad: 'Sembol yerleştir — mevcut sembole tıkla: kaleme bağla/sil' },
 ]
 
 // ── Şekil çizimi (hem önizleme hem flatten aynı fonksiyonu kullanır) ─────────
@@ -67,6 +74,37 @@ function sekilCiz(ctx, s, olcek = 1) {
     ctx.strokeStyle = s.renk === '#ffffff' ? '#0f172a' : '#ffffff'
     ctx.strokeText(s.metin, P(s.x), P(s.y))
     ctx.fillText(s.metin, P(s.x), P(s.y))
+  } else if (s.tip === 'duvar') {
+    ctx.lineWidth = 10 * olcek
+    ctx.strokeStyle = s.renk || '#334155'
+    ctx.beginPath()
+    ctx.moveTo(P(s.x1), P(s.y1))
+    ctx.lineTo(P(s.x2), P(s.y2))
+    ctx.stroke()
+  } else if (s.tip === 'kablo' && s.noktalar?.length) {
+    ctx.setLineDash([12 * olcek, 8 * olcek])
+    ctx.beginPath()
+    ctx.moveTo(P(s.noktalar[0].x), P(s.noktalar[0].y))
+    for (let i = 1; i < s.noktalar.length; i++) ctx.lineTo(P(s.noktalar[i].x), P(s.noktalar[i].y))
+    ctx.stroke()
+    ctx.setLineDash([])
+  } else if (s.tip === 'sembol') {
+    const b = krokiSembolBilgi(s.sembol)
+    const r = (s.boyut || 26) * olcek
+    ctx.beginPath()
+    ctx.arc(P(s.x), P(s.y), r, 0, Math.PI * 2)
+    ctx.fillStyle = b.renk
+    ctx.fill()
+    ctx.lineWidth = 2.5 * olcek
+    ctx.strokeStyle = s.kalemId ? '#facc15' : '#ffffff' // kaleme bağlıysa sarı halka
+    ctx.stroke()
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `800 ${r * 0.78}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`${b.kod}${s.no}`, P(s.x), P(s.y) + r * 0.04)
+    ctx.textAlign = 'start'
+    ctx.textBaseline = 'alphabetic'
   } else if (s.tip === 'balon') {
     const r = (s.yaricap || 22) * olcek
     ctx.beginPath()
@@ -88,7 +126,8 @@ function sekilCiz(ctx, s, olcek = 1) {
 // Silgi: şeklin kaba sınır kutusuna tıklama testi
 function sekilIcindeMi(s, x, y) {
   const PAY = 14
-  if (s.tip === 'kalem') return (s.noktalar || []).some(n => Math.abs(n.x - x) < PAY && Math.abs(n.y - y) < PAY)
+  if (s.tip === 'kalem' || s.tip === 'kablo') return (s.noktalar || []).some(n => Math.abs(n.x - x) < PAY && Math.abs(n.y - y) < PAY)
+  if (s.tip === 'sembol') return Math.hypot(s.x - x, s.y - y) < (s.boyut || 26) + PAY
   if (s.tip === 'metin') return x > s.x - PAY && x < s.x + (s.metin?.length || 1) * (s.boyut || 28) * 0.6 + PAY && y > s.y - (s.boyut || 28) - PAY && y < s.y + PAY
   if (s.tip === 'balon') return Math.hypot(s.x - x, s.y - y) < (s.yaricap || 22) + PAY
   const minX = Math.min(s.x1, s.x2) - PAY, maxX = Math.max(s.x1, s.x2) + PAY
@@ -96,11 +135,28 @@ function sekilIcindeMi(s, x, y) {
   return x >= minX && x <= maxX && y >= minY && y <= maxY
 }
 
-export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKapat, onKaydet, kaydediliyor }) {
+// Kroki tuvalına açık gri ızgara çiz (hem önizleme hem flatten)
+function izgaraCiz(ctx, w, h, olcek) {
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w * olcek, h * olcek)
+  ctx.strokeStyle = '#e8edf3'
+  ctx.lineWidth = 1
+  for (let x = 100; x < w; x += 100) {
+    ctx.beginPath(); ctx.moveTo(x * olcek, 0); ctx.lineTo(x * olcek, h * olcek); ctx.stroke()
+  }
+  for (let y = 100; y < h; y += 100) {
+    ctx.beginPath(); ctx.moveTo(0, y * olcek); ctx.lineTo(w * olcek, y * olcek); ctx.stroke()
+  }
+}
+
+export default function KesifFotoCizim({
+  imageUrl, baslangicSekilleri = [], onKapat, onKaydet, kaydediliyor,
+  krokiModu = false, tuval = { w: 1600, h: 1200 }, kalemler = [],
+}) {
   const canvasRef = useRef(null)
   const kapRef = useRef(null)
   const imgRef = useRef(null)
-  const [hazir, setHazir] = useState(false)
+  const [hazir, setHazir] = useState(krokiModu)
   const [hata, setHata] = useState('')
   const [sekiller, setSekiller] = useState(baslangicSekilleri)
   const [geriYigin, setGeriYigin] = useState([])
@@ -110,15 +166,22 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
   const [kalinlik, setKalinlik] = useState(4)
   const [taslak, setTaslak] = useState(null)           // sürükleme sırasındaki geçici şekil
   const [metinGiris, setMetinGiris] = useState(null)   // {x, y, ekranX, ekranY, deger}
+  const [secSembol, setSecSembol] = useState('kamera') // aktif sembol tipi (kroki)
+  const [sembolPanel, setSembolPanel] = useState(null) // {index, ekranX, ekranY} — kalem bağla/sil
+
+  // Görüntü boyutu: kroki modunda sabit tuval, foto modunda doğal boyut
+  const dogalW = krokiModu ? tuval.w : (imgRef.current?.naturalWidth || 0)
+  const dogalH = krokiModu ? tuval.h : (imgRef.current?.naturalHeight || 0)
 
   // Görüntüyü yükle (signed URL — canvas taint olmasın diye crossOrigin)
   useEffect(() => {
+    if (krokiModu) return // kroki: foto yok, tuval hazır
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => { imgRef.current = img; setHazir(true) }
     img.onerror = () => setHata('Fotoğraf yüklenemedi.')
     img.src = imageUrl
-  }, [imageUrl])
+  }, [imageUrl, krokiModu])
 
   const degistir = useCallback((yeniListe) => {
     setGeriYigin(p => [...p, sekiller])
@@ -130,25 +193,25 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
   useEffect(() => {
     if (!hazir) return
     const canvas = canvasRef.current
-    const img = imgRef.current
-    if (!canvas || !img) return
+    if (!canvas || !dogalW) return
     const kap = kapRef.current
     const maxW = kap.clientWidth
     const maxH = kap.clientHeight
-    const olcek = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1)
-    canvas.width = Math.round(img.naturalWidth * olcek)
-    canvas.height = Math.round(img.naturalHeight * olcek)
+    const olcek = Math.min(maxW / dogalW, maxH / dogalH, 1)
+    canvas.width = Math.round(dogalW * olcek)
+    canvas.height = Math.round(dogalH * olcek)
     const ctx = canvas.getContext('2d')
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    if (krokiModu) izgaraCiz(ctx, dogalW, dogalH, olcek)
+    else ctx.drawImage(imgRef.current, 0, 0, canvas.width, canvas.height)
     for (const s of sekiller) sekilCiz(ctx, s, olcek)
     if (taslak) sekilCiz(ctx, taslak, olcek)
-  }, [hazir, sekiller, taslak])
+  }, [hazir, sekiller, taslak, krokiModu, dogalW, dogalH])
 
   // Ekran → görüntü koordinatı
   const konum = (e) => {
     const canvas = canvasRef.current
     const r = canvas.getBoundingClientRect()
-    const olcek = imgRef.current.naturalWidth / canvas.width
+    const olcek = dogalW / canvas.width
     const cw = canvas.width / r.width  // CSS küçültmesi
     return {
       x: (e.clientX - r.left) * cw * olcek,
@@ -159,7 +222,7 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
   }
 
   const basla = (e) => {
-    if (!hazir || metinGiris) return
+    if (!hazir || metinGiris || sembolPanel) return
     e.preventDefault()
     canvasRef.current.setPointerCapture?.(e.pointerId)
     const { x, y, ekranX, ekranY } = konum(e)
@@ -181,14 +244,27 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
       degistir([...sekiller, { tip: 'balon', x, y, no, renk, yaricap: 22 + kalinlik * 2 }])
       return
     }
-    if (arac === 'kalem') setTaslak({ tip: 'kalem', noktalar: [{ x, y }], renk, kalinlik })
+    if (arac === 'sembol') {
+      // Önce mevcut sembole tıklama: kaleme bağla / sil paneli
+      for (let i = sekiller.length - 1; i >= 0; i--) {
+        if (sekiller[i].tip === 'sembol' && sekilIcindeMi(sekiller[i], x, y)) {
+          setSembolPanel({ index: i, ekranX, ekranY })
+          return
+        }
+      }
+      const no = sekiller.filter(s => s.tip === 'sembol' && s.sembol === secSembol).length + 1
+      degistir([...sekiller, { tip: 'sembol', sembol: secSembol, x, y, no, boyut: 26 }])
+      return
+    }
+    if (arac === 'kalem' || arac === 'kablo') setTaslak({ tip: arac, noktalar: [{ x, y }], renk, kalinlik })
+    else if (arac === 'duvar') setTaslak({ tip: 'duvar', x1: x, y1: y, x2: x, y2: y, renk: '#334155' })
     else setTaslak({ tip: arac, x1: x, y1: y, x2: x, y2: y, renk, kalinlik })
   }
 
   const hareket = (e) => {
     if (!taslak) return
     const { x, y } = konum(e)
-    setTaslak(t => t.tip === 'kalem'
+    setTaslak(t => (t.tip === 'kalem' || t.tip === 'kablo')
       ? { ...t, noktalar: [...t.noktalar, { x, y }] }
       : { ...t, x2: x, y2: y })
   }
@@ -197,10 +273,15 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
     if (!taslak) return
     const t = taslak
     setTaslak(null)
-    const bos = t.tip === 'kalem'
+    const bos = (t.tip === 'kalem' || t.tip === 'kablo')
       ? t.noktalar.length < 2
       : Math.abs(t.x2 - t.x1) < 4 && Math.abs(t.y2 - t.y1) < 4
     if (!bos) degistir([...sekiller, t])
+  }
+
+  const sembolGuncelle = (index, degisiklik) => {
+    degistir(sekiller.map((s, i) => i === index ? { ...s, ...degisiklik } : s))
+    setSembolPanel(null)
   }
 
   const metinKaydet = () => {
@@ -228,19 +309,21 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
   // Flatten: orijinal çözünürlükte PNG üret
   const kaydet = async () => {
     if (!sekiller.length) { onKapat(); return }
-    const img = imgRef.current
     const off = document.createElement('canvas')
     // Çok büyük fotoğraflarda çıktı boyutunu sınırla (uzun kenar 2000px)
-    const kucult = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight))
-    off.width = Math.round(img.naturalWidth * kucult)
-    off.height = Math.round(img.naturalHeight * kucult)
+    const kucult = Math.min(1, 2000 / Math.max(dogalW, dogalH))
+    off.width = Math.round(dogalW * kucult)
+    off.height = Math.round(dogalH * kucult)
     const ctx = off.getContext('2d')
-    ctx.drawImage(img, 0, 0, off.width, off.height)
+    if (krokiModu) izgaraCiz(ctx, dogalW, dogalH, kucult)
+    else ctx.drawImage(imgRef.current, 0, 0, off.width, off.height)
     for (const s of sekiller) sekilCiz(ctx, s, kucult)
     const blob = await new Promise(r => off.toBlob(r, 'image/png', 0.92))
     if (!blob) { setHata('Görsel oluşturulamadı.'); return }
     onKaydet(blob, { surum: 1, sekiller })
   }
+
+  const araclar = krokiModu ? [...KROKI_ARACLAR, ...ARACLAR] : ARACLAR
 
   return createPortal(
     <div style={{
@@ -268,7 +351,7 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
 
       {/* Araç çubuğu */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 10px 8px', flexWrap: 'wrap' }}>
-        {ARACLAR.map(a => {
+        {araclar.map(a => {
           const Ikon = a.ikon
           const aktif = arac === a.id
           return (
@@ -306,6 +389,25 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
         ))}
       </div>
 
+      {/* Sembol paleti — sembol aracı seçiliyken (kroki) */}
+      {krokiModu && arac === 'sembol' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px 8px', flexWrap: 'wrap' }}>
+          {KROKI_SEMBOLLERI.map(s => (
+            <button key={s.id} onClick={() => setSecSembol(s.id)} title={s.ad}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                borderRadius: 16, cursor: 'pointer',
+                border: secSembol === s.id ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.18)',
+                background: secSembol === s.id ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.05)',
+                color: '#fff', font: '700 11px/15px var(--font-sans)',
+              }}>
+              <span style={{ width: 16, height: 16, borderRadius: '50%', background: s.renk, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 8, fontWeight: 800 }}>{s.kod}</span>
+              {s.ad}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Canvas alanı */}
       <div ref={kapRef} style={{ flex: 1, display: 'grid', placeItems: 'center', overflow: 'hidden', padding: 8, position: 'relative' }}>
         {hata ? (
@@ -322,6 +424,45 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
             style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 6, touchAction: 'none', cursor: 'crosshair' }}
           />
         )}
+        {/* Sembol paneli — kaleme bağla / sil */}
+        {sembolPanel && sekiller[sembolPanel.index] && (() => {
+          const s = sekiller[sembolPanel.index]
+          const b = krokiSembolBilgi(s.sembol)
+          return (
+            <div style={{
+              position: 'absolute',
+              left: Math.min(sembolPanel.ekranX + (canvasRef.current?.offsetLeft || 0), (kapRef.current?.clientWidth || 320) - 250),
+              top: Math.min(sembolPanel.ekranY + (canvasRef.current?.offsetTop || 0), (kapRef.current?.clientHeight || 300) - 160),
+              width: 240, padding: 12, borderRadius: 10, zIndex: 2,
+              background: '#0f172a', border: '1px solid #334155', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ color: '#fff', font: '700 12.5px/17px var(--font-sans)' }}>{b.kod}{s.no} — {b.ad}</span>
+                <button onClick={() => setSembolPanel(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
+              </div>
+              <label style={{ display: 'block', color: '#94a3b8', font: '600 10.5px/14px var(--font-sans)', marginBottom: 4 }}>İLGİLİ KEŞİF KALEMİ</label>
+              <select
+                value={s.kalemId || ''}
+                onChange={e => sembolGuncelle(sembolPanel.index, { kalemId: e.target.value ? Number(e.target.value) : null })}
+                style={{
+                  width: '100%', padding: '7px 8px', borderRadius: 8, marginBottom: 10,
+                  background: '#1e293b', color: '#fff', border: '1px solid #334155', font: '500 12.5px/17px var(--font-sans)',
+                }}>
+                <option value="">Bağlı değil</option>
+                {(kalemler || []).map(k => <option key={k.id} value={k.id}>{k.miktar} {k.birim} — {k.urunAdi}</option>)}
+              </select>
+              <button
+                onClick={() => { degistir(sekiller.filter((_, j) => j !== sembolPanel.index)); setSembolPanel(null) }}
+                style={{
+                  width: '100%', padding: '7px 0', borderRadius: 8, cursor: 'pointer',
+                  background: 'rgba(220,38,38,0.15)', border: '1px solid #dc2626', color: '#fca5a5',
+                  font: '700 12px/16px var(--font-sans)',
+                }}>
+                Sembolü Sil
+              </button>
+            </div>
+          )
+        })()}
         {metinGiris && (
           <input
             autoFocus
@@ -342,7 +483,9 @@ export default function KesifFotoCizim({ imageUrl, baslangicSekilleri = [], onKa
         )}
       </div>
       <p style={{ margin: 0, padding: '4px 12px 10px', textAlign: 'center', color: '#64748b', font: '500 11px/16px var(--font-sans)' }}>
-        Orijinal fotoğraf korunur — çizim ayrı bir kopya olarak kaydedilir.
+        {krokiModu
+          ? 'Duvar aracıyla mekân sınırlarını, sembol aracıyla cihaz noktalarını yerleştir — mevcut sembole tıklayınca kaleme bağlayabilirsin.'
+          : 'Orijinal fotoğraf korunur — çizim ayrı bir kopya olarak kaydedilir.'}
       </p>
     </div>,
     document.body,
