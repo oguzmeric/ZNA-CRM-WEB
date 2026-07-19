@@ -11,6 +11,7 @@ import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import SiparisAnalizTab from '../components/SiparisAnalizTab'
 import GorevPerformansTab from '../components/gorev/GorevPerformansTab'
+import AracFotoMukayese from '../components/AracFotoMukayese'
 import { teklifleriGetir } from '../services/teklifService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
@@ -89,6 +90,7 @@ function Raporlar() {
     ...(yonetimGorur ? [{ id: 'siparis_analiz', isim: 'Sipariş Analizi' }] : []),
     ...(yonetimGorur ? [{ id: 'mesai', isim: 'Mesai' }] : []),
     ...(yonetimGorur ? [{ id: 'arac_foto', isim: 'Araç Foto' }] : []),
+    ...(yonetimGorur ? [{ id: 'arac_mukayese', isim: 'Araç Mukayese' }] : []),
     ...(yonetimGorur ? [{ id: 'gorev_performans', isim: 'Görev Performansı' }] : []),
   ]
 
@@ -669,6 +671,7 @@ function Raporlar() {
       {aktifSekme === 'siparis_analiz' && <SiparisAnalizTab />}
       {aktifSekme === 'mesai' && <MesaiRaporTab />}
       {aktifSekme === 'arac_foto' && <AracFotoRaporTab />}
+      {aktifSekme === 'arac_mukayese' && <AracFotoMukayese />}
       {aktifSekme === 'gorev_performans' && <GorevPerformansTab kullanicilar={kullanicilar} />}
     </div>
   )
