@@ -152,8 +152,9 @@ export default function GecikmisGorevKapisi() {
           </h2>
         </div>
         <p className="t-caption" style={{ marginBottom: 16 }}>
-          Bitiş tarihi geçen görev için <b>ek süre</b> girmeden (ya da görevi tamamlamadan) devam edilemez —
-          böylece hiçbir görev sessizce unutulmaz.
+          Görev takibimizi hep birlikte güncel tutmak istiyoruz. Bitiş tarihi geçen görevin için
+          kısa bir açıklama ve <b>yeni bir bitiş tarihi</b> girmeni rica ediyoruz — görev bittiyse
+          tek tıkla tamamlandı yapabilirsin. <b>ZNA Yönetim</b>
         </p>
 
         <div style={{
