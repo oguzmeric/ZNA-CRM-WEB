@@ -284,14 +284,23 @@ export default function KesifDetay() {
   .imza > div { flex: 1; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 11px; color: #64748b; text-align: center; }
   .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9.5px; color: #94a3b8; text-align: center; line-height: 1.5; }
   .foot b { color: #014486; }
+  .sheet { width: 100%; border-collapse: collapse; }
+  .sheet > thead > tr > td, .sheet > tbody > tr > td, .sheet > tfoot > tr > td { padding: 0; border: none; vertical-align: top; }
+  .top-space { height: 0; }
   @media print {
-    @page { margin: 10mm 12mm 16mm; }
+    /* @page margin:0 → tarayıcının otomatik ekini (URL / tarih / sayfa no) kaldırır */
+    @page { margin: 0; }
     body { padding: 0; }
     h2 { break-after: avoid; }
-    /* Antetli kağıt: footer HER sayfanın altında tekrarlar (alt kenar boşluğuna sabitlenir) */
-    .foot { position: fixed; left: 12mm; right: 12mm; bottom: 4mm; margin-top: 0; background: #fff; }
+    /* Antetli kağıt: kenar boşlukları tablo yapısından gelir; üst boşluk (thead) ve footer (tfoot) HER sayfada tekrarlar */
+    .sheet > tbody > tr > td { padding: 0 12mm; }
+    .top-space { height: 12mm; }
+    .foot { margin-top: 0; padding: 4mm 12mm 6mm; background: #fff; }
   }
 </style></head><body>
+<table class="sheet">
+<thead><tr><td><div class="top-space"></div></td></tr></thead>
+<tbody><tr><td>
 <div class="antet">
   <img src="${logo}" alt="ZNA" onerror="this.style.display='none'">
   <div class="marka"><b>ZNA TEKNOLOJİ</b><span>SAHA KEŞİF RAPORU</span></div>
@@ -313,7 +322,11 @@ ${fotoBlok ? `<h2>FOTOĞRAFLAR (${yazFotolar.length})</h2><div class="fgrid">${f
   <div>Keşfi Yapan${kesif.kesfiYapan ? `<br><b style="color:#1a2332">${esc(kesif.kesfiYapan)}</b>` : ''}</div>
   <div>Müşteri Yetkilisi${kesif.musteriYetkilisi ? `<br><b style="color:#1a2332">${esc(kesif.musteriYetkilisi)}</b>` : ''}</div>
 </div>
+</td></tr></tbody>
+<tfoot><tr><td>
 <div class="foot"><b>ZNA TEKNOLOJİ BİLİŞİM HİZ. SAN. VE TİC. LTD. ŞTİ.</b> · znateknoloji.com<br>Bu rapor ZNA Teknoloji CRM sistemi üzerinden ${esc(new Date().toLocaleString('tr-TR'))} tarihinde oluşturulmuştur.</div>
+</td></tr></tfoot>
+</table>
 ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.print(), 700)</scr` + 'ipt>' : ''}
 </body></html>`
     return html
