@@ -675,7 +675,7 @@ function MainLayout({ children }) {
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1,
                     font: '800 13px/18px var(--font-sans)',
-                    textTransform: 'uppercase',
+                    // CSS uppercase KULLANMA: i→I yapar (FILO), Türkçe İ kaybolur.
                     letterSpacing: '0.12em',
                     paddingBottom: 3,
                   }}>
@@ -683,7 +683,7 @@ function MainLayout({ children }) {
                       width: 3.5, height: 14, borderRadius: 2, flexShrink: 0,
                       background: 'var(--brand-primary)',
                     }} />
-                    {entry.baslik}
+                    {entry.baslik.toLocaleUpperCase('tr')}
                     <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.14)' }} />
                   </span>
                   <ChevronRight
