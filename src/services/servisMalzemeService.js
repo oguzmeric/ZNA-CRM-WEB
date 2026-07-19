@@ -6,6 +6,19 @@ import { supabase } from '../lib/supabase'
 import { arrayToCamel, toCamel } from '../lib/mapper'
 import { invalidatePrefix } from '../lib/cache'
 
+// Madde 23.10 — malzeme başına faturalandırma işareti. DB trigger'ı (mig 193)
+// bu işarete göre Kullanılan Malzemeler'deki fatura durumunu senkron tutar.
+export const FATURALANDIRMA_SECENEK = [
+  { id: '',                      isim: 'Faturalandırma seç…' },
+  { id: 'ucretli',               isim: '💰 Ücretli (faturalanacak)' },
+  { id: 'garanti',               isim: '🛡 Garanti kapsamında' },
+  { id: 'sozlesme',              isim: '📋 Bakım sözleşmesi' },
+  { id: 'ucretsiz',              isim: '🎁 Ücretsiz' },
+  { id: 'musteriden_alinan',     isim: '↩ Müşteriden alınan' },
+  { id: 'iade',                  isim: '📦 İade edilecek' },
+  { id: 'faturalandirilmayacak', isim: '🚫 Faturalandırılmayacak' },
+]
+
 const oturumKullanici = async () => {
   const { data: sess } = await supabase.auth.getUser()
   if (!sess?.user?.id) return { id: null, ad: null }
@@ -152,11 +165,12 @@ export const servisMalzemeSil = async (malzeme, servisKodu) => {
  * Miktar / birim fiyat düzenleme. Müşteri formundaki satır DB trigger'ı ile
  * kendiliğinden güncellenir (tutar da DB'de hesaplanır) — burada yazılmaz.
  */
-export const servisMalzemeGuncelle = async (id, { miktar, birimFiyat, notlar }) => {
+export const servisMalzemeGuncelle = async (id, { miktar, birimFiyat, notlar, faturalandirma }) => {
   const alanlar = {}
   if (miktar !== undefined) alanlar.miktar = Number(miktar) || 0
   if (birimFiyat !== undefined) alanlar.birim_fiyat = Number(birimFiyat) || 0
   if (notlar !== undefined) alanlar.notlar = notlar || null
+  if (faturalandirma !== undefined) alanlar.faturalandirma = faturalandirma || null
   const { data, error } = await supabase
     .from('servis_malzemeleri').update(alanlar).eq('id', id).select().single()
   if (error) throw new Error('Güncellenemedi: ' + error.message)

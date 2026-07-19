@@ -4,14 +4,16 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import {
-  Package, ChevronDown, ChevronRight, Receipt, Clock, Plus, History, X,
+  Package, ChevronDown, ChevronRight, Receipt, Clock, Plus, History, X, FileDown, Send,
 } from 'lucide-react'
 import { Card, Badge, EmptyState, SearchInput, Modal, Button, Input, Label, Textarea } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import {
   FATURA_DURUM, KAYNAK_META, ACIKLAMA_ZORUNLU, YONETICI_ONAYLI, BEKLEYEN_DURUMLAR,
   hareketleriGetir, hareketGuncelle, manuelHareketEkle, bekleyenGun, bekleyenTutar,
+  hareketlerdenProformaAc,
 } from '../services/malzemeHareketService'
 import { musterileriGetir } from '../services/musteriService'
 import { useAuth } from '../context/AuthContext'
@@ -169,6 +171,57 @@ export default function KullanilanMalzemeler() {
     return s
   })
 
+  const [proformaAciliyor, setProformaAciliyor] = useState(false)
+
+  // Seçili kalemlerden proforma aç (Faturaya Gönder) — Abdullah'a bildirim gider
+  const faturayaGonder = async () => {
+    const secilenler = hareketler.filter(h => secili.has(h.id))
+    setProformaAciliyor(true)
+    try {
+      const { kayit, vergiEksik } = await hareketlerdenProformaAc(secilenler, kullanici)
+      toast.success(`Proforma ${kayit.talepNo} oluşturuldu — muhasebeye bildirim gitti.`)
+      if (vergiEksik) toast.info('Dikkat: müşterinin vergi no/dairesi eksik — fatura kesilmeden tamamlanmalı.', { sure: 12000 })
+      setSecili(new Set())
+      yukle()
+    } catch (e) {
+      toast.error(e?.message || 'Proforma açılamadı.')
+    } finally {
+      setProformaAciliyor(false)
+    }
+  }
+
+  // Görünen listeyi Excel'e aktar (madde 23.14)
+  const excelAktar = () => {
+    const satirlar = filtreli.map(h => ({
+      'Müşteri': h.musteriAd || '',
+      'Ürün': h.urunAd || '',
+      'Model': h.model || '',
+      'Stok Kodu': h.stokKodu || '',
+      'Seri No': h.seriNo || '',
+      'Miktar': Number(h.miktar) || 0,
+      'Birim': h.birim || 'Adet',
+      'Birim Fiyat': h.birimFiyat != null ? Number(h.birimFiyat) : '',
+      'Para Birimi': h.paraBirimi || 'TL',
+      'Kaynak': KAYNAK_META[h.kaynak]?.isim || h.kaynak,
+      'Kaynak No': h.kaynakNo || '',
+      'Fatura Durumu': FATURA_DURUM[h.faturaDurumu]?.isim || h.faturaDurumu,
+      'Faturalanan': Number(h.faturalananMiktar) || 0,
+      'Bekleyen Tutar': bekleyenTutar(h),
+      'Proforma No': h.proformaNo || '',
+      'Fatura No': h.faturaNo || '',
+      'Fatura Tarihi': h.faturaTarihi || '',
+      'Teslim Tarihi': (h.teslimTarihi || '').slice(0, 10),
+      'Bekleme (gün)': bekleyenGun(h),
+      'Teknisyen': h.teknisyen || '',
+      'Açıklama': h.aciklama || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(satirlar)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Kullanılan Malzemeler')
+    const bugun = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `ZNA_Kullanilan_Malzemeler_${bugun}.xlsx`)
+  }
+
   if (yukleniyor) return <SkeletonList />
 
   const SEKMELER = [
@@ -192,13 +245,27 @@ export default function KullanilanMalzemeler() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {secili.size > 0 && (
-            <Button variant="secondary" onClick={() => {
-              const secilenler = hareketler.filter(h => secili.has(h.id))
-              setDurumModal({ hareketler: secilenler })
-            }}>
-              Durum Değiştir ({secili.size})
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                iconLeft={<Send size={14} strokeWidth={1.5} />}
+                onClick={faturayaGonder}
+                disabled={proformaAciliyor}
+                title="Seçili kalemlerden proforma oluştur — muhasebeye bildirim gider"
+              >
+                {proformaAciliyor ? 'Proforma açılıyor…' : `Faturaya Gönder (${secili.size})`}
+              </Button>
+              <Button variant="secondary" onClick={() => {
+                const secilenler = hareketler.filter(h => secili.has(h.id))
+                setDurumModal({ hareketler: secilenler })
+              }}>
+                Durum Değiştir ({secili.size})
+              </Button>
+            </>
           )}
+          <Button variant="secondary" iconLeft={<FileDown size={14} strokeWidth={1.5} />} onClick={excelAktar} title="Görünen listeyi Excel'e aktar">
+            Excel
+          </Button>
           <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setManuelModal(true)}>
             Manuel Kayıt
           </Button>

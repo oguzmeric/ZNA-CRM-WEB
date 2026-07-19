@@ -14,7 +14,7 @@ import CustomSelect from './CustomSelect'
 import AkilliUrunSecici from './AkilliUrunSecici'
 import { stokUrunleriniGetir } from '../services/stokService'
 import {
-  servisMalzemeleriGetir, servisMalzemeEkle, servisMalzemeSil,
+  servisMalzemeleriGetir, servisMalzemeEkle, servisMalzemeSil, FATURALANDIRMA_SECENEK,
   servisMalzemeGuncelle, servisMalzemeKullanildiYap, teknisyendekiKalemler,
 } from '../services/servisMalzemeService'
 import { useToast } from '../context/ToastContext'
@@ -338,6 +338,16 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
                 <span className="tabular-nums" style={{ width: 92, textAlign: 'right', font: '600 13px/18px var(--font-sans)' }}>
                   {paraFmt(m.tutar)}
                 </span>
+                {/* Faturalandırma işareti (madde 23.10) — Kullanılan Malzemeler
+                    ekranındaki fatura durumu bu seçime göre otomatik atanır */}
+                <div style={{ width: 170 }}>
+                  <CustomSelect
+                    value={m.faturalandirma || ''}
+                    onChange={e => alanGuncelle(m, 'faturalandirma', e.target.value)}
+                  >
+                    {FATURALANDIRMA_SECENEK.map(s => <option key={s.id} value={s.id}>{s.isim}</option>)}
+                  </CustomSelect>
+                </div>
                 <button aria-label="Malzemeyi kaldır"
                   title={m.seriNo ? 'Kaldır — SN teknisyene geri döner' : 'Kaldır'}
                   onClick={() => sil(m)}
