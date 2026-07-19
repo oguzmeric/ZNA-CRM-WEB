@@ -442,7 +442,7 @@ ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${f
             </Button>
           )}
           <Button variant="secondary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={() => setYazdirModal(true)}>
-            Yazdır
+            Yazdır / PDF
           </Button>
           <Button variant="danger" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={kesfiSil}>Sil</Button>
           <Button variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} onClick={bilgiKaydet} disabled={kaydediliyor}>
@@ -618,9 +618,12 @@ ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${f
               </label>
             ))}
           </div>
+          <p className="t-caption" style={{ margin: '0 0 14px', padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)' }}>
+            💡 Açılan yazdır penceresinde <b>Hedef: PDF olarak kaydet</b> seçerek PDF dosyası oluşturup mail/WhatsApp ile gönderebilirsin.
+          </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setYazdirModal(false)}>Vazgeç</Button>
-            <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={kesifYazdir}>Yazdır</Button>
+            <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={kesifYazdir}>Yazdır / PDF</Button>
           </div>
         </Modal>
       )}
