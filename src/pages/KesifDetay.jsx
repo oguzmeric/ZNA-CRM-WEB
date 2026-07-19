@@ -284,7 +284,13 @@ export default function KesifDetay() {
   .imza > div { flex: 1; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 11px; color: #64748b; text-align: center; }
   .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9.5px; color: #94a3b8; text-align: center; line-height: 1.5; }
   .foot b { color: #014486; }
-  @media print { body { padding: 10mm 12mm; } h2 { break-after: avoid; } }
+  @media print {
+    @page { margin: 10mm 12mm 16mm; }
+    body { padding: 0; }
+    h2 { break-after: avoid; }
+    /* Antetli kağıt: footer HER sayfanın altında tekrarlar (alt kenar boşluğuna sabitlenir) */
+    .foot { position: fixed; left: 12mm; right: 12mm; bottom: 4mm; margin-top: 0; background: #fff; }
+  }
 </style></head><body>
 <div class="antet">
   <img src="${logo}" alt="ZNA" onerror="this.style.display='none'">
