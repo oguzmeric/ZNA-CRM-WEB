@@ -28,7 +28,7 @@ import OnSiparisModal from '../components/OnSiparisModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
-  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal, Avatar,
+  Card, CardTitle, Badge, CodeBadge, EmptyState, SegmentedControl, Modal, Avatar, TarihSaatSecici,
 } from '../components/ui'
 
 const varsayilanKonular = [
@@ -1056,10 +1056,9 @@ function HatirlatmaModal({ acik, onKapat, gorusme, mevcutHatirlatma, onKaydet, o
 
         <div>
           <Label>Veya özel tarih / saat</Label>
-          <Input
-            type="datetime-local"
+          <TarihSaatSecici
             value={ozelTarih}
-            onChange={e => setOzelTarih(e.target.value)}
+            onChange={v => setOzelTarih(v)}
           />
           {ozelTarih && (
             <button

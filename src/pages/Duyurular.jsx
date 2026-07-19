@@ -7,7 +7,7 @@ import {
   duyurulariGetir, duyuruEkle, duyuruGuncelle, duyuruSil,
 } from '../services/duyuruService'
 import CustomSelect from '../components/CustomSelect'
-import { Button, Input, Textarea, Label, Card, Badge, EmptyState } from '../components/ui'
+import { Button, Input, Textarea, Label, Card, Badge, EmptyState, TarihSaatSecici } from '../components/ui'
 
 const SEVIYE_ROZET = {
   info:    { tone: 'bilgi',    label: 'Bilgi',  Icon: Info },
@@ -187,18 +187,16 @@ export default function Duyurular() {
             </div>
             <div>
               <Label>Başlangıç</Label>
-              <Input
-                type="datetime-local"
+              <TarihSaatSecici
                 value={form.baslangicTarihi}
-                onChange={e => setForm(p => ({ ...p, baslangicTarihi: e.target.value }))}
+                onChange={v => setForm(p => ({ ...p, baslangicTarihi: v }))}
               />
             </div>
             <div>
               <Label>Bitiş (boş = süresiz)</Label>
-              <Input
-                type="datetime-local"
+              <TarihSaatSecici
                 value={form.bitisTarihi}
-                onChange={e => setForm(p => ({ ...p, bitisTarihi: e.target.value }))}
+                onChange={v => setForm(p => ({ ...p, bitisTarihi: v }))}
               />
             </div>
           </div>

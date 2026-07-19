@@ -20,7 +20,7 @@ import { smsGonderVeLogla } from '../services/smsLogService'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CokluSelect from '../components/CokluSelect'
-import { Button, Card, Badge, EmptyState } from '../components/ui'
+import { Button, Card, Badge, EmptyState, TarihSaatSecici } from '../components/ui'
 
 // NetGSM Türkçe karakter kabul etmiyor — SMS gövdesi ASCII'ye çevrilir.
 const trAsciify = (s) => String(s || '')
@@ -1472,36 +1472,18 @@ function YeniEtkinlikModal({ baglantilar, varsayilanTarih, onKapat, onBasarili }
             <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
               BAŞLANGIÇ *
             </label>
-            <input
-              type="datetime-local"
+            <TarihSaatSecici
               value={baslangic}
-              onChange={(e) => setBaslangic(e.target.value)}
-              style={{
-                width: '100%', padding: 10,
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-default)',
-                background: 'var(--surface-card)',
-                color: 'var(--text-primary)',
-                font: '400 13px/18px var(--font-sans)',
-              }}
+              onChange={(v) => setBaslangic(v)}
             />
           </div>
           <div>
             <label style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
               BİTİŞ *
             </label>
-            <input
-              type="datetime-local"
+            <TarihSaatSecici
               value={bitis}
-              onChange={(e) => setBitis(e.target.value)}
-              style={{
-                width: '100%', padding: 10,
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-default)',
-                background: 'var(--surface-card)',
-                color: 'var(--text-primary)',
-                font: '400 13px/18px var(--font-sans)',
-              }}
+              onChange={(v) => setBitis(v)}
             />
           </div>
         </div>

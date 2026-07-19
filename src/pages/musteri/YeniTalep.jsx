@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
-  Button, Input, Textarea, Label, Card, Badge, EmptyState,
+  Button, Input, Textarea, Label, Card, Badge, EmptyState, TarihSaatSecici,
 } from '../../components/ui'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
@@ -671,10 +671,9 @@ export default function YeniTalep() {
                 </div>
                 <div>
                   <Label>Talep edilen ziyaret tarihi</Label>
-                  <Input
-                    type="datetime-local"
+                  <TarihSaatSecici
                     value={form.uygunZaman}
-                    onChange={e => guncelle('uygunZaman', e.target.value)}
+                    onChange={v => guncelle('uygunZaman', v)}
                     min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   />
                   <p style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>

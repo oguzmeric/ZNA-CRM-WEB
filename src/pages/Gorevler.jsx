@@ -41,7 +41,7 @@ import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonList } from '../components/Skeleton'
 import {
   Button, Card, Input, Textarea, Label,
-  Badge, EmptyState, Avatar,
+  Badge, EmptyState, Avatar, TarihSaatSecici,
 } from '../components/ui'
 
 // Kanban v2 (madde 33): 5 kolon — her kolon birden çok DB durumunu toplar,
@@ -1289,18 +1289,16 @@ function Gorevler() {
             </div>
             <div>
               <Label>Başlama tarihi</Label>
-              <Input
-                type="datetime-local"
+              <TarihSaatSecici
                 value={form.baslamaTarih}
-                onChange={e => setForm({ ...form, baslamaTarih: e.target.value })}
+                onChange={v => setForm({ ...form, baslamaTarih: v })}
               />
             </div>
             <div>
               <Label required>Bitiş tarihi</Label>
-              <Input
-                type="datetime-local"
+              <TarihSaatSecici
                 value={form.bitisTarih}
-                onChange={e => setForm({ ...form, bitisTarih: e.target.value, sonTarih: dtToTarih(e.target.value) })}
+                onChange={v => setForm({ ...form, bitisTarih: v, sonTarih: dtToTarih(v) })}
               />
             </div>
           </div>

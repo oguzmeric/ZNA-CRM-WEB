@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
-  Button, Input, Textarea, Label, Card, Badge, CodeBadge, Alert, EmptyState,
+  Button, Input, Textarea, Label, Card, Badge, CodeBadge, Alert, EmptyState, TarihSaatSecici,
 } from '../../components/ui'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
@@ -362,10 +362,9 @@ export default function MusteriTalepDetay() {
                 </div>
                 <div>
                   <Label>Talep edilen ziyaret tarihi</Label>
-                  <Input
-                    type="datetime-local"
+                  <TarihSaatSecici
                     value={/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(duzenForm.uygunZaman || '') ? duzenForm.uygunZaman.slice(0, 16) : ''}
-                    onChange={e => setDuzenForm({ ...duzenForm, uygunZaman: e.target.value })}
+                    onChange={v => setDuzenForm({ ...duzenForm, uygunZaman: v })}
                     min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   />
                 </div>

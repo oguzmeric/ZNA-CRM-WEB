@@ -57,7 +57,7 @@ const FONT_ETIKETLER = {
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import {
-  Card, Button, Input, Textarea, Label, Badge, SearchInput, EmptyState, Modal,
+  Card, Button, Input, Textarea, Label, Badge, SearchInput, EmptyState, Modal, TarihSaatSecici,
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import {
@@ -795,10 +795,9 @@ function Notlarim() {
               <Bell size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> Hatırlatıcı (opsiyonel)
             </Label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Input
-                type="datetime-local"
+              <TarihSaatSecici
                 value={isoToLocal(form.hatirlatmaTarihi)}
-                onChange={(e) => setForm({ ...form, hatirlatmaTarihi: localToIso(e.target.value) })}
+                onChange={(v) => setForm({ ...form, hatirlatmaTarihi: localToIso(v) })}
                 style={{ flex: 1 }}
               />
               {form.hatirlatmaTarihi && (
