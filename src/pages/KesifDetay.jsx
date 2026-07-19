@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
-  Plus, Trash2, Save, Upload, X,
+  Plus, Trash2, Save, Upload, X, Printer,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -14,10 +14,11 @@ import { useConfirm } from '../context/ConfirmContext'
 import {
   kesifGetir, kesifGuncelle, kesifSil,
   kesifKalemleriGetir, kesifKalemEkle, kesifKalemSil,
-  kesifFotolariGetir, kesifFotoYukle, kesifFotoSil, kesifFotoUrlleri,
-  KESIF_KATEGORILERI, KESIF_DURUMLARI, KESIF_FOTO_MAX_MB,
+  kesifFotolariGetir, kesifFotoUrlleri, kesifFotoEtiketBilgi,
+  KESIF_KATEGORILERI, KESIF_DURUMLARI,
   KESIF_ONCELIKLERI, KESIF_TURLERI,
 } from '../services/kesifService'
+import KesifFotoBolumu from '../components/kesif/KesifFotoBolumu'
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import { gorevEkle } from '../services/gorevService'
@@ -54,10 +55,10 @@ export default function KesifDetay() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [yeniKalem, setYeniKalem] = useState({ ...bosKalem })
-  const [fotoYukleniyor, setFotoYukleniyor] = useState(false)
   const [gorevModal, setGorevModal] = useState(false)
   const [donusumCalisiyor, setDonusumCalisiyor] = useState(false)
-  const fotoRef = useRef(null)
+  const [yazdirModal, setYazdirModal] = useState(false)
+  const [yazdirFotoSecim, setYazdirFotoSecim] = useState('tumu') // tumu | cizimli | yok
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -72,7 +73,8 @@ export default function KesifDetay() {
       setKalemler(kal)
       setFotolar(fot)
       setStokUrunler((stok || []).filter(u => u.aktif !== false))  // pasif ürün keşfe eklenemez (mig 151)
-      const urls = await kesifFotoUrlleri(fot.map(f => f.dosyaYolu))
+      // Orijinal + çizimli yollar birlikte imzalanır (lightbox/çizim/yazdır kullanır)
+      const urls = await kesifFotoUrlleri(fot.flatMap(f => [f.dosyaYolu, f.cizimYolu]).filter(Boolean))
       setFotoUrlMap(urls)
     } catch (e) {
       console.error('[KesifDetay]', e)
@@ -179,41 +181,65 @@ export default function KesifDetay() {
     }))
   }
 
-  const fotoSec = async (e) => {
-    const dosyalar = Array.from(e.target.files || [])
-    e.target.value = ''
-    if (!dosyalar.length) return
-    setFotoYukleniyor(true)
-    let ok = 0
-    for (const f of dosyalar) {
-      try {
-        const yeni = await kesifFotoYukle(id, f, { olusturanAd: kullanici?.ad || '' })
-        setFotolar(prev => [yeni, ...prev])
-        ok++
-      } catch (err) {
-        toast.error(`${f.name}: ${err?.message || 'yüklenemedi'}`)
-      }
-    }
-    if (ok) {
-      toast.success(`${ok} fotoğraf yüklendi.`)
-      const tumu = await kesifFotolariGetir(id)
-      setFotoUrlMap(await kesifFotoUrlleri(tumu.map(f => f.dosyaYolu)))
-    }
-    setFotoYukleniyor(false)
-  }
-
-  const fotoKaldir = async (f) => {
-    const onay = await confirm({
-      baslik: 'Fotoğrafı Sil', mesaj: 'Bu fotoğraf kalıcı olarak silinecek. Emin misin?',
-      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
-    })
-    if (!onay) return
-    try {
-      await kesifFotoSil(f)
-      setFotolar(prev => prev.filter(x => x.id !== f.id))
-    } catch (e) {
-      toast.error('Silinemedi: ' + (e?.message || 'bilinmeyen hata'))
-    }
+  // ── Yazdır / PDF (KEŞİF DÜZENLEME dokümanı §7) ─────────────────────────
+  const kesifYazdir = () => {
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const yazFotolar = yazdirFotoSecim === 'yok' ? []
+      : yazdirFotoSecim === 'cizimli' ? fotolar.filter(f => f.cizimYolu)
+      : fotolar
+    const bilgi = [
+      ['Müşteri', kesif.firmaAdi], ['Proje', kesif.projeAdi], ['Adres', kesif.lokasyon],
+      ['Yetkili', [kesif.musteriYetkilisi, kesif.yetkiliTelefon].filter(Boolean).join(' · ')],
+      ['Keşif Tarihi', fmtTarih(kesif.kesifTarihi)], ['Keşfi Yapan', kesif.kesfiYapan],
+      ['Türler', (kesif.turler || []).map(t => KESIF_TURLERI.find(x => x.id === t)?.ad || t).join(', ')],
+    ].filter(([, v]) => v)
+    const kalemSatir = kalemler.map(k =>
+      `<tr><td>${esc(KESIF_KATEGORILERI.find(x => x.id === k.kategori)?.ad || k.kategori)}</td><td>${esc(k.urunAdi)}${k.marka ? ` <span class="mut">(${esc(k.marka)})</span>` : ''}</td><td class="sag">${esc(k.miktar)} ${esc(k.birim)}</td><td>${esc(k.notlar || '')}</td></tr>`
+    ).join('')
+    const fotoBlok = yazFotolar.map(f => {
+      // Doküman: varsa çizimli hali basılır
+      const url = fotoUrlMap.get(f.cizimYolu) || fotoUrlMap.get(f.dosyaYolu)
+      if (!url) return ''
+      const satir = [
+        f.aciklama && `<div>${esc(f.aciklama)}</div>`,
+        f.montajNotu && `<div class="mut">Montaj: ${esc(f.montajNotu)}</div>`,
+        [f.mahal, f.katBolum].filter(Boolean).length && `<div class="mut">Yer: ${esc([f.mahal, f.katBolum].filter(Boolean).join(' / '))}</div>`,
+        f.etiket && `<div class="mut">Etiket: ${esc(kesifFotoEtiketBilgi(f.etiket)?.ad || f.etiket)}</div>`,
+        f.kalemId && `<div class="mut">Kalem: ${esc(kalemler.find(x => String(x.id) === String(f.kalemId))?.urunAdi || '')}</div>`,
+      ].filter(Boolean).join('')
+      return `<div class="foto"><img src="${url}"><div class="fmeta"><strong>${esc(f.baslik || 'Fotoğraf')}</strong>${f.cizimYolu ? ' <span class="ciz">✏ çizimli</span>' : ''}${satir}<div class="mut">${esc(f.olusturanAd || '')} · ${esc(new Date(f.olusturmaTarih).toLocaleString('tr-TR'))}</div></div></div>`
+    }).join('')
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${esc(kesif.kesifNo)} — Keşif Raporu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 12px/1.5 system-ui, sans-serif; color: #111; padding: 28px; }
+  h1 { font-size: 19px; margin-bottom: 2px; }
+  h2 { font-size: 14px; margin: 20px 0 8px; border-bottom: 2px solid #111; padding-bottom: 3px; }
+  .mut { color: #555; }
+  .bilgi { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 24px; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th, td { border: 1px solid #bbb; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f1f1f1; font-size: 11px; }
+  .sag { text-align: right; white-space: nowrap; }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .foto { border: 1px solid #ccc; border-radius: 6px; overflow: hidden; break-inside: avoid; }
+  .foto img { width: 100%; max-height: 300px; object-fit: contain; background: #f6f6f6; display: block; }
+  .fmeta { padding: 7px 9px; font-size: 11px; display: grid; gap: 2px; }
+  .ciz { color: #16a34a; font-weight: 700; }
+  @media print { body { padding: 10mm; } }
+</style></head><body>
+<h1>${esc(kesif.kesifNo)} — Keşif Raporu</h1>
+<div class="mut">${esc(kesif.kesifBasligi || '')}</div>
+<div class="bilgi">${bilgi.map(([a, v]) => `<div><strong>${esc(a)}:</strong> ${esc(v)}</div>`).join('')}</div>
+${kesif.genelNot ? `<h2>Keşif Açıklaması</h2><div>${esc(kesif.genelNot)}</div>` : ''}
+${kalemler.length ? `<h2>Malzeme Listesi (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
+${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
+<script>window.onload = () => setTimeout(() => window.print(), 600)</scr` + `ipt></body></html>`
+    const w = window.open('', '_blank', 'width=980,height=1000')
+    if (!w) { toast.error('Açılır pencere engellendi — tarayıcı iznini kontrol et.'); return }
+    w.document.write(html)
+    w.document.close()
+    setYazdirModal(false)
   }
 
   // ── Dönüşümler ─────────────────────────────────────────────────────
@@ -389,6 +415,9 @@ export default function KesifDetay() {
               Servis Talebi
             </Button>
           )}
+          <Button variant="secondary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={() => setYazdirModal(true)}>
+            Yazdır
+          </Button>
           <Button variant="danger" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={kesfiSil}>Sil</Button>
           <Button variant="primary" iconLeft={<Save size={14} strokeWidth={1.5} />} onClick={bilgiKaydet} disabled={kaydediliyor}>
             {kaydediliyor ? 'Kaydediliyor…' : 'Keşfi Kaydet'}
@@ -517,59 +546,47 @@ export default function KesifDetay() {
           </div>
         </Card>
 
-        {/* Fotoğraflar */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h2 className="t-h2" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Camera size={15} strokeWidth={1.5} /> Fotoğraflar ({fotolar.length})
-            </h2>
-            <Button variant="secondary" size="sm" iconLeft={<Upload size={13} strokeWidth={1.5} />}
-              onClick={() => fotoRef.current?.click()} disabled={fotoYukleniyor}>
-              {fotoYukleniyor ? 'Yükleniyor…' : 'Foto Ekle'}
-            </Button>
-            {/* capture: telefonda doğrudan kamerayı açar */}
-            <input ref={fotoRef} type="file" accept="image/*" capture="environment" multiple hidden onChange={fotoSec} />
-          </div>
-          {fotolar.length === 0 ? (
-            <p className="t-caption" style={{ margin: 0 }}>
-              Henüz fotoğraf yok. Telefondan açarsan "Foto Ekle" doğrudan kamerayı açar (max {KESIF_FOTO_MAX_MB} MB/foto).
-            </p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
-              {fotolar.map(f => {
-                const url = fotoUrlMap.get(f.dosyaYolu)
-                return (
-                  <div key={f.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', background: 'var(--surface-sunken)' }}>
-                    {url ? (
-                      <img
-                        src={url} alt={f.aciklama || 'keşif foto'}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-                        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                      />
-                    ) : (
-                      <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-                        <Camera size={18} strokeWidth={1.5} />
-                      </div>
-                    )}
-                    <button
-                      onClick={() => fotoKaldir(f)}
-                      aria-label="Fotoğrafı sil"
-                      style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.55)', color: '#fff',
-                        border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center',
-                      }}
-                    >
-                      <X size={12} strokeWidth={2} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
+        {/* Fotoğraflar — alt bilgi + çizim (KEŞİF DÜZENLEME dokümanı) */}
+        <KesifFotoBolumu
+          kesifId={id}
+          fotolar={fotolar}
+          setFotolar={setFotolar}
+          fotoUrlMap={fotoUrlMap}
+          setFotoUrlMap={setFotoUrlMap}
+          kalemler={kalemler}
+          kullanici={kullanici}
+        />
       </div>
+
+      {/* Yazdır seçenekleri */}
+      {yazdirModal && (
+        <Modal open onClose={() => setYazdirModal(false)} title="Keşif Raporu Yazdır" width={420}>
+          <p className="t-caption" style={{ marginTop: 0 }}>Fotoğraflar çıktıda nasıl yer alsın?</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {[
+              { id: 'tumu', ad: `Tüm fotoğraflar (${fotolar.length})`, alt: 'Çizimi olanlar çizimli haliyle basılır' },
+              { id: 'cizimli', ad: `Sadece çizimli fotoğraflar (${fotolar.filter(f => f.cizimYolu).length})`, alt: 'İşaretleme yapılmış görseller' },
+              { id: 'yok', ad: 'Fotoğrafsız', alt: 'Yalnız bilgiler + malzeme listesi' },
+            ].map(s => (
+              <label key={s.id} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', cursor: 'pointer',
+                borderRadius: 'var(--radius-sm)', border: `1px solid ${yazdirFotoSecim === s.id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                background: yazdirFotoSecim === s.id ? 'var(--brand-primary-soft)' : 'transparent',
+              }}>
+                <input type="radio" name="yazdirFoto" checked={yazdirFotoSecim === s.id} onChange={() => setYazdirFotoSecim(s.id)} style={{ marginTop: 2 }} />
+                <span>
+                  <span style={{ display: 'block', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{s.ad}</span>
+                  <span className="t-caption">{s.alt}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setYazdirModal(false)}>Vazgeç</Button>
+            <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={kesifYazdir}>Yazdır</Button>
+          </div>
+        </Modal>
+      )}
 
       {/* Malzeme listesi */}
       <Card padding={0}>

@@ -89,10 +89,10 @@ export const kesifGuncelle = async (id, alanlar) => {
 
 export const kesifSil = async (id) => {
   // Fotolar storage'dan da temizlensin (DB satırları cascade siliniyor)
-  const { data: fotolar } = await supabase.from('kesif_fotolari').select('dosya_yolu').eq('kesif_id', id)
+  const { data: fotolar } = await supabase.from('kesif_fotolari').select('dosya_yolu, cizim_yolu').eq('kesif_id', id)
   const { error } = await supabase.from('kesifler').delete().eq('id', id)
   if (error) throw error
-  const yollar = (fotolar || []).map(f => f.dosya_yolu)
+  const yollar = (fotolar || []).flatMap(f => [f.dosya_yolu, f.cizim_yolu]).filter(Boolean)
   if (yollar.length) await supabase.storage.from(FOTO_BUCKET).remove(yollar).catch(() => {})
 }
 
@@ -128,6 +128,18 @@ export const kesifKalemSil = async (id) => {
 }
 
 // ---------- Fotoğraflar ----------
+// Fotoğraf etiketi (KEŞİF DÜZENLEME dokümanı §2) — mig 200 CHECK ile birebir
+export const KESIF_FOTO_ETIKETLERI = [
+  { id: 'mevcut_durum',     ad: 'Mevcut Durum',     renk: '#64748b' },
+  { id: 'ariza_noktasi',    ad: 'Arıza Noktası',    renk: '#dc2626' },
+  { id: 'montaj_noktasi',   ad: 'Montaj Noktası',   renk: '#16a34a' },
+  { id: 'kablo_guzergahi',  ad: 'Kablo Güzergahı',  renk: '#f59e0b' },
+  { id: 'elektrik_noktasi', ad: 'Elektrik Noktası', renk: '#ea580c' },
+  { id: 'network_noktasi',  ad: 'Network Noktası',  renk: '#2563eb' },
+  { id: 'riskli_alan',      ad: 'Riskli Alan',      renk: '#9333ea' },
+]
+export const kesifFotoEtiketBilgi = (id) => KESIF_FOTO_ETIKETLERI.find(e => e.id === id) || null
+
 export const kesifFotolariGetir = async (kesifId) => {
   const { data, error } = await supabase
     .from('kesif_fotolari')
@@ -138,7 +150,7 @@ export const kesifFotolariGetir = async (kesifId) => {
   return arrayToCamel(data)
 }
 
-export const kesifFotoYukle = async (kesifId, file, { aciklama = '', olusturanAd = '' } = {}) => {
+export const kesifFotoYukle = async (kesifId, file, meta = {}) => {
   if (file.size > KESIF_FOTO_MAX) throw new Error(`Fotoğraf çok büyük (max ${KESIF_FOTO_MAX_MB} MB).`)
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().slice(0, 6)
   const yol = `${kesifId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
@@ -150,8 +162,15 @@ export const kesifFotoYukle = async (kesifId, file, { aciklama = '', olusturanAd
   const { data, error } = await supabase.from('kesif_fotolari').insert({
     kesif_id: kesifId,
     dosya_yolu: yol,
-    aciklama: aciklama || null,
-    olusturan_ad: olusturanAd || null,
+    baslik: meta.baslik?.trim() || null,
+    aciklama: meta.aciklama?.trim() || null,
+    montaj_notu: meta.montajNotu?.trim() || null,
+    mahal: meta.mahal?.trim() || null,
+    kat_bolum: meta.katBolum?.trim() || null,
+    etiket: meta.etiket || null,
+    kalem_id: meta.kalemId || null,
+    olusturan_ad: meta.olusturanAd || null,
+    olusturan_id: meta.olusturanId || null,
   }).select().single()
   if (error) {
     await supabase.storage.from(FOTO_BUCKET).remove([yol]).catch(() => {})
@@ -160,10 +179,62 @@ export const kesifFotoYukle = async (kesifId, file, { aciklama = '', olusturanAd
   return toCamel(data)
 }
 
-export const kesifFotoSil = async (foto) => {
-  const { error } = await supabase.from('kesif_fotolari').delete().eq('id', foto.id)
+// Alt bilgi / etiket / kalem ilişkisi güncelleme
+export const kesifFotoGuncelle = async (fotoId, alanlar) => {
+  const izinli = ['baslik', 'aciklama', 'montajNotu', 'mahal', 'katBolum', 'etiket', 'kalemId']
+  const temiz = {}
+  for (const k of izinli) if (k in alanlar) temiz[k] = alanlar[k] === '' ? null : alanlar[k]
+  temiz.guncellemeTarih = new Date().toISOString()
+  const { data, error } = await supabase.from('kesif_fotolari')
+    .update(toSnake(temiz)).eq('id', fotoId).select('id, baslik, aciklama, montaj_notu, mahal, kat_bolum, etiket, kalem_id')
   if (error) throw error
-  if (foto.dosyaYolu) await supabase.storage.from(FOTO_BUCKET).remove([foto.dosyaYolu]).catch(() => {})
+  if (!data?.length) throw new Error('Güncelleme yetkin yok — fotoğrafı yalnız ekleyen kişi veya yönetici düzenleyebilir.')
+  return toCamel(data[0])
+}
+
+// Çizimli versiyonu kaydet: flatten PNG blob + vektör veri (yeniden düzenleme için).
+// Orijinal dosyaya DOKUNULMAZ; çizim {kesifId}/cizim/{fotoId}.png yoluna yazılır (üzerine yazılır).
+export const kesifFotoCizimKaydet = async (foto, pngBlob, cizimVeri, kullanici) => {
+  const yol = foto.cizimYolu || `${foto.kesifId}/cizim/${foto.id}_${Date.now()}.png`
+  const { error: upErr } = await supabase.storage.from(FOTO_BUCKET).upload(yol, pngBlob, {
+    contentType: 'image/png', cacheControl: '3600', upsert: true,
+  })
+  if (upErr) throw upErr
+  const gecmis = [...(foto.cizimGecmisi || []), {
+    ad: kullanici?.ad || '—', tarih: new Date().toISOString(),
+    islem: foto.cizimYolu ? 'cizim_guncellendi' : 'cizim_eklendi',
+  }]
+  const { data, error } = await supabase.from('kesif_fotolari').update({
+    cizim_yolu: yol,
+    cizim_veri: cizimVeri || null,
+    cizim_gecmisi: gecmis,
+    guncelleme_tarih: new Date().toISOString(),
+  }).eq('id', foto.id).select('id, cizim_yolu, cizim_veri, cizim_gecmisi')
+  if (error) throw error
+  if (!data?.length) throw new Error('Çizim kaydetme yetkin yok.')
+  return toCamel(data[0])
+}
+
+// Çizimi kaldır (orijinale dön)
+export const kesifFotoCizimSil = async (foto, kullanici) => {
+  const gecmis = [...(foto.cizimGecmisi || []), {
+    ad: kullanici?.ad || '—', tarih: new Date().toISOString(), islem: 'cizim_silindi',
+  }]
+  const { data, error } = await supabase.from('kesif_fotolari').update({
+    cizim_yolu: null, cizim_veri: null, cizim_gecmisi: gecmis,
+    guncelleme_tarih: new Date().toISOString(),
+  }).eq('id', foto.id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Çizim silme yetkin yok.')
+  if (foto.cizimYolu) await supabase.storage.from(FOTO_BUCKET).remove([foto.cizimYolu]).catch(() => {})
+}
+
+export const kesifFotoSil = async (foto) => {
+  const { data, error } = await supabase.from('kesif_fotolari').delete().eq('id', foto.id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Silme yetkin yok — fotoğrafı yalnız ekleyen kişi veya yönetici silebilir.')
+  const yollar = [foto.dosyaYolu, foto.cizimYolu].filter(Boolean)
+  if (yollar.length) await supabase.storage.from(FOTO_BUCKET).remove(yollar).catch(() => {})
 }
 
 // Signed URL — private bucket
