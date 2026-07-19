@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
+import GecikmisGorevKapisi from '../components/GecikmisGorevKapisi'
 import FloatingZeynaButton from '../components/FloatingZeynaButton'
 import GlobalBarkodAra from '../components/GlobalBarkodAra'
 import { kritikSeviyeSayisi } from '../services/depoService'
@@ -1124,6 +1125,8 @@ function MainLayout({ children }) {
       </div>
 
       <ThemePaneli acik={temaPaneliAcik} kapat={() => setTemaPaneliAcik(false)} />
+      {/* Gecikmiş görev kapısı — ek süre girilmeden CRM kullanılamaz (2026-07-19) */}
+      <GecikmisGorevKapisi />
       <FloatingSohbetButton />
       <FloatingZeynaButton />
       <GlobalBarkodAra />
