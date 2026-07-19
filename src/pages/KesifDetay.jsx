@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
-  Plus, Trash2, Save, Upload, X, Printer,
+  Plus, Trash2, Save, Upload, X, Printer, Eye,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -62,6 +62,7 @@ export default function KesifDetay() {
   const [donusumCalisiyor, setDonusumCalisiyor] = useState(false)
   const [yazdirModal, setYazdirModal] = useState(false)
   const [yazdirFotoSecim, setYazdirFotoSecim] = useState('tumu') // tumu | cizimli | yok
+  const [onizlemeHtml, setOnizlemeHtml] = useState(null) // rapor önizleme (iframe)
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -189,8 +190,8 @@ export default function KesifDetay() {
     }))
   }
 
-  // ── Yazdır / PDF (KEŞİF DÜZENLEME dokümanı §7) ─────────────────────────
-  const kesifYazdir = () => {
+  // ── Rapor HTML üreticisi (önizleme + yazdır ortak) ─────────────────────
+  const raporHtmlUret = (printTetikle = false) => {
     const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const yazFotolar = yazdirFotoSecim === 'yok' ? []
       : yazdirFotoSecim === 'cizimli' ? fotolar.filter(f => f.cizimYolu)
@@ -239,62 +240,81 @@ export default function KesifDetay() {
       }).join('')
       return `<div class="kroki"><strong>${esc(k.baslik)}</strong><img src="${url}">${lejant ? `<div class="ljs">${lejant}</div>` : ''}</div>`
     }).join('')
+    const logo = `${window.location.origin}/logo.jpeg`
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${esc(kesif.kesifNo)} — Keşif Raporu</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
-  body { font: 12px/1.5 system-ui, sans-serif; color: #111; padding: 28px; }
-  .antet { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #014486; padding-bottom: 10px; margin-bottom: 4px; }
-  .marka { font-size: 20px; font-weight: 800; color: #014486; letter-spacing: .5px; }
-  .marka small { display: block; font-size: 10px; font-weight: 600; color: #555; letter-spacing: 2px; }
-  .rapor-tip { text-align: right; font-size: 11px; color: #555; }
-  .rapor-tip b { display: block; font-size: 15px; color: #111; }
-  h1 { font-size: 17px; margin: 12px 0 1px; }
-  h2 { font-size: 13px; margin: 18px 0 7px; border-bottom: 2px solid #014486; padding-bottom: 3px; color: #014486; }
-  .mut { color: #555; }
-  .bilgi { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-top: 10px; }
-  .bilgi > div { border-bottom: 1px dotted #ddd; padding-bottom: 2px; }
-  .metin-blok { white-space: pre-wrap; padding: 8px 10px; background: #f7f9fb; border-radius: 5px; border: 1px solid #e5e9ef; }
-  .tur { margin-bottom: 6px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-  th, td { border: 1px solid #bbb; padding: 5px 8px; text-align: left; vertical-align: top; }
-  th { background: #eef3f8; font-size: 11px; }
+  body { font: 12px/1.55 -apple-system, system-ui, "Segoe UI", sans-serif; color: #1a2332; padding: 26px 28px; }
+  .antet { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #014486; padding-bottom: 12px; }
+  .antet img { height: 46px; width: auto; }
+  .antet .marka { flex: 1; }
+  .antet .marka b { display: block; font-size: 18px; font-weight: 800; color: #014486; letter-spacing: .3px; }
+  .antet .marka span { font-size: 10.5px; font-weight: 700; color: #64748b; letter-spacing: 2.5px; }
+  .antet .no { text-align: right; font-size: 11px; color: #64748b; }
+  .antet .no b { display: block; font-size: 15px; color: #1a2332; font-weight: 800; }
+  h1 { font-size: 16px; margin: 14px 0 2px; color: #1a2332; }
+  .alt { color: #64748b; font-size: 11.5px; }
+  h2 { font-size: 12.5px; margin: 18px 0 8px; padding: 5px 10px; background: #eef3f8; border-left: 4px solid #014486; color: #014486; font-weight: 800; letter-spacing: .3px; }
+  .mut { color: #64748b; }
+  .bilgi { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 24px; }
+  .bilgi > div { border-bottom: 1px dotted #dbe2ea; padding: 2px 0; font-size: 11.5px; }
+  .bilgi b { color: #475569; }
+  .metin-blok { white-space: pre-wrap; padding: 9px 11px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e9ef; font-size: 11.5px; }
+  .tur { margin-bottom: 6px; font-size: 11.5px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 11px; }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #eef3f8; color: #334155; font-weight: 700; }
   .sag { text-align: right; white-space: nowrap; }
-  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .foto { border: 1px solid #ccc; border-radius: 6px; overflow: hidden; break-inside: avoid; }
-  .foto img { width: 100%; max-height: 300px; object-fit: contain; background: #f6f6f6; display: block; }
-  .fmeta { padding: 7px 9px; font-size: 11px; display: grid; gap: 2px; }
+  /* Görseller — her blok TEK PARÇA basılır, sayfa geçişinde bölünmez */
+  .fgrid { margin-top: 2px; }
+  .foto { display: inline-block; width: 49%; vertical-align: top; margin: 0 0 10px; border: 1px solid #d5dde6; border-radius: 7px; overflow: hidden;
+          break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
+  .foto:nth-child(odd) { margin-right: 1.4%; }
+  .foto img { width: 100%; max-height: 220px; object-fit: contain; background: #f6f8fb; display: block; }
+  .fmeta { padding: 7px 9px; font-size: 10.5px; display: grid; gap: 2px; }
+  .fmeta strong { font-size: 11.5px; }
   .ciz { color: #16a34a; font-weight: 700; }
-  .kroki { break-inside: avoid; margin-bottom: 14px; }
-  .kroki img { width: 100%; max-height: 480px; object-fit: contain; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; display: block; background: #fff; }
-  .ljs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 11px; }
+  .kroki { margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
+  .kroki > strong { font-size: 12px; }
+  .kroki img { width: 100%; max-height: 400px; object-fit: contain; border: 1px solid #d5dde6; border-radius: 7px; margin-top: 4px; display: block; background: #fff; }
+  .ljs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 10.5px; }
   .lj { display: inline-flex; align-items: center; gap: 5px; }
   .ljn { color: #fff; font-weight: 800; font-size: 9px; padding: 2px 6px; border-radius: 9px; }
-  .imza { display: flex; justify-content: space-between; gap: 40px; margin-top: 40px; break-inside: avoid; }
-  .imza > div { flex: 1; border-top: 1px solid #333; padding-top: 5px; font-size: 11px; color: #555; text-align: center; }
-  .foot { margin-top: 24px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 10px; color: #888; text-align: center; }
-  @media print { body { padding: 10mm; } }
+  .imza { display: flex; justify-content: space-between; gap: 50px; margin-top: 42px; break-inside: avoid; page-break-inside: avoid; }
+  .imza > div { flex: 1; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 11px; color: #64748b; text-align: center; }
+  .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9.5px; color: #94a3b8; text-align: center; line-height: 1.5; }
+  .foot b { color: #014486; }
+  @media print { body { padding: 10mm 12mm; } h2 { break-after: avoid; } }
 </style></head><body>
 <div class="antet">
-  <div class="marka">ZNA TEKNOLOJİ<small>SAHA KEŞİF RAPORU</small></div>
-  <div class="rapor-tip"><b>${esc(kesif.kesifNo || '')}</b>${kesif.kesifTarihi ? `Keşif: ${esc(fmtTarih(kesif.kesifTarihi))}` : ''}</div>
+  <img src="${logo}" alt="ZNA" onerror="this.style.display='none'">
+  <div class="marka"><b>ZNA TEKNOLOJİ</b><span>SAHA KEŞİF RAPORU</span></div>
+  <div class="no"><b>${esc(kesif.kesifNo || '')}</b>${kesif.kesifTarihi ? `Keşif: ${esc(fmtTarih(kesif.kesifTarihi))}` : ''}</div>
 </div>
 <h1>${esc(kesif.kesifBasligi || kesif.firmaAdi || 'Keşif')}</h1>
+${kesif.kesifBasligi && kesif.firmaAdi ? `<div class="alt">${esc(kesif.firmaAdi)}</div>` : ''}
 
-<h2>Müşteri ve Proje Bilgileri</h2>
-<div class="bilgi">${bilgi.map(([a, v]) => `<div><strong>${esc(a)}:</strong> ${esc(v)}</div>`).join('')}</div>
-${turBlok ? `<h2>Keşif Türleri ve Teknik Detaylar</h2>${turBlok}` : ''}
-${kesif.genelNot ? `<h2>Keşif Açıklaması</h2><div class="metin-blok">${esc(kesif.genelNot)}</div>` : ''}
-${kesif.ozelTalepler ? `<h2>Müşteri Özel Talepleri</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
-${kesif.mevcutSistem ? `<h2>Mevcut Sistem Bilgisi</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
-${kalemler.length ? `<h2>Malzeme Listesi (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
-${krokiBlok ? `<h2>Krokiler (${krokiler.length})</h2>${krokiBlok}` : ''}
-${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
+<h2>MÜŞTERİ VE PROJE BİLGİLERİ</h2>
+<div class="bilgi">${bilgi.map(([a, v]) => `<div><b>${esc(a)}:</b> ${esc(v)}</div>`).join('')}</div>
+${turBlok ? `<h2>KEŞİF TÜRLERİ VE TEKNİK DETAYLAR</h2>${turBlok}` : ''}
+${kesif.genelNot ? `<h2>KEŞİF AÇIKLAMASI</h2><div class="metin-blok">${esc(kesif.genelNot)}</div>` : ''}
+${kesif.ozelTalepler ? `<h2>MÜŞTERİ ÖZEL TALEPLERİ</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
+${kesif.mevcutSistem ? `<h2>MEVCUT SİSTEM BİLGİSİ</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
+${kalemler.length ? `<h2>MALZEME LİSTESİ (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
+${krokiBlok ? `<h2>KROKİLER (${krokiler.length})</h2>${krokiBlok}` : ''}
+${fotoBlok ? `<h2>FOTOĞRAFLAR (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
 <div class="imza">
-  <div>Keşfi Yapan${kesif.kesfiYapan ? `<br><b style="color:#111">${esc(kesif.kesfiYapan)}</b>` : ''}</div>
-  <div>Müşteri Yetkilisi${kesif.musteriYetkilisi ? `<br><b style="color:#111">${esc(kesif.musteriYetkilisi)}</b>` : ''}</div>
+  <div>Keşfi Yapan${kesif.kesfiYapan ? `<br><b style="color:#1a2332">${esc(kesif.kesfiYapan)}</b>` : ''}</div>
+  <div>Müşteri Yetkilisi${kesif.musteriYetkilisi ? `<br><b style="color:#1a2332">${esc(kesif.musteriYetkilisi)}</b>` : ''}</div>
 </div>
-<div class="foot">Bu rapor ZNA Teknoloji CRM sistemi üzerinden ${esc(new Date().toLocaleString('tr-TR'))} tarihinde oluşturulmuştur.</div>
-<script>window.onload = () => setTimeout(() => window.print(), 600)</scr` + `ipt></body></html>`
+<div class="foot"><b>ZNA TEKNOLOJİ BİLİŞİM HİZ. SAN. VE TİC. LTD. ŞTİ.</b> · znateknoloji.com<br>Bu rapor ZNA Teknoloji CRM sistemi üzerinden ${esc(new Date().toLocaleString('tr-TR'))} tarihinde oluşturulmuştur.</div>
+${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.print(), 700)</scr` + 'ipt>' : ''}
+</body></html>`
+    return html
+  }
+
+  const kesifYazdir = () => {
+    const html = raporHtmlUret(true)
     const w = window.open('', '_blank', 'width=980,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi — tarayıcı iznini kontrol et.'); return }
     w.document.write(html)
@@ -653,13 +673,45 @@ ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${f
             ))}
           </div>
           <p className="t-caption" style={{ margin: '0 0 14px', padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)' }}>
-            💡 Açılan yazdır penceresinde <b>Hedef: PDF olarak kaydet</b> seçerek PDF dosyası oluşturup mail/WhatsApp ile gönderebilirsin.
+            💡 Önce <b>Önizle</b> ile raporun nasıl görüneceğine bak, sonra yazdır penceresinde <b>Hedef: PDF olarak kaydet</b> seçerek PDF oluşturup mail/WhatsApp ile gönder.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setYazdirModal(false)}>Vazgeç</Button>
+            <Button variant="secondary" iconLeft={<Eye size={14} strokeWidth={1.5} />}
+              onClick={() => { setOnizlemeHtml(raporHtmlUret(false)); setYazdirModal(false) }}>
+              Önizle
+            </Button>
             <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={kesifYazdir}>Yazdır / PDF</Button>
           </div>
         </Modal>
+      )}
+
+      {/* Rapor önizleme — tam ekran iframe */}
+      {onizlemeHtml && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(10,14,25,0.75)',
+          display: 'flex', flexDirection: 'column', padding: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+            <span style={{ color: '#fff', font: '700 14px/20px var(--font-sans)' }}>Rapor Önizleme — {kesif.kesifNo}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" size="sm" iconLeft={<Printer size={13} strokeWidth={1.5} />}
+                onClick={() => { document.getElementById('rapor-onizleme-iframe')?.contentWindow?.print() }}>
+                Yazdır / PDF
+              </Button>
+              <button onClick={() => setOnizlemeHtml(null)} aria-label="Kapat"
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+                <X size={17} />
+              </button>
+            </div>
+          </div>
+          <iframe
+            id="rapor-onizleme-iframe"
+            title="Rapor Önizleme"
+            srcDoc={onizlemeHtml}
+            style={{ flex: 1, width: '100%', border: 'none', borderRadius: 8, background: '#fff' }}
+          />
+        </div>
       )}
 
       {/* Malzeme listesi */}
