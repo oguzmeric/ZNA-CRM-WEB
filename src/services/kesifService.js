@@ -239,16 +239,17 @@ export const kesifFotoSil = async (foto) => {
 
 // ---------- Krokiler (mig 202) ----------
 // Sembol paleti — web + mobil AYNI liste (kod = kroki üstündeki etiket: K1, N1…)
+// ikon: Feather adı — mobilde @expo/vector-icons/Feather, web'de lucide karşılığı
 export const KROKI_SEMBOLLERI = [
-  { id: 'kamera',  kod: 'K',  ad: 'Kamera',          renk: '#2563eb' },
-  { id: 'ptz',     kod: 'P',  ad: 'PTZ Kamera',      renk: '#7c3aed' },
-  { id: 'nvr',     kod: 'N',  ad: 'NVR / Kayıt',     renk: '#0f766e' },
-  { id: 'switch',  kod: 'S',  ad: 'Switch',          renk: '#0891b2' },
-  { id: 'guc',     kod: 'G',  ad: 'Güç Noktası',     renk: '#ea580c' },
-  { id: 'network', kod: 'NT', ad: 'Network Noktası', renk: '#4f46e5' },
-  { id: 'bariyer', kod: 'B',  ad: 'Bariyer',         renk: '#b91c1c' },
-  { id: 'turnike', kod: 'T',  ad: 'Turnike',         renk: '#a16207' },
-  { id: 'kapi',    kod: 'KP', ad: 'Kapı',            renk: '#64748b' },
+  { id: 'kamera',  kod: 'K',  ikon: 'camera',    ad: 'Kamera',          renk: '#2563eb' },
+  { id: 'ptz',     kod: 'P',  ikon: 'video',     ad: 'PTZ Kamera',      renk: '#7c3aed' },
+  { id: 'nvr',     kod: 'N',  ikon: 'hard-drive', ad: 'NVR / Kayıt',    renk: '#0f766e' },
+  { id: 'switch',  kod: 'S',  ikon: 'server',    ad: 'Switch',          renk: '#0891b2' },
+  { id: 'guc',     kod: 'G',  ikon: 'zap',       ad: 'Güç Noktası',     renk: '#ea580c' },
+  { id: 'network', kod: 'NT', ikon: 'globe',     ad: 'Network Noktası', renk: '#4f46e5' },
+  { id: 'bariyer', kod: 'B',  ikon: 'minus',     ad: 'Bariyer',         renk: '#b91c1c' },
+  { id: 'turnike', kod: 'T',  ikon: 'rotate-cw', ad: 'Turnike',         renk: '#a16207' },
+  { id: 'kapi',    kod: 'KP', ikon: 'log-in',    ad: 'Kapı',            renk: '#64748b' },
 ]
 export const krokiSembolBilgi = (id) => KROKI_SEMBOLLERI.find(s => s.id === id) || KROKI_SEMBOLLERI[0]
 

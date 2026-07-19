@@ -8,8 +8,15 @@ import { createPortal } from 'react-dom'
 import {
   X, Pen, MoveUpRight, Minus, Circle, Square, Type, Hash,
   Eraser, Undo2, Redo2, Trash2, Check, BrickWall, Cable, MapPin,
+  Camera, Video, HardDrive, Server, Zap, Globe, RotateCw, LogIn,
 } from 'lucide-react'
 import { KROKI_SEMBOLLERI, krokiSembolBilgi } from '../../services/kesifService'
+
+// Sembol ikon adı (Feather) → lucide bileşeni — palet çipi gerçek mini görselle
+const SEMBOL_IKON = {
+  camera: Camera, video: Video, 'hard-drive': HardDrive, server: Server,
+  zap: Zap, globe: Globe, minus: Minus, 'rotate-cw': RotateCw, 'log-in': LogIn,
+}
 
 const RENKLER = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b', '#0f172a', '#ffffff']
 const KALINLIKLAR = [2, 4, 6, 10]
@@ -392,19 +399,24 @@ export default function KesifFotoCizim({
       {/* Sembol paleti — sembol aracı seçiliyken (kroki) */}
       {krokiModu && arac === 'sembol' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px 8px', flexWrap: 'wrap' }}>
-          {KROKI_SEMBOLLERI.map(s => (
-            <button key={s.id} onClick={() => setSecSembol(s.id)} title={s.ad}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
-                borderRadius: 16, cursor: 'pointer',
-                border: secSembol === s.id ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.18)',
-                background: secSembol === s.id ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.05)',
-                color: '#fff', font: '700 11px/15px var(--font-sans)',
-              }}>
-              <span style={{ width: 16, height: 16, borderRadius: '50%', background: s.renk, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 8, fontWeight: 800 }}>{s.kod}</span>
-              {s.ad}
-            </button>
-          ))}
+          {KROKI_SEMBOLLERI.map(s => {
+            const Ikon = SEMBOL_IKON[s.ikon] || Circle
+            return (
+              <button key={s.id} onClick={() => setSecSembol(s.id)} title={s.ad}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                  borderRadius: 16, cursor: 'pointer',
+                  border: secSembol === s.id ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.18)',
+                  background: secSembol === s.id ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.05)',
+                  color: '#fff', font: '700 11px/15px var(--font-sans)',
+                }}>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: s.renk, display: 'grid', placeItems: 'center' }}>
+                  <Ikon size={12} color="#fff" strokeWidth={2.4} />
+                </span>
+                {s.ad}
+              </button>
+            )
+          })}
         </div>
       )}
 
