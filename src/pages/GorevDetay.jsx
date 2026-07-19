@@ -87,6 +87,7 @@ function GorevDetay() {
   const [sebepModal, setSebepModal] = useState(null)   // { hedefDurum } — beklemede/bilgi_bekleniyor/iptal
   const [sebepMetin, setSebepMetin] = useState('')
   const [kapatGerekce, setKapatGerekce] = useState(null) // 'serbest' kuralında açık altlarla kapatma gerekçesi
+  const [gorusmeOzet, setGorusmeOzet] = useState(null)   // bağlı görüşme etiketi (firma + ACT no)
 
   // Modal her açılışta mevcut sebeple başlasın, tarih boş gelsin
   useEffect(() => {
@@ -107,6 +108,16 @@ function GorevDetay() {
       .catch(err => console.error('[GorevDetay yorum yükle]', err))
     gorevHareketleriGetir(id).then(setHareketler).catch(() => {})
   }, [id])
+
+  // Bağlı görüşme etiketi — gorevler'de firma/akt_no kolonu yok, hafif fetch
+  // (kart boş etiketle render oluyordu, denetim bulgusu 2026-07-19)
+  useEffect(() => {
+    if (!gorev?.gorusmeId) { setGorusmeOzet(null); return }
+    import('../lib/supabase').then(({ supabase }) =>
+      supabase.from('gorusmeler').select('firma, akt_no').eq('id', gorev.gorusmeId).maybeSingle()
+        .then(({ data }) => setGorusmeOzet(data || null)))
+      .catch(() => {})
+  }, [gorev?.gorusmeId])
 
   // Atanan görevi ilk kez açtığında kabul durumu 'Görüldü' olur (madde 10)
   useEffect(() => {
@@ -224,10 +235,36 @@ function GorevDetay() {
     const eskiDurum = gorev.durum
     if (yeniDurum === eskiDurum) return
 
+    // Onay sürecindeyken karar YALNIZ onaylayıcıdan gelir — sorumlu çiplerle
+    // onayı baypas edemez (denetim bulgusu). Onaylayıcı/admin çıkış yaparsa
+    // onay_durumu artığı temizlenir.
+    if (eskiDurum === 'onay_bekliyor') {
+      const benOnaylayiciMi = gorev.onaylayiciId
+        ? String(gorev.onaylayiciId) === String(kullanici?.id)
+        : (String(gorev.olusturanId ?? '') === String(kullanici?.id) || gorev.olusturanAd === kullanici?.ad)
+      if (!benOnaylayiciMi && kullanici?.rol !== 'admin') {
+        toast.warning('Görev onay sürecinde — karar onaylayıcıya ait. Onay panelini kullanın.')
+        return
+      }
+      // Onaylayıcı çiple süreci bozarsa onay artığını temizle + sorumluya haber ver
+      if (yeniDurum !== 'tamamlandi') {
+        const ok = await durumUygula({ durum: yeniDurum, onayDurumu: null, devamSebep: null })
+        if (ok && SEBEP_ZORUNLU_DURUMLAR.includes(yeniDurum)) {
+          setSebepMetin(''); setSebepModal({ hedefDurum: yeniDurum })
+        }
+        return
+      }
+    }
+
+    // Reddedilmiş görev yeniden canlandırılıyorsa kabul akışı sıfırlanır —
+    // yeni/aynı sorumlu kabul barını tekrar görmeli (denetim bulgusu)
+    const kabulReset = gorev.kabulDurumu === 'reddedildi' && ['bekliyor', 'devam'].includes(yeniDurum)
+      ? { kabulDurumu: 'atandi', redSebebi: null } : {}
+
     // Devam'a geçerken sebep seçim modalını aç (mevcut davranış korunur)
     if (yeniDurum === 'devam') {
       setDevamSebepModal(true)
-      await durumUygula({ durum: 'devam' })
+      await durumUygula({ durum: 'devam', ...kabulReset })
       return
     }
 
@@ -275,7 +312,7 @@ function GorevDetay() {
       return
     }
 
-    await durumUygula({ durum: yeniDurum, devamSebep: null })
+    await durumUygula({ durum: yeniDurum, devamSebep: null, ...kabulReset })
   }
 
   // Sebep zorunlu durum modalının onayı
@@ -498,8 +535,12 @@ function GorevDetay() {
               >
                 Düzenle
               </Button>
-              {/* Kural 9: atanmış görev SİLİNMEZ, iptal edilir. Silme yalnız taslak/admin. */}
-              {(gorev.durum === 'taslak' || kullanici?.rol === 'admin') ? (
+              {/* Kural 9: atanmış görev SİLİNMEZ, iptal edilir. Silme yalnız
+                  kendi TASLAĞI olan (RLS ile aynı) veya admin. */}
+              {((gorev.durum === 'taslak' && (
+                  String(gorev.olusturanId ?? '') === String(kullanici?.id) ||
+                  gorev.olusturanAd === kullanici?.ad || gorev.olusturanAd === kullanici?.kullaniciAdi
+                )) || kullanici?.rol === 'admin') ? (
                 <Button
                   variant="secondary"
                   iconLeft={<Trash2 size={14} strokeWidth={1.5} />}
@@ -507,9 +548,9 @@ function GorevDetay() {
                     const onay = await confirm({
                       baslik: 'Görevi Sil',
                       mesaj: `"${gorev.baslik}" görevi ve TÜM alt görevleri silinecek. Geri alınamaz. Emin misin?`,
-                      onayText: 'Evet, sil',
-                      iptalText: 'Vazgeç',
-                      tehlikeli: true,
+                      onayMetin: 'Evet, sil',
+                      iptalMetin: 'Vazgeç',
+                      tip: 'tehlikeli',
                     })
                     if (!onay) return
                     try {
@@ -729,9 +770,11 @@ function GorevDetay() {
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
             >
               <Handshake size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
-              <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{gorev.gorusmeFirma}</span>
-              {gorev.gorusmeAktNo && (
-                <span style={{ font: '400 12px/16px var(--font-mono)', color: 'var(--text-tertiary)' }}>{gorev.gorusmeAktNo}</span>
+              <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                {gorusmeOzet?.firma || gorev.musteriAdi || 'Bağlı görüşme'}
+              </span>
+              {gorusmeOzet?.akt_no && (
+                <span style={{ font: '400 12px/16px var(--font-mono)', color: 'var(--text-tertiary)' }}>{gorusmeOzet.akt_no}</span>
               )}
               <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}>
                 Görüşmeye git <ArrowRight size={12} strokeWidth={1.5} />

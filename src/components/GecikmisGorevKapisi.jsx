@@ -7,9 +7,15 @@ import { createPortal } from 'react-dom'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { gorevleriGetir, gorevGuncelle } from '../services/gorevService'
+import { useBildirim } from '../context/BildirimContext'
+import { gorevleriGetir, gorevGuncelle, gorevOnayaGonder } from '../services/gorevService'
 import { gorevYorumEkle } from '../services/gorevYorumService'
 import { Button, Input, Textarea, Label } from './ui'
+
+// Kapıya TAKILMAYAN durumlar: kapalılar + onayda bekleyen (iş teslim edilmiş)
+// + taslak + bilinçli duraklatılmışlar (sebep girilerek beklemeye alınmış)
+const KAPI_DISI = ['tamamlandi', 'iptal', 'reddedildi', 'onay_bekliyor', 'taslak', 'beklemede', 'bilgi_bekleniyor']
+const KAPALI = ['tamamlandi', 'iptal', 'reddedildi']
 
 const SEBEPLER = [
   { id: 'hava_muhalefeti',   isim: 'Hava Muhalefeti',   ikon: '🌧️' },
@@ -36,6 +42,7 @@ const gecikmeGunu = (sonTarih) => {
 export default function GecikmisGorevKapisi() {
   const { kullanici } = useAuth()
   const { toast } = useToast()
+  const { bildirimEkle } = useBildirim()
   const [gecikmisler, setGecikmisler] = useState(null) // null = henüz bakılmadı
   const [sebep, setSebep] = useState(null)
   const [aciklama, setAciklama] = useState('')
@@ -56,7 +63,7 @@ export default function GecikmisGorevKapisi() {
           if (iptal) return
           const bugun = bugunStr()
           const geciken = (liste || [])
-            .filter(g => g.durum !== 'tamamlandi')
+            .filter(g => !KAPI_DISI.includes(g.durum))
             .filter(g => g.sonTarih && g.sonTarih.slice(0, 10) < bugun)
             .filter(g => benimMi(g, kullanici.id))
             .sort((a, b) => (a.sonTarih || '').localeCompare(b.sonTarih || ''))
@@ -123,6 +130,44 @@ export default function GecikmisGorevKapisi() {
   const tamamlandiYap = async () => {
     setMesgul(true)
     try {
+      // Detay ekranındaki kapılar burada da geçerli (denetim bulgusu):
+      // kapı, onay/alt görev/bağımlılık kurallarını BAYPAS edemez.
+      const liste = await gorevleriGetir().catch(() => [])
+      // 1) Açık zorunlu alt görev / 'hepsi' kuralı
+      const acikAltlar = (liste || []).filter(a =>
+        String(a.ustGorevId) === String(aktif.id) && !KAPALI.includes(a.durum))
+      const engelleyen = aktif.tamamlamaKurali === 'hepsi'
+        ? acikAltlar
+        : aktif.tamamlamaKurali === 'serbest' ? [] : acikAltlar.filter(a => a.zorunlu !== false)
+      if (engelleyen.length > 0) {
+        toast.error(`Alt görevler tamamlanmadan bu görev kapatılamaz (${engelleyen.length} açık) — görev detayından yönetebilirsin.`)
+        return
+      }
+      // 2) Bağımlılık kapısı
+      if (aktif.bagimliGorevId && aktif.bagimlilikTuru === 'once_tamamlanmali') {
+        const bagimli = (liste || []).find(x => String(x.id) === String(aktif.bagimliGorevId))
+        if (bagimli && bagimli.durum !== 'tamamlandi') {
+          toast.error(`Önce bağımlı görev tamamlanmalı: ${bagimli.gorevNo || ''} "${bagimli.baslik}"`)
+          return
+        }
+      }
+      // 3) Onay kapısı: onay gerekliyse onaya gider, doğrudan kapanmaz
+      const benOnaylayici = aktif.onaylayiciId
+        ? String(aktif.onaylayiciId) === String(kullanici?.id)
+        : (String(aktif.olusturanId ?? '') === String(kullanici?.id) || aktif.olusturanAd === kullanici?.ad)
+      if (aktif.onayGerekli && !benOnaylayici) {
+        const g = await gorevOnayaGonder(aktif.id)
+        if (!g) throw new Error('Onaya gönderilemedi')
+        const onaylayiciHedef = aktif.onaylayiciId || aktif.olusturanId || null
+        if (onaylayiciHedef && String(onaylayiciHedef) !== String(kullanici?.id)) {
+          bildirimEkle(onaylayiciHedef, '⏳ Görev onayınızı bekliyor',
+            `${kullanici?.ad}, "${aktif.baslik}" görevini tamamladı — onayınız bekleniyor.`,
+            'gorev', `/gorevler/${aktif.id}`).catch(() => {})
+        }
+        toast.success('Görev tamamlandı olarak işaretlendi — onaya gönderildi.')
+        gorevListedenDus()
+        return
+      }
       const g = await gorevGuncelle(aktif.id, { durum: 'tamamlandi' })
       if (!g) throw new Error('Görev güncellenemedi')
       toast.success('Görev tamamlandı olarak işaretlendi.')

@@ -22,6 +22,7 @@ import {
   GOREV_DURUMLARI, durumBilgi, ACIK_DURUMLAR, KAPALI_DURUMLAR, SEBEP_ZORUNLU_DURUMLAR,
   gorevGecikti, etkinDurum, ONCELIK_SECENEKLERI, ONCELIK_MAP, oncelikBilgi,
   GIZLILIK_SECENEKLERI, ATAMA_TURLERI, TAMAMLAMA_KURALLARI, bugunStr,
+  anaGorevKapatKontrol,
 } from '../lib/gorevSabitleri'
 import {
   IlerlemeBar, EtkinDurumRozeti, OncelikNokta, SekmeSatiri, SebepModal, IsYukuPaneli,
@@ -112,9 +113,13 @@ const formdanPayload = (form, { detayYuklendi = true } = {}) => {
   return p
 }
 
-function GorevKarti({ gorev, kullanicilar, lokasyonAd, altSayi = 0, onClick, onEdit, onSil, overlay = false }) {
+function GorevKarti({ gorev, kullanicilar, lokasyonAd, altSayi = 0, onClick, onEdit, onSil, yetki, overlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: gorev.id.toString() })
+  // Yetkisi olmayan kullanıcı kartı SÜRÜKLEYEMEZ (RLS zaten reddediyor —
+  // deneme-yanılma hatası yerine aksiyonu baştan kapat; denetim bulgusu)
+  const suruklenebilir = !yetki || yetki.suruklenebilir !== false
+  const silinebilir = !yetki || yetki.silinebilir !== false
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -139,13 +144,13 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, altSayi = 0, onClick, onE
         borderRadius: 'var(--radius-md)',
         padding: 14,
         marginBottom: 8,
-        cursor: overlay ? 'grabbing' : 'grab',
+        cursor: overlay ? 'grabbing' : (suruklenebilir ? 'grab' : 'pointer'),
         boxShadow: overlay ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
         userSelect: 'none',
       }}
       onClick={overlay ? undefined : onClick}
       {...attributes}
-      {...listeners}
+      {...(suruklenebilir ? listeners : {})}
       className="gorev-karti"
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 6 }}>
@@ -181,7 +186,7 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, altSayi = 0, onClick, onE
                 <Pencil size={11} strokeWidth={1.5} />
               </button>
             )}
-            {onSil && (
+            {onSil && silinebilir && (
               <button
                 aria-label="Sil"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -277,7 +282,7 @@ function GorevKarti({ gorev, kullanicilar, lokasyonAd, altSayi = 0, onClick, onE
   )
 }
 
-function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap, onGorevClick, onEdit, onSil }) {
+function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap, onGorevClick, onEdit, onSil, kartYetki }) {
   const { setNodeRef, isOver } = useDroppable({ id: kolon.id })
 
   return (
@@ -338,6 +343,7 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap
               onClick={() => onGorevClick(gorev.id)}
               onEdit={onEdit}
               onSil={onSil}
+              yetki={kartYetki ? kartYetki(gorev) : undefined}
             />
           ))}
         </div>
@@ -496,12 +502,37 @@ function Gorevler() {
     surukleBaslangic.current = gorev?.durum || null
   }
 
+  // Kart bazlı yetki: sürükleme = RLS update kuralıyla, silme = RLS delete
+  // kuralıyla birebir (denetim bulgusu — UI aksiyonu RLS'in reddedeceği
+  // işlemi hiç sunmasın)
+  const kartYetkisi = (g) => {
+    const uid = String(kullanici?.id ?? '')
+    const admin = kullanici?.rol === 'admin'
+    const benimki = String(g.atananId ?? g.atanan ?? '') === uid ||
+      String(g.olusturanId ?? '') === uid ||
+      g.olusturanAd === kullanici?.ad || g.olusturanAd === kullanici?.kullaniciAdi ||
+      String(g.onaylayiciId ?? '') === uid ||
+      (Array.isArray(g.ekip) && g.ekip.map(String).includes(uid))
+    const olusturanBenim = String(g.olusturanId ?? '') === uid ||
+      g.olusturanAd === kullanici?.ad || g.olusturanAd === kullanici?.kullaniciAdi
+    return {
+      suruklenebilir: admin || benimki,
+      silinebilir: admin || (g.durum === 'taslak' && olusturanBenim),
+    }
+  }
+
   const handleDragEnd = async (event) => {
     const { active, over } = event
     setAktifGorev(null)
     const baslangicDurum = surukleBaslangic.current
     surukleBaslangic.current = null
-    if (!over) return
+    // Kolon dışına bırakıldıysa DragOver'ın iyimser değişikliğini geri al
+    if (!over) {
+      if (baslangicDurum) {
+        setGorevler(prev => prev.map(g => g.id.toString() === String(active.id) ? { ...g, durum: baslangicDurum } : g))
+      }
+      return
+    }
     const aktifId = active.id
     const hedefId = over.id
     const hedefKolon = kolonlar.find(k => k.id === hedefId)
@@ -514,6 +545,80 @@ function Gorevler() {
     // Aynı kolonda kaldıysa DB'ye yazma (taslak→Atandı kolonu gibi çok-durumlu
     // kolonlarda durum eşitliği değil KOLON eşitliği kontrol edilir)
     if (baslangicDurum && kolonBul(baslangicDurum)?.id === yeniDurum) return
+    // Sürükleme, DragOver'ın iyimser yazdığı durumu geri alabilmeli
+    const geriAl = () =>
+      setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: baslangicDurum } : g))
+    // Tamamlanma kapıları (madde 13-14, 16) — detay ekranındaki kurallar kanban
+    // sürüklemesiyle BAYPAS edilemez:
+    if (yeniDurum === 'tamamlandi') {
+      // 1) Alt görev kapısı — detayla AYNI kural seti (hepsi/zorunlular/serbest)
+      const altlar = gorevler.filter(g => String(g.ustGorevId) === String(mevcut.id))
+      const kontrol = anaGorevKapatKontrol(mevcut, altlar)
+      if (kontrol.engel) { geriAl(); toast.error(kontrol.mesaj + ' Detay sayfasından yönetebilirsin.'); return }
+      if (kontrol.gerekceli) {
+        geriAl()
+        toast.warning('Açık alt görevlerle kapatmak gerekçe ister — görevi detay sayfasından gerekçeyle tamamla.')
+        return
+      }
+      // 2) Bağımlılık kapısı (madde 16)
+      if (mevcut.bagimliGorevId && mevcut.bagimlilikTuru === 'once_tamamlanmali') {
+        const bagimli = gorevler.find(g => String(g.id) === String(mevcut.bagimliGorevId))
+        if (bagimli && bagimli.durum !== 'tamamlandi') {
+          geriAl()
+          toast.error(`Önce bağımlı görev tamamlanmalı: ${bagimli.gorevNo || ''} "${bagimli.baslik}"`)
+          return
+        }
+      }
+      // 2) Onay kapısı: onay gerekliyse ve onaylayıcı ben değilsem onaya gider
+      const uidStr = String(kullanici?.id ?? '')
+      const benOnaylayici = mevcut.onaylayiciId
+        ? String(mevcut.onaylayiciId) === uidStr
+        : (String(mevcut.olusturanId ?? '') === uidStr || mevcut.olusturanAd === kullanici?.ad)
+      if (mevcut.onayGerekli && !benOnaylayici) {
+        setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: 'onay_bekliyor' } : g))
+        const g = await dbGorevGuncelle(mevcut.id, { durum: 'onay_bekliyor', onayDurumu: 'bekliyor', ilerleme: 100 })
+        if (!g) {
+          setGorevler(prev => prev.map(x => x.id.toString() === aktifId ? { ...x, durum: baslangicDurum } : x))
+          toast.error('Onaya gönderilemedi.')
+          return
+        }
+        const onaylayiciHedef = mevcut.onaylayiciId ||
+          kullanicilar?.find(k => String(k.id) === String(mevcut.olusturanId ?? '') || k.ad === mevcut.olusturanAd)?.id
+        if (onaylayiciHedef && String(onaylayiciHedef) !== uidStr) {
+          bildirimEkle(onaylayiciHedef, '⏳ Görev onayınızı bekliyor',
+            `${kullanici?.ad}, "${mevcut.baslik}" görevini tamamladı — onayınız bekleniyor.`,
+            'gorev', `/gorevler/${mevcut.id}`).catch(() => {})
+        }
+        toast.success('Görev tamamlandı olarak işaretlendi — onaya gönderildi.')
+        return
+      }
+    }
+    // Onay Bekliyor kolonuna elle sürükleme = onaya gönderme (onay_durumu da yazılır)
+    if (yeniDurum === 'onay_bekliyor') {
+      // Onay akışı tanımsız görev bu kolonda LİMBODA kalır — kimsenin
+      // 'Onay Bekleyenler' sekmesine düşmez (denetim bulgusu): engelle.
+      if (!mevcut.onayGerekli && !mevcut.onaylayiciId) {
+        geriAl()
+        toast.warning('Bu görevde onay akışı tanımlı değil — görevi detaydan tamamlayabilir ya da düzenleyip onaylayıcı ekleyebilirsin.')
+        return
+      }
+      setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: 'onay_bekliyor' } : g))
+      const g = await dbGorevGuncelle(mevcut.id, { durum: 'onay_bekliyor', onayDurumu: 'bekliyor', ilerleme: 100 })
+      if (!g) {
+        setGorevler(prev => prev.map(x => x.id.toString() === aktifId ? { ...x, durum: baslangicDurum } : x))
+        toast.error('Onaya gönderilemedi.')
+        return
+      }
+      const uid2 = String(kullanici?.id ?? '')
+      const onayHedef = mevcut.onaylayiciId ||
+        kullanicilar?.find(k => String(k.id) === String(mevcut.olusturanId ?? '') || k.ad === mevcut.olusturanAd)?.id
+      if (onayHedef && String(onayHedef) !== uid2) {
+        bildirimEkle(onayHedef, '⏳ Görev onayınızı bekliyor',
+          `${kullanici?.ad}, "${mevcut.baslik}" görevini onaya gönderdi.`,
+          'gorev', `/gorevler/${mevcut.id}`).catch(() => {})
+      }
+      return
+    }
     setGorevler(prev => prev.map(g => g.id.toString() === aktifId ? { ...g, durum: yeniDurum } : g))
     // Sebep zorunlu durumlar (madde 10): sebep alınmadan yazma — modal açılır,
     // vazgeçilirse sebepVazgec rollback yapar.
@@ -633,6 +738,12 @@ function Gorevler() {
 
     if (duzenleId) {
       const eski = gorevler.find(g => g.id === duzenleId)
+      // Atanan DEĞİŞTİYSE kabul akışı sıfırlanır — yeni sorumlu kabul barını
+      // görmeli (gorevDevret ile aynı reset; denetim bulgusu 2026-07-19)
+      if (eski && String(eski.atananId ?? eski.atanan ?? '') !== String(form.atanan)) {
+        payload.kabulDurumu = 'atandi'
+        payload.redSebebi = null
+      }
       const guncel = await dbGorevGuncelle(duzenleId, payload)
       if (!guncel) {
         toast.error('Görev güncellenemedi — lütfen tekrar deneyin.')
@@ -1388,6 +1499,7 @@ function Gorevler() {
                 onGorevClick={(id) => navigate(`/gorevler/${id}`)}
                 onEdit={duzenleAc}
                 onSil={gorevSil}
+                kartYetki={kartYetkisi}
               />
             ))}
           </div>
@@ -1452,7 +1564,7 @@ function Gorevler() {
               inSearch(durumAd, kolonFiltre.takip) &&
               inSearch(g.olusturanAd, kolonFiltre.veren) &&
               inSearch(atananKisi?.ad, kolonFiltre.alan) &&
-              inSearch(g.baslik, kolonFiltre.gorev) &&
+              (inSearch(g.baslik, kolonFiltre.gorev) || inSearch(g.aciklama, kolonFiltre.gorev)) &&
               inDateEq(basTar, kolonFiltre.basTar) &&
               inDateEq(bitTar, kolonFiltre.bitTar) &&
               inSearch(oncAd, kolonFiltre.kontrol)

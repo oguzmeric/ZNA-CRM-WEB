@@ -110,11 +110,13 @@ function SablonSekmesi({ kullanici, personeller, onGorevOlustu, onKapat }) {
         sablonId: uygula.id,
       })
       if (!ana) throw new Error('Ana görev oluşturulamadı')
-      // Alt görevler — ana sorumluya atanır (şablonda kişi belirtilmediyse)
+      // Alt görevler — ana sorumluya atanır (şablonda kişi belirtilmediyse).
+      // Kısmi başarısızlık SESSİZCE yutulmaz (denetim bulgusu).
+      let altHata = 0, kontrolHata = 0
       for (const alt of (v.altGorevler || [])) {
         const altAtananId = Number(alt.atananId) || Number(atanan)
         const altKisi = personeller.find(k => String(k.id) === String(altAtananId))
-        await gorevEkle({
+        const altYeni = await gorevEkle({
           baslik: alt.baslik, aciklama: alt.aciklama || null,
           ustGorevId: ana.id,
           durum: 'bekliyor', kabulDurumu: 'atandi',
@@ -124,10 +126,21 @@ function SablonSekmesi({ kullanici, personeller, onGorevOlustu, onKapat }) {
           zorunlu: alt.zorunlu !== false,
           olusturanAd: kullanici.ad, olusturanId: kullanici.id,
           sablonId: uygula.id,
-        })
+        }).catch(() => null)
+        if (!altYeni) { altHata++; continue }
+        // Alt görev sahibi farklı kişiyse haberdar edilir (elle açma akışıyla aynı)
+        if (String(altAtananId) !== String(kullanici.id)) {
+          bildirimEkle(altAtananId, '📋 Yeni alt görev atandı',
+            `${kullanici.ad}, "${ana.baslik}" ana görevi kapsamında size "${alt.baslik}" alt görevini atadı. Son tarih: ${trTarih(sonTarih)}.`,
+            'gorev', `/gorevler/${altYeni.id}`).catch(() => {})
+        }
       }
       for (const [i, m] of (v.kontrolListesi || []).entries()) {
-        await kontrolMaddeEkle({ gorevId: ana.id, baslik: m.baslik, zorunlu: !!m.zorunlu, sira: i, olusturanId: kullanici.id })
+        const km = await kontrolMaddeEkle({ gorevId: ana.id, baslik: m.baslik, zorunlu: !!m.zorunlu, sira: i, olusturanId: kullanici.id }).catch(() => null)
+        if (!km) kontrolHata++
+      }
+      if (altHata || kontrolHata) {
+        toast.warning(`Dikkat: ${altHata ? altHata + ' alt görev' : ''}${altHata && kontrolHata ? ' ve ' : ''}${kontrolHata ? kontrolHata + ' kontrol maddesi' : ''} oluşturulamadı — görev ağacını kontrol et.`)
       }
       if (String(atanan) !== String(kullanici.id)) {
         bildirimEkle(atanan, '📋 Yeni görev atandı',
@@ -215,6 +228,9 @@ function TekrarSekmesi({ kullanici, personeller }) {
     ad: '', baslik: '', atananId: '', oncelik: 'normal', kategoriId: '',
     siklik: 'haftalik', gunler: [1], sureGun: 1,
   })
+  // Aylık gün girişi HAM metin olarak tutulur — her tuşta parse edilirse
+  // controlled input virgülü anında yutuyordu (denetim bulgusu 2026-07-19)
+  const [gunlerMetin, setGunlerMetin] = useState('1')
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
@@ -225,13 +241,20 @@ function TekrarSekmesi({ kullanici, personeller }) {
   const kaydet = async () => {
     if (!form.ad.trim()) { toast.error('Plan adı zorunlu.'); return }
     if (!form.atananId) { toast.error('Atanacak kişiyi seç.'); return }
-    if ((form.siklik === 'haftalik' || form.siklik === 'aylik') && !form.gunler.length) {
+    // Aylık günler kaydetme ANINDA parse edilir (yazarken değil)
+    const aylikGunler = form.siklik === 'aylik'
+      ? Array.from(new Set(gunlerMetin.split(',').map(x => Number(x.trim())).filter(n => Number.isInteger(n) && n >= 1 && n <= 32)))
+      : form.gunler.map(Number)
+    if (form.siklik === 'aylik' && !aylikGunler.length) {
+      toast.error('Ayın günlerini virgülle gir (örn. 1,15 — son iş günü için 32).'); return
+    }
+    if (form.siklik === 'haftalik' && !form.gunler.length) {
       toast.error('En az bir gün seç.'); return
     }
     const t = await gorevTekrarKaydet({
       ad: form.ad.trim(),
       siklik: form.siklik,
-      gunler: form.siklik === 'gunluk' || form.siklik === 'yillik' ? [] : form.gunler.map(Number),
+      gunler: form.siklik === 'gunluk' || form.siklik === 'yillik' ? [] : aylikGunler,
       sablon: {
         gorev: {
           baslik: form.baslik.trim() || form.ad.trim(),
@@ -249,11 +272,6 @@ function TekrarSekmesi({ kullanici, personeller }) {
     setFormAcik(false)
     setForm({ ad: '', baslik: '', atananId: '', oncelik: 'normal', kategoriId: '', siklik: 'haftalik', gunler: [1], sureGun: 1 })
     toast.success('Tekrarlayan görev planı kuruldu — üretim her sabah 08:30\'da otomatik.')
-  }
-
-  const durumDegistir = async (t) => {
-    const g = await gorevTekrarGuncelle(t.id, { aktif: !t.aktif })
-    if (g) setTekrarlar(p => p.map(x => (x.id === t.id ? g : x)))
   }
 
   const SIKLIK_ISIM = { gunluk: 'Her gün', haftalik: 'Haftalık', aylik: 'Aylık', yillik: 'Yıllık' }
@@ -346,8 +364,8 @@ function TekrarSekmesi({ kullanici, personeller }) {
             <div>
               <Label>Ayın günleri (virgülle; 32 = ayın son iş günü)</Label>
               <Input
-                value={form.gunler.join(',')}
-                onChange={e => set('gunler', e.target.value.split(',').map(x => Number(x.trim())).filter(n => n >= 1 && n <= 32))}
+                value={gunlerMetin}
+                onChange={e => setGunlerMetin(e.target.value)}
                 placeholder="Örn. 1,15 veya 32"
               />
             </div>
@@ -384,9 +402,15 @@ function TekrarSekmesi({ kullanici, personeller }) {
                   {t.sonrakiUretim ? ` · Sonraki: ${trTarih(t.sonrakiUretim)}` : ''}
                 </div>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => durumDegistir(t)}>
-                {t.aktif ? 'Durdur' : 'Başlat'}
-              </Button>
+              {(kullanici?.rol === 'admin' || String(t.olusturanId) === String(kullanici?.id)) && (
+                <Button variant="secondary" size="sm" onClick={async () => {
+                  const g = await gorevTekrarGuncelle(t.id, { aktif: !t.aktif })
+                  if (!g) { toast.error('Yetkin yok — planı yalnız kuran kişi veya admin durdurabilir.'); return }
+                  setTekrarlar(p => p.map(x => (x.id === t.id ? g : x)))
+                }}>
+                  {t.aktif ? 'Durdur' : 'Başlat'}
+                </Button>
+              )}
             </div>
           ))}
         </div>

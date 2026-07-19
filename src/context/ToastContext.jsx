@@ -123,9 +123,11 @@ function ToastContainer({ toasts, onKapat }) {
       position: 'fixed',
       bottom: '24px',
       right: '24px',
-      // Sayfa modalları 10000, onay penceresi 12000 — toast HER ŞEYİN üstünde
-      // görünmeli (eski 9999 değeri modal açıkken toast'ları gizliyordu)
-      zIndex: 13000,
+      // Katman haritası: sayfa modalları 10000-12000, gecikme kapısı 90000,
+      // görev v2 modalları 100000, dropdown panelleri 120000 — toast HER ŞEYİN
+      // üstünde görünmeli (13000 değeri görev modallarında doğrulama hatalarını
+      // perde arkasında bırakıyordu, denetim bulgusu 2026-07-19)
+      zIndex: 130000,
       display: 'flex',
       flexDirection: 'column-reverse',
       gap: '8px',

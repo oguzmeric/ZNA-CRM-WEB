@@ -76,7 +76,14 @@ export const gorevGuncelle = async (id, guncellenmis) => {
 }
 
 export const gorevSil = async (id) => {
-  await supabase.from('gorevler').delete().eq('id', id)
+  // RLS silmeyi sessizce 0 satırla filtreleyebilir (kural 9: yalnız taslak +
+  // oluşturan veya admin siler) — sahte "silindi" başarısı göstermemek için
+  // silinen satırı doğrula (denetim bulgusu 2026-07-19).
+  const { data, error } = await supabase.from('gorevler').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Silme yetkin yok — atanmış görevler silinmez, İptal edilir.')
+  }
   invalidate('gorevler:list', `gorev:${id}`)
 }
 

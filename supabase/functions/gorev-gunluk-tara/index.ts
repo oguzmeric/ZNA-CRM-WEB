@@ -142,12 +142,13 @@ Deno.serve(async (req) => {
     const { data: tekrarlar } = await supa.from('gorev_tekrarlar')
       .select('*').eq('aktif', true)
     for (const t of (tekrarlar || [])) {
-      // İlk kurulum: sonraki_uretim boşsa hesapla ve geç
+      // İlk kurulum: sonraki_uretim boşsa DÜN bazıyla hesapla — hesap BUGÜNÜ
+      // veriyorsa aynı turda üret (continue edilirse ilk gün kaybolur,
+      // denetim bulgusu 2026-07-19)
       if (!t.sonraki_uretim) {
-        await supa.from('gorev_tekrarlar').update({
-          sonraki_uretim: sonrakiUretim(t.siklik, t.gunler || [], tarihEkle(bugun, -1)),
-        }).eq('id', t.id)
-        continue
+        const ilkUretim = sonrakiUretim(t.siklik, t.gunler || [], tarihEkle(bugun, -1))
+        await supa.from('gorev_tekrarlar').update({ sonraki_uretim: ilkUretim }).eq('id', t.id)
+        t.sonraki_uretim = ilkUretim
       }
       if (t.sonraki_uretim > bugun) continue
 
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
           altAd = k?.ad ?? null
         }
         const altSon = tarihEkle(bugun, Number(alt.sureGun) || 1)
-        const { data: altYeni } = await supa.from('gorevler').insert({
+        const { data: altYeni, error: altErr } = await supa.from('gorevler').insert({
           baslik: alt.baslik, aciklama: alt.aciklama || null,
           durum: 'bekliyor', oncelik: alt.oncelik || 'normal',
           ust_gorev_id: yeni.id,
@@ -202,7 +203,11 @@ Deno.serve(async (req) => {
           olusturan_id: t.olusturan_id || null,
           olusturan_ad: 'Tekrarlayan Görev 🔁',
         }).select('id').single()
-        if (altYeni && altAtanan) {
+        if (altErr || !altYeni) {
+          console.error('[tekrar alt gorev]', t.id, alt.baslik, altErr?.message)
+          continue
+        }
+        if (altAtanan) {
           await bildir(altAtanan, '📋 Yeni alt görev atandı',
             `"${s.baslik || t.ad}" kapsamında "${alt.baslik}" alt görevi (tekrarlayan plan). Son tarih: ${trTarih(altSon)}.`,
             `/gorevler/${altYeni.id}`)

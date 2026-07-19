@@ -120,7 +120,7 @@ export default function CokluSelect({
             border: '1px solid var(--border-default, #D9DFE5)',
             borderRadius: 'var(--radius-md, 6px)',
             boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12))',
-            display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 10000,
+            display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 120000,
           }}
         >
           {secenekler.length > 8 && (

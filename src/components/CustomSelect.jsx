@@ -227,7 +227,9 @@ export default function CustomSelect({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            zIndex: 10000,
+            // Modal içinden açıldığında panel modalın (zIndex 100000) ÜSTÜNDE
+            // kalmalı — 10000'de kalınca devret modalında arkada/flu görünüyordu
+            zIndex: 120000,
           }}
         >
           {/* Arama input — açıkken ilk satır */}
