@@ -18,6 +18,9 @@ export const GOREV_DURUMLARI = [
 ]
 
 export const DURUM_MAP = Object.fromEntries(GOREV_DURUMLARI.map(d => [d.id, d]))
+// Legacy alias: eski mobil sürümler 'devam_ediyor' yazabiliyor (mig 197 normalize
+// eder; okuma anında da aynı görünsün)
+DURUM_MAP.devam_ediyor = DURUM_MAP.devam
 export const durumBilgi = (id) => DURUM_MAP[id] || { id, isim: id || '—', renk: 'var(--text-muted)', grup: 'acik' }
 export const ACIK_DURUMLAR = GOREV_DURUMLARI.filter(d => d.grup === 'acik').map(d => d.id)
 export const KAPALI_DURUMLAR = GOREV_DURUMLARI.filter(d => d.grup === 'kapali').map(d => d.id)

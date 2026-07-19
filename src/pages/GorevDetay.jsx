@@ -16,6 +16,8 @@ import { invalidate } from '../lib/cache'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { parseMentions } from '../lib/mention'
+import { EkListesi } from '../components/EkAlani'
+import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonDetay } from '../components/Skeleton'
 import {
   GECIKME_SEBEPLERI, KABUL_MAP, durumBilgi, etkinDurum, oncelikBilgi,
