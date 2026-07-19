@@ -416,7 +416,9 @@ function DurumModal({ hareketler, adminMi, kullanici, onKapat, onKaydedildi }) {
   const kaydet = async () => {
     if (aciklamaZorunlu && !aciklama.trim()) { toast.error('Bu durum için açıklama zorunlu.'); return }
     if (yoneticiGerekli && !adminMi) { toast.error('Bu durumu yalnız yönetici seçebilir.'); return }
-    if (durum === 'kismen_faturalandi' && tekli) {
+    if (durum === 'kismen_faturalandi') {
+      // Kısmi faturalama kayıt başına miktar ister — toplu seçimde anlamsız
+      if (!tekli) { toast.error('Kısmen faturalama tek kayıtta yapılır (faturalanan miktar girilmeli). Kayıtları tek tek işaretleyin.'); return }
       const f = Number(faturalanan)
       if (!(f > 0 && f < Number(h0.miktar))) { toast.error(`Faturalanan miktar 0 ile ${Number(h0.miktar)} arasında olmalı.`); return }
     }
