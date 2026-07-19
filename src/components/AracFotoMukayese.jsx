@@ -115,6 +115,24 @@ export default function AracFotoMukayese() {
     }
   }
 
+  // ── Referans silme (yalnız Ferdi + admin; bölge boşalır, kilit geri gelir) ─
+  const referansSilWeb = async (ref, bolgeAd) => {
+    if (!window.confirm(`${bolgeAd} referansı silinsin mi? Bölge boşalır ve bu araçta günlük çekim yeniden kilitlenir.`)) return
+    try {
+      const { data, error } = await supabase
+        .from('arac_referans_fotolar').delete().eq('id', ref.id).select('id')
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error('Silme yetkin yok (RLS engelledi).')
+      if (ref.foto_url) {
+        supabase.storage.from('arac-fotolari').remove([ref.foto_url]).catch(() => {})
+      }
+      toast.success(`${bolgeAd} referansı silindi.`)
+      yukle()
+    } catch (e) {
+      toast.error('Silinemedi: ' + (e?.message || 'hata'))
+    }
+  }
+
   // ── Kontrol kararları ─────────────────────────────────────────────────────
   const kontrolKaydet = async (sonuc, bolgeler = [], notlar = null) => {
     setMesgul(true)
@@ -239,16 +257,30 @@ export default function AracFotoMukayese() {
                       <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{b.ad}</div>
                       {ref && <div className="t-caption">v{ref.versiyon} · {ref.ceken_ad || '—'}</div>}
                       {yetkili && (
-                        <label style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, cursor: 'pointer',
-                          font: '600 11px/16px var(--font-sans)', color: 'var(--brand-primary)',
-                        }}>
-                          <Upload size={11} strokeWidth={1.5} />
-                          {yukleyenBolge === b.id ? 'Yükleniyor…' : (ref ? 'Yenile' : 'Referans Yükle')}
-                          <input type="file" accept="image/*" style={{ display: 'none' }}
-                            disabled={!!yukleyenBolge}
-                            onChange={e => { referansYukle(b.id, e.target.files?.[0]); e.target.value = '' }} />
-                        </label>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                          <label style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                            font: '600 11px/16px var(--font-sans)', color: 'var(--brand-primary)',
+                          }}>
+                            <Upload size={11} strokeWidth={1.5} />
+                            {yukleyenBolge === b.id ? 'Yükleniyor…' : (ref ? 'Yenile' : 'Referans Yükle')}
+                            <input type="file" accept="image/*" style={{ display: 'none' }}
+                              disabled={!!yukleyenBolge}
+                              onChange={e => { referansYukle(b.id, e.target.files?.[0]); e.target.value = '' }} />
+                          </label>
+                          {ref && (
+                            <button
+                              onClick={() => referansSilWeb(ref, b.ad)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
+                                background: 'none', border: 'none', padding: 0,
+                                font: '600 11px/16px var(--font-sans)', color: 'var(--danger)',
+                              }}
+                            >
+                              Sil
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <Hucre kayit={ref} etiket={`${b.ad} referans`} />
