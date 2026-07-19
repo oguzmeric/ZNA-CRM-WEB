@@ -3,7 +3,8 @@
 // Editör = KesifFotoCizim'in kroki modu (duvar/kablo/sembol paleti + kalem bağı).
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Map, Plus, X, Pencil, Trash2, ImageOff } from 'lucide-react'
+// DİKKAT: lucide 'Map' ikonu global Map yapıcısını GÖLGELER (new Map() çöker) — takma adla al
+import { Map as MapIkon, Plus, X, Pencil, Trash2, ImageOff } from 'lucide-react'
 import {
   kesifKrokiKaydet, kesifKrokiSil, kesifFotoUrlleri, krokiSembolBilgi,
 } from '../../services/kesifService'
@@ -80,7 +81,7 @@ export default function KesifKrokiBolumu({ kesifId, krokiler, setKrokiler, fotoU
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <h2 className="t-h2" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Map size={15} strokeWidth={1.5} /> Krokiler ({krokiler.length})
+          <MapIkon size={15} strokeWidth={1.5} /> Krokiler ({krokiler.length})
         </h2>
         <Button variant="secondary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.5} />}
           onClick={() => { setYeniBaslik(`Kroki ${krokiler.length + 1}`); setBaslikModal(true) }}>
