@@ -195,12 +195,22 @@ export default function KesifDetay() {
     const yazFotolar = yazdirFotoSecim === 'yok' ? []
       : yazdirFotoSecim === 'cizimli' ? fotolar.filter(f => f.cizimYolu)
       : fotolar
+    const oncelikAd = KESIF_ONCELIKLERI.find(o => o.id === (kesif.oncelik || 'normal'))?.ad
+    const durumAd = KESIF_DURUMLARI.find(d => d.id === kesif.durum)?.ad
     const bilgi = [
-      ['Müşteri', kesif.firmaAdi], ['Proje', kesif.projeAdi], ['Adres', kesif.lokasyon],
-      ['Yetkili', [kesif.musteriYetkilisi, kesif.yetkiliTelefon].filter(Boolean).join(' · ')],
-      ['Keşif Tarihi', fmtTarih(kesif.kesifTarihi)], ['Keşfi Yapan', kesif.kesfiYapan],
-      ['Türler', (kesif.turler || []).map(t => KESIF_TURLERI.find(x => x.id === t)?.ad || t).join(', ')],
+      ['Müşteri', kesif.firmaAdi], ['Proje', kesif.projeAdi], ['Keşif Adresi', kesif.lokasyon],
+      ['Müşteri Yetkilisi', kesif.musteriYetkilisi], ['Yetkili Telefon', kesif.yetkiliTelefon],
+      ['Yetkili E-posta', kesif.yetkiliEmail], ['İlgili Satış Personeli', kesif.satisPersoneli],
+      ['Keşfi Yapan', kesif.kesfiYapan], ['Keşif Tarihi', kesif.kesifTarihi && fmtTarih(kesif.kesifTarihi)],
+      ['Tahmini Proje Tarihi', kesif.tahminiProjeTarihi && fmtTarih(kesif.tahminiProjeTarihi)],
+      ['Öncelik', oncelikAd], ['Durum', durumAd],
     ].filter(([, v]) => v)
+    // Keşif türleri + türe özel teknik detaylar
+    const turBlok = (kesif.turler || []).map(tid => {
+      const t = KESIF_TURLERI.find(x => x.id === tid)
+      const detay = (kesif.teknikDetaylar || {})[tid]
+      return `<div class="tur"><strong>${esc(t?.ad || tid)}</strong>${detay ? `<div class="mut">${esc(detay)}</div>` : ''}</div>`
+    }).join('')
     const kalemSatir = kalemler.map(k =>
       `<tr><td>${esc(KESIF_KATEGORILERI.find(x => x.id === k.kategori)?.ad || k.kategori)}</td><td>${esc(k.urunAdi)}${k.marka ? ` <span class="mut">(${esc(k.marka)})</span>` : ''}</td><td class="sag">${esc(k.miktar)} ${esc(k.birim)}</td><td>${esc(k.notlar || '')}</td></tr>`
     ).join('')
@@ -233,13 +243,21 @@ export default function KesifDetay() {
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { font: 12px/1.5 system-ui, sans-serif; color: #111; padding: 28px; }
-  h1 { font-size: 19px; margin-bottom: 2px; }
-  h2 { font-size: 14px; margin: 20px 0 8px; border-bottom: 2px solid #111; padding-bottom: 3px; }
+  .antet { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #014486; padding-bottom: 10px; margin-bottom: 4px; }
+  .marka { font-size: 20px; font-weight: 800; color: #014486; letter-spacing: .5px; }
+  .marka small { display: block; font-size: 10px; font-weight: 600; color: #555; letter-spacing: 2px; }
+  .rapor-tip { text-align: right; font-size: 11px; color: #555; }
+  .rapor-tip b { display: block; font-size: 15px; color: #111; }
+  h1 { font-size: 17px; margin: 12px 0 1px; }
+  h2 { font-size: 13px; margin: 18px 0 7px; border-bottom: 2px solid #014486; padding-bottom: 3px; color: #014486; }
   .mut { color: #555; }
-  .bilgi { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 24px; margin-top: 10px; }
+  .bilgi { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-top: 10px; }
+  .bilgi > div { border-bottom: 1px dotted #ddd; padding-bottom: 2px; }
+  .metin-blok { white-space: pre-wrap; padding: 8px 10px; background: #f7f9fb; border-radius: 5px; border: 1px solid #e5e9ef; }
+  .tur { margin-bottom: 6px; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   th, td { border: 1px solid #bbb; padding: 5px 8px; text-align: left; vertical-align: top; }
-  th { background: #f1f1f1; font-size: 11px; }
+  th { background: #eef3f8; font-size: 11px; }
   .sag { text-align: right; white-space: nowrap; }
   .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .foto { border: 1px solid #ccc; border-radius: 6px; overflow: hidden; break-inside: avoid; }
@@ -251,15 +269,31 @@ export default function KesifDetay() {
   .ljs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 11px; }
   .lj { display: inline-flex; align-items: center; gap: 5px; }
   .ljn { color: #fff; font-weight: 800; font-size: 9px; padding: 2px 6px; border-radius: 9px; }
+  .imza { display: flex; justify-content: space-between; gap: 40px; margin-top: 40px; break-inside: avoid; }
+  .imza > div { flex: 1; border-top: 1px solid #333; padding-top: 5px; font-size: 11px; color: #555; text-align: center; }
+  .foot { margin-top: 24px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 10px; color: #888; text-align: center; }
   @media print { body { padding: 10mm; } }
 </style></head><body>
-<h1>${esc(kesif.kesifNo)} — Keşif Raporu</h1>
-<div class="mut">${esc(kesif.kesifBasligi || '')}</div>
+<div class="antet">
+  <div class="marka">ZNA TEKNOLOJİ<small>SAHA KEŞİF RAPORU</small></div>
+  <div class="rapor-tip"><b>${esc(kesif.kesifNo || '')}</b>${kesif.kesifTarihi ? `Keşif: ${esc(fmtTarih(kesif.kesifTarihi))}` : ''}</div>
+</div>
+<h1>${esc(kesif.kesifBasligi || kesif.firmaAdi || 'Keşif')}</h1>
+
+<h2>Müşteri ve Proje Bilgileri</h2>
 <div class="bilgi">${bilgi.map(([a, v]) => `<div><strong>${esc(a)}:</strong> ${esc(v)}</div>`).join('')}</div>
-${kesif.genelNot ? `<h2>Keşif Açıklaması</h2><div>${esc(kesif.genelNot)}</div>` : ''}
+${turBlok ? `<h2>Keşif Türleri ve Teknik Detaylar</h2>${turBlok}` : ''}
+${kesif.genelNot ? `<h2>Keşif Açıklaması</h2><div class="metin-blok">${esc(kesif.genelNot)}</div>` : ''}
+${kesif.ozelTalepler ? `<h2>Müşteri Özel Talepleri</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
+${kesif.mevcutSistem ? `<h2>Mevcut Sistem Bilgisi</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
 ${kalemler.length ? `<h2>Malzeme Listesi (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
 ${krokiBlok ? `<h2>Krokiler (${krokiler.length})</h2>${krokiBlok}` : ''}
 ${fotoBlok ? `<h2>Fotoğraflar (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
+<div class="imza">
+  <div>Keşfi Yapan${kesif.kesfiYapan ? `<br><b style="color:#111">${esc(kesif.kesfiYapan)}</b>` : ''}</div>
+  <div>Müşteri Yetkilisi${kesif.musteriYetkilisi ? `<br><b style="color:#111">${esc(kesif.musteriYetkilisi)}</b>` : ''}</div>
+</div>
+<div class="foot">Bu rapor ZNA Teknoloji CRM sistemi üzerinden ${esc(new Date().toLocaleString('tr-TR'))} tarihinde oluşturulmuştur.</div>
 <script>window.onload = () => setTimeout(() => window.print(), 600)</scr` + `ipt></body></html>`
     const w = window.open('', '_blank', 'width=980,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi — tarayıcı iznini kontrol et.'); return }
