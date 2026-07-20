@@ -147,16 +147,16 @@ export async function bordroYukle({ kullaniciId, yil, ay, donemYil, donemAy, dos
     await supabase.storage.from(BUCKET).remove([eski.dosya_yol]).catch(() => {})
   }
 
-  // Personele bildirim
+  // Personele bildirim — ana akışı BEKLETMEZ (timeout kaydı "hata" gibi gösteriyordu)
   const aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
-  await bildirimEkleDb({
+  bildirimEkleDb({
     aliciId: Number(kullaniciId),
     baslik: '💼 Yeni bordro yüklendi',
     mesaj: `${aylar[Number(ay) - 1] || ay} ${yil} dönemi bordronuz yüklendi.`,
     tip: 'bilgi',
     link: '/izin-bordro',
-  })
+  }).catch(e => console.warn('[bordro bildirimi]', e?.message))
 
   return toCamel(data)
 }
@@ -235,18 +235,22 @@ export async function izinTalepEkle({ kullaniciId, tur, baslangic, bitis, gunSay
     .single()
   if (error) throw error
 
-  // İK yetkililerine haber ver (talep sahibi de İK ise kendine bildirim gitmesin)
-  const ikler = await ikYetkilileriGetir()
-  const aliciIdler = ikler.map(k => Number(k.id)).filter(id => id !== Number(kullaniciId))
-  if (aliciIdler.length) {
-    const turAd = izinTurBilgi(tur).isim
-    await cokluBildirimEkle(aliciIdler, {
-      baslik: '🏖️ Yeni izin talebi',
-      mesaj: `${turAd} talebi: ${baslangic} → ${bitis} (${gun} iş günü).`,
-      tip: 'bilgi',
-      link: '/ik-yonetim',
-    })
-  }
+  // İK yetkililerine haber ver — talep KAYDEDİLDİKTEN sonra, akışı BEKLETMEDEN.
+  // (await'li hali: bildirim RPC'si timeout olunca kullanıcı "Request timed out"
+  // görüyordu ama talep girilmişti — tekrar deneyince çift kayıt riski.)
+  ;(async () => {
+    const ikler = await ikYetkilileriGetir()
+    const aliciIdler = ikler.map(k => Number(k.id)).filter(id => id !== Number(kullaniciId))
+    if (aliciIdler.length) {
+      const turAd = izinTurBilgi(tur).isim
+      await cokluBildirimEkle(aliciIdler, {
+        baslik: '🏖️ Yeni izin talebi',
+        mesaj: `${turAd} talebi: ${baslangic} → ${bitis} (${gun} iş günü).`,
+        tip: 'bilgi',
+        link: '/ik-yonetim',
+      })
+    }
+  })().catch(e => console.warn('[izin talep bildirimi]', e?.message))
 
   return toCamel(data)
 }
@@ -276,13 +280,14 @@ export async function izinKarar(id, karar) {
 
   const onay = durum === 'onaylandi'
   const turAd = izinTurBilgi(data.tur).isim
-  await bildirimEkleDb({
+  // Karar kaydedildi — bildirim akışı BEKLETMEZ
+  bildirimEkleDb({
     aliciId: Number(data.kullanici_id),
     baslik: onay ? '✅ İzin talebiniz onaylandı' : '❌ İzin talebiniz reddedildi',
     mesaj: `${turAd} (${data.baslangic} → ${data.bitis})${data.karar_notu ? ` — Not: ${data.karar_notu}` : ''}`,
     tip: onay ? 'basari' : 'uyari',
     link: '/izin-bordro',
-  })
+  }).catch(e => console.warn('[izin karar bildirimi]', e?.message))
 
   return toCamel(data)
 }
