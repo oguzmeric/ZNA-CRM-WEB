@@ -54,12 +54,12 @@ const talepTone = {
   iptal:             { tone: 'kayip',     isim: 'İptal',              C: Ban },
 }
 
-const fmtTL = (n) => `₺${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+const fmtTL = (n) => `₺${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 // Para birimini teklife göre formatla (TEK-0547 USD'ydi, listede ₺ gösterilince yanıltıcı)
 const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
 const fmtPara = (n, paraBirimi) => {
   const sembol = PARA_SEMBOL[paraBirimi] || '₺'
-  return `${sembol}${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+  return `${sembol}${(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const goreceTarih = (t) => {
