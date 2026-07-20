@@ -99,9 +99,12 @@ export default function Teklifler() {
   const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
-  const [gosterilecek, setGosterilecek] = useState(100)
+  const [sayfa, setSayfa] = useState(1) // sayfalı gezinme ("yükle" butonu yerine)
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
   const [benimTekliflerim, setBenimTekliflerim] = useState(false) // "Tekliflerim" — hazırlayan/temsilci benim
+
+  // Filtre/sekme/arama değişince 1. sayfaya dön
+  useEffect(() => { setSayfa(1) }, [aktifSekme, arama, siralama, benimTekliflerim])
 
   useEffect(() => {
     let iptal = false
@@ -200,8 +203,17 @@ export default function Teklifler() {
     .filter(t => trContains(`${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`, arama))
     .sort(siralayici[siralama] || siralayici.yeni)
 
-  const gorunenTeklifler = filtreli.slice(0, gosterilecek)
-  const dahaFazlaVar = filtreli.length > gosterilecek
+  const SAYFA_BOY = 100
+  const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOY))
+  const guvenliSayfa = Math.min(sayfa, toplamSayfa)
+  const gorunenTeklifler = filtreli.slice((guvenliSayfa - 1) * SAYFA_BOY, guvenliSayfa * SAYFA_BOY)
+  const sayfaGit = (p) => { setSayfa(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  // Sayfa numaraları: 1 … (aktif±2) … son
+  const sayfaListesi = []
+  for (let p = 1; p <= toplamSayfa; p++) {
+    if (p === 1 || p === toplamSayfa || Math.abs(p - guvenliSayfa) <= 2) sayfaListesi.push(p)
+    else if (sayfaListesi[sayfaListesi.length - 1] !== '…') sayfaListesi.push('…')
+  }
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
@@ -668,11 +680,47 @@ export default function Teklifler() {
                   </table>
                 </div>
 
-                {dahaFazlaVar && (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: 16, borderTop: '1px solid var(--border-default)' }}>
-                    <Button variant="secondary" iconLeft={<Download size={14} strokeWidth={1.5} />} onClick={() => setGosterilecek(p => p + 200)}>
-                      {filtreli.length - gosterilecek} kayıt daha — yükle
-                    </Button>
+                {toplamSayfa > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderTop: '1px solid var(--border-default)', flexWrap: 'wrap' }}>
+                    <button
+                      disabled={guvenliSayfa <= 1}
+                      onClick={() => sayfaGit(guvenliSayfa - 1)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-default)', background: 'transparent',
+                        color: guvenliSayfa <= 1 ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                        cursor: guvenliSayfa <= 1 ? 'default' : 'pointer',
+                        font: '500 13px/18px var(--font-sans)',
+                      }}
+                    >‹ Önceki</button>
+                    {sayfaListesi.map((p, i) => p === '…' ? (
+                      <span key={`e${i}`} style={{ padding: '0 4px', color: 'var(--text-tertiary)' }}>…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => sayfaGit(p)}
+                        style={{
+                          minWidth: 34, padding: '6px 8px', borderRadius: 'var(--radius-sm)',
+                          border: `1px solid ${p === guvenliSayfa ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                          background: p === guvenliSayfa ? 'var(--brand-primary-soft)' : 'transparent',
+                          color: p === guvenliSayfa ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          font: `${p === guvenliSayfa ? 600 : 500} 13px/18px var(--font-sans)`,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >{p}</button>
+                    ))}
+                    <button
+                      disabled={guvenliSayfa >= toplamSayfa}
+                      onClick={() => sayfaGit(guvenliSayfa + 1)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-default)', background: 'transparent',
+                        color: guvenliSayfa >= toplamSayfa ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                        cursor: guvenliSayfa >= toplamSayfa ? 'default' : 'pointer',
+                        font: '500 13px/18px var(--font-sans)',
+                      }}
+                    >Sonraki ›</button>
                   </div>
                 )}
 
@@ -685,7 +733,10 @@ export default function Teklifler() {
                     font: '400 12px/16px var(--font-sans)',
                     color: 'var(--text-tertiary)',
                   }}>
-                    <span><span className="tabular-nums">{gorunenTeklifler.length}</span> Kayıt</span>
+                    <span className="tabular-nums">
+                      {(guvenliSayfa - 1) * SAYFA_BOY + 1}–{(guvenliSayfa - 1) * SAYFA_BOY + gorunenTeklifler.length} / {filtreli.length} kayıt
+                      {toplamSayfa > 1 ? ` · Sayfa ${guvenliSayfa}/${toplamSayfa}` : ''}
+                    </span>
                     <div style={{ display: 'flex', gap: 24 }}>
                       <span title="Sadece TL teklifleri toplanır (farklı para birimleri toplanamaz)">
                         TL Toplam: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
