@@ -52,8 +52,13 @@ const kolonlar = [
   { id: 'beklemede',     isim: 'Beklemede',     renk: '#f97316',        durumlar: ['beklemede', 'bilgi_bekleniyor'] },
   { id: 'onay_bekliyor', isim: 'Onay Bekliyor', renk: '#06b6d4',        durumlar: ['onay_bekliyor'] },
   { id: 'tamamlandi',    isim: 'Tamamlandı',    renk: 'var(--success)', durumlar: ['tamamlandi'] },
+  // İptal + Reddedildi kanbanda kaybolmasın (tutarsızlık bulgusu) — buraya
+  // sürükleme = iptal (SEBEP_ZORUNLU → sebep modalı açılır); reddedildi yalnız
+  // kabul akışından atanır, kolonda sadece görüntülenir.
+  { id: 'iptal',         isim: 'İptal / Red',   renk: 'var(--text-muted)', durumlar: ['iptal', 'reddedildi'] },
 ]
-const kolonBul = (durum) => kolonlar.find(k => k.durumlar.includes(durum))
+// durumBilgi ile normalize: legacy 'devam_ediyor' gibi alias'lar da kolonunu bulsun
+const kolonBul = (durum) => kolonlar.find(k => k.durumlar.includes(durumBilgi(durum).id))
 
 // Liste sekmeleri (madde 30)
 const SEKME_LISTESI = [
@@ -1490,7 +1495,7 @@ function Gorevler() {
               <DroppableKolon
                 key={kolon.id}
                 kolon={kolon}
-                gorevler={filtreliGorevler.filter(g => kolon.durumlar.includes(g.durum))}
+                gorevler={filtreliGorevler.filter(g => kolon.durumlar.includes(durumBilgi(g.durum).id))}
                 kullanicilar={kullanicilar}
                 lokasyonMap={lokasyonMap}
                 altSayiMap={altSayiMap}
