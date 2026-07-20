@@ -103,7 +103,6 @@ const menuItems = [
   { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler', grup: 'gunluk' },
   { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null, grup: 'gunluk' },
   { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null, grup: 'gunluk' },
-  { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'gunluk' },
   { id: 'destek', isim: 'Destek', Icon: LifeBuoy, yol: '/destek', modul: null, grup: 'gunluk' },
   {
     id: 'satislar',
@@ -192,6 +191,8 @@ const menuItems = [
   { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   { id: 'dokumanlarim', isim: 'Dokümanlarım', Icon: FolderOpen, yol: '/dokumanlarim', modul: null, grup: 'operasyon' },
+  // Kişisel özlük alanı — Dokümanlarım'ın yanında (kullanıcı kararı: GÜNLÜK'te değil)
+  { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'operasyon' },
   {
     id: 'raporlar',
     isim: 'Raporlar',
