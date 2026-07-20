@@ -460,6 +460,7 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
         <KesifFotoCizim
           imageUrl={fotoUrlMap.get(cizilen.dosyaYolu)}
           baslangicSekilleri={cizilen.cizimVeri?.sekiller || []}
+          kalemler={kalemler}
           onKapat={() => setCizilen(null)}
           onKaydet={cizimKaydet}
           kaydediliyor={cizimKaydediliyor}

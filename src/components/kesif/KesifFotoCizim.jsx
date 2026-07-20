@@ -9,7 +9,7 @@ import {
   X, Pen, MoveUpRight, Minus, Circle, Square, Type, Hash,
   Eraser, Undo2, Redo2, Trash2, Check, BrickWall, Cable, MapPin,
 } from 'lucide-react'
-import { KROKI_SEMBOLLERI, krokiSembolBilgi, KROKI_SEMBOL_PATH } from '../../services/kesifService'
+import { KROKI_SEMBOLLERI, KROKI_KATEGORILER, krokiSembolBilgi, KROKI_SEMBOL_PATH } from '../../services/kesifService'
 
 // Sembol path'lerini bir kez Path2D'ye çevir (her karede yeniden kurmayalım)
 const SEMBOL_PATH2D = Object.fromEntries(
@@ -40,7 +40,7 @@ const ARACLAR = [
   { id: 'balon',      ikon: Hash,       ad: 'Numara balonu' },
   { id: 'silgi',      ikon: Eraser,     ad: 'Silgi (şekle tıkla)' },
 ]
-// Kroki moduna özel araçlar (2026-07-19 karar: boş tuval + duvar/kablo/sembol paleti)
+// Kroki araçları — kroki VE foto modunda ortak (2026-07-20: foto üstüne de sembol konabilir)
 const KROKI_ARACLAR = [
   { id: 'duvar',  ikon: BrickWall, ad: 'Duvar (kalın çizgi)' },
   { id: 'kablo',  ikon: Cable,     ad: 'Kablo güzergahı (kesikli)' },
@@ -203,7 +203,8 @@ export default function KesifFotoCizim({
   const [kalinlik, setKalinlik] = useState(4)
   const [taslak, setTaslak] = useState(null)           // sürükleme sırasındaki geçici şekil
   const [metinGiris, setMetinGiris] = useState(null)   // {x, y, ekranX, ekranY, deger}
-  const [secSembol, setSecSembol] = useState('kamera') // aktif sembol tipi (kroki)
+  const [secSembol, setSecSembol] = useState('dome')     // aktif sembol tipi
+  const [secKategori, setSecKategori] = useState('kamera') // sembol paleti aktif kategori sekmesi
   const [sembolPanel, setSembolPanel] = useState(null) // {index, ekranX, ekranY} — kalem bağla/sil
 
   // Görüntü boyutu: kroki modunda sabit tuval, foto modunda doğal boyut
@@ -360,7 +361,8 @@ export default function KesifFotoCizim({
     onKaydet(blob, { surum: 1, sekiller })
   }
 
-  const araclar = krokiModu ? [...KROKI_ARACLAR, ...ARACLAR] : ARACLAR
+  // Kroki araçları (duvar/kablo/sembol) FOTO modunda da açık — krokide yapılan her şey fotoda geçerli
+  const araclar = [...KROKI_ARACLAR, ...ARACLAR]
 
   return createPortal(
     <div style={{
@@ -426,24 +428,49 @@ export default function KesifFotoCizim({
         ))}
       </div>
 
-      {/* Sembol paleti — sembol aracı seçiliyken (kroki) */}
-      {krokiModu && arac === 'sembol' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px 8px', flexWrap: 'wrap' }}>
-          {KROKI_SEMBOLLERI.map(s => (
-            <button key={s.id} onClick={() => setSecSembol(s.id)} title={s.ad}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
-                borderRadius: 16, cursor: 'pointer',
-                border: secSembol === s.id ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.18)',
-                background: secSembol === s.id ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.05)',
-                color: '#fff', font: '700 11px/15px var(--font-sans)',
-              }}>
-              <span style={{ width: 20, height: 20, borderRadius: '50%', background: s.renk, display: 'grid', placeItems: 'center' }}>
-                <SembolIkon id={s.id} size={12} />
-              </span>
-              {s.ad}
-            </button>
-          ))}
+      {/* Sembol paleti — sembol aracı seçiliyken; kategori sekmeleri + kategorinin sembolleri */}
+      {arac === 'sembol' && (
+        <div style={{ padding: '0 10px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+            {KROKI_KATEGORILER.map(k => {
+              const aktif = secKategori === k.id
+              return (
+                <button key={k.id}
+                  onClick={() => {
+                    setSecKategori(k.id)
+                    const ilk = KROKI_SEMBOLLERI.find(s => !s.eski && s.kategori === k.id)
+                    if (ilk && krokiSembolBilgi(secSembol).kategori !== k.id) setSecSembol(ilk.id)
+                  }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+                    borderRadius: 14, cursor: 'pointer',
+                    border: aktif ? `2px solid ${k.renk}` : '1px solid rgba(255,255,255,0.18)',
+                    background: aktif ? `${k.renk}33` : 'rgba(255,255,255,0.05)',
+                    color: '#fff', font: '700 11px/15px var(--font-sans)',
+                  }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 3, background: k.renk, display: 'inline-block' }} />
+                  {k.ad}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {KROKI_SEMBOLLERI.filter(s => !s.eski && s.kategori === secKategori).map(s => (
+              <button key={s.id} onClick={() => setSecSembol(s.id)} title={s.ad}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                  borderRadius: 16, cursor: 'pointer',
+                  border: secSembol === s.id ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.18)',
+                  background: secSembol === s.id ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.05)',
+                  color: '#fff', font: '700 11px/15px var(--font-sans)',
+                }}>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: s.renk, display: 'grid', placeItems: 'center' }}>
+                  <SembolIkon id={s.id} size={12} />
+                </span>
+                {s.ad}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -524,7 +551,7 @@ export default function KesifFotoCizim({
       <p style={{ margin: 0, padding: '4px 12px 10px', textAlign: 'center', color: '#64748b', font: '500 11px/16px var(--font-sans)' }}>
         {krokiModu
           ? 'Duvar aracıyla mekân sınırlarını, sembol aracıyla cihaz noktalarını yerleştir — mevcut sembole tıklayınca kaleme bağlayabilirsin.'
-          : 'Orijinal fotoğraf korunur — çizim ayrı bir kopya olarak kaydedilir.'}
+          : 'Orijinal fotoğraf korunur — çizim ayrı bir kopya olarak kaydedilir. Sembol aracıyla cihaz ikonları fotoğrafa da yerleştirilebilir (özete otomatik sayılır).'}
       </p>
     </div>,
     document.body,

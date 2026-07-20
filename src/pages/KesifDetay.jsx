@@ -16,6 +16,7 @@ import {
   kesifKalemleriGetir, kesifKalemEkle, kesifKalemSil,
   kesifFotolariGetir, kesifFotoUrlleri, kesifFotoEtiketBilgi,
   kesifKrokileriGetir, krokiSembolBilgi,
+  KROKI_KATEGORILER, KROKI_SEMBOLLERI, KROKI_SEMBOL_PATH, sembolleriSay,
   KESIF_KATEGORILERI, KESIF_DURUMLARI,
   KESIF_ONCELIKLERI, KESIF_TURLERI,
 } from '../services/kesifService'
@@ -36,6 +37,21 @@ import {
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 const birimler = ['Adet', 'Metre', 'Paket', 'Kutu', 'Takım', 'Saat']
+
+// Sembol Özeti çipi ikonu — kroki tuvaliyle aynı path kaynağı
+function SembolMiniIkon({ id, renk, size = 22 }) {
+  const d = KROKI_SEMBOL_PATH[id]
+  return (
+    <span style={{ width: size, height: size, borderRadius: '50%', background: renk, display: 'inline-grid', placeItems: 'center', flexShrink: 0 }}>
+      {d && (
+        <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" fill="none"
+          stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d={d} />
+        </svg>
+      )}
+    </span>
+  )
+}
 
 const bosKalem = {
   kategori: 'kamera', stokKodu: '', urunAdi: '', marka: '',
@@ -101,6 +117,19 @@ export default function KesifDetay() {
     kalemler.forEach(k => m.set(k.kategori, (m.get(k.kategori) || 0) + Number(k.miktar || 0)))
     return KESIF_KATEGORILERI.filter(kat => m.has(kat.id)).map(kat => ({ ...kat, toplam: m.get(kat.id) }))
   }, [kalemler])
+
+  // Sembol Özeti — tüm kroki + foto ikonlarının otomatik sayımı (kategori bazlı)
+  const sembolOzet = useMemo(() => {
+    const say = sembolleriSay(krokiler, fotolar)
+    const gruplar = KROKI_KATEGORILER.map(kat => ({
+      ...kat,
+      semboller: KROKI_SEMBOLLERI
+        .filter(s => s.kategori === kat.id && say.has(s.id))
+        .map(s => ({ ...s, adet: say.get(s.id) })),
+    })).filter(g => g.semboller.length)
+    const toplam = [...say.values()].reduce((a, b) => a + b, 0)
+    return { gruplar, toplam }
+  }, [krokiler, fotolar])
 
   const kalemOzetMetni = () => kalemler
     .map(k => `• ${k.miktar} ${k.birim} — ${k.urunAdi}${k.marka ? ` (${k.marka})` : ''}${k.notlar ? ` · ${k.notlar}` : ''}`)
@@ -219,6 +248,11 @@ export default function KesifDetay() {
       // Doküman: varsa çizimli hali basılır
       const url = fotoUrlMap.get(f.cizimYolu) || fotoUrlMap.get(f.dosyaYolu)
       if (!url) return ''
+      // Fotoya yerleştirilen semboller — kroki gibi lejant basılır
+      const fotoLejant = (f.cizimVeri?.sekiller || []).filter(s => s.tip === 'sembol').map(s => {
+        const b = krokiSembolBilgi(s.sembol)
+        return `<span class="lj"><span class="ljn" style="background:${b.renk}">${b.kod}${s.no}</span>${esc(b.ad)}</span>`
+      }).join('')
       const satir = [
         f.aciklama && `<div>${esc(f.aciklama)}</div>`,
         f.montajNotu && `<div class="mut">Montaj: ${esc(f.montajNotu)}</div>`,
@@ -226,7 +260,7 @@ export default function KesifDetay() {
         f.etiket && `<div class="mut">Etiket: ${esc(kesifFotoEtiketBilgi(f.etiket)?.ad || f.etiket)}</div>`,
         f.kalemId && `<div class="mut">Kalem: ${esc(kalemler.find(x => String(x.id) === String(f.kalemId))?.urunAdi || '')}</div>`,
       ].filter(Boolean).join('')
-      return `<div class="foto"><img src="${url}"><div class="fmeta"><strong>${esc(f.baslik || 'Fotoğraf')}</strong>${f.cizimYolu ? ' <span class="ciz">✏ çizimli</span>' : ''}${satir}<div class="mut">${esc(f.olusturanAd || '')} · ${esc(new Date(f.olusturmaTarih).toLocaleString('tr-TR'))}</div></div></div>`
+      return `<div class="foto"><img src="${url}"><div class="fmeta"><strong>${esc(f.baslik || 'Fotoğraf')}</strong>${f.cizimYolu ? ' <span class="ciz">✏ çizimli</span>' : ''}${satir}${fotoLejant ? `<div class="ljs">${fotoLejant}</div>` : ''}<div class="mut">${esc(f.olusturanAd || '')} · ${esc(new Date(f.olusturmaTarih).toLocaleString('tr-TR'))}</div></div></div>`
     }).join('')
     // Krokiler: görsel + sembol lejantı + kalem bağları
     const krokiBlok = krokiler.map(k => {
@@ -316,6 +350,7 @@ ${kesif.genelNot ? `<h2>KEŞİF AÇIKLAMASI</h2><div class="metin-blok">${esc(ke
 ${kesif.ozelTalepler ? `<h2>MÜŞTERİ ÖZEL TALEPLERİ</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
 ${kesif.mevcutSistem ? `<h2>MEVCUT SİSTEM BİLGİSİ</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
 ${kalemler.length ? `<h2>MALZEME LİSTESİ (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
+${sembolOzet.toplam ? `<h2>SEMBOL ÖZETİ — KROKİ + FOTOĞRAF (${sembolOzet.toplam} ADET)</h2><table><tr><th>Sistem</th><th>Ürün</th><th>Adet</th></tr>${sembolOzet.gruplar.flatMap(g => g.semboller.map(s => `<tr><td>${esc(g.ad)}</td><td>${esc(s.ad)}</td><td class="sag">${s.adet}</td></tr>`)).join('')}</table>` : ''}
 ${krokiBlok ? `<h2>KROKİLER (${krokiler.length})</h2>${krokiBlok}` : ''}
 ${fotoBlok ? `<h2>FOTOĞRAFLAR (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
 <div class="imza">
@@ -666,6 +701,44 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
           kalemler={kalemler}
           kullanici={kullanici}
         />
+
+        {/* Sembol Özeti — kroki + foto ikonlarının otomatik sayımı (2026-07-20) */}
+        {sembolOzet.toplam > 0 && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="t-h2" style={{ margin: 0 }}>Sembol Özeti</h2>
+              <Badge tone="aktif">{sembolOzet.toplam} adet</Badge>
+            </div>
+            <p className="t-caption" style={{ margin: '0 0 12px' }}>
+              Kroki ve fotoğraflara yerleştirilen tüm cihaz ikonları otomatik sayılır — foto çekilen yere kroki, kroki çizilen yere foto gerekmez.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {sembolOzet.gruplar.map(g => (
+                <div key={g.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: 3, background: g.renk, display: 'inline-block' }} />
+                    <span style={{ font: '700 11.5px/15px var(--font-sans)', color: 'var(--text-secondary)', letterSpacing: '0.03em' }}>
+                      {g.ad.toLocaleUpperCase('tr-TR')} · {g.semboller.reduce((a, s) => a + s.adet, 0)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {g.semboller.map(s => (
+                      <span key={s.id} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 4px',
+                        borderRadius: 15, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                      }}>
+                        <SembolMiniIkon id={s.id} renk={s.renk} />
+                        <span style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>
+                          {s.ad} <b style={{ color: g.renk }}>× {s.adet}</b>
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Yazdır seçenekleri */}
