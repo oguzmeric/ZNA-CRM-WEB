@@ -1559,7 +1559,8 @@ function Gorevler() {
             const bitTar = g.sonTarih || ''
             return (
               inSearch(g.gorevNo, kolonFiltre.no) &&
-              inSearch(durumAd, kolonFiltre.takip) &&
+              (!kolonFiltre.takip ||
+                (kolonFiltre.takip === 'suresi_gecti' ? gorevGecikti(g) : durumBilgi(g.durum).id === kolonFiltre.takip)) &&
               inSearch(g.olusturanAd, kolonFiltre.veren) &&
               inSearch(atananKisi?.ad, kolonFiltre.alan) &&
               (inSearch(g.baslik, kolonFiltre.gorev) || inSearch(g.aciklama, kolonFiltre.gorev)) &&
@@ -1833,12 +1834,15 @@ function Gorevler() {
                         style={{ ...colFilterInput, minWidth: 76 }} />
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
-                      <input
-                        placeholder="ara…"
+                      <select
                         value={kolonFiltre.takip}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, takip: e.target.value }); setSayfa(1) }}
-                        style={colFilterInput}
-                      />
+                        style={{ ...colFilterInput, cursor: 'pointer' }}
+                      >
+                        <option value="">Tümü</option>
+                        {GOREV_DURUMLARI.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
+                        <option value="suresi_gecti">Gecikmiş</option>
+                      </select>
                     </th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.veren}
