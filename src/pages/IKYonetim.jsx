@@ -13,9 +13,10 @@ import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import {
   IZIN_TURLERI, IZIN_DURUM, izinDurumBilgi,
-  izinTalepleriGetir, izinKarar,
+  izinTalepleriGetir, izinKarar, izinSil,
   bordrolariGetir, bordroYukle, bordroIndirUrl, bordroSil,
 } from '../services/ikService'
+import { useConfirm } from '../context/ConfirmContext'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Modal,
   Table, THead, TBody, TR, TH, TD,
@@ -47,6 +48,7 @@ const SEKMELER = [
 export default function IKYonetim() {
   const { kullanici } = useAuth()
   const { toast } = useToast()
+  const { confirm } = useConfirm()
 
   const [sekme, setSekme] = useState('izin')
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -70,6 +72,23 @@ export default function IKYonetim() {
     } catch (e) {
       toast.error(e?.message || 'Veriler yüklenemedi.')
     } finally { setYukleniyor(false) }
+  }
+
+  // İK: talebi kalıcı sil (yanlış/test kayıtları) — onaylı, geri alınamaz
+  const talepSil = async (t) => {
+    const onay = await confirm({
+      baslik: 'İzin Talebini Sil',
+      mesaj: `${t.kullaniciAd || 'Personel'} — ${t.baslangic} / ${t.bitis} talebi KALICI olarak silinecek. Emin misin? (İptal etmek yerine silmek geri alınamaz.)`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await izinSil(t.id)
+      toast.success('Talep silindi.')
+      setIzinler(prev => prev.filter(x => x.id !== t.id))
+    } catch (e) {
+      toast.error('Silinemedi: ' + (e?.message || 'hata'))
+    }
   }
 
   useEffect(() => {
@@ -210,6 +229,7 @@ export default function IKYonetim() {
               setDurumFiltre={setDurumFiltre}
               personelAd={personelAd}
               onKarar={(talep, durum) => setKararModal({ talep, durum })}
+              onSil={talepSil}
             />
           )}
 
@@ -251,7 +271,7 @@ export default function IKYonetim() {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Sekme 1: İzin Onayları
-function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, personelAd, onKarar }) {
+function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, personelAd, onKarar, onSil }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Bekleyenler — vurgulu blok */}
@@ -310,6 +330,12 @@ function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, pers
                     style={{ color: 'var(--danger)' }}
                     onClick={() => onKarar(t, 'reddedildi')}>
                     Reddet
+                  </Button>
+                  <Button variant="tertiary" size="sm" iconLeft={<Trash2 size={13} />}
+                    style={{ color: 'var(--danger)' }}
+                    onClick={() => onSil(t)}
+                    title="Talebi kalıcı sil (yanlış/test kaydı)">
+                    Sil
                   </Button>
                 </div>
               </Card>
@@ -370,10 +396,18 @@ function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, pers
                         </span>
                       </TD>
                       <TD style={{ whiteSpace: 'nowrap' }}>
-                        <Button variant="tertiary" size="sm" iconLeft={<Printer size={12} />}
-                          onClick={() => izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })}>
-                          Form
-                        </Button>
+                        <div style={{ display: 'inline-flex', gap: 4 }}>
+                          <Button variant="tertiary" size="sm" iconLeft={<Printer size={12} />}
+                            onClick={() => izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })}>
+                            Form
+                          </Button>
+                          <Button variant="tertiary" size="sm" iconLeft={<Trash2 size={12} />}
+                            style={{ color: 'var(--danger)' }}
+                            onClick={() => onSil(t)}
+                            title="Talebi kalıcı sil">
+                            Sil
+                          </Button>
+                        </div>
                       </TD>
                     </TR>
                   ))}

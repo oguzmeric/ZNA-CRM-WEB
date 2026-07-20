@@ -293,6 +293,13 @@ export async function izinKarar(id, karar) {
 }
 
 /** Personel kendi talebini iptal eder (RLS: yalnız durum='bekliyor' iken). */
+// İK: talebi kalıcı sil (yanlış/test kayıtları için) — RLS izin_del = ik_yetkili()
+export async function izinSil(id) {
+  const { error } = await supabase.from('izin_talepleri').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
 export async function izinIptal(id) {
   const { data, error } = await supabase
     .from('izin_talepleri')
