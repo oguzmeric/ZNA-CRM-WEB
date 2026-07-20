@@ -112,7 +112,8 @@ export default function AracYonetimi() {
         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              {['Plaka', 'Marka', 'Model', 'Yıl', 'Muayene', 'Durum', 'Not', ''].map(h =>
+              {/* 'Not' değil 'Araç Notu' — Chrome otomatik çeviri 'Not'u İngilizce sanıp 'Değil' yapıyordu */}
+              {['Plaka', 'Marka', 'Model', 'Yıl', 'Muayene', 'Durum', 'Araç Notu', ''].map(h =>
                 <th key={h} style={{ textAlign: 'left', padding: '12px 14px', borderBottom: '2px solid var(--border-default)', font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{h}</th>
               )}
             </tr>
@@ -177,7 +178,7 @@ export default function AracYonetimi() {
                 <Alan etiket="Model" deger={form.model} onDegis={v => setForm({ ...form, model: v })} />
               </div>
               <Alan etiket="Yıl" tip="number" deger={form.yil} onDegis={v => setForm({ ...form, yil: v })} />
-              <Alan etiket="Not" deger={form.not_} onDegis={v => setForm({ ...form, not_: v })} />
+              <Alan etiket="Araç Notu" deger={form.not_} onDegis={v => setForm({ ...form, not_: v })} />
 
               {/* Belge bitiş tarihleri — sistem 15 gün önceden sorumlulara bildirir */}
               <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 12 }}>
