@@ -118,8 +118,31 @@ export default function KesifDetay() {
     return KESIF_KATEGORILERI.filter(kat => m.has(kat.id)).map(kat => ({ ...kat, toplam: m.get(kat.id) }))
   }, [kalemler])
 
-  // Sembol Özeti — tüm kroki + foto ikonlarının otomatik sayımı (kategori bazlı)
+  // Sembol Özeti — kroki/foto BAZINDA kırılım (hangi katta ne var) + genel toplam
   const sembolOzet = useMemo(() => {
+    const sayim = (sekiller) => {
+      const m = new Map()
+      for (const s of (sekiller || [])) {
+        if (s.tip === 'sembol' && s.sembol) m.set(s.sembol, (m.get(s.sembol) || 0) + 1)
+      }
+      return m
+    }
+    const listele = (m) => KROKI_SEMBOLLERI.filter(s => m.has(s.id)).map(s => ({ ...s, adet: m.get(s.id) }))
+    const kaynaklar = []
+    krokiler.forEach((k, i) => {
+      const m = sayim(k.veri?.sekiller)
+      if (m.size) kaynaklar.push({
+        anahtar: `k${k.id}`, tip: 'Kroki', baslik: k.baslik || `Kroki ${i + 1}`,
+        semboller: listele(m), toplam: [...m.values()].reduce((a, b) => a + b, 0),
+      })
+    })
+    fotolar.forEach((f, i) => {
+      const m = sayim(f.cizimVeri?.sekiller)
+      if (m.size) kaynaklar.push({
+        anahtar: `f${f.id}`, tip: 'Foto', baslik: f.baslik || f.mahal || `Fotoğraf ${i + 1}`,
+        semboller: listele(m), toplam: [...m.values()].reduce((a, b) => a + b, 0),
+      })
+    })
     const say = sembolleriSay(krokiler, fotolar)
     const gruplar = KROKI_KATEGORILER.map(kat => ({
       ...kat,
@@ -128,7 +151,7 @@ export default function KesifDetay() {
         .map(s => ({ ...s, adet: say.get(s.id) })),
     })).filter(g => g.semboller.length)
     const toplam = [...say.values()].reduce((a, b) => a + b, 0)
-    return { gruplar, toplam }
+    return { kaynaklar, gruplar, toplam }
   }, [krokiler, fotolar])
 
   const kalemOzetMetni = () => kalemler
@@ -350,7 +373,14 @@ ${kesif.genelNot ? `<h2>KEŞİF AÇIKLAMASI</h2><div class="metin-blok">${esc(ke
 ${kesif.ozelTalepler ? `<h2>MÜŞTERİ ÖZEL TALEPLERİ</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
 ${kesif.mevcutSistem ? `<h2>MEVCUT SİSTEM BİLGİSİ</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
 ${kalemler.length ? `<h2>MALZEME LİSTESİ (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
-${sembolOzet.toplam ? `<h2>SEMBOL ÖZETİ — KROKİ + FOTOĞRAF (${sembolOzet.toplam} ADET)</h2><table><tr><th>Sistem</th><th>Ürün</th><th>Adet</th></tr>${sembolOzet.gruplar.flatMap(g => g.semboller.map(s => `<tr><td>${esc(g.ad)}</td><td>${esc(s.ad)}</td><td class="sag">${s.adet}</td></tr>`)).join('')}</table>` : ''}
+${sembolOzet.toplam ? `<h2>SEMBOL ÖZETİ — KROKİ + FOTOĞRAF (${sembolOzet.toplam} ADET)</h2><table><tr><th>Konum</th><th>Ürün</th><th>Adet</th></tr>${
+  sembolOzet.kaynaklar.map(ka =>
+    `<tr><td rowspan="${ka.semboller.length}"><b>${esc(ka.tip)} — ${esc(ka.baslik)}</b><div class="mut">${ka.toplam} adet</div></td><td>${esc(ka.semboller[0].ad)}</td><td class="sag">${ka.semboller[0].adet}</td></tr>` +
+    ka.semboller.slice(1).map(s => `<tr><td>${esc(s.ad)}</td><td class="sag">${s.adet}</td></tr>`).join('')
+  ).join('')
+}<tr><td colspan="3" style="background:#eef3f8;font-weight:800;color:#014486">GENEL TOPLAM · ${sembolOzet.toplam} ADET</td></tr>${
+  sembolOzet.gruplar.flatMap(g => g.semboller.map(s => `<tr><td>${esc(g.ad)}</td><td>${esc(s.ad)}</td><td class="sag"><b>${s.adet}</b></td></tr>`)).join('')
+}</table>` : ''}
 ${krokiBlok ? `<h2>KROKİLER (${krokiler.length})</h2>${krokiBlok}` : ''}
 ${fotoBlok ? `<h2>FOTOĞRAFLAR (${yazFotolar.length})</h2><div class="fgrid">${fotoBlok}</div>` : ''}
 <div class="imza">
@@ -710,32 +740,68 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
               <Badge tone="aktif">{sembolOzet.toplam} adet</Badge>
             </div>
             <p className="t-caption" style={{ margin: '0 0 12px' }}>
-              Kroki ve fotoğraflara yerleştirilen tüm cihaz ikonları otomatik sayılır — foto çekilen yere kroki, kroki çizilen yere foto gerekmez.
+              Kroki ve fotoğraflara yerleştirilen cihaz ikonları kaynak bazında otomatik sayılır — hangi katta/alanda ne kullanılacak tek bakışta.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sembolOzet.gruplar.map(g => (
-                <div key={g.id}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <span style={{ width: 9, height: 9, borderRadius: 3, background: g.renk, display: 'inline-block' }} />
-                    <span style={{ font: '700 11.5px/15px var(--font-sans)', color: 'var(--text-secondary)', letterSpacing: '0.03em' }}>
-                      {g.ad.toLocaleUpperCase('tr-TR')} · {g.semboller.reduce((a, s) => a + s.adet, 0)}
+              {sembolOzet.kaynaklar.map(ka => (
+                <div key={ka.anahtar} style={{
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                    <span style={{ font: '700 12.5px/17px var(--font-sans)', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <Badge tone={ka.tip === 'Kroki' ? 'aktif' : 'lead'}>{ka.tip}</Badge>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ka.baslik}</span>
                     </span>
+                    <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)', flexShrink: 0 }}>{ka.toplam} adet</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {g.semboller.map(s => (
+                    {ka.semboller.map(s => (
                       <span key={s.id} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 4px',
-                        borderRadius: 15, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                        display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 9px 3px 3px',
+                        borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-default)',
                       }}>
-                        <SembolMiniIkon id={s.id} renk={s.renk} />
+                        <SembolMiniIkon id={s.id} renk={s.renk} size={20} />
                         <span style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>
-                          {s.ad} <b style={{ color: g.renk }}>× {s.adet}</b>
+                          {s.ad} <b style={{ color: s.renk }}>× {s.adet}</b>
                         </span>
                       </span>
                     ))}
                   </div>
                 </div>
               ))}
+
+              {/* Genel toplam — tüm kaynakların kategori bazlı birleşimi */}
+              <div style={{ paddingTop: 10, borderTop: '2px solid var(--border-default)' }}>
+                <div style={{ font: '700 11.5px/15px var(--font-sans)', color: 'var(--text-secondary)', letterSpacing: '0.04em', marginBottom: 8 }}>
+                  GENEL TOPLAM · {sembolOzet.toplam} ADET
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {sembolOzet.gruplar.map(g => (
+                    <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, marginTop: 4 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: 3, background: g.renk, display: 'inline-block' }} />
+                        <span style={{ font: '700 11px/15px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                          {g.ad.toLocaleUpperCase('tr-TR')} · {g.semboller.reduce((a, s) => a + s.adet, 0)}
+                        </span>
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {g.semboller.map(s => (
+                          <span key={s.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 3px',
+                            borderRadius: 14, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                          }}>
+                            <SembolMiniIkon id={s.id} renk={s.renk} size={20} />
+                            <span style={{ font: '600 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>
+                              {s.ad} <b style={{ color: g.renk }}>× {s.adet}</b>
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
         )}
