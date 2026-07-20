@@ -48,7 +48,8 @@ const KROKI_ARACLAR = [
 ]
 
 // ── Şekil çizimi (hem önizleme hem flatten aynı fonksiyonu kullanır) ─────────
-function sekilCiz(ctx, s, olcek = 1) {
+// minSembol: yüksek çözünürlüklü fotoğrafta sembol kaybolmasın diye taban yarıçap
+function sekilCiz(ctx, s, olcek = 1, minSembol = 0) {
   ctx.strokeStyle = s.renk
   ctx.fillStyle = s.renk
   ctx.lineWidth = (s.kalinlik || 4) * olcek
@@ -107,7 +108,7 @@ function sekilCiz(ctx, s, olcek = 1) {
     ctx.setLineDash([])
   } else if (s.tip === 'sembol') {
     const b = krokiSembolBilgi(s.sembol)
-    const r = (s.boyut || 28) * olcek
+    const r = Math.max(s.boyut || 28, minSembol) * olcek
     const cx = P(s.x), cy = P(s.y)
     // renkli daire + halka (kaleme bağlıysa sarı)
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -161,10 +162,10 @@ function sekilCiz(ctx, s, olcek = 1) {
 }
 
 // Silgi: şeklin kaba sınır kutusuna tıklama testi
-function sekilIcindeMi(s, x, y) {
+function sekilIcindeMi(s, x, y, minSembol = 0) {
   const PAY = 14
   if (s.tip === 'kalem' || s.tip === 'kablo') return (s.noktalar || []).some(n => Math.abs(n.x - x) < PAY && Math.abs(n.y - y) < PAY)
-  if (s.tip === 'sembol') return Math.hypot(s.x - x, s.y - y) < (s.boyut || 26) + PAY
+  if (s.tip === 'sembol') return Math.hypot(s.x - x, s.y - y) < Math.max(s.boyut || 26, minSembol) + PAY
   if (s.tip === 'metin') return x > s.x - PAY && x < s.x + (s.metin?.length || 1) * (s.boyut || 28) * 0.6 + PAY && y > s.y - (s.boyut || 28) - PAY && y < s.y + PAY
   if (s.tip === 'balon') return Math.hypot(s.x - x, s.y - y) < (s.yaricap || 22) + PAY
   const minX = Math.min(s.x1, s.x2) - PAY, maxX = Math.max(s.x1, s.x2) + PAY
@@ -210,6 +211,10 @@ export default function KesifFotoCizim({
   // Görüntü boyutu: kroki modunda sabit tuval, foto modunda doğal boyut
   const dogalW = krokiModu ? tuval.w : (imgRef.current?.naturalWidth || 0)
   const dogalH = krokiModu ? tuval.h : (imgRef.current?.naturalHeight || 0)
+  // İşaret ölçeği — 1600px tuval baz: 4000px telefon fotoğrafında sembol/metin/balon ~2.5x
+  // büyür, yoksa görünmeyecek kadar ufak kalıyor (2026-07-20 saha geri bildirimi)
+  const isaretOlcek = Math.max(1, Math.max(dogalW, dogalH) / 1600)
+  const minSembol = Math.round(34 * isaretOlcek)
 
   // Görüntüyü yükle (signed URL — canvas taint olmasın diye crossOrigin)
   useEffect(() => {
@@ -241,9 +246,9 @@ export default function KesifFotoCizim({
     const ctx = canvas.getContext('2d')
     if (krokiModu) izgaraCiz(ctx, dogalW, dogalH, olcek)
     else ctx.drawImage(imgRef.current, 0, 0, canvas.width, canvas.height)
-    for (const s of sekiller) sekilCiz(ctx, s, olcek)
-    if (taslak) sekilCiz(ctx, taslak, olcek)
-  }, [hazir, sekiller, taslak, krokiModu, dogalW, dogalH])
+    for (const s of sekiller) sekilCiz(ctx, s, olcek, minSembol)
+    if (taslak) sekilCiz(ctx, taslak, olcek, minSembol)
+  }, [hazir, sekiller, taslak, krokiModu, dogalW, dogalH, minSembol])
 
   // Ekran → görüntü koordinatı
   const konum = (e) => {
@@ -266,7 +271,7 @@ export default function KesifFotoCizim({
     const { x, y, ekranX, ekranY } = konum(e)
     if (arac === 'silgi') {
       for (let i = sekiller.length - 1; i >= 0; i--) {
-        if (sekilIcindeMi(sekiller[i], x, y)) {
+        if (sekilIcindeMi(sekiller[i], x, y, minSembol)) {
           degistir(sekiller.filter((_, j) => j !== i))
           return
         }
@@ -279,19 +284,19 @@ export default function KesifFotoCizim({
     }
     if (arac === 'balon') {
       const no = sekiller.filter(s => s.tip === 'balon').length + 1
-      degistir([...sekiller, { tip: 'balon', x, y, no, renk, yaricap: 22 + kalinlik * 2 }])
+      degistir([...sekiller, { tip: 'balon', x, y, no, renk, yaricap: Math.round((22 + kalinlik * 2) * isaretOlcek) }])
       return
     }
     if (arac === 'sembol') {
       // Önce mevcut sembole tıklama: kaleme bağla / sil paneli
       for (let i = sekiller.length - 1; i >= 0; i--) {
-        if (sekiller[i].tip === 'sembol' && sekilIcindeMi(sekiller[i], x, y)) {
+        if (sekiller[i].tip === 'sembol' && sekilIcindeMi(sekiller[i], x, y, minSembol)) {
           setSembolPanel({ index: i, ekranX, ekranY })
           return
         }
       }
       const no = sekiller.filter(s => s.tip === 'sembol' && s.sembol === secSembol).length + 1
-      degistir([...sekiller, { tip: 'sembol', sembol: secSembol, x, y, no, boyut: 28 }])
+      degistir([...sekiller, { tip: 'sembol', sembol: secSembol, x, y, no, boyut: minSembol }])
       return
     }
     if (arac === 'kalem' || arac === 'kablo') setTaslak({ tip: arac, noktalar: [{ x, y }], renk, kalinlik })
@@ -326,7 +331,7 @@ export default function KesifFotoCizim({
     const m = metinGiris
     setMetinGiris(null)
     if (m?.deger?.trim()) {
-      degistir([...sekiller, { tip: 'metin', x: m.x, y: m.y, metin: m.deger.trim(), renk, boyut: 22 + kalinlik * 3 }])
+      degistir([...sekiller, { tip: 'metin', x: m.x, y: m.y, metin: m.deger.trim(), renk, boyut: Math.round((22 + kalinlik * 3) * isaretOlcek) }])
     }
   }
 
@@ -355,7 +360,7 @@ export default function KesifFotoCizim({
     const ctx = off.getContext('2d')
     if (krokiModu) izgaraCiz(ctx, dogalW, dogalH, kucult)
     else ctx.drawImage(imgRef.current, 0, 0, off.width, off.height)
-    for (const s of sekiller) sekilCiz(ctx, s, kucult)
+    for (const s of sekiller) sekilCiz(ctx, s, kucult, minSembol)
     const blob = await new Promise(r => off.toBlob(r, 'image/png', 0.92))
     if (!blob) { setHata('Görsel oluşturulamadı.'); return }
     onKaydet(blob, { surum: 1, sekiller })
