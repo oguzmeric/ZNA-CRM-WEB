@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext'
 import { useBildirim } from '../context/BildirimContext'
 import { gorevleriGetir, gorevGuncelle, gorevOnayaGonder } from '../services/gorevService'
 import { gorevYorumEkle } from '../services/gorevYorumService'
+import { gorusmeleriGetir, gorusmeGuncelle } from '../services/gorusmeService'
 import { Button, Input, Textarea, Label } from './ui'
 
 // Kapıya TAKILMAYAN durumlar: kapalılar + onayda bekleyen (iş teslim edilmiş)
@@ -48,6 +49,10 @@ export default function GecikmisGorevKapisi() {
   const [aciklama, setAciklama] = useState('')
   const [yeniTarih, setYeniTarih] = useState('')
   const [mesgul, setMesgul] = useState(false)
+  // Takipsiz açık görüşmeler (2026-07-20 talebi): 2+ gün önce yapılmış,
+  // sonucu boş, hâlâ 'Açık' duran görüşmeler — görev kapısından SONRA sorulur.
+  const [gecikmisGorusmeler, setGecikmisGorusmeler] = useState(null)
+  const [gorusmeNot, setGorusmeNot] = useState('')
 
   // Girişte tara + sekmeye her dönüşte yeniden tara (10 dk kısıtlı) —
   // sekme günlerce açık kalsa da gün dönünce gecikmişe düşen görev yakalanır
@@ -70,6 +75,23 @@ export default function GecikmisGorevKapisi() {
           setGecikmisler(geciken)
         })
         .catch(() => { if (!iptal) setGecikmisler(prev => prev ?? []) })
+
+      // Görüşme kapısı — esnweb importları hariç; "görüşen" adı eşleşenler
+      gorusmeleriGetir()
+        .then(liste => {
+          if (iptal) return
+          const adLc = (kullanici.ad || '').trim().toLocaleLowerCase('tr')
+          const esik = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+          const geciken = (liste || [])
+            .filter(g => g.durum === 'acik')
+            .filter(g => (g.hazirlayan || '') !== 'esnweb')
+            .filter(g => !String(g.gorusmeSonucu || '').trim())
+            .filter(g => g.tarih && String(g.tarih).slice(0, 10) < esik)
+            .filter(g => String(g.gorusen || '').toLocaleLowerCase('tr').includes(adLc))
+            .sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''))
+          setGecikmisGorusmeler(geciken)
+        })
+        .catch(() => { if (!iptal) setGecikmisGorusmeler(prev => prev ?? []) })
     }
 
     tara()
@@ -96,12 +118,50 @@ export default function GecikmisGorevKapisi() {
     setYeniTarih('')
   }, [aktif?.id])
 
-  if (!aktif) return null
+  // Görüşme kapısı görev kapısından SONRA — iki modal üst üste binmesin
+  const aktifGorusme = useMemo(() => (
+    !aktif && gecikmisGorusmeler && gecikmisGorusmeler.length > 0 ? gecikmisGorusmeler[0] : null
+  ), [aktif, gecikmisGorusmeler])
 
-  const kalanSayi = gecikmisler.length
-  const gun = gecikmeGunu(aktif.sonTarih.slice(0, 10))
+  useEffect(() => { setGorusmeNot('') }, [aktifGorusme?.id])
+
+  if (!aktif && !aktifGorusme) return null
+
+  const kalanSayi = gecikmisler?.length || 0
+  const gun = aktif ? gecikmeGunu(aktif.sonTarih.slice(0, 10)) : 0
 
   const gorevListedenDus = () => setGecikmisler(prev => prev.filter(g => g.id !== aktif.id))
+
+  // ── Görüşme kapısı işlemleri ──────────────────────────────────────────────
+  const gorusmeListedenDus = () => setGecikmisGorusmeler(prev => prev.filter(x => x.id !== aktifGorusme.id))
+
+  const gorusmeSonuclaKapat = async () => {
+    if (!gorusmeNot.trim()) { toast.error('Görüşme sonucunu yazman zorunlu.'); return }
+    setMesgul(true)
+    try {
+      const r = await gorusmeGuncelle(aktifGorusme.id, { durum: 'kapali', gorusmeSonucu: gorusmeNot.trim() })
+      if (!r) throw new Error('Güncellenemedi')
+      toast.success('Görüşme sonuçlandırıldı ve kapatıldı.')
+      gorusmeListedenDus()
+    } catch (e) {
+      toast.error('Kaydedilemedi: ' + (e?.message || 'hata'))
+    } finally { setMesgul(false) }
+  }
+
+  const gorusmeBeklemeyeAl = async () => {
+    if (!gorusmeNot.trim()) { toast.error('Güncel durum notu zorunlu — takip nerede kaldı?'); return }
+    setMesgul(true)
+    try {
+      const damga = `📌 ${new Date().toLocaleDateString('tr-TR')} ${kullanici?.ad || ''}: ${gorusmeNot.trim()}`
+      const yeniTakip = (aktifGorusme.takipNotu ? aktifGorusme.takipNotu + '\n' : '') + damga
+      const r = await gorusmeGuncelle(aktifGorusme.id, { durum: 'beklemede', takipNotu: yeniTakip })
+      if (!r) throw new Error('Güncellenemedi')
+      toast.success('Not eklendi — görüşme Beklemede durumuna alındı.')
+      gorusmeListedenDus()
+    } catch (e) {
+      toast.error('Kaydedilemedi: ' + (e?.message || 'hata'))
+    } finally { setMesgul(false) }
+  }
 
   const ekSureKaydet = async () => {
     if (!sebep) { toast.error('Gecikme sebebini seçin.'); return }
@@ -177,6 +237,74 @@ export default function GecikmisGorevKapisi() {
     } finally {
       setMesgul(false)
     }
+  }
+
+  // ── Görüşme kapısı modalı (görev kapısı boşsa) ───────────────────────────
+  if (!aktif && aktifGorusme) {
+    const gKalan = gecikmisGorusmeler.length
+    const gGun = Math.max(1, Math.ceil((Date.now() - new Date(String(aktifGorusme.tarih).slice(0, 10) + 'T23:59:59').getTime()) / 86400000))
+    return createPortal(
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 90000,
+        background: 'rgba(2, 6, 23, 0.72)', backdropFilter: 'blur(3px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+          background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)', padding: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
+            <h2 style={{ font: '700 17px/24px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+              Takipsiz açık görüşmen var{gKalan > 1 ? ` (${gKalan})` : ''}
+            </h2>
+          </div>
+          <p className="t-caption" style={{ marginBottom: 16 }}>
+            Bu görüşme {gGun} gündür <b>Açık</b> duruyor ve sonucu girilmemiş. Güncel durumu
+            yazıp <b>Beklemeye al</b> ya da sonuçlandıysa <b>sonucu yazıp kapat</b> — takipsiz
+            görüşme kalmasın. <b>ZNA Yönetim</b>
+          </p>
+
+          <div style={{
+            padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 16,
+            background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+            borderLeft: '3px solid #f59e0b',
+          }}>
+            <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
+              {aktifGorusme.firmaAdi || 'Müşteri'}{aktifGorusme.konu ? ` — ${aktifGorusme.konu}` : ''}
+            </div>
+            <div className="t-caption" style={{ marginTop: 4 }}>
+              {aktifGorusme.aktNo ? `${aktifGorusme.aktNo} · ` : ''}
+              Görüşme: {String(aktifGorusme.tarih).slice(0, 10).split('-').reverse().join('.')} ·{' '}
+              <b style={{ color: '#f59e0b' }}>{gGun} gündür açık</b>
+            </div>
+            {aktifGorusme.notlar && (
+              <div className="t-caption" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                {String(aktifGorusme.notlar).slice(0, 200)}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <Label>Güncel durum / sonuç (zorunlu)</Label>
+            <Textarea rows={3} value={gorusmeNot} onChange={e => setGorusmeNot(e.target.value)}
+              placeholder="Ne durumda? Sonuçlandıysa sonucu, sürüyorsa güncel durumu yaz…" />
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={gorusmeBeklemeyeAl} disabled={mesgul}>
+              Not Ekle — Beklemeye Al
+            </Button>
+            <Button variant="primary" onClick={gorusmeSonuclaKapat} disabled={mesgul}
+              iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}>
+              {mesgul ? 'Kaydediliyor…' : 'Sonucu Kaydet ve Kapat'}
+            </Button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )
   }
 
   return createPortal(

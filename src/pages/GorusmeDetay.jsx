@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
-  BellRing, Clock, Check, X, ShoppingCart, Receipt, Compass,
+  BellRing, Clock, Check, X, ShoppingCart, Receipt, Compass, Wrench,
 } from 'lucide-react'
+import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
+import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -75,6 +77,7 @@ function GorusmeDetay() {
   const { bildirimEkle } = useBildirim()
   const { gorusmeHatirlatmaEkle, gorusmeHatirlatmasi, tamamla: hatirlatmaTamamla } = useHatirlatma()
   const { toast } = useToast()
+  const { confirm } = useConfirm()
   const navigate = useNavigate()
   const [hatirlatmaModalAcik, setHatirlatmaModalAcik] = useState(false)
   const [onSiparisModalAcik, setOnSiparisModalAcik] = useState(false)
@@ -394,6 +397,58 @@ function GorusmeDetay() {
               title="Bu görüşmeden saha keşfi oluştur — müşteri/ilgili kişi/açıklama otomatik aktarılır"
             >
               Keşif Oluştur
+            </Button>
+            <Button
+              variant="secondary"
+              iconLeft={<Wrench size={14} strokeWidth={1.5} />}
+              onClick={async () => {
+                const onay = await confirm({
+                  baslik: 'Servis Talebi Oluştur',
+                  mesaj: `${gorusme.firmaAdi || 'Müşteri'} için bu görüşmeden servis talebi açılacak — görüşme bilgileri otomatik aktarılır. Devam?`,
+                  onayMetin: 'Talebi Oluştur', iptalMetin: 'Vazgeç',
+                })
+                if (!onay) return
+                try {
+                  const talep = await servisTalepEkle({
+                    talepNo: null,
+                    musteriId: gorusme.musteriId || null,
+                    musteriAd: gorusme.muhatapAd || '',
+                    firmaAdi: gorusme.firmaAdi || '',
+                    anaTur: 'talep',
+                    altKategori: '',
+                    konu: gorusme.konu || `${gorusme.firmaAdi || 'Müşteri'} servis talebi`,
+                    lokasyon: '',
+                    aciklama: [
+                      gorusme.notlar ? `Görüşme açıklaması: ${gorusme.notlar}` : null,
+                      gorusme.gorusmeSonucu ? `Görüşme sonucu: ${gorusme.gorusmeSonucu}` : null,
+                      gorusme.takipNotu ? `Takip notu: ${gorusme.takipNotu}` : null,
+                      `Kaynak görüşme: ${gorusme.aktNo || gorusme.gorusmeNo || '#' + gorusme.id}`,
+                    ].filter(Boolean).join('\n\n'),
+                    aciliyet: 'normal',
+                    ilgiliKisi: gorusme.muhatapAd || gorusme.gorusen || '',
+                    durum: 'bekliyor',
+                    kaynak: 'personel',
+                    atananKullaniciId: null,
+                    atananKullaniciAd: null,
+                    planliTarih: null,
+                    notlar: [],
+                    durumGecmisi: [{
+                      durum: 'bekliyor',
+                      tarih: new Date().toISOString(),
+                      kullaniciAd: kullanici?.ad || '',
+                      aciklama: `${gorusme.aktNo || 'görüşme'} kaydından oluşturuldu`,
+                    }],
+                  })
+                  servisTalebiBildirimGonder(talep, kullanici?.id).catch(() => {})
+                  toast.success(`Servis talebi oluşturuldu (${talep.talepNo || '#' + talep.id}).`)
+                  navigate(`/servis-talepleri/${talep.id}`)
+                } catch (e) {
+                  toast.error('Servis talebi oluşturulamadı: ' + (e?.message || 'bilinmeyen hata'))
+                }
+              }}
+              title="Bu görüşmeden servis talebi oluştur — müşteri/konu/açıklama otomatik aktarılır"
+            >
+              Servis Oluştur
             </Button>
             <Button
               variant={duzenleAcik ? 'secondary' : 'primary'}

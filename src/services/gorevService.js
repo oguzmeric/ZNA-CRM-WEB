@@ -37,9 +37,19 @@ export const gorevGetir = (id) => cached(`gorev:${id}`, async () => {
 // Boş string tarih PG'de timestamptz/date cast hatası verir ve UPDATE komple
 // reddedilir (Elite Garden "güncellenmiyor" vakası, 2026-07-17) — '' → null.
 const TARIH_ALANLARI = ['baslamaTarih', 'bitisTarih', 'sonTarih', 'bitisTarihi', 'tamamlanmaTarihi', 'onayTarih', 'devirTarih']
+// Saat içeren alanlar: form 'YYYY-MM-DDTHH:mm' (TZ'siz) gönderiyordu → Postgres
+// timestamptz bunu UTC sayıp +3 kaydırıyordu (2026-07-20 bulgusu). Yerel saat
+// olarak yorumlayıp ISO'ya çevir — DB'ye doğru an gider, ekranda doğru görünür.
+const SAATLI_ALANLAR = ['baslamaTarih', 'bitisTarih']
 const tarihleriNormallestir = (g) => {
   const out = { ...g }
   for (const k of TARIH_ALANLARI) if (out[k] === '') out[k] = null
+  for (const k of SAATLI_ALANLAR) {
+    const v = out[k]
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v)) {
+      out[k] = new Date(v).toISOString()
+    }
+  }
   return out
 }
 
