@@ -298,7 +298,9 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap
         background: 'var(--surface-sunken)',
         border: `1px solid ${isOver ? kolon.renk : 'var(--border-default)'}`,
         padding: 12,
-        minHeight: 500,
+        // Yükseklik pano kapsayıcısından gelir; kartlar kolon İÇİNDE kayar
+        // (sayfa scroll'u değil) — başlıklar hep görünür kalır.
+        minHeight: 0,
         minWidth: 224, // 6 kolon geniş ekrana sığsın; dar ekranda yatay scroll devreye girer
         maxWidth: 380,
         transition: 'border-color 120ms',
@@ -324,7 +326,7 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap
       </div>
 
       <SortableContext items={gorevler.map(g => g.id.toString())} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} style={{ flex: 1, minHeight: 120 }}>
+        <div ref={setNodeRef} style={{ flex: 1, minHeight: 120, overflowY: 'auto', paddingRight: 4 }}>
           {gorevler.length === 0 && (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -1546,7 +1548,8 @@ function Gorevler() {
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter}
             onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
+            {/* Pano ekrana sabitlenir — sayfa değil, her kolon kendi içinde kayar */}
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, alignItems: 'stretch', height: 'calc(100vh - 350px)', minHeight: 420 }}>
               {kolonlar.map(kolon => (
                 <DroppableKolon
                   key={kolon.id}
