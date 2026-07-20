@@ -2,7 +2,7 @@
 // Dönüşümler: Teklife Aktar (kalemler teklif satırlarına), Görev Oluştur,
 // Servis Talebi Oluştur — oluşan kayıtların id'leri keşfe geri bağlanır.
 
-import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
@@ -742,76 +742,42 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
             <p className="t-caption" style={{ margin: '0 0 12px' }}>
               Kroki ve fotoğraflara yerleştirilen cihaz ikonları kaynak bazında otomatik sayılır — hangi katta/alanda ne kullanılacak tek bakışta.
             </p>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Ürün</TH>
-                  <TH>Sistem</TH>
-                  <TH style={{ textAlign: 'right', width: 70 }}>Adet</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {sembolOzet.kaynaklar.map(ka => (
-                  <Fragment key={ka.anahtar}>
-                    <TR>
-                      <TD colSpan={3} style={{ background: 'var(--surface-sunken)', padding: '7px 10px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                            <Badge tone={ka.tip === 'Kroki' ? 'aktif' : 'lead'}>{ka.tip}</Badge>
-                            <b style={{ font: '700 12.5px/17px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ka.baslik}</b>
-                          </span>
-                          <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)', flexShrink: 0 }}>{ka.toplam} adet</span>
-                        </span>
-                      </TD>
-                    </TR>
-                    {ka.semboller.map(s => (
-                      <TR key={s.id}>
-                        <TD>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            <SembolMiniIkon id={s.id} renk={s.renk} size={22} />
-                            <span style={{ font: '600 12.5px/17px var(--font-sans)', color: 'var(--text-primary)' }}>{s.ad}</span>
-                          </span>
-                        </TD>
-                        <TD>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 3, background: s.renk, display: 'inline-block' }} />
-                            <span className="t-caption">{KROKI_KATEGORILER.find(k => k.id === s.kategori)?.ad || s.kategori}</span>
-                          </span>
-                        </TD>
-                        <TD style={{ textAlign: 'right', font: '700 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{s.adet}</TD>
-                      </TR>
-                    ))}
-                  </Fragment>
-                ))}
-
-                {/* Genel toplam — tüm kaynakların birleşimi */}
-                <TR>
-                  <TD colSpan={3} style={{ background: 'var(--surface-sunken)', padding: '7px 10px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <b style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-primary)', letterSpacing: '0.04em' }}>GENEL TOPLAM</b>
-                      <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{sembolOzet.toplam} adet</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[...sembolOzet.kaynaklar,
+                { anahtar: 'genel-toplam', tip: 'Toplam', baslik: 'GENEL TOPLAM', toplam: sembolOzet.toplam,
+                  semboller: sembolOzet.gruplar.flatMap(g => g.semboller) },
+              ].map(ka => (
+                <div key={ka.anahtar}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    padding: '6px 10px', borderRadius: 8, marginBottom: 6,
+                    background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                  }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                      {ka.tip !== 'Toplam' && <Badge tone={ka.tip === 'Kroki' ? 'aktif' : 'lead'}>{ka.tip}</Badge>}
+                      <b style={{ font: '700 12.5px/17px var(--font-sans)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: ka.tip === 'Toplam' ? '0.04em' : 0 }}>{ka.baslik}</b>
                     </span>
-                  </TD>
-                </TR>
-                {sembolOzet.gruplar.flatMap(g => g.semboller.map(s => (
-                  <TR key={`gt-${s.id}`}>
-                    <TD>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <SembolMiniIkon id={s.id} renk={s.renk} size={22} />
-                        <span style={{ font: '600 12.5px/17px var(--font-sans)', color: 'var(--text-primary)' }}>{s.ad}</span>
-                      </span>
-                    </TD>
-                    <TD>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 3, background: g.renk, display: 'inline-block' }} />
-                        <span className="t-caption">{g.ad}</span>
-                      </span>
-                    </TD>
-                    <TD style={{ textAlign: 'right', font: '800 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{s.adet}</TD>
-                  </TR>
-                )))}
-              </TBody>
-            </Table>
+                    <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-primary)', flexShrink: 0 }}>{ka.toplam} adet</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 5 }}>
+                    {ka.semboller.map(s => (
+                      <div key={`${ka.anahtar}-${s.id}`} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '4px 9px 4px 5px',
+                        borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-card)',
+                        minWidth: 0,
+                      }}>
+                        <SembolMiniIkon id={s.id} renk={s.renk} size={20} />
+                        <span style={{ font: '600 12.5px/17px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.ad}</span>
+                        <span className="t-caption" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          · {KROKI_KATEGORILER.find(k => k.id === s.kategori)?.ad || s.kategori}
+                        </span>
+                        <b style={{ marginLeft: 'auto', font: '800 13px/18px var(--font-sans)', color: 'var(--text-primary)', flexShrink: 0 }}>{s.adet}</b>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
         )}
       </div>
