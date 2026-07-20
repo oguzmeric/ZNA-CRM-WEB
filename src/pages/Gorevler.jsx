@@ -293,13 +293,13 @@ function DroppableKolon({ kolon, gorevler, kullanicilar, lokasyonMap, altSayiMap
   return (
     <div
       style={{
-        display: 'flex', flexDirection: 'column', flex: 1,
+        display: 'flex', flexDirection: 'column', flex: '1 1 0',
         borderRadius: 'var(--radius-md)',
         background: 'var(--surface-sunken)',
         border: `1px solid ${isOver ? kolon.renk : 'var(--border-default)'}`,
-        padding: 16,
+        padding: 12,
         minHeight: 500,
-        minWidth: 280,
+        minWidth: 224, // 6 kolon geniş ekrana sığsın; dar ekranda yatay scroll devreye girer
         maxWidth: 380,
         transition: 'border-color 120ms',
       }}
@@ -1487,30 +1487,88 @@ function Gorevler() {
         .gorev-karti:hover .gorev-aksiyon { opacity: 1 !important; }
         .gorev-karti:focus-within .gorev-aksiyon { opacity: 1 !important; }
       `}</style>
-      {!goster && gorunumModu === 'kanban' && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter}
-          onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16 }}>
-            {kolonlar.map(kolon => (
-              <DroppableKolon
-                key={kolon.id}
-                kolon={kolon}
-                gorevler={filtreliGorevler.filter(g => kolon.durumlar.includes(durumBilgi(g.durum).id))}
-                kullanicilar={kullanicilar}
-                lokasyonMap={lokasyonMap}
-                altSayiMap={altSayiMap}
-                onGorevClick={(id) => navigate(`/gorevler/${id}`)}
-                onEdit={duzenleAc}
-                onSil={gorevSil}
-                kartYetki={kartYetkisi}
-              />
-            ))}
+      {!goster && gorunumModu === 'kanban' && (() => {
+        // Kanban da liste ile aynı ek filtreleri kullanır (kategori/öncelik/etiket) —
+        // "kanbanda filtre yok" tutarsızlığı giderildi. State liste ile ORTAK.
+        const q = etiketFiltre.toLocaleLowerCase('tr')
+        const kanbanEsle = (g) => {
+          if (kategoriFiltre && String(g.kategoriId ?? '') !== kategoriFiltre) return false
+          if (oncelikFiltre) {
+            const esdeger = oncelikFiltre === 'normal' ? ['normal', 'orta'] : [oncelikFiltre]
+            if (!esdeger.includes(g.oncelik)) return false
+          }
+          if (etiketFiltre && !(Array.isArray(g.etiketler) && g.etiketler.some(t => String(t).toLocaleLowerCase('tr').includes(q)))) return false
+          return true
+        }
+        const kanbanGorevler = filtreliGorevler.filter(kanbanEsle)
+        const kanbanFiltreAktif = !!(kategoriFiltre || oncelikFiltre || etiketFiltre)
+        return (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <div style={{ minWidth: 150 }}>
+              <CustomSelect value={kategoriFiltre} onChange={e => setKategoriFiltre(e.target.value)}>
+                <option value="">Tüm kategoriler</option>
+                {kategoriler.map(k => <option key={k.id} value={String(k.id)}>{k.ad}</option>)}
+              </CustomSelect>
+            </div>
+            <div style={{ minWidth: 130 }}>
+              <CustomSelect value={oncelikFiltre} onChange={e => setOncelikFiltre(e.target.value)}>
+                <option value="">Tüm öncelikler</option>
+                {ONCELIK_SECENEKLERI.map(o => <option key={o.id} value={o.id}>{o.isim}</option>)}
+              </CustomSelect>
+            </div>
+            <input
+              placeholder="etiket ara…"
+              value={etiketFiltre}
+              onChange={e => setEtiketFiltre(e.target.value)}
+              style={{
+                width: 130, padding: '7px 10px',
+                font: '400 12px/16px var(--font-sans)', color: 'var(--text-primary)',
+                background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)', outline: 'none',
+              }}
+            />
+            {kanbanFiltreAktif && (
+              <button
+                onClick={() => { setKategoriFiltre(''); setOncelikFiltre(''); setEtiketFiltre('') }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 10px',
+                  background: 'transparent', border: '1px solid var(--border-default)',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                  borderRadius: 'var(--radius-sm)',
+                  font: '500 12px/16px var(--font-sans)',
+                }}
+              >
+                <X size={12} strokeWidth={1.5} /> Temizle ({kanbanGorevler.length})
+              </button>
+            )}
           </div>
-          <DragOverlay dropAnimation={{ duration: 150 }}>
-            {aktifGorev ? <GorevKarti gorev={aktifGorev} kullanicilar={kullanicilar} overlay /> : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+          <DndContext sensors={sensors} collisionDetection={closestCenter}
+            onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
+              {kolonlar.map(kolon => (
+                <DroppableKolon
+                  key={kolon.id}
+                  kolon={kolon}
+                  gorevler={kanbanGorevler.filter(g => kolon.durumlar.includes(durumBilgi(g.durum).id))}
+                  kullanicilar={kullanicilar}
+                  lokasyonMap={lokasyonMap}
+                  altSayiMap={altSayiMap}
+                  onGorevClick={(id) => navigate(`/gorevler/${id}`)}
+                  onEdit={duzenleAc}
+                  onSil={gorevSil}
+                  kartYetki={kartYetkisi}
+                />
+              ))}
+            </div>
+            <DragOverlay dropAnimation={{ duration: 150 }}>
+              {aktifGorev ? <GorevKarti gorev={aktifGorev} kullanicilar={kullanicilar} overlay /> : null}
+            </DragOverlay>
+          </DndContext>
+        </>
+        )
+      })()}
 
       {/* Liste — Profesyonel tablo görünümü */}
       {!goster && gorunumModu === 'liste' && (() => {
