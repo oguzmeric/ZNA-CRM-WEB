@@ -12,7 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock, MapPin, Settings,
   FolderOpen, CheckCircle2, Circle, History, Filter, Calendar, ChevronLeft, ChevronRight, X,
-  ChevronDown, CornerDownRight, Bookmark, Repeat,
+  ChevronDown, CornerDownRight, Bookmark, Repeat, Loader2, HelpCircle, Hourglass, Ban,
 } from 'lucide-react'
 import {
   gorevleriGetir, gorevGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
@@ -1514,23 +1514,29 @@ function Gorevler() {
 
       {/* Liste — Profesyonel tablo görünümü */}
       {!goster && gorunumModu === 'liste' && (() => {
-        // İkincil durum filtresi (sekme İÇİNDE) — 10 durumlu sistemde GRUP bazlı
+        // İkincil durum filtresi (sekme İÇİNDE) — satırda görünen HER durum şeritte
+        // de seçilebilir (tutarsızlık bulgusu); 'Açık' hızlı grup olarak kalır.
         const durumChipler = [
-          { id: 'hepsi',     isim: 'Tümü',      icon: List },
-          { id: 'acik',      isim: 'Açık',      icon: Circle,        renk: 'var(--info)' },
-          { id: 'beklemede', isim: 'Beklemede', icon: Clock,         renk: '#f97316' },
-          { id: 'kapali',    isim: 'Kapalı',    icon: CheckCircle2,  renk: 'var(--success)' },
-          { id: 'gecmis',    isim: 'Geçmiş',    icon: History,       renk: 'var(--danger)' },
+          { id: 'hepsi',     isim: 'Tümü',            icon: List },
+          { id: 'acik',      isim: 'Açık',            icon: Circle,       renk: 'var(--info)' },
+          { id: 'atandi',    isim: 'Atandı',          icon: User,         renk: 'var(--info)',       durumlar: ['bekliyor', 'taslak'] },
+          { id: 'devam',     isim: 'Devam Ediyor',    icon: Loader2,      renk: 'var(--warning)',    durumlar: ['devam', 'revize'] },
+          { id: 'beklemede', isim: 'Beklemede',       icon: Clock,        renk: '#f97316',           durumlar: ['beklemede'] },
+          { id: 'bilgi',     isim: 'Bilgi Bekleniyor',icon: HelpCircle,   renk: '#a855f7',           durumlar: ['bilgi_bekleniyor'] },
+          { id: 'onay',      isim: 'Onay Bekliyor',   icon: Hourglass,    renk: '#06b6d4',           durumlar: ['onay_bekliyor'] },
+          { id: 'tamam',     isim: 'Tamamlandı',      icon: CheckCircle2, renk: 'var(--success)',    durumlar: ['tamamlandi'] },
+          { id: 'iptal',     isim: 'İptal / Red',     icon: Ban,          renk: 'var(--text-muted)', durumlar: ['iptal', 'reddedildi'] },
+          { id: 'gecmis',    isim: 'Geçmiş',          icon: History,      renk: 'var(--danger)' },
         ]
 
         const durumEsle = (g) => {
-          switch (filtre) {
-            case 'acik': return ACIK_DURUMLAR.includes(g.durum)
-            case 'beklemede': return g.durum === 'beklemede' || g.durum === 'bilgi_bekleniyor'
-            case 'kapali': return KAPALI_DURUMLAR.includes(g.durum)
-            case 'gecmis': return gorevGecikti(g)
-            default: return true
-          }
+          if (!filtre || filtre === 'hepsi') return true
+          if (filtre === 'gecmis') return gorevGecikti(g)
+          const dId = durumBilgi(g.durum).id
+          if (filtre === 'acik') return ACIK_DURUMLAR.includes(dId)
+          if (filtre === 'kapali') return KAPALI_DURUMLAR.includes(dId) // legacy: eski kayıtlı filtreler
+          const chip = durumChipler.find(c => c.id === filtre)
+          return chip?.durumlar ? chip.durumlar.includes(dId) : true
         }
 
         const inSearch = (val, q) => !q || String(val ?? '').toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
