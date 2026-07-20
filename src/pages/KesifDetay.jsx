@@ -373,7 +373,7 @@ ${kesif.genelNot ? `<h2>KEŞİF AÇIKLAMASI</h2><div class="metin-blok">${esc(ke
 ${kesif.ozelTalepler ? `<h2>MÜŞTERİ ÖZEL TALEPLERİ</h2><div class="metin-blok">${esc(kesif.ozelTalepler)}</div>` : ''}
 ${kesif.mevcutSistem ? `<h2>MEVCUT SİSTEM BİLGİSİ</h2><div class="metin-blok">${esc(kesif.mevcutSistem)}</div>` : ''}
 ${kalemler.length ? `<h2>MALZEME LİSTESİ (${kalemler.length})</h2><table><tr><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th></tr>${kalemSatir}</table>` : ''}
-${sembolOzet.toplam ? `<h2>SEMBOL ÖZETİ — KROKİ + FOTOĞRAF (${sembolOzet.toplam} ADET)</h2><table><tr><th>Konum</th><th>Ürün</th><th>Adet</th></tr>${
+${sembolOzet.toplam ? `<h2>CİHAZ YERLEŞİM DÖKÜMÜ (${sembolOzet.toplam} ADET)</h2><table><tr><th>Konum</th><th>Ürün</th><th>Adet</th></tr>${
   sembolOzet.kaynaklar.map(ka =>
     `<tr><td rowspan="${ka.semboller.length}"><b>${esc(ka.tip)} — ${esc(ka.baslik)}</b><div class="mut">${ka.toplam} adet</div></td><td>${esc(ka.semboller[0].ad)}</td><td class="sag">${ka.semboller[0].adet}</td></tr>` +
     ka.semboller.slice(1).map(s => `<tr><td>${esc(s.ad)}</td><td class="sag">${s.adet}</td></tr>`).join('')
@@ -736,7 +736,7 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
         {sembolOzet.toplam > 0 && (
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h2 className="t-h2" style={{ margin: 0 }}>Sembol Özeti</h2>
+              <h2 className="t-h2" style={{ margin: 0 }}>Cihaz Yerleşim Dökümü</h2>
               <Badge tone="aktif">{sembolOzet.toplam} adet</Badge>
             </div>
             <p className="t-caption" style={{ margin: '0 0 12px' }}>
