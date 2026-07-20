@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { siparisYonetimiGorebilirMi } from './lib/siparisYetki'
 import { filoGorebilirMi } from './lib/filoYetki'
+import { ikGorebilirMi } from './lib/ikYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -58,6 +59,8 @@ const RaporMerkezi = lazy(() => import('./pages/RaporMerkezi'))
 const TeklifCiktiKayitlari = lazy(() => import('./pages/TeklifCiktiKayitlari'))
 const DokumanMerkezi = lazy(() => import('./pages/DokümanMerkezi'))
 const KisiselDokumanlar = lazy(() => import('./pages/KisiselDokumanlar'))
+const IzinBordro = lazy(() => import('./pages/IzinBordro'))
+const IKYonetim = lazy(() => import('./pages/IKYonetim'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Profil = lazy(() => import('./pages/Profil'))
 const FirmaGecmisi = lazy(() => import('./pages/FirmaGecmisi'))
@@ -108,6 +111,14 @@ function YonetimGuard({ children }) {
   const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
   const izinli = /\b(oğuz|oguz|ali|ferdi)\b/i.test(ad)
   if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// İK Yönetimi guard'ı — Abdullah İğde (ik_yonetim modülü) + admin.
+// MainLayout sadeceIK filtresi ve DB ik_yetkili() ile AYNI kaynak: ikGorebilirMi.
+function IKGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!ikGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -407,6 +418,8 @@ function App() {
           <Route path="/servis-raporlari" element={<ServisRaporlari />} />
           <Route path="/dokuman-merkezi" element={<DokumanMerkezi />} />
           <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
+          <Route path="/izin-bordro" element={<IzinBordro />} />
+          <Route path="/ik-yonetim" element={<IKGuard><IKYonetim /></IKGuard>} />
           <Route path="/kargolar" element={<Kargolar />} />
           <Route path="/kargolar/:id" element={<KargoDetay />} />
           <Route path="/takvim" element={<Takvim />} />

@@ -2,6 +2,7 @@ import { useAuth } from '../context/AuthContext'
 import { faturaYetkisi } from '../services/faturaTalepService'
 import { siparisYonetimiGorebilirMi } from '../lib/siparisYetki'
 import { filoGorebilirMi } from '../lib/filoYetki'
+import { ikGorebilirMi } from '../lib/ikYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -13,7 +14,7 @@ import {
   MessageSquare, UserCog, LogOut, ChevronDown, ChevronRight, Bell,
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
-  FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt,
+  FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -102,6 +103,7 @@ const menuItems = [
   { id: 'gorusmeler', isim: 'Görüşmeler', Icon: Phone, yol: '/gorusmeler', modul: 'gorusmeler', grup: 'gunluk' },
   { id: 'takvim', isim: 'Takvim', Icon: Calendar, yol: '/takvim', modul: null, grup: 'gunluk' },
   { id: 'notlarim', isim: 'Notlarım', Icon: StickyNote, yol: '/notlarim', modul: null, grup: 'gunluk' },
+  { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'gunluk' },
   { id: 'destek', isim: 'Destek', Icon: LifeBuoy, yol: '/destek', modul: null, grup: 'gunluk' },
   {
     id: 'satislar',
@@ -205,6 +207,9 @@ const menuItems = [
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
   { id: 'sabah_ozeti', isim: 'Günlük Özet', Icon: Sun, yol: '/gunluk-ozet', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceSabahOzeti: true },
   { id: 'sozlesmeler', isim: 'Sözleşmeler', Icon: FileSignature, yol: '/sozlesmeler', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  // İK Yönetimi: yonetim grubunda ama erişim ikGorebilirMi ile (Abdullah + admin) —
+  // grup 'yonetim' filtresinden ÖNCE sadeceIK bayrağıyla değerlendirilir
+  { id: 'ik_yonetim', isim: 'İK Yönetimi', Icon: Wallet, yol: '/ik-yonetim', modul: null, grup: 'yonetim', sadeceIK: true },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
@@ -257,6 +262,8 @@ const sayfaIsimleri = {
   '/fatura-talepleri': 'Proforma Fatura',
   '/kesifler': 'Keşifler',
   '/gunluk-ozet': 'Günlük Özet',
+  '/izin-bordro': 'İzin & Bordro',
+  '/ik-yonetim': 'İK Yönetimi',
   '/sozlesmeler': 'Sözleşmeler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
@@ -402,6 +409,8 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
+    // İK Yönetimi: Abdullah (ik_yonetim modülü) + admin — grup 'yonetim' kuralından ÖNCE
+    if (m.sadeceIK) return ikGorebilirMi(kullanici)
     // Sipariş Yönetimi: admin + izinli istisnalar (App.jsx AdminGuard ile paralel)
     if (m.sadeceAdmin) return siparisYonetimiGorebilirMi(kullanici)
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel
