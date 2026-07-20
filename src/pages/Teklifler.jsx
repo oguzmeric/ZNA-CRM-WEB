@@ -627,18 +627,27 @@ export default function Teklifler() {
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 140 }}>
-                                <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
-                                  {fmtPara(t.genelToplam, t.paraBirimi)}
-                                </span>
-                                <span style={{
-                                  width: 34,
-                                  textAlign: 'center',
-                                  padding: '1px 0',
-                                  borderRadius: 8,
-                                  background: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning-soft)' : 'transparent',
-                                  color: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning)' : 'transparent',
-                                  font: '700 9px/13px var(--font-sans)',
-                                }}>{t.paraBirimi && t.paraBirimi !== 'TL' ? t.paraBirimi : '·'}</span>
+                                {Number(t.genelToplam) ? (
+                                  <>
+                                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                                      {fmtPara(t.genelToplam, t.paraBirimi)}
+                                    </span>
+                                    <span style={{
+                                      width: 34,
+                                      textAlign: 'center',
+                                      padding: '1px 0',
+                                      borderRadius: 8,
+                                      background: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning-soft)' : 'transparent',
+                                      color: t.paraBirimi && t.paraBirimi !== 'TL' ? 'var(--warning)' : 'transparent',
+                                      font: '700 9px/13px var(--font-sans)',
+                                    }}>{t.paraBirimi && t.paraBirimi !== 'TL' ? t.paraBirimi : '·'}</span>
+                                  </>
+                                ) : (
+                                  /* 0/boş toplam = fiyat hiç girilmemiş — $0,00 gerçek tutar sanılmasın */
+                                  <span style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                                    Fiyat girilmemiş
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
