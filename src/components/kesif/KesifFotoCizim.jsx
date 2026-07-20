@@ -211,10 +211,12 @@ export default function KesifFotoCizim({
   // Görüntü boyutu: kroki modunda sabit tuval, foto modunda doğal boyut
   const dogalW = krokiModu ? tuval.w : (imgRef.current?.naturalWidth || 0)
   const dogalH = krokiModu ? tuval.h : (imgRef.current?.naturalHeight || 0)
-  // İşaret ölçeği — 1600px tuval baz: 4000px telefon fotoğrafında sembol/metin/balon ~2.5x
-  // büyür, yoksa görünmeyecek kadar ufak kalıyor (2026-07-20 saha geri bildirimi)
+  // İşaret ölçeği — 1600px tuval baz: 4000px telefon fotoğrafında sembol/metin/balon
+  // orantılı büyür, yoksa görünmeyecek kadar ufak kalıyor (2026-07-20 saha geri bildirimi)
   const isaretOlcek = Math.max(1, Math.max(dogalW, dogalH) / 1600)
-  const minSembol = Math.round(34 * isaretOlcek)
+  // Fotoğrafta sembol yarıçapı uzun kenarın ~1/26'sı (çap ~%8) — karışık arka planda
+  // kroki kadar belirgin dursun; krokide 34px sabit yeterli (beyaz tuval)
+  const minSembol = krokiModu ? 34 : Math.max(34, Math.round(Math.max(dogalW, dogalH) / 26))
 
   // Görüntüyü yükle (signed URL — canvas taint olmasın diye crossOrigin)
   useEffect(() => {
