@@ -171,6 +171,18 @@ export async function demirbasEkle({ kullaniciId, kategori, aciklama, fotoUrl })
   return data
 }
 
+// Kategori/açıklama düzenleme (otomatik geri yüklenen kayıtların tamamlanması vb.)
+export async function demirbasGuncelle(id, { kategori, aciklama }) {
+  const { data, error } = await supabase
+    .from('demirbas_zimmet')
+    .update({ kategori, aciklama: aciklama || null })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function demirbasIade(id) {
   const { data, error } = await supabase
     .from('demirbas_zimmet')

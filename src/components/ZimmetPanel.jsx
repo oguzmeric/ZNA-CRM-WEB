@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom'
 import {
   tumTeknisyenEnvanter, teknisyenAktifEnvanter,
   tumDemirbaslar, teknisyenDemirbaslari,
-  demirbasEkle, demirbasIade, demirbasFotoYukle,
+  demirbasEkle, demirbasIade, demirbasFotoYukle, demirbasGuncelle,
   stokKalemiBulSN,
 } from '../services/zimmetService'
 import { snTeknisyeneVer } from '../services/stokService'
@@ -55,6 +55,7 @@ export default function ZimmetPanel({ onKapat }) {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [ekleModal, setEkleModal] = useState(false)
   const [snEkleModal, setSnEkleModal] = useState(false)
+  const [duzenleKayit, setDuzenleKayit] = useState(null)  // demirbaş düzenleme modalı
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState(null)
 
   useEffect(() => {
@@ -205,6 +206,7 @@ export default function ZimmetPanel({ onKapat }) {
               await demirbasIade(id)
               yukle()
             }}
+            onDuzenle={setDuzenleKayit}
           />
         ) : sekme === 'envanter' ? (
           <EnvanterListe yonetim={false} liste={envanterListe} />
@@ -227,6 +229,13 @@ export default function ZimmetPanel({ onKapat }) {
           onKaydet={() => { setSnEkleModal(false); yukle() }}
         />
       )}
+      {duzenleKayit && yonetim && (
+        <DemirbasDuzenleModal
+          kayit={duzenleKayit}
+          onKapat={() => setDuzenleKayit(null)}
+          onKaydet={() => { setDuzenleKayit(null); yukle() }}
+        />
+      )}
     </div>
   )
 
@@ -234,7 +243,7 @@ export default function ZimmetPanel({ onKapat }) {
 }
 
 // Yönetim modu için master-detail: sol teknisyen listesi, sağ seçili teknisyenin kayıtları
-function YonetimGorunum({ sekme, envanterGruplu, demirbasGruplu, seciliId, setSeciliId, onIade }) {
+function YonetimGorunum({ sekme, envanterGruplu, demirbasGruplu, seciliId, setSeciliId, onIade, onDuzenle }) {
   const gruplu = sekme === 'envanter' ? envanterGruplu : demirbasGruplu
   const birim = sekme === 'envanter' ? 'kalem' : 'demirbaş'
 
@@ -289,7 +298,7 @@ function YonetimGorunum({ sekme, envanterGruplu, demirbasGruplu, seciliId, setSe
         </div>
         {sekme === 'envanter'
           ? secili.kayitlar.map(k => <EnvanterSatir key={k.id} kayit={k} />)
-          : secili.kayitlar.map(d => <DemirbasSatir key={d.id} kayit={d} yonetim onIade={onIade} />)
+          : secili.kayitlar.map(d => <DemirbasSatir key={d.id} kayit={d} yonetim onIade={onIade} onDuzenle={onDuzenle} />)
         }
       </div>
     </div>
@@ -347,7 +356,7 @@ function FotoBuyutOverlay({ url, onKapat }) {
   )
 }
 
-function DemirbasSatir({ kayit, yonetim, onIade }) {
+function DemirbasSatir({ kayit, yonetim, onIade, onDuzenle }) {
   const kat = DEMIRBAS_KATEGORI.find(k => k.id === kayit.kategori)
   const [fotoAcik, setFotoAcik] = useState(false)
   return (
@@ -368,6 +377,11 @@ function DemirbasSatir({ kayit, yonetim, onIade }) {
         <div style={{ fontSize: 12, color: R.metin2 }}>{kayit.aciklama || '—'}</div>
         <div style={{ fontSize: 11, color: R.metin3, marginTop: 2 }}>Verildi: {new Date(kayit.verildi_tarih).toLocaleDateString('tr-TR')}</div>
       </div>
+      {yonetim && onDuzenle && (
+        <button onClick={() => onDuzenle(kayit)} style={{
+          padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.mavi, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
+        }}>✏️ Düzenle</button>
+      )}
       {yonetim && onIade && (
         <button onClick={() => onIade(kayit.id)} style={{
           padding: '8px 14px', borderRadius: 8, background: R.panel, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
@@ -389,6 +403,73 @@ function BosMesaj({ children }) {
       padding: 60, textAlign: 'center', color: R.metin2,
       background: R.panel, borderRadius: 12, border: `1px dashed ${R.border2}`,
     }}>{children}</div>
+  )
+}
+
+// Kategori + açıklama düzenleme (otomatik geri yüklenen kayıtları tamamlamak için)
+function DemirbasDuzenleModal({ kayit, onKapat, onKaydet }) {
+  const [kategori, setKategori] = useState(kayit.kategori || 'diger')
+  const [aciklama, setAciklama] = useState(kayit.aciklama || '')
+  const [hata, setHata] = useState(null)
+  const [yukleniyor, setYukleniyor] = useState(false)
+
+  const kaydet = async () => {
+    setYukleniyor(true); setHata(null)
+    try {
+      await demirbasGuncelle(kayit.id, { kategori, aciklama })
+      onKaydet()
+    } catch (e) { setHata(e?.message || 'Güncelleme hatası') }
+    finally { setYukleniyor(false) }
+  }
+
+  return createPortal(
+    <div onClick={onKapat} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100001,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: R.panel, color: R.metin,
+        borderRadius: 14, padding: 24,
+        maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto',
+        border: `1px solid ${R.border2}`,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h3 style={{ margin: 0, color: R.metin, fontSize: 18 }}>Demirbaş Düzenle</h3>
+          <button onClick={onKapat} style={{ background: 'none', border: 'none', color: R.metin2, fontSize: 24, cursor: 'pointer' }}>×</button>
+        </div>
+        {kayit.foto_url && (
+          <img src={kayit.foto_url} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#0B1220', marginBottom: 14 }} />
+        )}
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={etiket}>Kategori</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {DEMIRBAS_KATEGORI.map(k => (
+                <button key={k.id} onClick={() => setKategori(k.id)} style={{
+                  padding: '8px 14px', borderRadius: 8,
+                  background: kategori === k.id ? R.mor : R.panel2,
+                  color: kategori === k.id ? '#fff' : R.metin,
+                  border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 13,
+                }}>{k.ikon} {k.ad}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={etiket}>Açıklama</label>
+            <input value={aciklama} onChange={e => setAciklama(e.target.value)} placeholder="Örn: Dell Latitude 5540, S/N ABC123" style={inputStil()} />
+          </div>
+          {hata && <div style={{ color: R.kirmizi, fontSize: 13 }}>{hata}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onKapat} style={{ padding: '10px 16px', borderRadius: 8, background: R.panel2, color: R.metin, border: `1px solid ${R.border2}`, cursor: 'pointer', fontSize: 14 }}>İptal</button>
+            <button onClick={kaydet} disabled={yukleniyor} style={{
+              padding: '10px 18px', borderRadius: 8, background: R.mor, color: '#fff',
+              border: 'none', fontWeight: 600, cursor: yukleniyor ? 'default' : 'pointer', fontSize: 14, opacity: yukleniyor ? 0.5 : 1,
+            }}>{yukleniyor ? 'Kaydediliyor…' : 'Kaydet'}</button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
