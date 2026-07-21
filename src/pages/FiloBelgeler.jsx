@@ -173,7 +173,8 @@ function YeniBelgeModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
 
   const kaydet = async () => {
     if (!form.aracId) { toast.error('Araç seçin.'); return }
-    if (!form.bitisTarih) { toast.error('Bitiş tarihi gerekli.'); return }
+    // Ruhsatın bitiş tarihi yok — yalnız süreli belgelerde (muayene/sigorta/kasko…) zorunlu
+    if (!form.bitisTarih && form.belgeTipi !== 'ruhsat') { toast.error('Bitiş tarihi gerekli.'); return }
     setKaydediliyor(true)
     let dosyaPath = null
     if (dosya) {
@@ -185,7 +186,7 @@ function YeniBelgeModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
       belgeTipi: form.belgeTipi,
       belgeNo: form.belgeNo?.trim() || null,
       baslangicTarih: form.baslangicTarih || null,
-      bitisTarih: form.bitisTarih,
+      bitisTarih: form.bitisTarih || null,
       tutar: form.tutar ? Number(form.tutar) : null,
       saglayici: form.saglayici?.trim() || null,
       dosyaUrl: dosyaPath,
@@ -223,7 +224,7 @@ function YeniBelgeModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
             <Input type="date" value={form.baslangicTarih || ''} onChange={e => alan('baslangicTarih', e.target.value)} />
           </div>
           <div>
-            <Label>Bitiş *</Label>
+            <Label>{form.belgeTipi === 'ruhsat' ? 'Bitiş (ruhsatta yok)' : 'Bitiş *'}</Label>
             <Input type="date" value={form.bitisTarih || ''} onChange={e => alan('bitisTarih', e.target.value)} />
           </div>
         </div>
