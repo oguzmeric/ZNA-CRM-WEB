@@ -171,6 +171,7 @@ const menuItems = [
       { id: 'stok-kritik', isim: 'Kritik Seviye', yol: '/stok-kritik' },
       { id: 'stok-sayim', isim: 'Sayım', yol: '/stok-sayim' },
       { id: 'depo-raporlar', isim: 'Depo Raporları', yol: '/depo-raporlar' },
+      { id: 'bagimsiz-sn', isim: 'Bağımsız SN Etiketleri', yol: '/bagimsiz-sn' },
     ],
   },
   { id: 'trassir', isim: 'Trassir Lisanslar', Icon: KeyRound, yol: '/trassir-lisanslar', modul: 'lisanslar', grup: 'operasyon' },

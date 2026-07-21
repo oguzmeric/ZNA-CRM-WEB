@@ -37,6 +37,7 @@ const StokOpsiyon = lazy(() => import('./pages/StokOpsiyon'))
 const StokKritik = lazy(() => import('./pages/StokKritik'))
 const StokSayim = lazy(() => import('./pages/StokSayim'))
 const DepoRaporlar = lazy(() => import('./pages/DepoRaporlar'))
+const BagimsizSnEtiketleri = lazy(() => import('./pages/BagimsizSnEtiketleri'))
 const ModelDetay = lazy(() => import('./pages/ModelDetay'))
 const SlaAyarlari = lazy(() => import('./pages/SlaAyarlari'))
 const Performans = lazy(() => import('./pages/Performans'))
@@ -387,6 +388,7 @@ function App() {
           <Route path="/stok-kritik" element={<StokKritik />} />
           <Route path="/stok-sayim" element={<StokSayim />} />
           <Route path="/depo-raporlar" element={<DepoRaporlar />} />
+          <Route path="/bagimsiz-sn" element={<BagimsizSnEtiketleri />} />
           <Route path="/trassir-lisanslar" element={<TrassirLisanslar />} />
           <Route path="/teklifler" element={<Teklifler />} />
           <Route path="/kesifler" element={<Kesifler />} />

@@ -25,7 +25,7 @@ function Barkod({ deger, height = 40 }) {
   return <svg ref={ref} />
 }
 
-export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat }) {
+export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir }) {
   const { toast } = useToast()
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
@@ -41,6 +41,8 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat 
     if (seciliKalemler.length === 0) { toast.warning('En az bir SN seçin.'); return }
     // window.print browser-native — CSS'te print class'ları etiketleri düzenler
     window.print()
+    // Basıldı işareti çağıranın sorumluluğunda (window.print senkron döner)
+    onYazdir?.(seciliKalemler)
   }
 
   return createPortal(
