@@ -1,25 +1,32 @@
-// Bağımsız SN Etiketleri (mig 220) — sahada üretilen ZNA- SN'lerin ofis etiket kuyruğu.
-// Basılmamışları seç → mevcut A4 3×8 barkod motoruyla (BarkodEtiketYazdir) bas →
-// "basıldı" işaretle. SN'ler sahada (mobil servis) üretilir, buradan basılır.
+// Bağımsız SN Etiketleri (mig 220) — SN'siz ürünler için ZNA- seri no üretimi + etiket.
+// Burada "Yeni SN Üret" ile kod oluştur (ofis) VEYA sahadan (mobil servis) üretilenler
+// düşer → basılmamışları seç → A4 3×8 barkod motoruyla (BarkodEtiketYazdir) bas → yapıştır.
 import { useEffect, useState, useMemo } from 'react'
-import { Tags, Printer, Square, CheckSquare, RefreshCw } from 'lucide-react'
+import { Tags, Printer, Square, CheckSquare, RefreshCw, Plus } from 'lucide-react'
 import {
-  etiketKuyruguGetir, etiketBasildiIsaretle,
+  etiketKuyruguGetir, etiketBasildiIsaretle, bagimsizSnUret,
 } from '../services/bagimsizSnService'
-import { Card, Badge, EmptyState, Button, CodeBadge, SegmentedControl } from '../components/ui'
+import { Card, Badge, EmptyState, Button, CodeBadge, SegmentedControl, Modal, Input, Label } from '../components/ui'
 import BarkodEtiketYazdir from '../components/BarkodEtiketYazdir'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 
 const tarihFmt = (t) => t ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function BagimsizSnEtiketleri() {
   const { toast } = useToast()
+  const { kullanici } = useAuth()
   const [liste, setListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [gorunum, setGorunum] = useState('bekleyen')  // bekleyen | tumu
   const [seciliIdler, setSeciliIdler] = useState(() => new Set())
   const [yazdirAcik, setYazdirAcik] = useState(false)
+  // Yeni SN üretimi (ofis)
+  const [uretAcik, setUretAcik] = useState(false)
+  const [uretAd, setUretAd] = useState('')
+  const [uretAdet, setUretAdet] = useState('1')
+  const [uretiliyor, setUretiliyor] = useState(false)
 
   const yenile = () => {
     setYukleniyor(true)
@@ -58,6 +65,29 @@ export default function BagimsizSnEtiketleri() {
     yenile()
   }
 
+  // Ofiste yeni SN üret — ürün adı + adet; her biri ZNA-... alır, kuyruğa düşer
+  const uret = async () => {
+    const ad = uretAd.trim()
+    const adet = Math.min(100, Math.max(1, parseInt(uretAdet, 10) || 1))
+    setUretiliyor(true)
+    try {
+      let basarili = 0
+      for (let i = 0; i < adet; i++) {
+        const sonuc = await bagimsizSnUret({ urunAdi: ad || null, kullanici })
+        if (sonuc?.hata) { toast.error(sonuc.hata); break }
+        basarili++
+      }
+      if (basarili > 0) {
+        toast.success(`${basarili} adet SN üretildi — listeye eklendi.`)
+        setUretAcik(false); setUretAd(''); setUretAdet('1')
+        setGorunum('bekleyen')
+        yenile()
+      }
+    } catch (e) {
+      toast.error(e?.message || 'SN üretilemedi.')
+    } finally { setUretiliyor(false) }
+  }
+
   if (yukleniyor) return <SkeletonList />
 
   return (
@@ -69,13 +99,18 @@ export default function BagimsizSnEtiketleri() {
             <h1 className="t-h2" style={{ margin: 0 }}>Bağımsız SN Etiketleri</h1>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-            Sahada seri numarası olmayan ürünlere üretilen ZNA- seri numaraları.
-            Seçip A4 3×8 barkod sayfası olarak basın, cihazın üstüne yapıştırın.
+            Seri numarası olmayan ürünler için ZNA- seri no üret, A4 3×8 barkod sayfası
+            olarak bas, cihazın üstüne yapıştır. Sahadan (mobil servis) üretilenler de buraya düşer.
           </div>
         </div>
-        <Button variant="secondary" size="sm" iconLeft={<RefreshCw size={13} strokeWidth={1.5} />} onClick={yenile}>
-          Yenile
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" size="sm" iconLeft={<RefreshCw size={13} strokeWidth={1.5} />} onClick={yenile}>
+            Yenile
+          </Button>
+          <Button variant="primary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setUretAcik(true)}>
+            Yeni SN Üret
+          </Button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -145,6 +180,40 @@ export default function BagimsizSnEtiketleri() {
           onYazdir={basildiIsaretle}
         />
       )}
+
+      {/* Yeni SN üret (ofis) — ürün adı + adet; her biri ZNA-... alır */}
+      <Modal
+        open={uretAcik}
+        onClose={() => !uretiliyor && setUretAcik(false)}
+        title="Yeni SN Üret"
+        width={460}
+        footer={
+          <>
+            <Button variant="tertiary" size="sm" onClick={() => setUretAcik(false)} disabled={uretiliyor}>Vazgeç</Button>
+            <Button variant="primary" size="sm" onClick={uret} disabled={uretiliyor}
+              iconLeft={<Plus size={14} strokeWidth={1.5} />}>
+              {uretiliyor ? 'Üretiliyor…' : 'Üret'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: 0 }}>
+            Seri numarası olmayan ürün için benzersiz <strong>ZNA-…</strong> kod üretilir.
+            Ürün adı isteğe bağlı (boş bırakırsan sadece kod basılır, sonra cihaza atarsın).
+          </p>
+          <div>
+            <Label>Ürün / Cihaz Adı (opsiyonel)</Label>
+            <Input value={uretAd} onChange={e => setUretAd(e.target.value)}
+              placeholder="Ör. 4 Portlu Switch" autoFocus />
+          </div>
+          <div style={{ width: 140 }}>
+            <Label>Kaç adet?</Label>
+            <Input type="number" min="1" max="100" value={uretAdet}
+              onChange={e => setUretAdet(e.target.value)} style={{ textAlign: 'right' }} />
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
