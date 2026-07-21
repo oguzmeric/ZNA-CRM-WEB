@@ -7,15 +7,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Receipt, FileUp, ExternalLink, CheckCircle2, XCircle, RotateCcw, Clock, Send, Printer,
+  Receipt, FileUp, ExternalLink, CheckCircle2, XCircle, RotateCcw, Clock, Send, Printer, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
+import { useBildirim } from '../context/BildirimContext'
 import { SkeletonList } from '../components/Skeleton'
 import BelgePaylasModal from '../components/BelgePaylasModal'
+import MentionTextarea from '../components/MentionTextarea'
+import { EkSecici, EkListesi } from '../components/EkAlani'
+import { ekleriYukle } from '../lib/ekDosya'
+import { parseMentions, segmentMetin } from '../lib/mention'
 import {
-  Button, Card, Badge, CodeBadge, EmptyState, Input, Label, Textarea, Select,
+  faturaTalebiYorumlariGetir, faturaTalebiYorumEkle, faturaTalebiYorumSil,
+} from '../services/faturaTalebiYorumService'
+import {
+  Button, Card, Badge, CodeBadge, EmptyState, Input, Label, Textarea, Select, Avatar,
 } from '../components/ui'
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
@@ -38,7 +46,7 @@ const bugun = () => new Date().toISOString().slice(0, 10)
 
 export default function FaturaTalepleri() {
   const navigate = useNavigate()
-  const { kullanici } = useAuth()
+  const { kullanici, kullanicilar } = useAuth()
   const { toast } = useToast()
   const { confirm } = useConfirm()
 
@@ -126,6 +134,7 @@ export default function FaturaTalepleri() {
         <TalepDetay
           talep={secili}
           kullanici={kullanici}
+          kullanicilar={kullanicilar}
           onKapat={() => setSecili(null)}
           onTamamlandi={() => { setSecili(null); yukle() }}
           navigate={navigate}
@@ -208,7 +217,8 @@ export default function FaturaTalepleri() {
 
 const hucre = { padding: '10px 12px', borderBottom: '1px solid var(--border-default)' }
 
-function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, confirm }) {
+function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, navigate, toast, confirm }) {
+  const { bildirimEkle } = useBildirim()
   const [faturaNo, setFaturaNo] = useState(talep.faturaNo || '')
   const [faturaTarihi, setFaturaTarihi] = useState(talep.faturaTarihi || bugun())
   const [odemeSekli, setOdemeSekli] = useState(talep.odemeSekli || '')
@@ -221,6 +231,18 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
   const dosyaRef = useRef(null)
   const irsaliyeRef = useRef(null)
   const irsaliyeSonradanRef = useRef(null)
+
+  // Yorumlar (mig 214) — muhasebe↔satış onay yazışması + @mention + ek
+  const [yorumlar, setYorumlar] = useState([])
+  const [yeniYorum, setYeniYorum] = useState('')
+  const [yorumEkleri, setYorumEkleri] = useState([])
+  const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false)
+
+  useEffect(() => {
+    let iptal = false
+    faturaTalebiYorumlariGetir(talep.id).then(y => { if (!iptal) setYorumlar(y) }).catch(() => {})
+    return () => { iptal = true }
+  }, [talep.id])
 
   const bekliyor = talep.durum === 'bekliyor'
   const meta = FATURA_TALEP_DURUM_META[talep.durum] || FATURA_TALEP_DURUM_META.bekliyor
@@ -552,6 +574,118 @@ function TalepDetay({ talep, kullanici, onKapat, onTamamlandi, navigate, toast, 
             </Button>
           </div>
         )}
+
+        {/* Yorumlar (mig 214) — muhasebe müdürü taslak fatura görselini ekler,
+            satış müdürünü @ ile etiketler; onay/görüş burada yürür. */}
+        <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14, marginTop: 14 }}>
+          <div style={baslikSt}>
+            Yorumlar {yorumlar.length > 0 && <span className="tabular-nums">({yorumlar.length})</span>}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {yorumlar.length === 0 && (
+              <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0 }}>
+                Henüz yorum yok. Taslak faturayı ekleyip ilgili kişiyi @ ile etiketleyerek onay isteyebilirsiniz.
+              </p>
+            )}
+            {yorumlar.map(yorum => {
+              const benimMi = yorum.yazarId?.toString() === kullanici?.id?.toString()
+              return (
+                <div key={yorum.id} style={{
+                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)', padding: 12,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Avatar name={yorum.yazar} size="xs" />
+                      <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{yorum.yazar}</span>
+                    </div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>{yorum.tarih}</span>
+                      {benimMi && (
+                        <button
+                          aria-label="Sil"
+                          onClick={async () => {
+                            try {
+                              await faturaTalebiYorumSil(yorum.id)
+                              setYorumlar(prev => prev.filter(y => y.id !== yorum.id))
+                            } catch { toast.error('Yorum silinemedi.') }
+                          }}
+                          style={{
+                            width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                          }}
+                        >
+                          <X size={11} strokeWidth={1.5} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {segmentMetin(yorum.icerik, kullanicilar || []).map((seg, i) =>
+                      seg.tip === 'mention'
+                        ? <span key={i} style={{ color: 'var(--brand-primary)', fontWeight: 600, background: 'var(--brand-primary-soft)', padding: '0 4px', borderRadius: 3 }}>{seg.deger}</span>
+                        : <span key={i}>{seg.deger}</span>)}
+                  </p>
+                  <EkListesi dosyalar={yorum.dosyalar} />
+                </div>
+              )
+            })}
+          </div>
+
+          <MentionTextarea
+            rows={3}
+            value={yeniYorum}
+            onChange={setYeniYorum}
+            kullanicilar={kullanicilar || []}
+            placeholder="Yorum yaz… (@ ile etiketle, Ctrl+V ile ekran görüntüsü yapıştır)"
+            style={{ marginBottom: 8 }}
+            onResimYapistir={(resimler) => setYorumEkleri(prev => [...prev, ...resimler])}
+          />
+          <div style={{ marginBottom: 8 }}>
+            <EkSecici dosyalar={yorumEkleri} onChange={setYorumEkleri} disabled={yorumGonderiliyor} />
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={yorumGonderiliyor}
+            onClick={async () => {
+              if (!yeniYorum.trim() && yorumEkleri.length === 0) return
+              setYorumGonderiliyor(true)
+              try {
+                const dosyalar = yorumEkleri.length ? await ekleriYukle('yorum-ekleri', yorumEkleri) : []
+                const metin = yeniYorum.trim()
+                const eklenen = await faturaTalebiYorumEkle({
+                  talepId: talep.id, kullaniciId: kullanici.id,
+                  yazarAd: kullanici.ad, icerik: metin || '(ek)', dosyalar,
+                })
+                setYorumlar(prev => [...prev, eklenen])
+                // @mention'lara bildirim (yazan hariç) — proforma numarası + firma
+                const proNo = talep.talepNo || talep.faturaNo || `#${talep.id}`
+                const mentionIdler = parseMentions(metin, kullanicilar || [])
+                  .filter(mid => mid?.toString() !== kullanici.id?.toString())
+                for (const aliciId of mentionIdler) {
+                  bildirimEkle(
+                    aliciId,
+                    `${kullanici.ad} sizi bir proforma faturada etiketledi`,
+                    `${proNo} (${talep.firmaAdi || 'Müşteri'}): ${metin.slice(0, 80)}${metin.length > 80 ? '…' : ''}`,
+                    'mention',
+                    '/fatura-talepleri',
+                  ).catch(() => {})
+                }
+                setYeniYorum('')
+                setYorumEkleri([])
+              } catch (e) {
+                toast.error('Yorum eklenemedi: ' + (e?.message || 'bağlantıyı kontrol edin'))
+              } finally {
+                setYorumGonderiliyor(false)
+              }
+            }}
+          >
+            {yorumGonderiliyor ? 'Gönderiliyor…' : 'Yorum ekle'}
+          </Button>
+        </div>
       </div>
     </Card>
   )
