@@ -2,9 +2,10 @@
 // görünürlüğü:
 //   - Yönetim erişimi olanlar (Oğuz, Ali, Ferdi — isim bazlı, eski davranış)
 //   - Ahmet Agun (id 29) ve Abdullah İğde (id 44) — 2026-07-17 talebi
+//   - Irmak INAN (id 59) — 2026-07-20 talebi
 // NOT: Bu yetki YALNIZ filo grubunu açar; Yönetim grubu (Kullanıcılar vb.)
 // ayrı kalır. MainLayout menü filtresi + App.jsx FiloGuard bu fonksiyonu kullanır.
-const IZINLI_KULLANICI_IDLERI = [29, 44]
+const IZINLI_KULLANICI_IDLERI = [29, 44, 59]
 
 export function filoGorebilirMi(kullanici) {
   if (!kullanici) return false
