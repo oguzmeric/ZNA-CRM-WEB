@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
 /**
@@ -43,23 +43,30 @@ export default function CustomSelect({
   const ref = useRef(null)
   const aramaInputRef = useRef(null)
 
-  // Option'ları parse et — nested array'leri de (map()) doğru işler
-  const options = []
-  const processChildren = (childs) => {
-    if (!childs) return
-    const arr = Array.isArray(childs) ? childs : [childs]
-    arr.forEach((child) => {
-      if (!child) return
-      if (Array.isArray(child)) {
-        processChildren(child)
-      } else if (child.type === 'option') {
-        options.push({ value: String(child.props.value ?? ''), label: child.props.children })
-      } else if (child.props?.children) {
-        processChildren(child.props.children)
-      }
-    })
-  }
-  processChildren(children)
+  // Option'ları parse et — nested array'leri de (map()) doğru işler.
+  // useMemo: arama yazarken (iç state render'ları) children referansı değişmez →
+  // binlerce option'lı listelerde (müşteri seçici 1800+) her tuşta yeniden parse
+  // edilmez. Arama metni de burada BİR KEZ normalize edilir (o.text).
+  const options = useMemo(() => {
+    const sonuc = []
+    const processChildren = (childs) => {
+      if (!childs) return
+      const arr = Array.isArray(childs) ? childs : [childs]
+      arr.forEach((child) => {
+        if (!child) return
+        if (Array.isArray(child)) {
+          processChildren(child)
+        } else if (child.type === 'option') {
+          sonuc.push({ value: String(child.props.value ?? ''), label: child.props.children })
+        } else if (child.props?.children) {
+          processChildren(child.props.children)
+        }
+      })
+    }
+    processChildren(children)
+    sonuc.forEach(o => { o.text = trNormalize(labelToText(o.label) + ' ' + o.value) })
+    return sonuc
+  }, [children])
 
   const secilenOpt = options.find((o) => o.value === String(value ?? ''))
   const customDisplay = secilenOpt && selectedDisplay
@@ -77,11 +84,23 @@ export default function CustomSelect({
   // Otomatik searchable: explicit prop yoksa 8'den fazla seçenekte aktif
   const aramaAcik = (searchable === undefined ? options.length > 8 : !!searchable)
 
-  // Filtrelenmiş options (arama açıksa)
+  // Filtrelenmiş options (arama açıksa) — o.text options memo'sunda önceden
+  // normalize edildi; her tuşta 1800×trNormalize koşmaz.
   const aramaQ = trNormalize(arama)
   const goruntulenenOptions = aramaAcik && aramaQ
-    ? options.filter(o => trNormalize(labelToText(o.label) + ' ' + o.value).includes(aramaQ))
+    ? options.filter(o => o.text.includes(aramaQ))
     : options
+  // Render limiti: binlerce option'ı DOM'a basmak her tuşta yüzlerce ms
+  // reconcile demek (müşteri seçicide sayfa "yanıt vermiyor"a düşüyordu).
+  // Seçili değer listede her zaman bulunabilsin diye limit dışındaysa eklenir.
+  const RENDER_LIMIT = 250
+  const kirpildi = goruntulenenOptions.length > RENDER_LIMIT
+  const renderOptions = kirpildi
+    ? goruntulenenOptions.slice(0, RENDER_LIMIT)
+    : goruntulenenOptions
+  if (kirpildi && secilenOpt && !renderOptions.some(o => o.value === secilenOpt.value)) {
+    renderOptions.push(secilenOpt)
+  }
 
   // Açıldığında trigger konumunu hesapla, panel için fixed pozisyon üret
   useLayoutEffect(() => {
@@ -279,7 +298,7 @@ export default function CustomSelect({
             }}>
               {options.length === 0 ? 'Seçenek yok' : 'Sonuç bulunamadı'}
             </div>
-          ) : goruntulenenOptions.map((opt) => {
+          ) : renderOptions.map((opt) => {
             const secili = opt.value === String(value ?? '')
             return (
               <div
@@ -305,6 +324,17 @@ export default function CustomSelect({
               </div>
             )
           })}
+          {kirpildi && (
+            <div style={{
+              padding: '8px 12px',
+              color: 'var(--text-tertiary)',
+              font: '400 12px/16px var(--font-sans)',
+              textAlign: 'center',
+              borderTop: '1px solid var(--border-default, #D9DFE5)',
+            }}>
+              İlk {RENDER_LIMIT} sonuç gösteriliyor ({goruntulenenOptions.length}) — daraltmak için arayın
+            </div>
+          )}
           </div>
         </div>,
         document.body,
