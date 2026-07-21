@@ -154,6 +154,17 @@ export default function ServisTalepDetay() {
         kullanici.ad,
         aciklama
       )
+      // Atanan teknisyene bildirim (kendine atama hariç). Talep artık yalnız
+      // atanana gidiyor (mig 216); sonradan atamada da haber verilmeli.
+      if (k?.id && String(k.id) !== String(kullanici?.id)) {
+        bildirimEkle(
+          k.id,
+          '🛠️ Size servis talebi atandı',
+          `${talep.talepNo || 'Talep'} · ${talep.firmaAdi || talep.musteriAd || ''} · ${talep.konu || ''}`,
+          'servis_talebi',
+          `/servis-talepleri/${talep.id}`,
+        ).catch(() => {})
+      }
     } finally {
       setAtamaKaydediliyor(false)
     }
