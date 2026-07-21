@@ -25,6 +25,7 @@ const bos = {
   altKategori: '',
   konu: '',
   aciklama: '',
+  kullanilacakMalzemeler: '',
   aciliyet: 'normal',
   lokasyon: '',
   cihazTuru: '',
@@ -251,6 +252,22 @@ export default function YeniServisTalebi() {
             rows={4}
             placeholder="Sorunun veya talebin detayı, geçmiş gözlem, sistem bilgisi…"
           />
+          <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
+            Bu alan müşteri servis formunda görünür.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Label>Kullanılacak Malzemeler (İç Not)</Label>
+          <Textarea
+            value={form.kullanilacakMalzemeler}
+            onChange={e => setForm(p => ({ ...p, kullanilacakMalzemeler: e.target.value }))}
+            rows={3}
+            placeholder="Örn: 2× Dahua 4MP dome, 1× 8 kanal NVR, 50m CAT6, 4× RJ45…"
+          />
+          <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
+            🔒 Sadece personele görünür — teknisyen bu listeye göre envanterine malzeme alır. Müşteri servis formunda görünmez.
+          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

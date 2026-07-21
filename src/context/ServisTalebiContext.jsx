@@ -195,6 +195,7 @@ export function ServisTalebiProvider({ children }) {
       lokasyon: formData.lokasyon || '',
       cihazTuru: formData.cihazTuru || '',
       aciklama: formData.aciklama,
+      kullanilacakMalzemeler: formData.kullanilacakMalzemeler || '',
       aciliyet: formData.aciliyet || 'normal',
       ilgiliKisi: formData.ilgiliKisi || kullanici.ad,
       telefon: formData.telefon || '',
@@ -245,6 +246,7 @@ export function ServisTalebiProvider({ children }) {
       lokasyon: formData.lokasyon || '',
       cihazTuru: formData.cihazTuru || '',
       aciklama: formData.aciklama,
+      kullanilacakMalzemeler: formData.kullanilacakMalzemeler || '',
       aciliyet: formData.aciliyet || 'normal',
       ilgiliKisi: (() => {
         if (formData.ilgiliKisi && formData.ilgiliKisi.trim()) return formData.ilgiliKisi.trim()

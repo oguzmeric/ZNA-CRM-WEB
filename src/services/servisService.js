@@ -80,7 +80,7 @@ const SERVIS_LISTE_KOLONLARI = `id, talep_no, musteri_id, musteri_ad, firma_adi,
   gorev_id, gorusme_id, degerlendirme_puan, degerlendirme_yorum, degerlendirme_tarihi,
   degerlendirme_kullanici_id, servis_tipi, yukumluluk, servis_yeri, seri_numarasi, marka,
   model, kunye_numarasi, yedek_parcalar, cozum_aciklamasi, personel_imza_ad, kaynak,
-  email, tamamlanma_tarihi, siparis_id, fatura_talep_id`
+  email, tamamlanma_tarihi, siparis_id, fatura_talep_id, kullanilacak_malzemeler`
 
 export const servisTalepleriniGetir = async () => {
   const hepsi = []

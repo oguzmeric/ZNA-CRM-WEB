@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
-  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt,
+  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt, Package,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi, servisOnaylayabilirMi } from '../context/ServisTalebiContext'
@@ -69,6 +69,10 @@ export default function ServisTalepDetay() {
   const [aciklamaDuzenle, setAciklamaDuzenle] = useState(false)
   const [aciklamaTaslak, setAciklamaTaslak] = useState('')
   const [aciklamaKaydediliyor, setAciklamaKaydediliyor] = useState(false)
+  // Kullanılacak Malzemeler (iç not) — teknisyen envanter hazırlığı
+  const [malzemeDuzenle, setMalzemeDuzenle] = useState(false)
+  const [malzemeTaslak, setMalzemeTaslak] = useState('')
+  const [malzemeKaydediliyor, setMalzemeKaydediliyor] = useState(false)
 
   // Talep detay açıldığında ilgili okunmamış bildirimleri otomatik okundu yap
   // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
@@ -571,6 +575,80 @@ export default function ServisTalepDetay() {
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* Kullanılacak Malzemeler (İÇ NOT) — teknisyen envanter hazırlığı.
+              Müşteri servis formunda GÖRÜNMEZ. Sarı vurgulu kart. */}
+          <Card style={{ borderColor: '#f59e0b', background: 'rgba(245,158,11,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Package size={16} strokeWidth={1.5} style={{ color: '#b45309' }} />
+                <CardTitle style={{ margin: 0 }}>Kullanılacak Malzemeler</CardTitle>
+                <Badge tone="uyari">İç Not</Badge>
+              </div>
+              {!malzemeDuzenle && (
+                <button
+                  onClick={() => { setMalzemeTaslak(talep.kullanilacakMalzemeler || ''); setMalzemeDuzenle(true) }}
+                  title="Malzeme listesini düzenle"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer',
+                    font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Pencil size={12} strokeWidth={1.5} /> Düzenle
+                </button>
+              )}
+            </div>
+
+            {malzemeDuzenle ? (
+              <div>
+                <Textarea
+                  value={malzemeTaslak}
+                  onChange={e => setMalzemeTaslak(e.target.value)}
+                  rows={4}
+                  placeholder="Örn: 2× Dahua 4MP dome, 1× 8 kanal NVR, 50m CAT6, 4× RJ45…"
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <Button
+                    variant="primary" size="sm"
+                    iconLeft={<Check size={12} strokeWidth={1.5} />}
+                    disabled={malzemeKaydediliyor}
+                    onClick={async () => {
+                      setMalzemeKaydediliyor(true)
+                      try {
+                        await talepGuncelle(talep.id, { kullanilacakMalzemeler: malzemeTaslak.trim() }, kullanici.ad, 'Kullanılacak malzemeler güncellendi')
+                        setMalzemeDuzenle(false)
+                      } catch (err) {
+                        alert('Kaydedilemedi: ' + (err?.message || 'bilinmeyen'))
+                      } finally {
+                        setMalzemeKaydediliyor(false)
+                      }
+                    }}
+                  >
+                    {malzemeKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+                  </Button>
+                  <Button variant="secondary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />} onClick={() => setMalzemeDuzenle(false)}>
+                    İptal
+                  </Button>
+                </div>
+              </div>
+            ) : talep.kullanilacakMalzemeler && talep.kullanilacakMalzemeler.trim() ? (
+              <>
+                <p style={{ font: '400 14px/22px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {talep.kullanilacakMalzemeler}
+                </p>
+                <p style={{ font: '400 11px/16px var(--font-sans)', color: '#b45309', fontStyle: 'italic', marginTop: 8 }}>
+                  🔒 Teknisyene özel — envanterine bu malzemeleri al. Müşteri servis formunda görünmez.
+                </p>
+              </>
+            ) : (
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
+                Malzeme notu girilmemiş — <strong>Düzenle</strong> ile teknisyenin alacağı ürünleri yazabilirsiniz.
+              </p>
+            )}
           </Card>
 
           {/* Bağlı görev yorumları (read-only) — talep görevden oluşturulduysa */}
