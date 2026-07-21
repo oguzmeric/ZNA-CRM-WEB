@@ -28,7 +28,8 @@ import {
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
-  faturaDosyaUrl, irsaliyeKaydet, faturaYetkisi, FATURA_TALEP_DURUM_META,
+  faturaDosyaUrl, irsaliyeKaydet, faturaPdfDegistir, faturaPdfSil, irsaliyeSil,
+  faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
 
 // Sayfa "Proforma Fatura" (2026-07-15 terim düzeltmesi: numarasız ön fatura =
@@ -231,6 +232,7 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
   const dosyaRef = useRef(null)
   const irsaliyeRef = useRef(null)
   const irsaliyeSonradanRef = useRef(null)
+  const faturaPdfDegistirRef = useRef(null)
 
   // Yorumlar (mig 214) — muhasebe↔satış onay yazışması + @mention + ek
   const [yorumlar, setYorumlar] = useState([])
@@ -305,6 +307,58 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
       const sonuc = await irsaliyeKaydet(talep, f)
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
       toast.success('İrsaliye kaydedildi.')
+      onTamamlandi()
+    } finally {
+      setMesgul(false)
+    }
+  }
+
+  // Faturalandıktan sonra fatura PDF'ini değiştir (yanlış dosya yüklendiyse)
+  const faturaPdfDegistirYukle = async (e) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setMesgul(true)
+    try {
+      const sonuc = await faturaPdfDegistir(talep, f)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('Fatura PDF değiştirildi.')
+      onTamamlandi()
+    } finally {
+      setMesgul(false)
+    }
+  }
+
+  const faturaPdfSilTikla = async () => {
+    const onay = await confirm({
+      baslik: 'Fatura PDF sil',
+      mesaj: 'Yüklü fatura PDF kaldırılacak. Müşteriye gönderebilmek için yeni bir PDF yüklemeniz gerekir. Devam edilsin mi?',
+      onayMetin: 'Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    setMesgul(true)
+    try {
+      const sonuc = await faturaPdfSil(talep)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('Fatura PDF kaldırıldı.')
+      onTamamlandi()
+    } finally {
+      setMesgul(false)
+    }
+  }
+
+  const irsaliyeSilTikla = async () => {
+    const onay = await confirm({
+      baslik: 'İrsaliye sil',
+      mesaj: 'Yüklü irsaliye kaldırılacak. Devam edilsin mi?',
+      onayMetin: 'Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    setMesgul(true)
+    try {
+      const sonuc = await irsaliyeSil(talep)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('İrsaliye kaldırıldı.')
       onTamamlandi()
     } finally {
       setMesgul(false)
@@ -518,9 +572,28 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
               <span style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                 {fmtTarih(talep.faturaTarihi)}
               </span>
-              {talep.faturaPdfYol && (
-                <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={pdfAc}>
-                  {talep.faturaPdfAd || 'PDF'}
+              {/* Fatura PDF — görüntüle / değiştir / sil (yanlış dosya yüklenmişse) */}
+              <input ref={faturaPdfDegistirRef} type="file" accept="application/pdf,.pdf" style={{ display: 'none' }}
+                onChange={faturaPdfDegistirYukle} />
+              {talep.faturaPdfYol ? (
+                <>
+                  <Button variant="secondary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={pdfAc}>
+                    {talep.faturaPdfAd || 'PDF'}
+                  </Button>
+                  <Button variant="tertiary" size="sm" disabled={mesgul}
+                    onClick={() => faturaPdfDegistirRef.current?.click()}>
+                    Faturayı Değiştir
+                  </Button>
+                  <Button variant="tertiary" size="sm" disabled={mesgul} onClick={faturaPdfSilTikla}
+                    style={{ color: 'var(--text-danger, #c62828)' }}>
+                    Faturayı Sil
+                  </Button>
+                </>
+              ) : (
+                <Button variant="secondary" size="sm" disabled={mesgul}
+                  iconLeft={<FileUp size={13} strokeWidth={1.5} />}
+                  onClick={() => faturaPdfDegistirRef.current?.click()}>
+                  Fatura PDF Yükle
                 </Button>
               )}
               <input ref={irsaliyeSonradanRef} type="file" accept="application/pdf,image/*" style={{ display: 'none' }}
@@ -533,6 +606,10 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                   <Button variant="tertiary" size="sm" disabled={mesgul}
                     onClick={() => irsaliyeSonradanRef.current?.click()}>
                     İrsaliyeyi Değiştir
+                  </Button>
+                  <Button variant="tertiary" size="sm" disabled={mesgul} onClick={irsaliyeSilTikla}
+                    style={{ color: 'var(--text-danger, #c62828)' }}>
+                    İrsaliyeyi Sil
                   </Button>
                 </>
               ) : (

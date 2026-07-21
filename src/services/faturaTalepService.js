@@ -175,6 +175,65 @@ export const irsaliyeKaydet = async (talep, file) => {
   return toCamel(data)
 }
 
+// Faturalandıktan SONRA fatura PDF'ini değiştir — yeni dosyayı yükler, DB + satış
+// kaydını senkronlar, eski storage dosyasını temizler (yetim kalmasın).
+export const faturaPdfDegistir = async (talep, file) => {
+  const pdfMi = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+  if (!pdfMi) return { _hata: 'Fatura dosyası PDF olmalıdır.' }
+  const yeniYol = await faturaDosyaYukle(talep.id, file)
+  if (!yeniYol) return { _hata: 'PDF yüklenemedi.' }
+  const eski = talep.faturaPdfYol
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ fatura_pdf_yol: yeniYol, fatura_pdf_ad: file.name })
+    .eq('id', talep.id)
+    .select()
+    .single()
+  if (error) { console.error('[faturaPdfDegistir]', error.message); return { _hata: error.message } }
+  // Satış kaydı aynı dosyayı gösterir (Müşteriye Gönder / satış PDF'i) — senkronla
+  if (talep.satisId) {
+    await supabase.from('satislar')
+      .update({ fatura_pdf_yol: yeniYol, fatura_pdf_ad: file.name })
+      .eq('id', talep.satisId)
+  }
+  if (eski && eski !== yeniYol) supabase.storage.from('fatura-belge').remove([eski]).catch(() => {})
+  return toCamel(data)
+}
+
+// Fatura PDF'ini kaldır (yanlış dosya yüklendiğinde). Müşteriye Gönder butonu
+// tekrar dosya yüklenene dek gizlenir.
+export const faturaPdfSil = async (talep) => {
+  const eski = talep.faturaPdfYol
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ fatura_pdf_yol: null, fatura_pdf_ad: null })
+    .eq('id', talep.id)
+    .select()
+    .single()
+  if (error) { console.error('[faturaPdfSil]', error.message); return { _hata: error.message } }
+  if (talep.satisId) {
+    await supabase.from('satislar')
+      .update({ fatura_pdf_yol: null, fatura_pdf_ad: null })
+      .eq('id', talep.satisId)
+  }
+  if (eski) supabase.storage.from('fatura-belge').remove([eski]).catch(() => {})
+  return toCamel(data)
+}
+
+// İrsaliyeyi kaldır
+export const irsaliyeSil = async (talep) => {
+  const eski = talep.irsaliyeYol
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ irsaliye_yol: null, irsaliye_ad: null })
+    .eq('id', talep.id)
+    .select()
+    .single()
+  if (error) { console.error('[irsaliyeSil]', error.message); return { _hata: error.message } }
+  if (eski) supabase.storage.from('fatura-belge').remove([eski]).catch(() => {})
+  return toCamel(data)
+}
+
 // Bucket private — gösterim için imzalı URL şart
 export const faturaDosyaUrl = async (yol) => {
   if (!yol) return null
