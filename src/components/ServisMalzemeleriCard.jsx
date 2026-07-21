@@ -8,8 +8,8 @@
 // Keşiften gelen kalemler 'planlanan' olarak düşer: forma basılmaz, stok
 // düşmez. Teknisyen "Kullandım" deyince stok düşer ve forma girer.
 import { useState, useEffect, useMemo } from 'react'
-import { Package, Trash2, Tag, Check, Plus } from 'lucide-react'
-import { Button, Card, Badge, Input, CodeBadge } from './ui'
+import { Package, Trash2, Tag, Check, Plus, Settings2, Eye, EyeOff } from 'lucide-react'
+import { Button, Card, Badge, Input, CodeBadge, Modal, Label } from './ui'
 import CustomSelect from './CustomSelect'
 import CokluSelect from './CokluSelect'
 import AkilliUrunSecici from './AkilliUrunSecici'
@@ -18,17 +18,22 @@ import {
   servisMalzemeleriGetir, servisMalzemeEkle, servisMalzemeSil, FATURALANDIRMA_SECENEK,
   servisMalzemeGuncelle, servisMalzemeKullanildiYap, teknisyendekiKalemler,
 } from '../services/servisMalzemeService'
+import {
+  cihazGetirSeriNo, cihazEkle, cihazGuncelle, musteriCihazlariGetir,
+} from '../services/musteriCihazService'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
 
 const paraFmt = (n) => `${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`
 const tarihFmt = (t) => t
   ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   : '—'
 
-export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti }) {
+export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId, musteriAd, onDegisti }) {
   const { toast } = useToast()
   const { confirm } = useConfirm()
+  const { kullanici } = useAuth()
   const [malzemeler, setMalzemeler] = useState([])
   const [urunler, setUrunler] = useState([])
   const [seciliUrun, setSeciliUrun] = useState(null)
@@ -42,6 +47,16 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
   const [elleMiktar, setElleMiktar] = useState(1)
   const [elleBirim, setElleBirim] = useState('Adet')
   const [elleFiyat, setElleFiyat] = useState('')
+
+  // Cihaz bilgileri (MAC/IP/kullanıcı adı/şifre) — müşteri cihaz envanterine köprü
+  const [cihazRow, setCihazRow] = useState(null)   // düzenlenen malzeme satırı
+  const [cihazForm, setCihazForm] = useState(null)
+  const [cihazMevcutId, setCihazMevcutId] = useState(null)
+  const [cihazYukleniyor, setCihazYukleniyor] = useState(false)
+  const [cihazKaydediliyor, setCihazKaydediliyor] = useState(false)
+  const [sifreGoster, setSifreGoster] = useState(false)
+  // Hangi S/N'lerin envanterde konfig kaydı var — satırda rozet için
+  const [kayitliSnler, setKayitliSnler] = useState(new Set())
 
   const yenile = () => servisMalzemeleriGetir(servisId).then(d => {
     setMalzemeler(d)
@@ -187,6 +202,98 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
     } catch (e) {
       toast.error(e?.message || 'Kaldırılamadı.')
     }
+  }
+
+  // Müşteri cihaz envanterinden bu servisin S/N'lerine hangileri kayıtlı — rozet için
+  useEffect(() => {
+    if (!musteriId) { setKayitliSnler(new Set()); return }
+    let iptal = false
+    musteriCihazlariGetir(musteriId)
+      .then(list => {
+        if (iptal) return
+        const s = new Set((list || []).map(c => (c.seriNo || '').trim().toLocaleLowerCase('tr')).filter(Boolean))
+        setKayitliSnler(s)
+      })
+      .catch(() => {})
+    return () => { iptal = true }
+  }, [musteriId, malzemeler])
+
+  const snKayitli = (sn) => sn && kayitliSnler.has(String(sn).trim().toLocaleLowerCase('tr'))
+
+  // Malzeme satırına tıkla → o cihazın MAC/IP/kimlik bilgilerini gir (müşteri
+  // cihaz envanterine yazılır; SN anahtar). Aynı cihaz sonraki serviste de görünür.
+  const cihazAc = async (m) => {
+    if (!musteriId) { toast.error('Bu servise müşteri bağlı değil — cihaz bilgisi kaydedilemez.'); return }
+    if (!m.seriNo) { toast.error('Cihaz bilgisi yalnız S/N’li ürünlerde girilebilir.'); return }
+    setCihazRow(m)
+    setSifreGoster(false)
+    setCihazYukleniyor(true)
+    setCihazMevcutId(null)
+    // Varsayılan: malzeme satırından türet
+    const taban = {
+      cihazAdi: m.urunAdi || '', lokasyon: '', ipAdresi: '', macAdresi: '',
+      kullaniciAdi: '', sifre: '', notlar: '',
+    }
+    setCihazForm(taban)
+    try {
+      const mevcut = await cihazGetirSeriNo(m.seriNo)
+      if (mevcut) {
+        // Başka müşteride kayıtlıysa uyar ama yine de göster (SN benzersiz)
+        if (mevcut.musteriId && musteriId && String(mevcut.musteriId) !== String(musteriId)) {
+          toast.error('Bu seri no başka bir müşteride kayıtlı — dikkat.')
+        }
+        setCihazMevcutId(mevcut.id)
+        setCihazForm({
+          cihazAdi: mevcut.cihazAdi || m.urunAdi || '',
+          lokasyon: mevcut.lokasyon || '',
+          ipAdresi: mevcut.ipAdresi || '',
+          macAdresi: mevcut.macAdresi || '',
+          kullaniciAdi: mevcut.kullaniciAdi || '',
+          sifre: mevcut.sifre || '',
+          notlar: mevcut.notlar || '',
+        })
+      }
+    } catch (_) { /* yeni kayıt akışı */ }
+    finally { setCihazYukleniyor(false) }
+  }
+
+  const cihazAlan = (alan, deger) => setCihazForm(f => ({ ...f, [alan]: deger }))
+
+  const cihazKaydet = async () => {
+    if (!cihazRow || !cihazForm) return
+    setCihazKaydediliyor(true)
+    try {
+      if (cihazMevcutId) {
+        const guncel = await cihazGuncelle(
+          cihazMevcutId,
+          { ...cihazForm },
+          kullanici,
+          `Servis sırasında güncellendi (${servisKodu || 'servis'})`,
+        )
+        if (!guncel) { toast.error('Cihaz güncellenemedi.'); return }
+        toast.success('Cihaz bilgileri güncellendi.')
+      } else {
+        const urun = cihazRow.stokKodu ? urunler.find(u => u.stokKodu === cihazRow.stokKodu) : null
+        const sonuc = await cihazEkle(
+          {
+            ...cihazForm,
+            musteriId,
+            seriNo: cihazRow.seriNo,
+            marka: urun?.marka || '',
+            model: urun?.model || cihazRow.urunAdi || '',
+            durum: 'aktif',
+          },
+          kullanici,
+        )
+        if (sonuc?.hata) { toast.error(sonuc.hata); return }
+        toast.success('Cihaz bilgileri kaydedildi — müşteri cihaz envanterine eklendi.')
+      }
+      // rozet güncellensin
+      setKayitliSnler(prev => new Set(prev).add(String(cihazRow.seriNo).trim().toLocaleLowerCase('tr')))
+      setCihazRow(null); setCihazForm(null); setCihazMevcutId(null)
+    } catch (e) {
+      toast.error(e?.message || 'Kaydedilemedi.')
+    } finally { setCihazKaydediliyor(false) }
   }
 
   const satirKutu = {
@@ -362,6 +469,23 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
                     {FATURALANDIRMA_SECENEK.map(s => <option key={s.id} value={s.id}>{s.isim}</option>)}
                   </CustomSelect>
                 </div>
+                {/* Cihaz bilgileri — MAC/IP/kullanıcı adı/şifre (yalnız S/N'li) */}
+                {m.seriNo && (
+                  <button aria-label="Cihaz bilgileri"
+                    title={snKayitli(m.seriNo) ? 'Cihaz bilgileri kayıtlı — düzenle' : 'Cihaz bilgileri gir (MAC/IP/şifre)'}
+                    onClick={() => cihazAc(m)}
+                    style={{
+                      height: 28, padding: '0 8px', borderRadius: 4, cursor: 'pointer', flexShrink: 0,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: snKayitli(m.seriNo) ? 'var(--brand-50, rgba(1,118,211,0.1))' : 'transparent',
+                      border: '1px solid var(--border-default)',
+                      color: snKayitli(m.seriNo) ? 'var(--brand-600, #0176D3)' : 'var(--text-secondary)',
+                      font: '500 11px/1 var(--font-sans)',
+                    }}>
+                    <Settings2 size={13} strokeWidth={1.5} />
+                    {snKayitli(m.seriNo) ? 'Cihaz ✓' : 'Cihaz'}
+                  </button>
+                )}
                 <button aria-label="Malzemeyi kaldır"
                   title={m.seriNo ? 'Kaldır — SN teknisyene geri döner' : 'Kaldır'}
                   onClick={() => sil(m)}
@@ -384,6 +508,102 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
           </div>
         </>
       )}
+
+      {/* Cihaz bilgileri modalı — müşteri cihaz envanterine yazar (SN anahtar) */}
+      <Modal
+        open={!!cihazRow}
+        onClose={() => { setCihazRow(null); setCihazForm(null); setCihazMevcutId(null) }}
+        title="Cihaz Bilgileri"
+        width={560}
+        footer={
+          <>
+            <Button variant="tertiary" size="sm"
+              onClick={() => { setCihazRow(null); setCihazForm(null); setCihazMevcutId(null) }}>
+              Vazgeç
+            </Button>
+            <Button variant="primary" size="sm" onClick={cihazKaydet}
+              disabled={cihazKaydediliyor || cihazYukleniyor}>
+              {cihazKaydediliyor ? 'Kaydediliyor…' : (cihazMevcutId ? 'Güncelle' : 'Kaydet')}
+            </Button>
+          </>
+        }
+      >
+        {cihazRow && cihazForm && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Cihaz kimliği (salt okunur) */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+              padding: '8px 10px', background: 'var(--surface-sunken)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)',
+            }}>
+              <span style={{ font: '600 13px/18px var(--font-sans)' }}>{cihazRow.urunAdi}</span>
+              {cihazRow.stokKodu && <CodeBadge>{cihazRow.stokKodu}</CodeBadge>}
+              <Badge tone="brand"><Tag size={10} strokeWidth={1.5} style={{ marginRight: 3 }} />{cihazRow.seriNo}</Badge>
+              {cihazMevcutId && <Badge tone="neutral">Envanterde kayıtlı</Badge>}
+            </div>
+            <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: 0 }}>
+              Bu bilgiler <strong>{musteriAd || 'müşteri'}</strong> cihaz envanterine kaydedilir — aynı cihaz
+              sonraki servislerde de bu bilgilerle görünür.
+            </p>
+
+            {cihazYukleniyor ? (
+              <p className="t-caption" style={{ color: 'var(--text-tertiary)' }}>Yükleniyor…</p>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <Label>Cihaz Adı</Label>
+                    <Input value={cihazForm.cihazAdi} onChange={e => cihazAlan('cihazAdi', e.target.value)}
+                      placeholder="Ör. Giriş Kamerası" />
+                  </div>
+                  <div>
+                    <Label>Lokasyon</Label>
+                    <Input value={cihazForm.lokasyon} onChange={e => cihazAlan('lokasyon', e.target.value)}
+                      placeholder="Ör. Ana giriş / Depo" />
+                  </div>
+                  <div>
+                    <Label>IP Adresi</Label>
+                    <Input value={cihazForm.ipAdresi} onChange={e => cihazAlan('ipAdresi', e.target.value)}
+                      placeholder="192.168.1.108" />
+                  </div>
+                  <div>
+                    <Label>MAC Adresi</Label>
+                    <Input value={cihazForm.macAdresi} onChange={e => cihazAlan('macAdresi', e.target.value)}
+                      placeholder="AA:BB:CC:DD:EE:FF" />
+                  </div>
+                  <div>
+                    <Label>Kullanıcı Adı</Label>
+                    <Input value={cihazForm.kullaniciAdi} onChange={e => cihazAlan('kullaniciAdi', e.target.value)}
+                      placeholder="admin" autoComplete="off" />
+                  </div>
+                  <div>
+                    <Label>Şifre</Label>
+                    <div style={{ position: 'relative' }}>
+                      <Input type={sifreGoster ? 'text' : 'password'} value={cihazForm.sifre}
+                        onChange={e => cihazAlan('sifre', e.target.value)}
+                        placeholder="••••••" autoComplete="new-password" style={{ paddingRight: 34 }} />
+                      <button type="button" aria-label={sifreGoster ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                        onClick={() => setSifreGoster(v => !v)}
+                        style={{
+                          position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: 'var(--text-tertiary)', display: 'inline-flex', padding: 4,
+                        }}>
+                        {sifreGoster ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label>Notlar</Label>
+                  <Input value={cihazForm.notlar} onChange={e => cihazAlan('notlar', e.target.value)}
+                    placeholder="Ör. RTSP portu 554, web arayüz http://…" />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </Card>
   )
 }

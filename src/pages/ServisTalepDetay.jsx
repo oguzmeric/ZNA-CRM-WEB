@@ -478,7 +478,8 @@ export default function ServisTalepDetay() {
               teknisyen malzemeyi işi YAPARKEN ekler. Eskiden bu kart ve form
               bilgileri yalnız durum='tamamlandi' iken açılıyordu — iş sırasında
               malzeme girilemiyordu (2026-07-15 şikayeti). */}
-          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo} />
+          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo}
+            musteriId={talep.musteriId} musteriAd={talep.firmaAdi || talep.musteriAd} />
 
           {/* Teknisyen envanterinden düşen S/N cihazlar (mobil teslim al → kullan) */}
           <TeknisyenDusumKart servisTalepId={talep.id} />
