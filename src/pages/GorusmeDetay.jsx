@@ -17,7 +17,7 @@ import { SkeletonDetay } from '../components/Skeleton'
 import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
 import { gorusmeYorumlariGetir, gorusmeYorumEkle, gorusmeYorumSil } from '../services/gorusmeYorumService'
 import MentionTextarea from '../components/MentionTextarea'
-import { parseMentions } from '../lib/mention'
+import { parseMentions, segmentMetin } from '../lib/mention'
 import { EkSecici, EkListesi } from '../components/EkAlani'
 import { ekleriYukle } from '../lib/ekDosya'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
@@ -916,7 +916,10 @@ function GorusmeDetay() {
                   </div>
                 </div>
                 <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {yorum.icerik}
+                  {segmentMetin(yorum.icerik, kullanicilar || []).map((seg, i) =>
+                    seg.tip === 'mention'
+                      ? <span key={i} style={{ color: 'var(--brand-primary)', fontWeight: 600, background: 'var(--brand-primary-soft)', padding: '0 4px', borderRadius: 3 }}>{seg.deger}</span>
+                      : <span key={i}>{seg.deger}</span>)}
                 </p>
                 <EkListesi dosyalar={yorum.dosyalar} />
               </div>
