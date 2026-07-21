@@ -271,6 +271,42 @@ export const formEnvanterKalemleri = async (servisTalepId) => {
   })
 }
 
+// Teknisyen envanterinden bu servise düşen S/N kalemleri (mobil akış:
+// teslim al → kullan). servis_kalem_kullanimi'nin TÜM statülerini döndürür ki
+// web servis detayında yönetici "teknisyen hangi cihazı çekmiş" görebilsin.
+// (ServisMalzemeleriCard yalnız servis_malzemeleri'ni gösterir — bu ayrı kaynak.)
+export const kalemKullanimlariGetir = async (servisTalepId) => {
+  const { data, error } = await supabase
+    .from('servis_kalem_kullanimi')
+    .select('id, durum, tarih, kullanici_ad, stok_kalemleri (seri_no, stok_kodu, marka, model)')
+    .eq('servis_talep_id', servisTalepId)
+    .order('tarih', { ascending: true })
+  if (error) { console.warn('[kalemKullanimlariGetir]', error.message); return [] }
+  const rows = data || []
+  const kodlar = [...new Set(rows.map(r => r.stok_kalemleri?.stok_kodu).filter(Boolean))]
+  let uMap = new Map()
+  if (kodlar.length) {
+    const { data: urunler } = await supabase
+      .from('stok_urunler').select('stok_kodu, stok_adi, marka').in('stok_kodu', kodlar)
+    uMap = new Map((urunler || []).map(u => [u.stok_kodu, u]))
+  }
+  return rows.map(r => {
+    const kod = r.stok_kalemleri?.stok_kodu || ''
+    const u = uMap.get(kod)
+    const marka = r.stok_kalemleri?.marka || u?.marka || ''
+    const ad = u?.stok_adi || r.stok_kalemleri?.model || kod || 'Envanter kalemi'
+    return {
+      id: r.id,
+      durum: r.durum, // 'teslim_alindi' | 'kullanildi' | 'teslim_edildi' ...
+      urunAdi: `${ad}${marka ? ` — ${marka}` : ''}`,
+      stokKodu: kod,
+      seriNo: r.stok_kalemleri?.seri_no || '',
+      kullaniciAd: r.kullanici_ad || '',
+      tarih: r.tarih || null,
+    }
+  })
+}
+
 export const kesiftenMalzemePlanla = async (servisId, kalemler = []) => {
   if (!servisId || !kalemler.length) return []
   const kul = await oturumKullanici()

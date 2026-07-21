@@ -17,6 +17,7 @@ import CustomSelect from '../components/CustomSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
 import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
+import { kalemKullanimlariGetir } from '../services/servisMalzemeService'
 import { uygunZamanFormat } from '../lib/uygunZamanFormat'
 import {
   Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
@@ -406,6 +407,9 @@ export default function ServisTalepDetay() {
               bilgileri yalnız durum='tamamlandi' iken açılıyordu — iş sırasında
               malzeme girilemiyordu (2026-07-15 şikayeti). */}
           <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo} />
+
+          {/* Teknisyen envanterinden düşen S/N cihazlar (mobil teslim al → kullan) */}
+          <TeknisyenDusumKart servisTalepId={talep.id} />
 
           {/* Form Bilgileri — yapılan işlem / çözüm açıklaması */}
           <ServisFormBilgileriCard
@@ -1072,5 +1076,72 @@ export default function ServisTalepDetay() {
         belgeBaslik={`${talep.talepNo || '#' + talep.id} — ${talep.konu || ''}`}
       />
     </div>
+  )
+}
+
+// Teknisyenin kendi envanterinden bu servise düşen S/N cihazlar (mobil
+// teslim al → kullan akışı). ServisMalzemeleriCard yalnız servis_malzemeleri'ni
+// gösterir; bu kart servis_kalem_kullanimi'ni (mobil S/N düşümü) getirir.
+function TeknisyenDusumKart({ servisTalepId }) {
+  const [kalemler, setKalemler] = useState([])
+  const [yuklendi, setYuklendi] = useState(false)
+
+  useEffect(() => {
+    let iptal = false
+    kalemKullanimlariGetir(servisTalepId)
+      .then(d => { if (!iptal) { setKalemler(d); setYuklendi(true) } })
+      .catch(() => { if (!iptal) setYuklendi(true) })
+    return () => { iptal = true }
+  }, [servisTalepId])
+
+  if (!yuklendi || kalemler.length === 0) return null
+
+  const DURUM_ETIKET = {
+    teslim_alindi: { isim: 'Teslim Alındı', tone: 'lead' },
+    kullanildi:    { isim: 'Kullanıldı (Sahada)', tone: 'aktif' },
+    teslim_edildi: { isim: 'Teslim Edildi', tone: 'aktif' },
+    iade:          { isim: 'İade', tone: 'kayip' },
+  }
+  const tarihFmt = (t) => t
+    ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—'
+
+  return (
+    <Card style={{ marginBottom: 20, borderColor: '#a855f7' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <Package size={16} strokeWidth={1.5} style={{ color: '#a855f7' }} />
+        <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>
+          Teknisyen Envanterinden Düşenler <span className="tabular-nums">({kalemler.length})</span>
+        </h3>
+      </div>
+      <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+        Teknisyenin üzerindeki S/N cihazların mobilden bu servise düşümü. (Yukarıdaki
+        “Kullanılan Malzemeler” web tarafı, bu ise mobil S/N akışıdır.)
+      </p>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {kalemler.map(k => {
+          const d = DURUM_ETIKET[k.durum] || { isim: k.durum, tone: 'neutral' }
+          return (
+            <div key={k.id} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{k.urunAdi}</span>
+                  {k.stokKodu && <CodeBadge>{k.stokKodu}</CodeBadge>}
+                  {k.seriNo && <Badge tone="brand">S/N: {k.seriNo}</Badge>}
+                </div>
+                <div className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  {k.kullaniciAd || '—'} · {tarihFmt(k.tarih)}
+                </div>
+              </div>
+              <Badge tone={d.tone}>{d.isim}</Badge>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
