@@ -2,20 +2,22 @@
 // Burada "Yeni SN Üret" ile kod oluştur (ofis) VEYA sahadan (mobil servis) üretilenler
 // düşer → basılmamışları seç → A4 3×8 barkod motoruyla (BarkodEtiketYazdir) bas → yapıştır.
 import { useEffect, useState, useMemo } from 'react'
-import { Tags, Printer, Square, CheckSquare, RefreshCw, Plus } from 'lucide-react'
+import { Tags, Printer, Square, CheckSquare, RefreshCw, Plus, Trash2 } from 'lucide-react'
 import {
-  etiketKuyruguGetir, etiketBasildiIsaretle, bagimsizSnUret,
+  etiketKuyruguGetir, etiketBasildiIsaretle, bagimsizSnUret, bagimsizSnSil,
 } from '../services/bagimsizSnService'
 import { Card, Badge, EmptyState, Button, CodeBadge, SegmentedControl, Modal, Input, Label } from '../components/ui'
 import BarkodEtiketYazdir from '../components/BarkodEtiketYazdir'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 
 const tarihFmt = (t) => t ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function BagimsizSnEtiketleri() {
   const { toast } = useToast()
+  const { confirm } = useConfirm()
   const { kullanici } = useAuth()
   const [liste, setListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -62,6 +64,22 @@ export default function BagimsizSnEtiketleri() {
     await etiketBasildiIsaretle(ids)
     toast.success(`${ids.length} etiket "basıldı" işaretlendi.`)
     setYazdirAcik(false)
+    yenile()
+  }
+
+  // Seçili SN'leri sil (yanlış üretilen / demo). Cihaza atanmış SN'in cihaz kaydına dokunmaz.
+  const sil = async () => {
+    const ids = [...seciliIdler]
+    if (!ids.length) return
+    const onay = await confirm({
+      baslik: 'Seçili SN’leri sil',
+      mesaj: `${ids.length} adet SN etiket kuyruğundan silinecek. (Cihaza atanmışsa cihaz kaydı silinmez.) Devam edilsin mi?`,
+      onayMetin: 'Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const sonuc = await bagimsizSnSil(ids)
+    if (sonuc?.hata) { toast.error(sonuc.hata); return }
+    toast.success(`${sonuc.silinen} SN silindi.`)
     yenile()
   }
 
@@ -125,6 +143,10 @@ export default function BagimsizSnEtiketleri() {
         <div style={{ flex: 1 }} />
         <Button variant="secondary" size="sm" onClick={tumu} disabled={!liste.length}>Tümünü Seç</Button>
         <Button variant="secondary" size="sm" onClick={hicbiri} disabled={!seciliIdler.size}>Temizle</Button>
+        <Button variant="danger" size="sm" iconLeft={<Trash2 size={14} strokeWidth={1.5} />}
+          disabled={!secili.length} onClick={sil}>
+          Sil ({secili.length})
+        </Button>
         <Button variant="primary" size="sm" iconLeft={<Printer size={14} strokeWidth={1.5} />}
           disabled={!secili.length} onClick={() => setYazdirAcik(true)}>
           Etiket Yazdır ({secili.length})

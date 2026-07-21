@@ -52,3 +52,13 @@ export const etiketBasildiIsaretle = async (ids) => {
     .in('id', ids)
   if (error) console.warn('[etiketBasildiIsaretle]', error.message)
 }
+
+// SN kaydını sil (yanlış üretilen / demo). Cihaza atanmış SN'in cihaz kaydına
+// dokunmaz — yalnız etiket kuyruğundan çıkarır.
+export const bagimsizSnSil = async (ids) => {
+  if (!ids?.length) return { silinen: 0 }
+  const { error, count } = await supabase.from('bagimsiz_snler')
+    .delete({ count: 'exact' }).in('id', ids)
+  if (error) { console.error('[bagimsizSnSil]', error.message); return { hata: error.message } }
+  return { silinen: count ?? ids.length }
+}
