@@ -14,6 +14,7 @@ import { gorevGetir } from '../services/gorevService'
 import { parseMentions } from '../lib/mention'
 import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
+import CokluSelect from '../components/CokluSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
 import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
@@ -43,7 +44,7 @@ const DURUM_TONE = {
 export default function ServisTalepDetay() {
   const { id } = useParams()
   const { kullanici, kullanicilar } = useAuth()
-  const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, ALT_KATEGORILER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const { bildirimEkle, talepBildirimleriniOku } = useBildirim()
   const toast = useToast()
   const navigate = useNavigate()
@@ -74,6 +75,10 @@ export default function ServisTalepDetay() {
   const [malzemeDuzenle, setMalzemeDuzenle] = useState(false)
   const [malzemeTaslak, setMalzemeTaslak] = useState('')
   const [malzemeKaydediliyor, setMalzemeKaydediliyor] = useState(false)
+  // Çoklu kategori düzenleme (mig 219)
+  const [kategoriDuzenle, setKategoriDuzenle] = useState(false)
+  const [kategoriTaslak, setKategoriTaslak] = useState([])
+  const [kategoriKaydediliyor, setKategoriKaydediliyor] = useState(false)
 
   // Talep detay açıldığında ilgili okunmamış bildirimleri otomatik okundu yap
   // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
@@ -400,6 +405,73 @@ export default function ServisTalepDetay() {
 
         {/* Sol — Ana içerik */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Kategoriler — çoklu (mig 219). Düzenlenebilir. */}
+          {(() => {
+            const secenekler = ALT_KATEGORILER[talep.anaTur] || []
+            const mevcut = (talep.altKategoriler && talep.altKategoriler.length)
+              ? talep.altKategoriler
+              : (talep.altKategori ? [talep.altKategori] : [])
+            const adBul = (kid) => secenekler.find(s => s.id === kid)?.isim || kid
+            return (
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <CardTitle style={{ margin: 0 }}>Kategoriler</CardTitle>
+                  {!kategoriDuzenle && (
+                    <button
+                      onClick={() => { setKategoriTaslak(mevcut); setKategoriDuzenle(true) }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: 'transparent', border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer',
+                        font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                      }}
+                    >
+                      <Pencil size={12} strokeWidth={1.5} /> Düzenle
+                    </button>
+                  )}
+                </div>
+                {kategoriDuzenle ? (
+                  <div>
+                    <CokluSelect
+                      degerler={kategoriTaslak}
+                      onChange={setKategoriTaslak}
+                      secenekler={secenekler.map(s => ({ id: s.id, ad: s.isim }))}
+                      placeholder="Kategori seç (çoklu)…"
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <Button variant="primary" size="sm" iconLeft={<Check size={12} strokeWidth={1.5} />}
+                        disabled={kategoriKaydediliyor}
+                        onClick={async () => {
+                          setKategoriKaydediliyor(true)
+                          try {
+                            await talepGuncelle(talep.id, {
+                              altKategoriler: kategoriTaslak,
+                              altKategori: kategoriTaslak[0] || '',
+                            }, kullanici.ad, 'Kategoriler güncellendi')
+                            setKategoriDuzenle(false)
+                          } catch (err) {
+                            toast.error('Kaydedilemedi: ' + (err?.message || 'bilinmeyen'))
+                          } finally { setKategoriKaydediliyor(false) }
+                        }}>
+                        {kategoriKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+                      </Button>
+                      <Button variant="secondary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />}
+                        onClick={() => setKategoriDuzenle(false)}>İptal</Button>
+                    </div>
+                  </div>
+                ) : mevcut.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {mevcut.map(kid => <Badge key={kid} tone="lead">{adBul(kid)}</Badge>)}
+                  </div>
+                ) : (
+                  <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
+                    Kategori seçilmemiş — <strong>Düzenle</strong> ile ekleyebilirsiniz.
+                  </p>
+                )}
+              </Card>
+            )
+          })()}
 
           {/* Kullanılan malzemeler — müşteri formundaki "Yedek Parçalar" listesini
               besleyen TEK yer (mig 170). Talep hangi durumda olursa olsun görünür:

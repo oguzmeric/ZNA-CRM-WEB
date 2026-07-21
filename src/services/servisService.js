@@ -72,7 +72,7 @@ export const servisTalebiBildirimGonder = async (talep, olusturanId = null) => {
 // çıktısı) tek kaydı servisTalepGetir(id) ile alır. Yeni kolon eklerken buraya
 // da eklemeyi unutma (whitelist tuzağı).
 const SERVIS_LISTE_KOLONLARI = `id, talep_no, musteri_id, musteri_ad, firma_adi, ana_tur,
-  alt_kategori, konu, lokasyon, cihaz_turu, aciklama, aciliyet, ilgili_kisi, telefon,
+  alt_kategori, alt_kategoriler, konu, lokasyon, cihaz_turu, aciklama, aciliyet, ilgili_kisi, telefon,
   uygun_zaman, durum, atanan_kullanici_id, atanan_kullanici_ad, planli_tarih, notlar,
   durum_gecmisi, musteri_onay, olusturma_tarihi, guncelleme_tarihi, operator_onay,
   operator_onay_tarihi, operator_onay_kullanici_id, operator_onay_kullanici_ad,

@@ -10,6 +10,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import CustomSelect from '../components/CustomSelect'
+import CokluSelect from '../components/CokluSelect'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
 } from '../components/ui'
@@ -23,6 +24,7 @@ const trNormalize = (str = '') =>
 const bos = {
   anaTur: 'ariza',
   altKategori: '',
+  altKategoriler: [],
   konu: '',
   aciklama: '',
   kullanilacakMalzemeler: '',
@@ -76,8 +78,8 @@ export default function YeniServisTalebi() {
       toast.warning('Lütfen müşteri seçin.')
       return
     }
-    if (!form.altKategori) {
-      toast.warning('Lütfen arıza/talep kategorisini seçin.')
+    if (!form.altKategoriler || form.altKategoriler.length === 0) {
+      toast.warning('Lütfen en az bir arıza/talep kategorisi seçin.')
       return
     }
     if (!form.konu.trim()) {
@@ -191,7 +193,7 @@ export default function YeniServisTalebi() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setForm(p => ({ ...p, anaTur: t.id, altKategori: '' }))}
+                onClick={() => setForm(p => ({ ...p, anaTur: t.id, altKategori: '', altKategoriler: [] }))}
                 style={{
                   padding: '12px 8px',
                   borderRadius: 'var(--radius-md)',
@@ -210,14 +212,17 @@ export default function YeniServisTalebi() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
-            <Label required>Kategori</Label>
-            <CustomSelect
-              value={form.altKategori}
-              onChange={e => setForm(p => ({ ...p, altKategori: e.target.value }))}
-            >
-              <option value="">{aktifTur?.isim || 'Tür'} kategorisi seç…</option>
-              {altKategoriler.map(k => <option key={k.id} value={k.id}>{k.isim}</option>)}
-            </CustomSelect>
+            <Label required>Kategori (çoklu seçilebilir)</Label>
+            <CokluSelect
+              degerler={form.altKategoriler}
+              onChange={secilenler => setForm(p => ({
+                ...p,
+                altKategoriler: secilenler,
+                altKategori: secilenler[0] || '', // birincil kategori (geriye uyum)
+              }))}
+              secenekler={altKategoriler.map(k => ({ id: k.id, ad: k.isim }))}
+              placeholder={`${aktifTur?.isim || 'Tür'} kategorisi seç…`}
+            />
           </div>
           <div>
             <Label>Aciliyet</Label>

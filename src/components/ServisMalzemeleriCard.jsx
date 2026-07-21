@@ -11,6 +11,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Package, Trash2, Tag, Check, Plus } from 'lucide-react'
 import { Button, Card, Badge, Input, CodeBadge } from './ui'
 import CustomSelect from './CustomSelect'
+import CokluSelect from './CokluSelect'
 import AkilliUrunSecici from './AkilliUrunSecici'
 import { stokUrunleriniGetir } from '../services/stokService'
 import {
@@ -34,7 +35,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
   const [miktar, setMiktar] = useState(1)
   const [birimFiyat, setBirimFiyat] = useState('')
   const [snKalemler, setSnKalemler] = useState([])
-  const [seciliKalemId, setSeciliKalemId] = useState('')
+  const [seciliKalemIdler, setSeciliKalemIdler] = useState([]) // TOPLU S/N seçimi
   const [mesgul, setMesgul] = useState(false)
   const [elleAcik, setElleAcik] = useState(false)
   const [elleAd, setElleAd] = useState('')
@@ -64,7 +65,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
   // Ürün seçilince: SN'liyse teknisyendeki kalemleri getir, fiyatı öner
   const urunSec = async (u) => {
     setSeciliUrun(u)
-    setSeciliKalemId('')
+    setSeciliKalemIdler([])
     setSnKalemler([])
     // Stok kartındaki satış fiyatı 'birimFiyat' — 'satisFiyat' diye bir alan YOK
     setBirimFiyat(u?.birimFiyat != null ? String(u.birimFiyat) : '')
@@ -73,19 +74,11 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
 
   const ekle = async () => {
     if (!seciliUrun) return
-    if (seciliUrun.seriTakipli && !seciliKalemId) {
-      toast.error('Bu ürün S/N takipli — teknisyendeki seri numarasını seçin.')
+    if (seciliUrun.seriTakipli && seciliKalemIdler.length === 0) {
+      toast.error('Bu ürün S/N takipli — en az bir seri numarası seçin.')
       return
     }
-    const kalem = seciliUrun.seriTakipli
-      ? snKalemler.find(k => k.id === Number(seciliKalemId))
-      : null
-    // MÜKERRER ENGEL: aynı S/N ikinci kez eklenmesin (aynı cihaz iki kez düşemez);
-    // S/N'siz üründe de aynı stok kodu ikinci kez eklenmesin (miktarı satırdan güncelle).
-    if (kalem?.seriNo && malzemeler.some(m => m.seriNo && m.seriNo === kalem.seriNo)) {
-      toast.error(`${kalem.seriNo} bu servise zaten eklenmiş.`)
-      return
-    }
+    // S/N'siz ürün — aynı stok kodu ikinci kez eklenmesin (miktarı satırdan güncelle).
     if (!seciliUrun.seriTakipli && seciliUrun.stokKodu &&
         kullanilanlar.some(m => m.stokKodu && m.stokKodu === seciliUrun.stokKodu)) {
       toast.error(`${seciliUrun.stokAdi || seciliUrun.urunAdi || seciliUrun.stokKodu} zaten ekli — satırdaki miktarı güncelleyin.`)
@@ -93,19 +86,31 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
     }
     setMesgul(true)
     try {
-      await servisMalzemeEkle({
-        servisId, servisKodu,
-        urun: seciliUrun,
-        miktar: seciliUrun.seriTakipli ? 1 : miktar,
-        birimFiyat: Number(birimFiyat) || 0,
-        kalem,
-      })
-      await yenile()
-      toast.success(kalem
-        ? `${kalem.seriNo} teknisyen deposundan düşüldü (sahada).`
-        : 'Malzeme eklendi.')
+      if (seciliUrun.seriTakipli) {
+        // TOPLU: seçili tüm S/N'leri sırayla ekle; zaten ekli olanları atla.
+        let eklendi = 0, atlandi = 0
+        for (const kid of seciliKalemIdler) {
+          const kalem = snKalemler.find(k => k.id === Number(kid))
+          if (!kalem) continue
+          if (kalem.seriNo && malzemeler.some(m => m.seriNo && m.seriNo === kalem.seriNo)) { atlandi++; continue }
+          await servisMalzemeEkle({
+            servisId, servisKodu, urun: seciliUrun, miktar: 1,
+            birimFiyat: Number(birimFiyat) || 0, kalem,
+          })
+          eklendi++
+        }
+        await yenile()
+        toast.success(`${eklendi} cihaz teknisyen deposundan düşüldü${atlandi ? ` — ${atlandi} zaten vardı` : ''}.`)
+      } else {
+        await servisMalzemeEkle({
+          servisId, servisKodu, urun: seciliUrun, miktar,
+          birimFiyat: Number(birimFiyat) || 0,
+        })
+        await yenile()
+        toast.success('Malzeme eklendi.')
+      }
       setSeciliUrun(null); setMiktar(1); setBirimFiyat('')
-      setSnKalemler([]); setSeciliKalemId('')
+      setSnKalemler([]); setSeciliKalemIdler([])
     } catch (e) {
       toast.error(e?.message || 'Malzeme eklenemedi.')
     } finally { setMesgul(false) }
@@ -250,15 +255,13 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
           />
         </div>
         {seciliUrun?.seriTakipli ? (
-          <div style={{ flex: 1.4, minWidth: 180 }}>
-            <CustomSelect value={seciliKalemId} onChange={e => setSeciliKalemId(e.target.value)}>
-              <option value="">
-                {snKalemler.length === 0 ? 'Teknisyende SN yok!' : 'Teknisyendeki SN seç…'}
-              </option>
-              {snKalemler.map(k => (
-                <option key={k.id} value={k.id}>{k.seriNo} — {k.teknisyen?.ad || 'teknisyen ?'}</option>
-              ))}
-            </CustomSelect>
+          <div style={{ flex: 1.4, minWidth: 200 }}>
+            <CokluSelect
+              degerler={seciliKalemIdler}
+              onChange={setSeciliKalemIdler}
+              secenekler={snKalemler.map(k => ({ id: k.id, ad: `${k.seriNo} — ${k.teknisyen?.ad || 'teknisyen ?'}` }))}
+              placeholder={snKalemler.length === 0 ? 'Teknisyende SN yok!' : 'S/N seç (çoklu)…'}
+            />
           </div>
         ) : (
           <div style={{ width: 80 }}>
