@@ -77,11 +77,22 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, onDegisti 
       toast.error('Bu ürün S/N takipli — teknisyendeki seri numarasını seçin.')
       return
     }
+    const kalem = seciliUrun.seriTakipli
+      ? snKalemler.find(k => k.id === Number(seciliKalemId))
+      : null
+    // MÜKERRER ENGEL: aynı S/N ikinci kez eklenmesin (aynı cihaz iki kez düşemez);
+    // S/N'siz üründe de aynı stok kodu ikinci kez eklenmesin (miktarı satırdan güncelle).
+    if (kalem?.seriNo && malzemeler.some(m => m.seriNo && m.seriNo === kalem.seriNo)) {
+      toast.error(`${kalem.seriNo} bu servise zaten eklenmiş.`)
+      return
+    }
+    if (!seciliUrun.seriTakipli && seciliUrun.stokKodu &&
+        kullanilanlar.some(m => m.stokKodu && m.stokKodu === seciliUrun.stokKodu)) {
+      toast.error(`${seciliUrun.stokAdi || seciliUrun.urunAdi || seciliUrun.stokKodu} zaten ekli — satırdaki miktarı güncelleyin.`)
+      return
+    }
     setMesgul(true)
     try {
-      const kalem = seciliUrun.seriTakipli
-        ? snKalemler.find(k => k.id === Number(seciliKalemId))
-        : null
       await servisMalzemeEkle({
         servisId, servisKodu,
         urun: seciliUrun,
