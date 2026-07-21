@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileCheck, Plus, Trash2, ExternalLink, Paperclip } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Label, Textarea, Table, THead, TBody, TR, TH, TD } from '../components/ui'
-import { belgeleriGetir, belgeEkle, belgeSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl, BELGE_TIPLERI } from '../services/filoService'
+import { belgeleriGetir, belgeEkle, belgeSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl, sonYuklemeHata, BELGE_TIPLERI } from '../services/filoService'
 import { fmtTarih, fmtTL, kalanGun, BitisRozet, FiloKpi } from '../components/FiloOrtak'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -178,7 +178,7 @@ function YeniBelgeModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
     let dosyaPath = null
     if (dosya) {
       dosyaPath = await filoDosyaYukle(dosya, `belge/${form.aracId}`)
-      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi.'); return }
+      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi: ' + (sonYuklemeHata || 'bilinmeyen hata')); return }
     }
     const sonuc = await belgeEkle({
       aracId: form.aracId,

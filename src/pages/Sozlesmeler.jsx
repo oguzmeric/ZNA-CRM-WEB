@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileSignature, Plus, Trash2, Pencil, ExternalLink, Paperclip, ArrowRight } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Label, Textarea, Table, THead, TBody, TR, TH, TD, Badge, CodeBadge } from '../components/ui'
 import { sozlesmeleriGetir, sozlesmeEkle, sozlesmeGuncelle, sozlesmeSil, SOZLESME_TIPLERI } from '../services/sozlesmeService'
-import { filoDosyaYukle, filoDosyaUrl } from '../services/filoService'
+import { filoDosyaYukle, filoDosyaUrl, sonYuklemeHata } from '../services/filoService'
 import { musterileriGetir } from '../services/musteriService'
 import { firmalariGetir } from '../services/firmaService'
 import {
@@ -859,7 +859,7 @@ function SozlesmeModal({ mevcut, musteriler, kullanici, onKapat, onKaydedildi })
     let dosyaPath = mevcut?.dosyaUrl || null
     if (dosya) {
       dosyaPath = await filoDosyaYukle(dosya, 'sozlesme')
-      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi.'); return }
+      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi: ' + (sonYuklemeHata || 'bilinmeyen hata')); return }
     }
     const payload = {
       baslik: form.baslik.trim(),

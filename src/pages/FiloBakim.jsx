@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Wrench, Plus, Trash2, ExternalLink, Paperclip, Gauge } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Label, Textarea, Table, THead, TBody, TR, TH, TD, Badge } from '../components/ui'
-import { bakimlariGetir, bakimEkle, bakimSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl, BAKIM_TIPLERI } from '../services/filoService'
+import { bakimlariGetir, bakimEkle, bakimSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl, sonYuklemeHata, BAKIM_TIPLERI } from '../services/filoService'
 import { fmtTarih, fmtTL, FiloKpi } from '../components/FiloOrtak'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -236,7 +236,7 @@ function YeniBakimModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
     let dosyaPath = null
     if (dosya) {
       dosyaPath = await filoDosyaYukle(dosya, `bakim/${form.aracId}`)
-      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi.'); return }
+      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi: ' + (sonYuklemeHata || 'bilinmeyen hata')); return }
     }
     const sonuc = await bakimEkle({
       aracId: form.aracId,

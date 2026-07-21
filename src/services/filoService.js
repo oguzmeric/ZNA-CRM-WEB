@@ -171,9 +171,17 @@ export const filoDosyaYukle = async (file, klasor) => {
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, { contentType: file.type || 'application/octet-stream' })
-  if (error) { console.error('filoDosyaYukle hata:', error.message); return null }
+  if (error) {
+    console.error('filoDosyaYukle hata:', error.message)
+    sonYuklemeHata = error.message  // çağıran toast'ta gerçek sebebi gösterebilsin
+    return null
+  }
+  sonYuklemeHata = null
   return path
 }
+
+// Son yükleme hatasının mesajı — filoDosyaYukle null dönerse buradan okunur
+export let sonYuklemeHata = null
 
 export const filoDosyaUrl = async (path) => {
   if (!path) return null

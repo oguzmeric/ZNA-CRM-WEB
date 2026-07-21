@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Fuel, Plus, Trash2, ExternalLink, Paperclip } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Label, Table, THead, TBody, TR, TH, TD } from '../components/ui'
-import { yakitlariGetir, yakitEkle, yakitSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl } from '../services/filoService'
+import { yakitlariGetir, yakitEkle, yakitSil, filoAraclariGetir, filoDosyaYukle, filoDosyaUrl, sonYuklemeHata } from '../services/filoService'
 import { fmtTarih, fmtTL, FiloKpi } from '../components/FiloOrtak'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -234,7 +234,7 @@ function YeniFisModal({ acik, araclar, kullanici, onKapat, onKaydedildi }) {
     let dosyaPath = null
     if (dosya) {
       dosyaPath = await filoDosyaYukle(dosya, `yakit/${form.aracId}`)
-      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi.'); return }
+      if (!dosyaPath) { setKaydediliyor(false); toast.error('Dosya yüklenemedi: ' + (sonYuklemeHata || 'bilinmeyen hata')); return }
     }
     const sonuc = await yakitEkle({
       aracId: form.aracId,
