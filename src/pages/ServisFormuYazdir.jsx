@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { servisTalepGetir } from '../services/servisService'
+import { servisMalzemeleriGetir } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
 
 const SIRKETLER = [
@@ -21,6 +22,7 @@ export default function ServisFormuYazdir() {
   const sirketParam = searchParams.get('sirket') || 'zna'
   const [seciliSirket, setSeciliSirket] = useState(sirketParam)
   const [talep, setTalep] = useState(null)
+  const [malzemeler, setMalzemeler] = useState([])
   const [hata, setHata] = useState(null)
 
   useEffect(() => {
@@ -28,6 +30,10 @@ export default function ServisFormuYazdir() {
     servisTalepGetir(id)
       .then(d => { if (!iptal) setTalep(d) })
       .catch(e => { if (!iptal) setHata(e?.message ?? 'Talep yuklenemedi') })
+    // Envanterden kullanılan malzeme/cihazlar — formda ayrı tablo olarak basılır
+    servisMalzemeleriGetir(id)
+      .then(m => { if (!iptal) setMalzemeler((m || []).filter(x => x.durum === 'kullanildi')) })
+      .catch(() => {})
     return () => { iptal = true }
   }, [id])
 
@@ -105,7 +111,7 @@ export default function ServisFormuYazdir() {
         </button>
       </div>
 
-      <ServisFormu talep={talep} sirket={seciliSirket} />
+      <ServisFormu talep={talep} sirket={seciliSirket} malzemeler={malzemeler} />
     </>
   )
 }

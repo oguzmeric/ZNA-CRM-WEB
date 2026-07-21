@@ -115,8 +115,17 @@ export const DURUM_LISTESI = [
   { id: 'atandi', isim: 'Atandı', renk: '#014486', bg: 'rgba(1,68,134,0.1)', ikon: '👤' },
   { id: 'devam_ediyor', isim: 'Devam Ediyor', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)', ikon: '🔄' },
   { id: 'tamamlandi', isim: 'Tamamlandı', renk: '#10b981', bg: 'rgba(16,185,129,0.1)', ikon: '✅' },
+  // Onay katmanı — mobil admin akışıyla aynı: tamamlandi → onaylandi (kapalı) / reddedildi (teknisyene döner)
+  // Bu iki durumu yalnız onay yetkilileri seçebilir (admin + depocular, bkz. servisOnaylayabilirMi)
+  { id: 'onaylandi', isim: 'Onaylandı (Kapalı)', renk: '#059669', bg: 'rgba(5,150,105,0.12)', ikon: '🔒' },
+  { id: 'reddedildi', isim: 'Reddedildi', renk: '#dc2626', bg: 'rgba(220,38,38,0.12)', ikon: '🚫' },
   { id: 'iptal', isim: 'İptal', renk: '#ef4444', bg: 'rgba(239,68,68,0.1)', ikon: '❌' },
 ]
+
+// Servis onay yetkisi — admin rolü + depo sorumluları (Salih Çakmaklı 34, Mahmut Sarı 45; 2026-07-20 karar)
+export const SERVIS_ONAY_KULLANICI_IDLERI = [34, 45]
+export const servisOnaylayabilirMi = (kullanici) =>
+  kullanici?.rol === 'admin' || SERVIS_ONAY_KULLANICI_IDLERI.includes(Number(kullanici?.id))
 
 function talepNoUret(talepler) {
   const yil = new Date().getFullYear()

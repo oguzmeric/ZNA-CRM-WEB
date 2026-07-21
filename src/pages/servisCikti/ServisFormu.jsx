@@ -75,7 +75,8 @@ function Kutu({ dolu }) {
   )
 }
 
-export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
+// malzemeler: servis_malzemeleri kayıtları (kullanildi) — envanterden düşülen cihaz/sarf listesi
+export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [] }) {
   const cfg = SIRKET_BILGI[sirket] || SIRKET_BILGI.zna
 
   // Telefonda A4'u ekrana SIGDIR. Eskiden sabit 794px basiliyordu: musteri SMS
@@ -411,6 +412,30 @@ export default function ServisFormu({ talep = {}, sirket = 'zna' }) {
             </tr>
           </tbody>
         </table>
+
+        {/* ─── KULLANILAN MALZEMELER (ENVANTER) — servis_malzemeleri 'kullanildi' ─── */}
+        {malzemeler.length > 0 && (
+          <table style={tabloStyle}>
+            <thead>
+              <tr>
+                <th style={{ ...sectionHeader, width: 28, textAlign: 'center' }}>#</th>
+                <th style={sectionHeader}>Kullanılan Malzeme / Cihaz (Envanter)</th>
+                <th style={{ ...sectionHeader, width: 140 }}>Seri No</th>
+                <th style={{ ...sectionHeader, width: 70, textAlign: 'right' }}>Miktar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {malzemeler.map((m, i) => (
+                <tr key={m.id || i}>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>{i + 1}</td>
+                  <td style={cellStyle}>{m.urunAdi || m.urun_adi || ''}{(m.stokKodu || m.stok_kodu) ? ` (${m.stokKodu || m.stok_kodu})` : ''}</td>
+                  <td style={cellStyle}>{m.seriNo || m.seri_no || '—'}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{m.miktar || 1} {m.birim || 'Adet'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
         {/* ─── SERVİS KOŞULLARI ─── */}
         <table style={tabloStyle}>

@@ -6,7 +6,7 @@ import {
   Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useServisTalebi } from '../context/ServisTalebiContext'
+import { useServisTalebi, servisOnaylayabilirMi } from '../context/ServisTalebiContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useToast } from '../context/ToastContext'
 import { servistenFaturaTalebiAc, servisFaturaTalebiGetir } from '../services/faturaTalepService'
@@ -34,6 +34,8 @@ const DURUM_TONE = {
   atandi:       'lead',
   devam_ediyor: 'beklemede',
   tamamlandi:   'aktif',
+  onaylandi:    'aktif',
+  reddedildi:   'kayip',
   iptal:        'kayip',
 }
 
@@ -771,11 +773,39 @@ export default function ServisTalepDetay() {
         {/* Sağ — Yönetim paneli */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+          {/* Servis onayı — tamamlanan servisi onay yetkilisi (admin + depocular) kapatır/reddeder */}
+          {servisOnaylayabilirMi(kullanici) && talep.durum === 'tamamlandi' && (
+            <Card>
+              <p className="t-label" style={{ marginBottom: 10 }}>SERVİS ONAYI</p>
+              <p className="t-caption" style={{ margin: '0 0 10px' }}>
+                Servis teknisyen tarafından tamamlandı — onaylarsan kapanır, reddedersen teknisyene geri döner.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="primary" style={{ flex: 1, background: '#059669', borderColor: '#059669' }}
+                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
+                  onClick={() => durumGuncelle('onaylandi', 'Servis onaylandı — kapatıldı')}>
+                  Onayla ve Kapat
+                </Button>
+                <Button variant="secondary" style={{ flex: 1, color: '#dc2626' }}
+                  onClick={() => {
+                    const gerekce = window.prompt('Reddetme gerekçesi (teknisyene iletilir):')
+                    if (gerekce === null) return
+                    durumGuncelle('reddedildi', `Yönetici reddi: ${gerekce.trim() || 'gerekçe belirtilmedi'}`)
+                  }}>
+                  Reddet
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {/* Durum değiştir */}
           <Card>
             <p className="t-label" style={{ marginBottom: 10 }}>DURUM</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {DURUM_LISTESI.map(d => {
+              {DURUM_LISTESI.filter(d =>
+                // Onay katmanı durumlarını yalnız onay yetkilisi elle seçebilir
+                !['onaylandi', 'reddedildi'].includes(d.id) || servisOnaylayabilirMi(kullanici)
+              ).map(d => {
                 const active = talep.durum === d.id
                 return (
                   <button
