@@ -9,6 +9,8 @@ import {
 } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { servisRaporlariSayfa, servisRaporFiltreSecenekleri } from '../services/servisRaporService'
+import { servisTalepGetir } from '../services/servisService'
+import { formEnvanterKalemleri } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
 
 const SAYFA_BOYUTU = 50
@@ -703,6 +705,23 @@ export default function ServisRaporlari() {
               iconLeft={<FileText size={14} strokeWidth={1.5} />}
               onClick={async () => {
                 let rapor = seciliRapor
+                // Fiş no bir CRM talebine denk geliyorsa (mig 210 arşivi) formu
+                // GERÇEK talepten üret — rapor satırında yedek parça/envanter/
+                // checkbox alanları yok (esnweb şeması), form boş görünüyordu.
+                try {
+                  const { data: t } = await supabase
+                    .from('servis_talepleri').select('id')
+                    .eq('talep_no', rapor.fisNo).maybeSingle()
+                  if (t?.id) {
+                    const [talep, malzemeler] = await Promise.all([
+                      servisTalepGetir(t.id),
+                      formEnvanterKalemleri(t.id).catch(() => []),
+                    ])
+                    setFormRapor({ ...rapor, _talep: talep, _malzemeler: malzemeler })
+                    setSeciliRapor(null)
+                    return
+                  }
+                } catch { /* esnweb kaydı — rapor satırından devam */ }
                 if (rapor?.imzaUrl) {
                   const { data } = await supabase.storage.from('imzalar').createSignedUrl(rapor.imzaUrl, 3600)
                   if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
@@ -913,7 +932,11 @@ export default function ServisRaporlari() {
 
           {/* Form */}
           <div className="rapor-form-print" style={{ flex: 1, overflow: 'auto', padding: '16px 0' }}>
-            <ServisFormu talep={raporToTalep(formRapor)} sirket={formSirket} />
+            <ServisFormu
+              talep={formRapor._talep ?? raporToTalep(formRapor)}
+              sirket={formSirket}
+              malzemeler={formRapor._malzemeler ?? []}
+            />
           </div>
         </div>
       )}

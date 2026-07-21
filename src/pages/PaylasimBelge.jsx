@@ -421,7 +421,11 @@ export default function PaylasimBelge() {
             🖨 Yazdır / PDF
           </button>
         </div>
-        <ServisFormu talep={belge} sirket={searchParams.get('s') === 'anadolunet' ? 'anadolunet' : 'zna'} />
+        <ServisFormu
+          talep={belge}
+          sirket={searchParams.get('s') === 'anadolunet' ? 'anadolunet' : 'zna'}
+          malzemeler={belge.formMalzemeleri || []}
+        />
       </>
     )
   }
