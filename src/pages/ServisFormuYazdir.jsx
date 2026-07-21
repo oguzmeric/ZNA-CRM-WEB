@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { servisTalepGetir } from '../services/servisService'
-import { servisMalzemeleriGetir } from '../services/servisMalzemeService'
+import { formEnvanterKalemleri } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
 
 const SIRKETLER = [
@@ -30,9 +30,9 @@ export default function ServisFormuYazdir() {
     servisTalepGetir(id)
       .then(d => { if (!iptal) setTalep(d) })
       .catch(e => { if (!iptal) setHata(e?.message ?? 'Talep yuklenemedi') })
-    // Envanterden kullanılan malzeme/cihazlar — formda ayrı tablo olarak basılır
-    servisMalzemeleriGetir(id)
-      .then(m => { if (!iptal) setMalzemeler((m || []).filter(x => x.durum === 'kullanildi')) })
+    // Envanterden kullanılan malzeme/cihazlar (web + mobil S/N akışı birleşik)
+    formEnvanterKalemleri(id)
+      .then(m => { if (!iptal) setMalzemeler(m || []) })
       .catch(() => {})
     return () => { iptal = true }
   }, [id])
