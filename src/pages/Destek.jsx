@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { ekleriYukle } from '../lib/ekDosya'
-import { panodanResimler } from '../components/EkAlani'
+import { panodanResimler, Lightbox } from '../components/EkAlani'
 import {
   destekTalepleriGetir, destekTalepEkle, destekTalepCevapla, destekTalepKapat, destekTalepSil, DESTEK_DURUM,
 } from '../services/destekService'
@@ -29,6 +29,7 @@ function DurumRozet({ durum }) {
 function TalepKarti({ t, adminMi, onCevapla, onKapat, onSil }) {
   const [cevapMetni, setCevapMetni] = useState('')
   const [mesgul, setMesgul] = useState(false)
+  const [fotoBuyuk, setFotoBuyuk] = useState(false)
   return (
     <Card style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -46,13 +47,17 @@ function TalepKarti({ t, adminMi, onCevapla, onKapat, onSil }) {
       </p>
 
       {t.fotoUrl && (
-        <a href={t.fotoUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 8 }}>
-          <img
-            src={t.fotoUrl}
-            alt="Hata ekran görüntüsü"
-            style={{ maxWidth: 260, maxHeight: 180, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', objectFit: 'cover' }}
-          />
-        </a>
+        <>
+          <button type="button" onClick={() => setFotoBuyuk(true)}
+            style={{ display: 'inline-block', marginTop: 8, padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}>
+            <img
+              src={t.fotoUrl}
+              alt="Hata ekran görüntüsü"
+              style={{ maxWidth: 260, maxHeight: 180, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', objectFit: 'cover', display: 'block' }}
+            />
+          </button>
+          <Lightbox acik={fotoBuyuk} url={t.fotoUrl} ad="Hata ekran görüntüsü" onKapat={() => setFotoBuyuk(false)} />
+        </>
       )}
 
       {t.cevap && (
