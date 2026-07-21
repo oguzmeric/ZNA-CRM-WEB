@@ -207,27 +207,15 @@ function GorevDetay() {
   const tumYorumlar = [...yorumlar.map(y => ({ ...y, kaynak: y.kaynak || 'web' })), ...mobilNotlar]
     .sort((a, b) => new Date(a.zaman || 0) - new Date(b.zaman || 0))
 
-  const durumDegisikligiBildir = (eskiDurum, yeniDurum) => {
-    if (eskiDurum === yeniDurum) return
-    if (gorev.atanan && gorev.atanan?.toString() !== kullanici?.id?.toString()) {
-      bildirimEkle(
-        gorev.atanan,
-        '📋 Görev durumu güncellendi',
-        `"${gorev.baslik}" → ${durumBilgi(yeniDurum).isim} (${kullanici?.ad || 'biri'} tarafından)`,
-        'gorev',
-        `/gorevler/${gorev.id}`,
-      ).catch(e => console.warn('[bildirim] gorev durum:', e?.message))
-    }
-  }
-
+  // Durum değişikliği bildirimleri mig 212 DB trigger'ında — atanan + ekip +
+  // oluşturan, hangi istemciden değişirse değişsin (çift bildirim olmasın diye
+  // buradaki istemci bildirimi kaldırıldı).
   const durumUygula = async (guncelleme) => {
-    const eskiDurum = gorev.durum
     const g = await gorevGuncelle(gorev.id, guncelleme)
     if (!g) { toast.error('Durum güncellenemedi.'); return false }
     setGorev(prev => ({ ...prev, ...guncelleme }))
     gorevHareketleriGetir(gorev.id).then(setHareketler).catch(() => {})
     toast.success('Durum güncellendi.')
-    durumDegisikligiBildir(eskiDurum, guncelleme.durum)
     return true
   }
 

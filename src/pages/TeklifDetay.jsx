@@ -23,6 +23,7 @@ import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle, stokFiyatGecmisi, paylasimDurumOzet,
 } from '../services/teklifService'
 import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
+import { teklifOnayaDustuBildir } from '../services/teklifOnayService'
 import { bayiTeklifKontrol } from '../services/bayiService'
 import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
@@ -695,6 +696,10 @@ function TeklifDetay() {
           olusturmaTarih: new Date().toISOString(),
         })
         if (yeniTeklif) {
+          // Onaya düştüyse teklif onay yetkililerine bildirim + SMS (best-effort)
+          if (hedefDurum === 'yon_onay_bekliyor') {
+            teklifOnayaDustuBildir(yeniTeklif, { gonderenAd: kullanici?.ad, gonderenId: kullanici?.id })
+          }
           // Kayıt başarılı — otomatik taslağı temizle (yoksa bir sonraki yeni
           // teklifte "taslak bulundu" banner'ı yanlış çıkar)
           localStorage.removeItem('teklif_taslak_yeni')
@@ -718,6 +723,11 @@ function TeklifDetay() {
         }
       } else {
         await teklifGuncelle(id, kaydedilecek)
+        // Güncellemede onaya YENİ düştüyse (örn. revizyon sonrası) yetkililere bildir
+        if (kaydedilecek.spekDurum === 'yon_onay_bekliyor' && mevcutTeklif?.spekDurum !== 'yon_onay_bekliyor') {
+          teklifOnayaDustuBildir({ ...kaydedilecek, id, teklifNo: mevcutTeklif?.teklifNo },
+            { gonderenAd: kullanici?.ad, gonderenId: kullanici?.id })
+        }
         toast.success('Teklif güncellendi.')
         navigate('/teklifler')
       }

@@ -95,7 +95,7 @@ export default function GorevAkisKarti({ gorev, kullanici, kullanicilar, onGunce
     setMesgul(false)
     if (!g) { toast.error('Ret kaydedilemedi.'); return }
     yorumDus(`❌ Görev reddedildi — Sebep: ${sebepTam}`)
-    olusturanaBildir('❌ Görev reddedildi', `${kullanici.ad}, "${gorev.baslik}" görevini reddetti. Sebep: ${sebepTam}`)
+    // Bildirim mig 212 DB trigger'ında (oluşturan + ekip, red sebepli)
     toast.success('Görev reddedildi, oluşturan bilgilendirildi.')
     kapat(); onGuncellendi(g)
   }
@@ -107,7 +107,7 @@ export default function GorevAkisKarti({ gorev, kullanici, kullanicilar, onGunce
     setMesgul(false)
     if (!g) { toast.error('Kaydedilemedi.'); return }
     yorumDus(`ℹ️ Bilgi talebi: ${metin.trim()}`)
-    olusturanaBildir('❓ Görevde bilgi talebi', `${kullanici.ad}, "${gorev.baslik}" için bilgi istiyor: ${metin.trim()}`)
+    // Bildirim mig 212 DB trigger'ında (durum → Bilgi Bekleniyor, sebepli)
     toast.success('Bilgi talebin iletildi.')
     kapat(); onGuncellendi(g)
   }
@@ -157,7 +157,7 @@ export default function GorevAkisKarti({ gorev, kullanici, kullanicilar, onGunce
     setMesgul(false)
     if (!g) { toast.error('Onay kaydedilemedi.'); return }
     yorumDus(`✅ Görev onaylandı ve tamamlandı.${metin.trim() ? ' Not: ' + metin.trim() : ''}`)
-    sorumluyaBildir('✅ Görevin onaylandı', `"${gorev.baslik}" görevi ${kullanici.ad} tarafından onaylandı ve tamamlandı.`)
+    // Bildirim mig 212 DB trigger'ında (durum → Tamamlandı; atanan + ekip)
     toast.success('Görev onaylandı ve tamamlandı.')
     kapat(); onGuncellendi(g)
   }
@@ -169,7 +169,7 @@ export default function GorevAkisKarti({ gorev, kullanici, kullanicilar, onGunce
     setMesgul(false)
     if (!g) { toast.error('Kaydedilemedi.'); return }
     yorumDus(`🔄 Revize istendi: ${metin.trim()}`)
-    sorumluyaBildir('🔄 Görevde revize istendi', `"${gorev.baslik}": ${kullanici.ad} revize istedi — ${metin.trim()}`)
+    // Bildirim mig 212 DB trigger'ında (durum → Revize İstendi, sebepli)
     toast.success('Revize talebi sorumluya iletildi.')
     kapat(); onGuncellendi(g)
   }
@@ -181,7 +181,7 @@ export default function GorevAkisKarti({ gorev, kullanici, kullanicilar, onGunce
     setMesgul(false)
     if (!g) { toast.error('Kaydedilemedi.'); return }
     yorumDus(`⛔ Onay reddedildi: ${metin.trim()}`)
-    sorumluyaBildir('⛔ Görev onayı reddedildi', `"${gorev.baslik}": ${kullanici.ad} onayı reddetti — ${metin.trim()}`)
+    // Bildirim mig 212 DB trigger'ında (⛔ onay reddi, onay_notu sebepli)
     toast.warning('Onay reddedildi.')
     kapat(); onGuncellendi(g)
   }

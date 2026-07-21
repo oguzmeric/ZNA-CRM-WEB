@@ -639,17 +639,7 @@ function Gorevler() {
     try {
       const sonuc = await dbGorevGuncelle(mevcut.id, { durum: yeniDurum })
       if (!sonuc) throw new Error('DB null donerdü')
-      // Atanan kullaniciya bildirim — kendisi degilse
-      if (mevcut.atanan && mevcut.atanan?.toString() !== kullanici?.id?.toString()) {
-        const yeniDurumIsim = kolonlar.find(k => k.id === yeniDurum)?.isim || durumBilgi(yeniDurum).isim
-        bildirimEkle(
-          mevcut.atanan,
-          '📋 Görev durumu güncellendi',
-          `"${mevcut.baslik}" → ${yeniDurumIsim} (${kullanici?.ad || 'biri'} tarafından)`,
-          'gorev',
-          `/gorevler/${mevcut.id}`,
-        ).catch(e => console.warn('[bildirim] gorev durum drag:', e?.message))
-      }
+      // Durum bildirimi mig 212 DB trigger'ında (atanan + ekip + oluşturan)
     } catch (err) {
       console.error('[handleDragEnd] DB guncelleme fail:', err)
       // Rollback — UI'yi baslangic durumuna geri al
@@ -680,16 +670,7 @@ function Gorevler() {
     try {
       const sonuc = await dbGorevGuncelle(m.gorevId, { durum: m.yeniDurum, durumSebebi: sebep })
       if (!sonuc) throw new Error('DB null döndü')
-      if (m.atanan && m.atanan?.toString() !== kullanici?.id?.toString()) {
-        const isim = kolonlar.find(k => k.id === m.yeniDurum)?.isim || durumBilgi(m.yeniDurum).isim
-        bildirimEkle(
-          m.atanan,
-          '📋 Görev durumu güncellendi',
-          `"${m.gorevBaslik}" → ${isim} — Sebep: ${sebep} (${kullanici?.ad || 'biri'} tarafından)`,
-          'gorev',
-          `/gorevler/${m.gorevId}`,
-        ).catch(e => console.warn('[bildirim] gorev sebep durum:', e?.message))
-      }
+      // Durum bildirimi mig 212 DB trigger'ında (sebep dahil; atanan + ekip + oluşturan)
     } catch (err) {
       console.error('[sebepOnayla] DB guncelleme fail:', err)
       setGorevler(prev => prev.map(g => g.id === m.gorevId ? { ...g, durum: m.eskiDurum } : g))

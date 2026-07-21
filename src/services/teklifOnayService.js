@@ -4,6 +4,66 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
+import { bildirimEkleDb } from './bildirimService'
+import { smsGonderVeLogla } from './smsLogService'
+
+// TR karakter → ASCII (SMS-friendly)
+const trAsciify = (s) => String(s || '')
+  .replace(/İ/g, 'I').replace(/ı/g, 'i')
+  .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+  .replace(/Ş/g, 'S').replace(/ş/g, 's')
+  .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+  .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+  .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+
+/**
+ * Teklif "Yönetici Onayı Bekliyor"a düşünce teklif onay yetkililerine
+ * bildirim + SMS. Ön sipariş onay bildirimiyle aynı desen (onSiparisOnayaBildir).
+ * Best-effort — hata teklif kaydını bozmaz. Gönderen yetkiliyse kendisine gitmez.
+ */
+export async function teklifOnayaDustuBildir(teklif, { gonderenAd, gonderenId } = {}) {
+  if (!teklif?.id) return
+  try {
+    const { data: yetkiler, error } = await supabase
+      .from('kullanicilar')
+      .select('id, ad, cep_telefon')
+      .eq('teklif_onay_yetkilisi', true)
+      .eq('tip', 'zna')
+      .neq('durum', 'pasif')
+    if (error) { console.warn('[teklifOnayaDustuBildir] yetkili çekilemedi:', error.message); return }
+    if (!yetkiler?.length) { console.warn('[teklifOnayaDustuBildir] teklif_onay_yetkilisi=true kullanıcı yok'); return }
+
+    const teklifNo = teklif.teklifNo || teklif.teklif_no || `#${teklif.id}`
+    const firma = teklif.firmaAdi || teklif.firma_adi || 'Müşteri —'
+    const kim = gonderenAd || 'Bir personel'
+
+    await Promise.all(yetkiler
+      .filter(y => String(y.id) !== String(gonderenId ?? ''))
+      .map(async (y) => {
+        bildirimEkleDb({
+          aliciId: y.id,
+          baslik: 'Yeni Teklif — Onay Bekliyor',
+          mesaj: `${firma} için "${teklifNo}" teklifi ${kim} tarafından oluşturuldu — Teklif Onayı ekranında onayınızı bekliyor.`,
+          tip: 'teklif',
+          link: '/teklif-onaylari',
+        }).catch(e => console.warn('[bildirim] teklif onay:', e?.message))
+
+        const mesaj = `ZNA CRM: Yeni teklif onay bekliyor.\n${trAsciify(firma)}\nNo: ${teklifNo}\nHazirlayan: ${trAsciify(kim)}\ntalep.znateknoloji.com`
+        smsGonderVeLogla({
+          gsm: y.cep_telefon,
+          mesaj,
+          amac: 'teklif_onay_bildirim',
+          refTablo: 'teklifler',
+          refId: teklif.id,
+          aliciKullaniciId: y.id,
+          aliciAd: y.ad,
+          gonderenKullaniciId: gonderenId ?? null,
+        }).catch(e => console.warn('[sms] teklif onay:', e?.message))
+      }))
+  } catch (e) {
+    console.warn('[teklifOnayaDustuBildir] hata:', e?.message)
+  }
+}
 
 // Bekleyen teklif onayları — Teklifler > Cevap Beklenenler ile aynı liste.
 // Teklifler.jsx'te filtre: onay_durumu IN ('takipte', 'revizyon').
