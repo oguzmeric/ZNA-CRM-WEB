@@ -270,13 +270,62 @@ export async function teklifSiparisKuyrugu() {
 }
 
 /**
+ * Teklif sipariş onay kuyruğuna gelince sipariş onay yetkililerine
+ * (siparis_onay_yetkilisi=true: Ali Uğur + Oğuz + Ahmet Agun) bildirim + SMS.
+ * Best-effort — hata ana akışı bozmaz. Tetikleyen yetkiliyse kendisine gitmez.
+ */
+export async function siparisOnayinaGeldiBildir(teklif, { gonderenAd, gonderenId, not } = {}) {
+  if (!teklif?.id) return
+  try {
+    const { data: yetkiler, error } = await supabase
+      .from('kullanicilar')
+      .select('id, ad, cep_telefon')
+      .eq('siparis_onay_yetkilisi', true)
+      .eq('tip', 'zna')
+      .neq('durum', 'pasif')
+    if (error) { console.warn('[siparisOnayinaGeldiBildir] yetkili çekilemedi:', error.message); return }
+    if (!yetkiler?.length) return
+
+    const teklifNo = teklif.teklifNo || teklif.teklif_no || `#${teklif.id}`
+    const firma = teklif.firmaAdi || teklif.firma_adi || 'Müşteri —'
+    const kim = gonderenAd || 'Bir personel'
+
+    await Promise.all(yetkiler
+      .filter(y => String(y.id) !== String(gonderenId ?? ''))
+      .map(async (y) => {
+        bildirimEkleDb({
+          aliciId: y.id,
+          baslik: 'Teklif — Sipariş Onayı Bekliyor',
+          mesaj: `${firma} için "${teklifNo}" teklifi ${not || 'sipariş onay kuyruğuna düştü'} (${kim}). Sipariş Onayları ekranında bekliyor.`,
+          tip: 'siparis',
+          link: '/siparis-onaylari',
+        }).catch(e => console.warn('[bildirim] sipariş onayına geldi:', e?.message))
+
+        const mesaj = `ZNA CRM: Teklif siparis onayi bekliyor.\n${trAsciify(firma)}\nNo: ${teklifNo}\n${trAsciify(kim)}\ntalep.znateknoloji.com`
+        smsGonderVeLogla({
+          gsm: y.cep_telefon,
+          mesaj,
+          amac: 'siparis_onay_bildirim',
+          refTablo: 'teklifler',
+          refId: teklif.id,
+          aliciKullaniciId: y.id,
+          aliciAd: y.ad,
+          gonderenKullaniciId: gonderenId ?? null,
+        }).catch(e => console.warn('[sms] sipariş onayına geldi:', e?.message))
+      }))
+  } catch (e) {
+    console.warn('[siparisOnayinaGeldiBildir] hata:', e?.message)
+  }
+}
+
+/**
  * Erken onaya al — müşteri kabulünü beklemeden teklifi sipariş onay kuyruğuna çeker
  * (uzun terminli tedarik gereken acil işler için, yetkili kararı).
  * Müşteri onay durumu (onay_durumu) DEĞİŞMEZ — sadece siparis_onayi.erken işaretlenir.
  */
 export async function teklifErkenOnayaAl(teklifId, kullanici) {
   const { data: t, error: eS } = await supabase
-    .from('teklifler').select('siparis_onayi').eq('id', teklifId).single()
+    .from('teklifler').select('siparis_onayi, teklif_no, firma_adi').eq('id', teklifId).single()
   if (eS) throw eS
   const onay = {
     ...(t?.siparis_onayi || {}),
@@ -288,6 +337,11 @@ export async function teklifErkenOnayaAl(teklifId, kullanici) {
   const { error } = await supabase
     .from('teklifler').update({ siparis_onayi: onay }).eq('id', teklifId)
   if (error) throw error
+  // Yetkililere bildirim + SMS (best-effort)
+  siparisOnayinaGeldiBildir(
+    { id: teklifId, teklif_no: t?.teklif_no, firma_adi: t?.firma_adi },
+    { gonderenAd: kullanici?.ad, gonderenId: kullanici?.id, not: 'erken onaya alındı' },
+  )
   return onay
 }
 

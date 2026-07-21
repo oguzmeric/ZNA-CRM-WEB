@@ -3,7 +3,7 @@
 
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
-import { imzaYukle } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
+import { imzaYukle, siparisOnayinaGeldiBildir } from './siparisOnayService'  // aynı bucket, aynı fonksiyon
 import { bildirimEkleDb } from './bildirimService'
 import { smsGonderVeLogla } from './smsLogService'
 
@@ -118,7 +118,7 @@ export async function teklifOnayaGonder(teklifId, gonderen) {
 // Teklif onay yetkilisi onayla
 export async function teklifOnayla(teklifId, kullanici, gerekce, imzaUrl) {
   // Mevcut teklif_onayi'yi çek, birleştir
-  const { data: t } = await supabase.from('teklifler').select('teklif_onayi').eq('id', teklifId).single()
+  const { data: t } = await supabase.from('teklifler').select('teklif_onayi, teklif_no, firma_adi').eq('id', teklifId).single()
   const onay = {
     ...(t?.teklif_onayi || {}),
     durum: 'onayli',
@@ -144,6 +144,11 @@ export async function teklifOnayla(teklifId, kullanici, gerekce, imzaUrl) {
     })
     .eq('id', teklifId)
   if (error) throw error
+  // Sipariş onay yetkililerine bildirim + SMS (best-effort; onaylayan hariç)
+  siparisOnayinaGeldiBildir(
+    { id: teklifId, teklif_no: t?.teklif_no, firma_adi: t?.firma_adi },
+    { gonderenAd: kullanici?.ad, gonderenId: kullanici?.id, not: 'yönetici onayından geçti — sipariş onay kuyruğuna düştü' },
+  )
   return { ok: true }
 }
 
