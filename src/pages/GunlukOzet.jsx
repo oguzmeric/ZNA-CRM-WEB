@@ -7,17 +7,23 @@ import { useNavigate } from 'react-router-dom'
 import {
   Sun, Compass, Wrench, AlertTriangle, FileText, Banknote,
   PackageMinus, FileSignature, KeyRound, ShoppingCart, Undo2, RefreshCw,
+  PauseCircle, Loader,
 } from 'lucide-react'
 import { Card, Button, EmptyState } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { kritikSeviyeUrunler } from '../services/depoService'
+import { gorevGecikti, gorevBekliyorMu, gecikmeGunu, beklemeGunu } from '../lib/gorevSabitleri'
 import { fmtTL } from '../components/FiloOrtak'
 import { SkeletonList } from '../components/Skeleton'
 
 const bugunStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' })
 const fmtT = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
-// Takvim günü farkı — saat bazlı hesap dün biten görevde 0 veriyordu ("0 gün gecikti")
-const gecikmeGunu = (t) => Math.max(1, Math.round((new Date(bugunStr()) - new Date(String(t).slice(0, 10))) / 86400000))
+// Ham görev satırını (snake_case) merkezî gorevSabitleri fn'lerinin beklediği
+// camelCase şekle uyarlar — saat durdurma (mig 221) hesabı için gerekli alanlar.
+const gorevCamel = (g) => ({
+  durum: g.durum, sonTarih: g.son_tarih,
+  toplamBeklemeGun: g.toplam_bekleme_gun, beklemeBaslangic: g.bekleme_baslangic,
+})
 
 export default function GunlukOzet() {
   const navigate = useNavigate()
@@ -31,8 +37,12 @@ export default function GunlukOzet() {
       supabase.from('kesifler').select('id, kesif_no, firma_adi, kesif_basligi').eq('kesif_tarihi', bugun).neq('durum', 'iptal').limit(15),
       supabase.from('servis_talepleri').select('id, talep_no, firma_adi, konu').gte('olusturma_tarihi', bugun + 'T00:00:00').limit(15),
       supabase.from('servis_talepleri').select('id, talep_no, firma_adi, konu, durum').in('durum', ['atandi', 'inceleniyor', 'devam_ediyor']).limit(15),
-      // son_tarih = kanonik teslim tarihi (Panel/Görevler/gecikme SMS de bunu okur; mig 185)
-      supabase.from('gorevler').select('id, baslik, atanan_ad, son_tarih').lt('son_tarih', bugun).neq('durum', 'tamamlandi').order('son_tarih').limit(15),
+      // Açık görevler — istemcide geciken / bekleyen / devam eden diye ayrılır
+      // (saat durdurma mig 221: bekleyen gecikme saymaz, öteleme uygulanır).
+      supabase.from('gorevler')
+        .select('id, baslik, atanan_ad, son_tarih, durum, toplam_bekleme_gun, bekleme_baslangic')
+        .not('durum', 'in', '(tamamlandi,iptal,reddedildi,taslak)')
+        .order('son_tarih').limit(300),
       supabase.from('teklifler').select('id, teklif_no, firma_adi, genel_toplam').eq('spek_durum', 'yon_onay_bekliyor').limit(15),
       supabase.from('satislar').select('id, firma_adi, genel_toplam, vade_tarihi').lt('vade_tarihi', bugun).neq('durum', 'odendi').neq('durum', 'iptal').order('vade_tarihi').limit(15),
       supabase.from('sozlesmeler').select('id, baslik, firma_adi, bitis_tarih, musteri:musteri_id (firma)').eq('aktif', true).lte('bitis_tarih', gun30).order('bitis_tarih').limit(15),
@@ -42,11 +52,20 @@ export default function GunlukOzet() {
       kritikSeviyeUrunler().catch(() => []),
     ])
 
+    // Açık görevleri üç gruba ayır (saat durdurma dahil)
+    const acikGorevler = gorev.data || []
+    const gecikenGorevler = acikGorevler.filter(g => gorevGecikti(gorevCamel(g)))
+      .sort((a, b) => String(a.son_tarih || '').localeCompare(String(b.son_tarih || '')))
+    const bekleyenGorevler = acikGorevler.filter(g => gorevBekliyorMu(g))
+    const devamGorevler = acikGorevler.filter(g => g.durum === 'devam')
+
     setVeri({
       kesifler: kesif.data || [],
       servisYeni: servisYeni.data || [],
       servisAktif: servisAktif.data || [],
-      gecikenGorevler: gorev.data || [],
+      gecikenGorevler: gecikenGorevler.slice(0, 15),
+      bekleyenGorevler: bekleyenGorevler.slice(0, 15),
+      devamGorevler: devamGorevler.slice(0, 15),
       onayBekleyenTeklifler: teklif.data || [],
       tahsilatlar: tahsilat.data || [],
       sozlesmeler: sozlesme.data || [],
@@ -86,9 +105,30 @@ export default function GunlukOzet() {
     {
       baslik: 'Geciken Görevler', ikon: AlertTriangle, renk: '#dc2626',
       satirlar: veri.gecikenGorevler.map(g => ({
-        id: g.id, ana: g.baslik, alt: `${g.atanan_ad || '—'} · ${gecikmeGunu(g.son_tarih)} gün gecikti`, hedef: `/gorevler/${g.id}`,
+        id: g.id, ana: g.baslik, alt: `${g.atanan_ad || '—'} · ${gecikmeGunu(gorevCamel(g))} gün gecikti`, hedef: `/gorevler/${g.id}`,
       })),
       bos: 'Geciken görev yok 🎉',
+    },
+    {
+      baslik: 'Bekleyen Görevler', ikon: PauseCircle, renk: '#a855f7',
+      satirlar: veri.bekleyenGorevler.map(g => {
+        const bg = beklemeGunu(gorevCamel(g))
+        return {
+          id: g.id, ana: g.baslik,
+          alt: `${g.atanan_ad || '—'} · ${g.durum === 'bilgi_bekleniyor' ? 'Bilgi bekleniyor' : 'Beklemede'}${bg > 0 ? ` · ${bg} gündür` : ''}`,
+          hedef: `/gorevler/${g.id}`,
+        }
+      }),
+      bos: 'Bekleyen görev yok.',
+    },
+    {
+      baslik: 'Devam Eden Görevler', ikon: Loader, renk: '#f59e0b',
+      satirlar: veri.devamGorevler.map(g => ({
+        id: g.id, ana: g.baslik,
+        alt: `${g.atanan_ad || '—'}${g.son_tarih ? ` · son ${fmtT(g.son_tarih)}` : ''}`,
+        hedef: `/gorevler/${g.id}`,
+      })),
+      bos: 'Devam eden görev yok.',
     },
     {
       baslik: 'Onay Bekleyen Teklifler', ikon: FileText, renk: '#f59e0b',
