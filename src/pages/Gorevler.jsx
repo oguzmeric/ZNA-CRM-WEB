@@ -32,6 +32,7 @@ import CokluSelect from '../components/CokluSelect'
 import { invalidate } from '../lib/cache'
 import { gorevAtamaSMSGonderVeIsaretle } from '../services/smsService'
 import { musterileriGetir } from '../services/musteriService'
+import { gorusmeleriGetir } from '../services/gorusmeService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -77,7 +78,7 @@ const bosForm = {
   baslik: '', aciklama: '', atanan: '', oncelik: 'normal', durum: 'bekliyor',
   baslamaTarih: '', bitisTarih: '', sonTarih: '',
   musteriId: '', musteriAdi: '', firmaAdi: '',
-  lokasyonId: '',
+  lokasyonId: '', gorusmeId: '',
   servisTalebiOlustur: false,
   ekip: [],
   // Form v2 (madde 4)
@@ -105,6 +106,8 @@ const formdanPayload = (form, { detayYuklendi = true } = {}) => {
   const { servisTalebiOlustur: _atla, etiketlerMetin, hatirlatmaSecim, ...rest } = form
   const p = { ...rest }
   p.kategoriId = form.kategoriId ? Number(form.kategoriId) : null
+  // Bağlı görüşme — boş string bigint FK'ye gidince PG hata verir, null'a çevir
+  p.gorusmeId = form.gorusmeId ? Number(form.gorusmeId) : null
   p.onaylayiciId = form.onayGerekli && form.onaylayiciId ? Number(form.onaylayiciId) : null
   p.onayGerekli = !!form.onayGerekli
   p.gozlemciler = (form.gozlemciler || []).map(Number).filter(n => !Number.isNaN(n))
@@ -372,6 +375,7 @@ function Gorevler() {
   const [musteriler, setMusteriler] = useState([])
   const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([]) // sadece form için (seçili müşteri)
   const [tumLokasyonlar, setTumLokasyonlar] = useState([]) // kart üzerinde lokasyon adı göstermek için lookup
+  const [gorusmeler, setGorusmeler] = useState([])          // form "Bağlı görüşme" seçicisi (teklif ile aynı desen)
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
@@ -430,6 +434,9 @@ function Gorevler() {
       .finally(() => { if (ilkYukleme) setYukleniyor(false) })
     musterileriGetir()
       .then(m => setMusteriler(m || []))
+      .catch(() => {})
+    gorusmeleriGetir()
+      .then(g => setGorusmeler(g || []))
       .catch(() => {})
     import('../lib/supabase').then(({ supabase }) =>
       supabase.from('musteri_lokasyonlari').select('id, ad, musteri_id').then(({ data }) =>
@@ -851,7 +858,7 @@ function Gorevler() {
       // bitisTarih önceliği: yeni bitis_tarih varsa onu, yoksa legacy son_tarih'i 23:59'a taşı
       bitisTarih: g.bitisTarih ? dtLocal(g.bitisTarih) : (g.sonTarih ? `${g.sonTarih}T23:59` : ''),
       musteriId: g.musteriId || '', musteriAdi: g.musteriAdi || '', firmaAdi: g.firmaAdi || '',
-      lokasyonId: g.lokasyonId || '',
+      lokasyonId: g.lokasyonId || '', gorusmeId: g.gorusmeId != null ? String(g.gorusmeId) : '',
       ekip: Array.isArray(g.ekip) ? g.ekip : [],
       // v2 alanları (liste kolonlarından gelenler)
       kategoriId: g.kategoriId != null ? String(g.kategoriId) : '',
@@ -1192,6 +1199,7 @@ function Gorevler() {
                     musteriAdi: m ? `${m.ad} ${m.soyad}` : '',
                     firmaAdi: m ? m.firma : '',
                     lokasyonId: '',
+                    gorusmeId: '',   // görüşme listesi müşteriye bağlı — sıfırla
                   })
                   // Müşteri değişince lokasyonları yenile
                   if (m?.id) {
@@ -1207,6 +1215,39 @@ function Gorevler() {
               {form.firmaAdi && (
                 <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <Building2 size={12} strokeWidth={1.5} /> {form.firmaAdi}
+                </p>
+              )}
+            </div>
+
+            {/* Bağlı görüşme — teklif formundaki desenle aynı: müşteriye göre filtreli */}
+            <div>
+              <Label>Bağlı görüşme</Label>
+              <CustomSelect
+                value={form.gorusmeId || ''}
+                onChange={e => setForm({ ...form, gorusmeId: e.target.value })}
+                disabled={!form.musteriId && !form.firmaAdi}
+              >
+                <option value="">
+                  {(form.musteriId || form.firmaAdi) ? 'Görüşme seç (opsiyonel)…' : 'Önce müşteri seçin'}
+                </option>
+                {(() => {
+                  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+                  const hedefMusteriId = form.musteriId ? String(form.musteriId) : null
+                  const hedefFirma = normalize(form.firmaAdi)
+                  return gorusmeler
+                    .filter(g => (hedefMusteriId && g.musteriId)
+                      ? String(g.musteriId) === hedefMusteriId
+                      : (hedefFirma && normalize(g.firmaAdi) === hedefFirma))
+                    .map(g => (
+                      <option key={g.id} value={g.id}>
+                        {g.aktNo || `G-${g.id}`} — {g.konu || g.amac || '—'}{g.tarih ? ` · ${g.tarih}` : ''}
+                      </option>
+                    ))
+                })()}
+              </CustomSelect>
+              {form.musteriId && gorusmeler.filter(g => String(g.musteriId) === String(form.musteriId)).length === 0 && (
+                <p style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  Bu müşteriye ait kayıtlı görüşme yok.
                 </p>
               )}
             </div>
