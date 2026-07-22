@@ -10,13 +10,26 @@ export const YONETIM_IDLER = [1, 2, 33]
 
 // Depo sorumluları: Salih Çakmaklı (34), Mahmut Sari (45).
 // Demirbaş/envanter işlerler ama KENDİLERİ DE zimmet alabilir (yönetim değiller).
+// NOT: Artık asıl kaynak DB'deki `kullanicilar.demirbas_yetkilisi` bayrağı (mig 226).
+// Bu liste yalnızca geriye dönük emniyet — bayrak client'a ulaşmazsa panel kapanmasın.
 export const DEPO_SORUMLU_IDLER = [34, 45]
 
 const idIcinde = (kullanici, liste) => liste.includes(Number(kullanici?.id))
 
-/** /skor sayfası erişimi + demirbaş ekle/iade yetkisi */
+/**
+ * /skor sayfası erişimi + demirbaş ekle/iade yetkisi.
+ *
+ * DİKKAT: Bu kontrol RLS ile AYNI olmalı. 2026-07-22'de yetkiyi yalnız buraya
+ * ekleyip DB'yi unutmuştum; Salih/Mahmut'a panel açıldı ama demirbas_zimmet
+ * RLS'i hâlâ admin istediği için liste BOŞ geliyordu ("buton var, veri yok").
+ * Sunucu tarafı karşılığı: public.demirbas_yetkili() (mig 226).
+ */
 export const demirbasIsleyebilirMi = (kullanici) =>
-  idIcinde(kullanici, YONETIM_IDLER) || idIcinde(kullanici, DEPO_SORUMLU_IDLER)
+  kullanici?.demirbasYetkilisi === true ||
+  kullanici?.demirbas_yetkilisi === true ||
+  kullanici?.rol === 'admin' ||
+  idIcinde(kullanici, YONETIM_IDLER) ||
+  idIcinde(kullanici, DEPO_SORUMLU_IDLER)
 
 /** Saf yönetim kontrolü — zimmet ALICI listesinden yalnız bunlar çıkarılır */
 export const yonetimMi = (kullanici) => idIcinde(kullanici, YONETIM_IDLER)
