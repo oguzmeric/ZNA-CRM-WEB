@@ -5,7 +5,10 @@
 // geçer (CORS sadece browser-level koruma).
 
 const ALLOW_LIST = [
-  'https://talep.znateknoloji.com',      // prod
+  'https://erp.znateknoloji.com',        // prod — CRM/ERP (yeni ana adres)
+  'https://talep.znateknoloji.com',      // prod — eski adres; müşteriye gönderilmiş
+                                         // /p/:token ve /davet/:token linkleri burada
+                                         // yaşadığı için taşımadan sonra da AÇIK kalmalı
   'https://www.znateknoloji.com',        // olası kurumsal alt-domain
   'https://znateknoloji.com',
   'http://localhost:3000',                // vite dev
