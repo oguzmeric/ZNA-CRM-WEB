@@ -3,6 +3,7 @@ import { lazyWithRetry as lazy, tumChunklariOnyukle } from './lib/lazyWithRetry'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { siparisYonetimiGorebilirMi } from './lib/siparisYetki'
+import { demirbasIsleyebilirMi } from './lib/zimmetYetki'
 import { filoGorebilirMi } from './lib/filoYetki'
 import { ikGorebilirMi } from './lib/ikYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
@@ -323,11 +324,10 @@ function App() {
     )
   }
 
-  // /skor — sadece yönetim (Oğuz Meriç, Ali Uğur Aktepe, Ferdi Kalkan) erişebilir
+  // /skor — yönetim (Ali/Oğuz/Ferdi) + depo sorumluları (Salih, Mahmut: envanter
+  // ve demirbaş girişi için). Tek kaynak: lib/zimmetYetki (ID bazlı, isim regex'i değil).
   if (location.pathname === '/skor') {
-    const skorAd = (kullanici?.ad || '').toLocaleLowerCase('tr')
-    const skorYetkili = /\b(oğuz|oguz|ali|ferdi)\b/i.test(skorAd)
-    if (!skorYetkili) {
+    if (!demirbasIsleyebilirMi(kullanici)) {
       return <Navigate to="/dashboard" replace />
     }
     return (

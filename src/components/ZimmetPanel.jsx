@@ -14,11 +14,13 @@ import {
 import { snTeknisyeneVer } from '../services/stokService'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { demirbasIsleyebilirMi, yonetimMi } from '../lib/zimmetYetki'
 
-// Yönetim ayrımı: aynı YonetimGuard mantığı (isim regex).
-// Kullanicilar.rol kolonuna güvenmiyoruz — bu CRM'de yönetici kimliği isim
-// üzerinden belirleniyor.
-const isYonetim = (ad) => /\b(oğuz|oguz|ali|ferdi)\b/i.test(String(ad || '').toLocaleLowerCase('tr'))
+// Yetki tek kaynaktan: lib/zimmetYetki (ID bazlı — eski isim regex'i TR'de
+// güvenilmezdi ve /skor guard'ıyla ikiye bölünmüştü).
+//   demirbasIsleyebilirMi → paneli yönetir (ekle/iade): yönetim + depo sorumluları
+//   yonetimMi            → zimmet ALICI listesinden yalnız yönetim çıkarılır
+//                          (Salih/Mahmut işler AMA kendileri de zimmet alabilir)
 
 const DEMIRBAS_KATEGORI = [
   { id: 'laptop', ad: 'Laptop', ikon: '💻' },
@@ -47,7 +49,7 @@ const R = {
 export default function ZimmetPanel({ onKapat }) {
   const { kullanici } = useAuth()
   const kullaniciId = kullanici?.id
-  const yonetim = isYonetim(kullanici?.ad)
+  const yonetim = demirbasIsleyebilirMi(kullanici)
   const [sekme, setSekme] = useState('envanter')
   const [kullanicilar, setKullanicilar] = useState([])
   const [envanterListe, setEnvanterListe] = useState([])
@@ -60,9 +62,10 @@ export default function ZimmetPanel({ onKapat }) {
 
   useEffect(() => {
     (async () => {
-      // Demirbaş ekleme modalı için teknisyen listesi (adminler dahil olmasın)
+      // Demirbaş ALICI listesi — yalnız YÖNETİM çıkarılır. Depo sorumluları
+      // (Salih/Mahmut) paneli işletir ama kendileri de zimmet alabilmeli.
       const { data: liste } = await supabase.from('kullanicilar').select('id, ad, unvan').order('ad')
-      setKullanicilar((liste || []).filter(k => !isYonetim(k.ad)))
+      setKullanicilar((liste || []).filter(k => !yonetimMi(k)))
     })()
   }, [])
 
