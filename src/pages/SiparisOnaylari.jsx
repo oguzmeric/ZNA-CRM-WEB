@@ -554,7 +554,7 @@ function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi
       {/* Teklif bilgileri grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
         <BilgiKart Icon={Calendar} etiket="Teklif Tarihi" deger={fmtTarih(t.tarih)} />
-        <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.hazirlayan || '—'} />
+        <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.olusturanAd || t.hazirlayan || '—'} />
         <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(gerçekToplam(t), t.paraBirimi)} vurgu />
         <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odemeSekli || t.odemeSecenegi || '—'} />
         {(t.gecerlilikTarihi || t.teslimTarihi) && (

@@ -140,8 +140,11 @@ export default function Teklifler() {
   // (TR büyük/küçük harf duyarsız)
   const benimAdim = String(kullanici?.ad || '').trim().toLocaleLowerCase('tr')
   const teklifBenimMi = (t) => {
+    // Öncelik gerçek FK (mig 223) — karar bildirimi de bu kişiye gidiyor, liste onunla
+    // birebir örtüşsün. Eski kayıtlarda kolon boş kalabilir → serbest metin adla eşle.
+    if (t.olusturanId && kullanici?.id) return String(t.olusturanId) === String(kullanici.id)
     if (!benimAdim) return false
-    return [t.hazirlayan, t.musteriTemsilcisi]
+    return [t.hazirlayan, t.musteriTemsilcisi, t.olusturanAd]
       .some(a => String(a || '').trim().toLocaleLowerCase('tr') === benimAdim)
   }
   const bazTeklifler = benimTekliflerim ? teklifler.filter(teklifBenimMi) : teklifler
@@ -622,7 +625,7 @@ export default function Teklifler() {
                             </td>
                             <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
-                                {t.hazirlayan || '—'}
+                                {t.olusturanAd || t.hazirlayan || '—'}
                               </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>

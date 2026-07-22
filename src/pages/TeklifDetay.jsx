@@ -693,6 +693,10 @@ function TeklifDetay() {
         const yeniTeklif = await teklifEkle({
           ...payload,
           ...otomatikDurum,
+          // Karar bildirimlerinin alıcısı (mig 223). DB trigger auth.uid()'den de
+          // damgalıyor ama auth_id'si olmayan eski hesaplarda boş kalmasın diye açıkça yolluyoruz.
+          olusturanId: kullanici?.id ?? null,
+          olusturanAd: kullanici?.ad ?? null,
           olusturmaTarih: new Date().toISOString(),
         })
         if (yeniTeklif) {

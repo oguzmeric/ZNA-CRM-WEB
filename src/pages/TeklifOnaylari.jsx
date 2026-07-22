@@ -320,7 +320,8 @@ function DetayPaneli({ teklif: t, sekme, kullanici, onTamamlandi }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
         <BilgiKart Icon={Calendar} etiket="Teklif Tarihi" deger={fmtTarih(t.tarih)} />
-        <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.hazirlayan || t.musteriTemsilcisi || '—'} />
+        {/* Karar bildirimi bu kişiye gider (mig 223) — olusturanAd serbest metin değil, FK'den gelir */}
+        <BilgiKart Icon={UserIcon} etiket="Hazırlayan" deger={t.olusturanAd || t.hazirlayan || t.musteriTemsilcisi || '—'} />
         <BilgiKart Icon={Receipt} etiket="Tutar" deger={fmtPara(gerçekToplam(t), t.paraBirimi)} vurgu />
         <BilgiKart Icon={FileText} etiket="Ödeme" deger={t.odemeSekli || t.odemeSecenegi || '—'} />
         {(t.gecerlilikTarihi || t.teslimTarihi) && (
