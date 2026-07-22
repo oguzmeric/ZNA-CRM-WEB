@@ -8,12 +8,40 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// ── Mesai başlatma kilidi ────────────────────────────────────────────────
+// Mesai 18:30'da cron ile otomatik kapanır ve "Bitir" butonu yoktur. Kapanışın
+// hemen ardından yeniden başlatmayı engellemek için 18:30–19:00 arası giriş
+// kapalıdır; 19:00'dan sonra tekrar açılır (ertesi sabah normal giriş için).
+// İstemci de aynı kontrolü yapıyor ama burası ZORUNLU: mobil kontrolü
+// atlanabilir, sunucu tarafı atlanamaz.
+const KILIT_BASLANGIC_DK = 18 * 60 + 30   // 18:30
+const KILIT_BITIS_DK     = 19 * 60        // 19:00
+
+function istanbulDakika(d = new Date()): number {
+  const bicim = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  const [saat, dakika] = bicim.format(d).split(':').map(Number)
+  return saat * 60 + dakika
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
     const authHeader = req.headers.get('Authorization') ?? ''
     if (!authHeader) return jsonYanit({ ok: false, hata: 'yetkisiz' }, 401)
+
+    const suAn = istanbulDakika()
+    if (suAn >= KILIT_BASLANGIC_DK && suAn < KILIT_BITIS_DK) {
+      return jsonYanit({
+        ok: false,
+        hata: 'mesai_kilitli',
+        kilit_bitis: '19:00',
+        mesaj: 'Mesai 18:30\'da otomatik kapanır. Yeni mesai 19:00\'dan sonra başlatılabilir.',
+      }, 403)
+    }
 
     const { qr_payload, lat, lng, zorla } = await req.json()
     if (!qr_payload) return jsonYanit({ ok: false, hata: 'qr_eksik' }, 400)
