@@ -9,6 +9,7 @@ import { ekleriYukle } from '../lib/ekDosya'
 import { panodanResimler, Lightbox } from '../components/EkAlani'
 import {
   destekTalepleriGetir, destekTalepEkle, destekTalepCevapla, destekTalepKapat, destekTalepSil, DESTEK_DURUM,
+  destekMesajlariGetir, destekMesajEkle, DESTEK_YONETICISI_ID,
 } from '../services/destekService'
 import { Button, Textarea, Card, CardTitle, EmptyState, SegmentedControl } from '../components/ui'
 
@@ -26,10 +27,35 @@ function DurumRozet({ durum }) {
   )
 }
 
-function TalepKarti({ t, adminMi, onCevapla, onKapat, onSil }) {
+function TalepKarti({ t, adminMi, kullanici, onKapat, onSil, onYenile }) {
   const [cevapMetni, setCevapMetni] = useState('')
   const [mesgul, setMesgul] = useState(false)
   const [fotoBuyuk, setFotoBuyuk] = useState(false)
+  // Sohbet (mig 222) — tek 'cevap' kolonu her yanıtta öncekini eziyordu
+  const [mesajlar, setMesajlar] = useState([])
+  useEffect(() => {
+    let iptal = false
+    destekMesajlariGetir(t.id).then(m => { if (!iptal) setMesajlar(m) }).catch(() => {})
+    return () => { iptal = true }
+  }, [t.id])
+
+  const destekYoneticisiMi = Number(kullanici?.id) === DESTEK_YONETICISI_ID
+  const benimTalebimMi = String(t.kullaniciId ?? '') === String(kullanici?.id ?? '')
+  const yazabilir = (destekYoneticisiMi || benimTalebimMi) && t.durum !== 'kapandi'
+
+  const mesajGonder = async () => {
+    const metin = cevapMetni.trim()
+    if (!metin) return
+    setMesgul(true)
+    const sonuc = await destekMesajEkle({
+      talep: t, mesaj: metin, yazarId: kullanici?.id, yazarAd: kullanici?.ad,
+    })
+    setMesgul(false)
+    if (sonuc?.hata) return
+    if (sonuc) setMesajlar(prev => [...prev, sonuc])
+    setCevapMetni('')
+    onYenile?.()   // durum/rozet tazelensin
+  }
   return (
     <Card style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -60,56 +86,71 @@ function TalepKarti({ t, adminMi, onCevapla, onKapat, onSil }) {
         </>
       )}
 
-      {t.cevap && (
-        <div style={{
-          marginTop: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-          background: 'var(--info-soft, rgba(59,130,246,0.08))', borderLeft: '3px solid var(--info, #3b82f6)',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--info, #3b82f6)', marginBottom: 4 }}>
-            YÖNETİCİ YANITI {t.cevapTarihi ? `· ${fmtTarih(t.cevapTarihi)}` : ''}
-          </div>
-          <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>
-            {t.cevap}
-          </p>
+      {/* Sohbet akışı — her yanıt ayrı mesaj (mig 222); artık üzerine yazılmıyor */}
+      {mesajlar.length > 0 && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {mesajlar.map(m => {
+            const benim = String(m.yazarId ?? '') === String(kullanici?.id ?? '')
+            const destekten = Number(m.yazarId) === DESTEK_YONETICISI_ID
+            return (
+              <div key={m.id} style={{ display: 'flex', justifyContent: benim ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '78%', padding: '8px 12px', borderRadius: 12,
+                  background: benim ? 'var(--brand-50, rgba(1,118,211,0.10))' : 'var(--surface-sunken)',
+                  border: `1px solid ${benim ? 'rgba(1,118,211,0.25)' : 'var(--border-default)'}`,
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: destekten ? 'var(--info, #3b82f6)' : 'var(--text-tertiary)', marginBottom: 3 }}>
+                    {destekten ? '🛠 Destek' : (m.yazarAd || 'Kullanıcı')}
+                    {m.olusturmaTarih ? ` · ${fmtTarih(m.olusturmaTarih)}` : ''}
+                  </div>
+                  <p style={{ font: '400 13px/20px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                    {m.mesaj}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
         </div>
+      )}
+
+      {/* Mesaj kutusu — hem talep sahibi hem destek yöneticisi yazar (sohbet) */}
+      {yazabilir && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+          <Textarea
+            rows={2}
+            value={cevapMetni}
+            onChange={e => setCevapMetni(e.target.value)}
+            placeholder={destekYoneticisiMi ? 'Yanıt yaz…' : 'Mesaj yaz…'}
+            style={{ marginBottom: 8 }}
+          />
+          <Button
+            variant="primary"
+            disabled={mesgul || !cevapMetni.trim()}
+            iconLeft={<Send size={14} strokeWidth={1.5} />}
+            onClick={mesajGonder}
+          >
+            {mesgul ? 'Gönderiliyor…' : 'Gönder'}
+          </Button>
+        </div>
+      )}
+      {t.durum === 'kapandi' && (
+        <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 10 }}>
+          Bu talep kapatıldı — yeni mesaj yazılamaz.
+        </p>
       )}
 
       {adminMi && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-          {t.durum !== 'kapandi' && (
-            <Textarea
-              rows={2}
-              value={cevapMetni}
-              onChange={e => setCevapMetni(e.target.value)}
-              placeholder={t.cevap ? 'Yanıtı güncelle…' : 'Yanıt yaz…'}
-              style={{ marginBottom: 8 }}
-            />
-          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {t.durum !== 'kapandi' && (
-              <>
-                <Button
-                  variant="primary"
-                  disabled={mesgul || !cevapMetni.trim()}
-                  iconLeft={<Send size={14} strokeWidth={1.5} />}
-                  onClick={async () => {
-                    setMesgul(true)
-                    await onCevapla(t, cevapMetni.trim())
-                    setCevapMetni('')
-                    setMesgul(false)
-                  }}
-                >
-                  Yanıtla
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={mesgul}
-                  iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
-                  onClick={async () => { setMesgul(true); await onKapat(t); setMesgul(false) }}
-                >
-                  Kapat
-                </Button>
-              </>
+              <Button
+                variant="secondary"
+                disabled={mesgul}
+                iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}
+                onClick={async () => { setMesgul(true); await onKapat(t); setMesgul(false) }}
+              >
+                Kapat
+              </Button>
             )}
             <Button
               variant="secondary"
@@ -320,9 +361,10 @@ function Destek() {
             key={t.id}
             t={t}
             adminMi={adminMi && gorunum === 'hepsi'}
-            onCevapla={cevapla}
+            kullanici={kullanici}
             onKapat={kapat}
             onSil={sil}
+            onYenile={yenile}
           />
         ))
       )}
