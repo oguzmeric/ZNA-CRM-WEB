@@ -31,18 +31,49 @@ export const SEBEP_ZORUNLU_DURUMLAR = ['beklemede', 'bilgi_bekleniyor', 'iptal']
 // ─── Hesaplanan durumlar ────────────────────────────────────────────────────
 export const bugunStr = () => new Date().toISOString().slice(0, 10)
 
+// SLA "saat durdurma": bu durumlarda görev dış bir şeyi bekler (serviste araç,
+// müşteriden bilgi) — gecikme saati DURUR (mig 221). Beklenen gün, devam edince
+// toplam_bekleme_gun'e biriktirilir ve etkin bitiş o kadar ötelenir.
+export const BEKLEYEN_DURUMLAR = ['beklemede', 'bilgi_bekleniyor']
+export const gorevBekliyorMu = (g) => BEKLEYEN_DURUMLAR.includes(g?.durum)
+
+// Etkin bitiş = orijinal son_tarih + toplam bekleme günü (saat durdurma telafisi)
+export const etkinSonTarih = (g) => {
+  if (!g?.sonTarih) return null
+  const taban = String(g.sonTarih).slice(0, 10)
+  const ofset = Number(g.toplamBeklemeGun) || 0
+  if (ofset <= 0) return taban
+  const d = new Date(taban + 'T00:00:00')
+  d.setDate(d.getDate() + ofset)
+  return d.toISOString().slice(0, 10)
+}
+
 export const gorevGecikti = (g) =>
-  !!g?.sonTarih && !KAPALI_DURUMLAR.includes(g.durum) && String(g.sonTarih).slice(0, 10) < bugunStr()
+  !!g?.sonTarih && !KAPALI_DURUMLAR.includes(g?.durum) && !gorevBekliyorMu(g) &&
+  etkinSonTarih(g) < bugunStr()
 
 export const gecikmeGunu = (g) => {
   if (!gorevGecikti(g)) return 0
-  const fark = Date.now() - new Date(String(g.sonTarih).slice(0, 10) + 'T23:59:59').getTime()
+  const fark = Date.now() - new Date(etkinSonTarih(g) + 'T23:59:59').getTime()
   return Math.max(1, Math.ceil(fark / 86400000))
 }
 
-// Etkin (görünen) durum: gecikme saklanan durumu ezer (madde 26)
+// Kaç gündür bekliyor (görsel — beklerken "gecikti" yerine bunu göster)
+export const beklemeGunu = (g) => {
+  if (!gorevBekliyorMu(g) || !g?.beklemeBaslangic) return 0
+  const fark = Date.now() - new Date(g.beklemeBaslangic).getTime()
+  return Math.max(1, Math.ceil(fark / 86400000))
+}
+
+// Etkin (görünen) durum: gecikme saklanan durumu ezer (madde 26). Beklerken
+// gecikme SAYILMAZ — bekleme durumu + kaç gündür beklediği görünür.
 export const etkinDurum = (g) => {
   if (gorevGecikti(g)) return { id: 'suresi_gecti', isim: `${gecikmeGunu(g)} gün gecikti`, renk: 'var(--danger)', grup: 'acik' }
+  if (gorevBekliyorMu(g)) {
+    const taban = durumBilgi(g?.durum)
+    const bg = beklemeGunu(g)
+    return bg > 0 ? { ...taban, isim: `${taban.isim} · ${bg} gündür` } : taban
+  }
   return durumBilgi(g?.durum)
 }
 

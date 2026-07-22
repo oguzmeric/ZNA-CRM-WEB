@@ -11,6 +11,7 @@ import { useBildirim } from '../context/BildirimContext'
 import { gorevleriGetir, gorevGuncelle, gorevOnayaGonder } from '../services/gorevService'
 import { gorevYorumEkle } from '../services/gorevYorumService'
 import { gorusmeleriGetir, gorusmeGuncelle } from '../services/gorusmeService'
+import { gorevGecikti, gecikmeGunu } from '../lib/gorevSabitleri'
 import { Button, Input, Textarea, Label } from './ui'
 
 // Kapıya TAKILMAYAN durumlar: kapalılar + onayda bekleyen (iş teslim edilmiş)
@@ -33,11 +34,6 @@ const benimMi = (g, kullaniciId) => {
   if (String(g.atanan ?? '') === id) return true
   if (Array.isArray(g.ekip) && g.ekip.map(String).includes(id)) return true
   return false
-}
-
-const gecikmeGunu = (sonTarih) => {
-  const fark = Date.now() - new Date(sonTarih + 'T23:59:59').getTime()
-  return Math.max(1, Math.ceil(fark / 86400000))
 }
 
 export default function GecikmisGorevKapisi() {
@@ -66,10 +62,9 @@ export default function GecikmisGorevKapisi() {
       gorevleriGetir()
         .then(liste => {
           if (iptal) return
-          const bugun = bugunStr()
           const geciken = (liste || [])
             .filter(g => !KAPI_DISI.includes(g.durum))
-            .filter(g => g.sonTarih && g.sonTarih.slice(0, 10) < bugun)
+            .filter(g => gorevGecikti(g))   // saat durdurma + öteleme (mig 221) dahil
             .filter(g => benimMi(g, kullanici.id))
             .sort((a, b) => (a.sonTarih || '').localeCompare(b.sonTarih || ''))
           setGecikmisler(geciken)
@@ -128,7 +123,7 @@ export default function GecikmisGorevKapisi() {
   if (!aktif && !aktifGorusme) return null
 
   const kalanSayi = gecikmisler?.length || 0
-  const gun = aktif ? gecikmeGunu(aktif.sonTarih.slice(0, 10)) : 0
+  const gun = aktif ? gecikmeGunu(aktif) : 0
 
   const gorevListedenDus = () => setGecikmisler(prev => prev.filter(g => g.id !== aktif.id))
 

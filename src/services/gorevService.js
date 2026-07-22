@@ -12,7 +12,8 @@ const GOREV_LISTE_KOLONLARI = `id, baslik, aciklama, durum, oncelik, atanan_id, 
   gorev_no, ust_gorev_id, seviye, olusturan_id, kategori_id, ilerleme, ilerleme_modu,
   kabul_durumu, red_sebebi, onay_gerekli, onaylayici_id, onay_durumu, gizlilik,
   gozlemciler, zorunlu, tamamlama_kurali, bagimli_gorev_id, bagimlilik_turu, etiketler,
-  teklif_id, siparis_id, kesif_id, atama_turu, devreden_id, durum_sebebi, bitis_saat`
+  teklif_id, siparis_id, kesif_id, atama_turu, devreden_id, durum_sebebi, bitis_saat,
+  bekleme_baslangic, toplam_bekleme_gun`
 
 export const gorevleriGetir = () => cached('gorevler:list', async () => {
   const hepsi = []

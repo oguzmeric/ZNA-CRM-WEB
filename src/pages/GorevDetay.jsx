@@ -21,7 +21,7 @@ import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonDetay } from '../components/Skeleton'
 import {
   GECIKME_SEBEPLERI, KABUL_MAP, durumBilgi, etkinDurum, oncelikBilgi,
-  gorevGecikti, gecikmeGunu, anaGorevKapatKontrol, ilerlemeOtomatik,
+  gorevGecikti, gecikmeGunu, gorevBekliyorMu, beklemeGunu, anaGorevKapatKontrol, ilerlemeOtomatik,
   ILERLEME_ADIMLARI, SEBEP_ZORUNLU_DURUMLAR,
 } from '../lib/gorevSabitleri'
 import GorevAkisKarti from '../components/gorev/GorevAkisKarti'
@@ -678,6 +678,16 @@ function GorevDetay() {
               {gorev.sonTarih || '—'}{gorev.bitisSaat ? ` · ${String(gorev.bitisSaat).slice(0, 5)}` : ''}
               {gorevGecikti(gorev) && <b> · {gecikmeGunu(gorev)} gün gecikti</b>}
             </span>
+            {gorevBekliyorMu(gorev) && (
+              <div className="t-caption" style={{ color: '#a855f7', marginTop: 3 }}>
+                ⏸ Beklemede — gecikme saati durdu{beklemeGunu(gorev) > 0 ? ` (${beklemeGunu(gorev)} gündür)` : ''}
+              </div>
+            )}
+            {!gorevBekliyorMu(gorev) && Number(gorev.toplamBeklemeGun) > 0 && (
+              <div className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 3 }}>
+                +{gorev.toplamBeklemeGun} gün bekleme telafisi eklendi
+              </div>
+            )}
           </div>
           {gorev.baslamaTarih && (
             <div>
