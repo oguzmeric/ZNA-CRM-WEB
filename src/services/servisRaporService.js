@@ -14,6 +14,7 @@ export const servisRaporlariniGetir = async () => {
       .from('servis_raporlari')
       .select(RAPOR_LISTE_KOLONLARI)
       .order('bil_tarih', { ascending: false, nullsFirst: false })
+    .order('id', { ascending: false })
       .range(off, off + sayfa - 1)
     if (error) { console.error('servisRaporlariniGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
@@ -37,6 +38,7 @@ export const musteriRaporlariniGetir = async (musteriId) => {
     .select(RAPOR_LISTE_KOLONLARI)
     .eq('musteri_id', musteriId)
     .order('bil_tarih', { ascending: false, nullsFirst: false })
+    .order('id', { ascending: false })
   if (error) { console.error(error.message); return [] }
   return arrayToCamel(data) ?? []
 }
@@ -79,6 +81,7 @@ export const servisRaporlariSayfa = async ({
     .select('*', { count: 'exact' })
     .or('silindi.eq.false,silindi.is.null')
     .order('bil_tarih', { ascending: false, nullsFirst: false })
+    .order('id', { ascending: false })
 
   if (firma) q = q.eq('firma_adi', firma)
   if (teknisyen) q = q.eq('teknisyen', teknisyen)
@@ -109,6 +112,7 @@ export const servisRaporFiltreSecenekleri = async () => {
     const { data, error } = await supabase
       .from('servis_raporlari')
       .select('firma_adi, teknisyen, ariza_kodu, takip_kodu')
+      .order('id')           // sırasız .range() sayfaları tekrarlanabilir/atlanabilir
       .range(off, off + sayfa - 1)
     if (error || !data || data.length === 0) break
     hepsi.push(...data)

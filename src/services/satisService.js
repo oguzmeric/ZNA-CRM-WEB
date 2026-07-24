@@ -35,6 +35,7 @@ export const satislariGetir = () => cached('satislar:list', async () => {
       .from('satislar')
       .select('*')
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(off, off + sayfa - 1)
     // Error → throw (partial data cache'lenmesin, kullanıcı eksik liste görmesin)
     if (error) { console.error('satislariGetir hata:', error.message); throw error }

@@ -24,9 +24,13 @@ export default function ComboBox({
   const ref = useRef(null)
 
   const filtreli = useMemo(() => {
+    // Aynı ad birden çok kayıtta olabiliyor (esnweb import mükerrerleri) —
+    // tekilleştirmezsek duplicate React key'ler dropdown DOM'unu bozup
+    // filtre uygulanmamış bayat liste gösterebiliyor (24.07 "Element" vakası).
+    const tekil = [...new Set(options)]
     const q = trNormalize(value)
-    if (!q) return options.slice(0, maxGoster)
-    return options.filter(o => trNormalize(o).includes(q)).slice(0, maxGoster)
+    if (!q) return tekil.slice(0, maxGoster)
+    return tekil.filter(o => trNormalize(o).includes(q)).slice(0, maxGoster)
   }, [value, options, maxGoster])
 
   const trimlenmis = (value || '').trim()
@@ -82,7 +86,7 @@ export default function ComboBox({
         >
           {filtreli.map((o, i) => (
             <button
-              key={o}
+              key={`${i}-${o}`}
               type="button"
               onMouseDown={(e) => { e.preventDefault(); sec(o) }}
               onMouseEnter={() => setVurgu(i)}

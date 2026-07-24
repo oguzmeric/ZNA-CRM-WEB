@@ -22,6 +22,7 @@ export const hatirlatmalariGetir = async () => {
     supabase.from('hatirlatmalar').select('*')
       .eq('kullanici_id', kid)
       .order('hatirlatma_tarihi')
+      .order('id')
       .range(off, off + size - 1)
   )
   return arrayToCamel(data)

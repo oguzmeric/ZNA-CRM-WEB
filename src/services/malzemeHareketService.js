@@ -57,6 +57,7 @@ export const hareketleriGetir = async () => {
       .select(KOLONLAR)
       .eq('aktif', true)
       .order('olusturma_tarih', { ascending: false })
+      .order('id', { ascending: false })
       .range(off, off + sayfa - 1)
     if (error) { console.error('[malzemeHareket] liste:', error.message); throw error }
     if (!data?.length) break

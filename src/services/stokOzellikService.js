@@ -135,6 +135,8 @@ export const tumUrunOzellikleriGetir = () =>
     const data = await pagedFetch((off, size) =>
       supabase.from('stok_urun_ozellikler')
         .select('urun_id, ozellik_id, deger')
+        .order('urun_id')
+        .order('ozellik_id')  // (urun_id, ozellik_id) benzersiz — sayfalar deterministik
         .range(off, off + size - 1)
     )
     const map = new Map()

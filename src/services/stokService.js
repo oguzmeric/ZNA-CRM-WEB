@@ -24,7 +24,7 @@ export const alisFiyatGorebilir = (kullanici) =>
 
 export const stokUrunleriniGetir = () => cached('stokUrunler:list', async () => {
   const data = await pagedFetch((off, size) =>
-    supabase.from('stok_urunler').select(STOK_URUN_LISTE_KOLONLARI).order('stok_adi').range(off, off + size - 1)
+    supabase.from('stok_urunler').select(STOK_URUN_LISTE_KOLONLARI).order('stok_adi').order('id').range(off, off + size - 1)
   )
   return arrayToCamel(data)
 })
@@ -203,6 +203,7 @@ export const katalogUrunleriniGetir = async () => {
       .eq('katalogda_goster', true)
       .eq('aktif', true)   // pasif ürün müşteri kataloğunda görünmez (mig 151)
       .order('stok_adi')
+      .order('id')
       .range(off, off + size - 1)
   )
   return arrayToCamel(data)
@@ -210,7 +211,7 @@ export const katalogUrunleriniGetir = async () => {
 
 export const stokHareketleriniGetir = () => cached('stokHareketleri:list', async () => {
   const data = await pagedFetch((off, size) =>
-    supabase.from('stok_hareketleri').select('*').order('tarih', { ascending: false }).range(off, off + size - 1)
+    supabase.from('stok_hareketleri').select('*').order('tarih', { ascending: false }).order('id', { ascending: false }).range(off, off + size - 1)
   )
   return arrayToCamel(data)
 })
@@ -237,6 +238,7 @@ export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async
       .from('stok_kalemleri')
       .select('stok_kodu, marka, model, durum')
       .eq('silindi', false)  // sadece aktif
+      .order('id')           // sırasız .range() sayfaları tekrarlanabilir/atlanabilir
       .range(off, off + size - 1)
   )
   const map = new Map()
@@ -281,6 +283,7 @@ export const tumSeriNumaralariniGetir = () => cached('tumSN:list', async () => {
       .from('stok_kalemleri')
       .select('seri_no, stok_kodu, barkod')
       .not('seri_no', 'is', null)
+      .order('id')           // sırasız .range() sayfaları tekrarlanabilir/atlanabilir
       .range(off, off + size - 1)
   )
   const map = new Map()
@@ -299,6 +302,7 @@ export const modelKalemleriniGetir = async (stokKodu) => {
       .eq('stok_kodu', stokKodu)
       .eq('silindi', false)   // varsayılan: sadece aktif SN'ler
       .order('guncelleme_tarih', { ascending: false })
+      .order('id', { ascending: false })
       .range(off, off + size - 1)
   )
   return arrayToCamel(data) ?? []

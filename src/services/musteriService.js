@@ -14,7 +14,11 @@ export const musterileriGetir = () => cached('musteriler:list', async () => {
     const { data, error } = await supabase
       .from('musteriler')
       .select(MUSTERI_LISTE_KOLONLARI)
+      // olusturma_tarih benzersiz DEĞİL (esnweb toplu importu aynı damgayı taşır) —
+      // tek başına sıralanırsa .range() sayfaları arasında satırlar tekrarlanır/atlanır.
+      // id tiebreaker sıralamayı deterministik yapar (24.07 "her firma 3 kez" vakası).
       .order('olusturma_tarih', { ascending: false })
+      .order('id', { ascending: false })
       .range(offset, offset + sayfaBoyut - 1)
     if (error) { console.error('musterileriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break

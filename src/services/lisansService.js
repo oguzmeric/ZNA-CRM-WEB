@@ -57,7 +57,7 @@ function hesaplaDemoGun(bas, bitis) {
 
 export const lisanslariGetir = () => cached('lisanslar:list', async () => {
   const data = await pagedFetch((off, size) =>
-    supabase.from('trassir_lisanslar').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + size - 1)
+    supabase.from('trassir_lisanslar').select('*').order('olusturma_tarih', { ascending: false }).order('id', { ascending: false }).range(off, off + size - 1)
   )
   return (data || []).map(dbToForm)
 })

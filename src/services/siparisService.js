@@ -22,6 +22,7 @@ export const siparisleriGetir = () => cached('siparisler:list', async () => {
       .from('siparisler')
       .select('*')
       .order('olusturma_tarih', { ascending: false })
+      .order('id', { ascending: false })
       .range(off, off + sayfa - 1)
     if (error) { console.error('siparisleriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break

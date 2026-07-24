@@ -10,7 +10,7 @@ export const teklifleriGetir = () => cached('teklifler:list', async () => {
   const sayfa = 1000
   let off = 0
   while (true) {
-    const { data, error } = await supabase.from('teklifler').select(TEKLIF_LISTE_KOLONLARI).order('olusturma_tarih', { ascending: false }).range(off, off + sayfa - 1)
+    const { data, error } = await supabase.from('teklifler').select(TEKLIF_LISTE_KOLONLARI).order('olusturma_tarih', { ascending: false }).order('id', { ascending: false }).range(off, off + sayfa - 1)
     if (error) { console.error('teklifleriGetir hata:', error.message); throw error }
     if (!data || data.length === 0) break
     hepsi.push(...data)

@@ -5,7 +5,7 @@ import { cached, invalidate } from '../lib/cache'
 
 export const firmalariGetir = () => cached('firmalar:list', async () => {
   const data = await pagedFetch((off, size) =>
-    supabase.from('firmalar').select('*').order('olusturma_tarih', { ascending: false }).range(off, off + size - 1)
+    supabase.from('firmalar').select('*').order('olusturma_tarih', { ascending: false }).order('id', { ascending: false }).range(off, off + size - 1)
   )
   return arrayToCamel(data)
 })
