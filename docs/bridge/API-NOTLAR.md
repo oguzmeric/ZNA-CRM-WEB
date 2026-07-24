@@ -33,9 +33,13 @@ BURASI geçerlidir.
 }
 ```
 
-**KRİTİK:** `proxyMemberId` **null** olacak. PDF "originatorMemberId ile aynı
-değer" diyor ama öyle gönderilince **code 2 (yetki hatası)** dönüyor —
-canlıda test edildi. `platform: "3rdParty"` çalışıyor.
+**KRİTİK:** `proxyMemberId` **null** olacak. Güncel kılavuz (Sürüm 1.0,
+22.07.2026 — belediye 2026-07-24 mailiyle iletti) artık RESMEN "null gönderilir;
+dolu gönderilirse sistem vekâlet yetkisi arar, kod 2 yetki hatası döner" diyor —
+bizim canlı bulgumuz yazıya geçti.
+`platform`: **çelişki SÜRÜYOR** — güncel PDF hâlâ `"web"` sabit değerini yazıyor,
+biz canlıda `"3rdParty"` ile başardık. IP kısıtı bizde kapalı olduğu için ikisi de
+geçebilir; kodda önce doğrulanmış `"3rdParty"` kullan, kod 2/10 alırsan `"web"` dene.
 
 ## Kullanılacak metotlar
 
@@ -47,6 +51,21 @@ canlıda test edildi. `platform: "3rdParty"` çalışıyor.
 | `getTaskCommentList` | Yorumlar | `params: {taskId}` — `[{id, title, insertDatetime, content, fileList, imageList}]` |
 | `updateTaskProgress` | Durum yazma | Zorunlu: `id, taskStatusId, completedPercent, comment`; kalanlar `null`; **`sendSms: false` DAİMA** |
 | `insertTaskComment` | Yorum yazma | `taskId, content`; `sendSms: false` |
+
+## getTaskList filtre alanları (güncel kılavuz — çelişkiler çözüldü)
+
+Tümü istekte bulunmalı; kullanılmayan `null` gönderilir:
+`insertDate:{beginDate,endDate}` · `taskStatusIdList:[]` · `taskTypeIdList:[]` ·
+`departmentIdList:[]` · `pageNumber` (1'den başlar) · `pageSize` (max 25) ·
+`sortColumn:"insertDate"` · `sortWay:"ASC"|"DESC"` (**METİN**, sayı değil) ·
+`searchKeyword` (yoksa null). Önerilen sorgu aralığı: 5 dk'dan sık olmasın.
+
+**ZNA süzgeci = `taskTypeIdList`** (talep tipi). Alan adı artık kesin; yalnız
+DEĞERLERİ Orhan Bey'den bekleniyor.
+
+Güncel kılavuzda ilk kez görünen 2 metot (read-only kapsamda GEREKMEZ, ileride
+yazma için): `updateTaskComment` (yorum güncelle: `id`, `content`) ·
+`getTaskLastComment` (son yorum: `id`).
 
 ## Cevap kayıtlarının önemli alanları
 
@@ -68,14 +87,21 @@ yazılır, RLS staff-only olur.
 - **Cevaplarda UTC** (`...Z` sonekli) — mapper'da +3 çevir. (Belediyeye teyit soruldu.)
 - Sınır kaçırmamak için beginDate = son sorgu − 5-10 dk (belediye önerisi).
 
-## Durum akışı (belediye onaylı)
+## Durum kodları (taskStatusId — güncel kılavuz Bölüm 5, RESMİ)
 
-Biz göndeririz: `2` devam (0-50%), `3` olumlu (100%), `6` olumsuz (100%),
-`7` gerek kalmadı (100%). Kapatma `12` + `closeTaskStatusId` (3/6/7, params
-içinde) — kapatmayı muhtemelen belediye yapacak (Orhan Bey teyidi bekleniyor).
-`14-24` iç akış kodları, biz set etmeyiz; okurken gelebilir:
-14 Onaylandı, 15 Reddedildi, 16-19 Zamanlama, 20-22 Sonlandırma Onayı,
-23 Dış Birimde, 24 Eksik Bilgi.
+`1` Başlamadı · `2` Devam Ediyor · `3` Tamamlandı · `4` Yeniden Açıldı ·
+`5` Reddedildi · `6` Başarısız · `7` Gerek Kalmadı (tarihsel adı "Süresi Doldu") ·
+`8` Ek Süre Talebi · `9` Ek Süre Onayı · `10` Ek Süre Reddi · `11` Ek Süre İptali ·
+`12` Kapatıldı · `13` Onay Bekliyor.
+Kılavuz: "bunların dışındaki kodlar Bridge iç akışlarına aittir; entegrasyonda
+yukarıdakiler yeterli." (Önceki notta 14-24 diye geçenler bu kapsam dışı iç kodlar.)
+
+**DÜZELTME:** Eski notta `3`="olumlu", `6`="olumsuz" yazıyordu; RESMİ tablo
+`3`=Tamamlandı, `6`=Başarısız. Görüntü eşleşmesini buna göre yap.
+
+Yazma senaryosu (ileride): biz `2` devam / `3` tamamlandı / `6` başarısız /
+`7` gerek kalmadı göndeririz; `12` kapatmayı muhtemelen belediye yapar (Orhan Bey
+teyidi). updateTaskProgress `sendSms: false` DAİMA.
 
 ## Test kayıtları
 
@@ -84,10 +110,13 @@ içinde) — kapatmayı muhtemelen belediye yapacak (Orhan Bey teyidi bekleniyor
 
 ## Bekleyenler
 
-- [ ] ZNA görev tipi filtre değerleri (Orhan Bey → belediye koleksiyona işleyecek).
-      **Gelene kadar canlı çekim AÇILMAZ** — sistemde 4,3 milyon talep var.
-- [ ] Kapatma (12) kimde — belediye teyidi
-- [ ] Cevap tarihlerinin UTC olduğunun teyidi
+- [ ] **`taskTypeIdList` değerleri** — ZNA taleplerini ayıran görev tipi ID'leri.
+      Filtre ALANI artık kesin (güncel kılavuz); sadece DEĞERLERİ Orhan Bey'den
+      bekliyoruz. **Gelene kadar canlı çekim (getTaskList) AÇILMAZ** — 4,3M talep var;
+      test kaydı 4392945 ile getTask/getTaskCommentList tek-kayıt okuması serbest.
+- [ ] Kapatma (12) kimde — belediye teyidi (Orhan Bey)
+- [x] Cevap tarihleri UTC — 2026-07-24 mailiyle TEYİT (istek TR yerel, cevap "…Z").
+- [x] proxyMemberId=null — güncel kılavuzda RESMEN doğrulandı.
 
 ## Yerel geliştirme tuzağı
 
