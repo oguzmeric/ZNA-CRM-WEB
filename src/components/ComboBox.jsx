@@ -17,6 +17,7 @@ export default function ComboBox({
   allowNew = true,
   yeniMetin = 'olarak ekle',
   onSelectOption,
+  maxGoster = 30,   // yazmadan açılınca gösterilecek en fazla öğe (panel scroll'lu)
 }) {
   const [acik, setAcik] = useState(false)
   const [vurgu, setVurgu] = useState(0)
@@ -24,9 +25,9 @@ export default function ComboBox({
 
   const filtreli = useMemo(() => {
     const q = trNormalize(value)
-    if (!q) return options.slice(0, 30)
-    return options.filter(o => trNormalize(o).includes(q)).slice(0, 30)
-  }, [value, options])
+    if (!q) return options.slice(0, maxGoster)
+    return options.filter(o => trNormalize(o).includes(q)).slice(0, maxGoster)
+  }, [value, options, maxGoster])
 
   const trimlenmis = (value || '').trim()
   const zatenVar = filtreli.some(o => trNormalize(o) === trNormalize(trimlenmis))

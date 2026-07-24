@@ -152,9 +152,13 @@ export default function YeniTopluBakim() {
             {/* ComboBox metin tabanlı — seçilen ada göre müşteri id çözülür */}
             <ComboBox
               value={musteriMetin}
-              options={musteriler.map((m) => m.firma || `${m.ad ?? ''} ${m.soyad ?? ''}`.trim()).filter(Boolean)}
+              options={musteriler
+                .map((m) => m.firma || `${m.ad ?? ''} ${m.soyad ?? ''}`.trim())
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b, 'tr'))}
               allowNew={false}
-              placeholder="Müşteri ara ve seç…"
+              maxGoster={200}
+              placeholder={`Müşteri ara ve seç… (${musteriler.length} müşteri)`}
               onChange={(metin) => {
                 setMusteriMetin(metin)
                 const bul = musteriler.find(
