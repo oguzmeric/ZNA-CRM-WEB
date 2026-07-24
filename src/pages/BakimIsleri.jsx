@@ -8,6 +8,7 @@ import {
   sahaSorumlusuMu, TB_DURUMLAR,
 } from '../services/topluBakimService'
 import { Button, Card, EmptyState } from '../components/ui'
+import ComboBox from '../components/ComboBox'
 
 const FILTRELER = [
   { id: 'tumu', isim: 'Tümü' },
@@ -30,6 +31,7 @@ export default function BakimIsleri() {
   const [liste, setListe] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [filtre, setFiltre] = useState('tumu')
+  const [musteriFiltre, setMusteriFiltre] = useState('')
 
   const yukle = useCallback(async () => {
     setYukleniyor(true)
@@ -41,6 +43,8 @@ export default function BakimIsleri() {
   useEffect(() => { yukle() }, [yukle])
 
   const filtreli = liste.filter((t) => {
+    // Müşteri filtresi — liste büyüdükçe firma bazlı daraltma şart
+    if (musteriFiltre && !(t.musteriFirma || '').toLocaleLowerCase('tr').includes(musteriFiltre.toLocaleLowerCase('tr'))) return false
     if (filtre === 'tumu') return true
     if (filtre === 'devam_ediyor') return DEVAM_GRUBU.includes(t.durum)
     return t.durum === filtre
@@ -65,6 +69,17 @@ export default function BakimIsleri() {
             <Plus size={15} /> Yeni Toplu Bakım
           </Button>
         )}
+      </div>
+
+      {/* Müşteri filtresi */}
+      <div style={{ maxWidth: 360, marginBottom: 10 }}>
+        <ComboBox
+          value={musteriFiltre}
+          onChange={setMusteriFiltre}
+          options={[...new Set(liste.map((t) => t.musteriFirma).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))}
+          allowNew={false}
+          placeholder="🔍 Müşteriye göre filtrele…"
+        />
       </div>
 
       {/* Filtre çipleri */}

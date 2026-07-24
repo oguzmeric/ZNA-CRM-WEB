@@ -2,8 +2,10 @@
 // (spec 23-24-25). Tek yazdır sayfası; bölümler page-break ile ayrılır,
 // yazıcıdan "PDF olarak kaydet" ile arşivlenir. Tek müşteri imzası tüm alt
 // formlara otomatik uygulanır (spec 21).
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { topluBakimGetir, kalemBilgi, kalemDurumBilgi } from '../services/topluBakimService'
 import { kullanicilariGetir } from '../services/kullaniciService'
 
@@ -15,6 +17,32 @@ export default function BakimYazdir() {
   const [tb, setTb] = useState(null)
   const [personel, setPersonel] = useState([])
   const [secilen, setSecilen] = useState(null)   // null = birleşik; kalem id = tekil form
+  const [pdfUretiliyor, setPdfUretiliyor] = useState(false)
+  const sayfaRef = useRef(null)
+
+  // Ekrandaki belgeyi (önizleme = sayfanın kendisi) .pdf dosyası olarak indirir.
+  const pdfIndir = async () => {
+    setPdfUretiliyor(true)
+    try {
+      const canvas = await html2canvas(sayfaRef.current, {
+        scale: 2, backgroundColor: '#ffffff',
+        ignoreElements: (el) => el.classList?.contains('no-print'),
+      })
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const w = 210
+      const h = (canvas.height * w) / canvas.width
+      const img = canvas.toDataURL('image/jpeg', 0.92)
+      const sayfaH = 297
+      let kalan = h, offset = 0, ilk = true
+      while (kalan > 0) {
+        if (!ilk) pdf.addPage()
+        pdf.addImage(img, 'JPEG', 0, -offset, w, h)
+        kalan -= sayfaH; offset += sayfaH; ilk = false
+      }
+      const secilenKalem = secilen !== null ? tb.kalemler.find((x) => x.id === secilen) : null
+      pdf.save(`${secilenKalem ? secilenKalem.altNo : tb.tbNo}.pdf`)
+    } finally { setPdfUretiliyor(false) }
+  }
 
   useEffect(() => {
     topluBakimGetir(id).then(setTb)
@@ -27,10 +55,13 @@ export default function BakimYazdir() {
   const yapilanlar = tb.kalemler.filter((k) => k.sonucMetni || k.durum === 'yapilamadi')
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
+    <div ref={sayfaRef} style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
       {/* Yazdır butonu — çıktıya girmez */}
       <div className="no-print" style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => window.print()} style={btnStil}>🖨 Yazdır / PDF Kaydet</button>
+        <button onClick={pdfIndir} disabled={pdfUretiliyor} style={{ ...btnStil, background: '#16a34a' }}>
+          {pdfUretiliyor ? '⏳ Hazırlanıyor…' : '⬇️ PDF İndir'}
+        </button>
+        <button onClick={() => window.print()} style={btnStil}>🖨 Yazdır</button>
         <button onClick={() => setSecilen(null)} style={{ ...btnStil, background: secilen === null ? '#1E5AA8' : '#94a3b8' }}>Birleşik Rapor</button>
         {yapilanlar.map((k) => (
           <button key={k.id} onClick={() => setSecilen(k.id)} style={{ ...btnStil, background: secilen === k.id ? '#1E5AA8' : '#94a3b8' }}>
