@@ -11,7 +11,9 @@ import {
   topluBakimSil,
   tbDurumBilgi, kalemBilgi, kalemDurumBilgi, sahaSorumlusuMu, BAKIM_KALEMLERI,
 } from '../services/topluBakimService'
-import { Button, Card, Badge } from '../components/ui'
+import { Button, Card, Badge, Input } from '../components/ui'
+import BakimKalemFormModal from '../components/BakimKalemFormModal'
+import ImzaPad from '../components/ImzaPad'
 
 const fmtTarih = (t) => t ? new Date(String(t).includes('T') ? t : t + 'T00:00:00').toLocaleDateString('tr-TR') : '—'
 const fmtTarihSaat = (t) => t ? new Date(t).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
@@ -25,6 +27,9 @@ export default function BakimDetay() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [personel, setPersonel] = useState([])
   const [kalemEkleAcik, setKalemEkleAcik] = useState(false)
+  // Web'den yürütme: kalem formu + imza (mobil ile aynı akış, spec akışı korunur)
+  const [acikKalem, setAcikKalem] = useState(null)
+  const [imzaHedef, setImzaHedef] = useState(null)   // 'musteri' | 'personel'
 
   const yukle = useCallback(async () => {
     const t = await topluBakimGetir(id)
@@ -153,6 +158,45 @@ export default function BakimDetay() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
         {/* Sol — kalemler */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Saha akışı web'den de yürütülebilir */}
+          {!['iptal', 'tamamlandi', 'imza_bekleniyor'].includes(tb.durum) && (
+            <Card style={{ padding: '12px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['planlandi', 'atandi'].includes(tb.durum) && (
+                <Button variant="primary" onClick={async () => {
+                  const g = await topluBakimGuncelle(tb.id, { durum: 'yola_cikildi', yolaCikisTarih: new Date().toISOString() })
+                  if (g) yukle()
+                }}>🚗 Yola Çıkıldı</Button>
+              )}
+              {tb.durum === 'yola_cikildi' && (
+                <Button variant="primary" onClick={async () => {
+                  const g = await topluBakimGuncelle(tb.id, { durum: 'lokasyona_ulasildi', ulasmaTarih: new Date().toISOString() })
+                  if (g) yukle()
+                }}>📍 Lokasyona Ulaşıldı</Button>
+              )}
+              {tb.durum === 'lokasyona_ulasildi' && (
+                <Button variant="primary" onClick={async () => {
+                  const g = await topluBakimGuncelle(tb.id, { durum: 'bakim_basladi', baslamaTarih: new Date().toISOString() })
+                  if (g) yukle()
+                }}>▶️ Bakımı Başlat</Button>
+              )}
+              {['bakim_basladi', 'devam_ediyor', 'eksik_bakim'].includes(tb.durum) && (
+                <Button
+                  variant="primary"
+                  disabled={!tb.kalemler.every((k) => ['tamamlandi', 'ariza_tespit', 'yapilamadi'].includes(k.durum))}
+                  onClick={async () => {
+                    const g = await topluBakimGuncelle(tb.id, { durum: 'imza_bekleniyor', bitisTarih: new Date().toISOString() })
+                    if (g) yukle()
+                  }}
+                >
+                  ✅ Tümünü Tamamla ve İmzaya Geç
+                </Button>
+              )}
+              <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)', alignSelf: 'center' }}>
+                Aynı akış mobilde de yürütülebilir — hangisi önce işlerse o geçerli.
+              </span>
+            </Card>
+          )}
+
           {/* İlerleme */}
           <Card style={{ padding: '12px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
@@ -168,8 +212,13 @@ export default function BakimDetay() {
           {tb.kalemler.map((k) => {
             const kb = kalemBilgi(k.kalemTip)
             const kd = kalemDurumBilgi(k.durum)
+            const formAcilabilir = ['bakim_basladi', 'devam_ediyor', 'eksik_bakim', 'imza_bekleniyor'].includes(tb.durum)
             return (
-              <Card key={k.id} style={{ padding: '12px 16px', borderLeft: `3px solid ${kb.renk}` }}>
+              <Card
+                key={k.id}
+                onClick={() => formAcilabilir && setAcikKalem(k)}
+                style={{ padding: '12px 16px', borderLeft: `3px solid ${kb.renk}`, cursor: formAcilabilir ? 'pointer' : 'default' }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{kb.ikon} {kb.isim}</span>
@@ -184,7 +233,7 @@ export default function BakimDetay() {
                   </div>
                   {sahaMi && k.durum !== 'tamamlandi' && tb.durum !== 'iptal' && (
                     <button
-                      onClick={() => kalemSil(k)}
+                      onClick={(e) => { e.stopPropagation(); kalemSil(k) }}
                       title="Kalemi sil (tamamlanmış kalem silinemez)"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'inline-flex' }}
                     >
@@ -210,6 +259,45 @@ export default function BakimDetay() {
               </Card>
             )
           })}
+
+          {/* İmza adımı — web'den de (spec 21-22-26) */}
+          {tb.durum === 'imza_bekleniyor' && (
+            <Card style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>✍️ İmza ve Tamamlama</div>
+              {!tb.musteriImzaUrl && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <Input id="tb-yetkili-ad" defaultValue={tb.musteriYetkiliAd || ''} placeholder="Müşteri yetkilisi adı *" />
+                  <Input id="tb-yetkili-gorev" defaultValue={tb.musteriYetkiliGorev || ''} placeholder="Görevi" />
+                  <Input id="tb-yetkili-tel" defaultValue={tb.musteriYetkiliTel || ''} placeholder="Telefon" />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant={tb.musteriImzaUrl ? 'secondary' : 'primary'} onClick={() => {
+                  if (!tb.musteriImzaUrl) {
+                    const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
+                    if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
+                  }
+                  setImzaHedef('musteri')
+                }}>
+                  {tb.musteriImzaUrl ? '✓ Müşteri İmzası Alındı' : 'Müşteri İmzası Al'}
+                </Button>
+                <Button variant={tb.personelImzaUrl ? 'secondary' : 'primary'} onClick={() => setImzaHedef('personel')}>
+                  {tb.personelImzaUrl ? '✓ Personel İmzası Alındı' : 'Personel İmzası Al'}
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={!tb.musteriImzaUrl || !tb.personelImzaUrl}
+                  style={{ marginLeft: 'auto', background: '#16a34a' }}
+                  onClick={async () => {
+                    const g = await topluBakimGuncelle(tb.id, { durum: 'tamamlandi' })
+                    if (g) { toast?.success?.(`${tb.tbNo} tamamlandı 🎉`); yukle() }
+                  }}
+                >
+                  Toplu Bakımı Tamamla
+                </Button>
+              </div>
+            </Card>
+          )}
 
           {/* Kalem ekleme — spec 15: yalnız saha sorumlusu; teknik personele otomatik yansır */}
           {sahaMi && tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && eklenebilirKalemler.length > 0 && (
@@ -287,6 +375,35 @@ export default function BakimDetay() {
           )}
         </Card>
       </div>
+
+      {acikKalem && (
+        <BakimKalemFormModal
+          kalem={acikKalem}
+          onKapat={() => setAcikKalem(null)}
+          onKaydedildi={() => { setAcikKalem(null); yukle() }}
+        />
+      )}
+      {imzaHedef && (
+        <ImzaPad
+          baslik={imzaHedef === 'musteri' ? 'Müşteri Yetkilisi İmzası' : 'Teknik Personel İmzası'}
+          onKapat={() => setImzaHedef(null)}
+          onKaydet={async (dataUrl) => {
+            const simdi = new Date().toISOString()
+            const patch = imzaHedef === 'musteri'
+              ? {
+                  musteriImzaUrl: dataUrl, musteriImzaTarih: simdi,
+                  musteriYetkiliAd: document.getElementById('tb-yetkili-ad')?.value?.trim() || tb.musteriYetkiliAd,
+                  musteriYetkiliGorev: document.getElementById('tb-yetkili-gorev')?.value?.trim() || tb.musteriYetkiliGorev,
+                  musteriYetkiliTel: document.getElementById('tb-yetkili-tel')?.value?.trim() || tb.musteriYetkiliTel,
+                }
+              : { personelImzaUrl: dataUrl, personelImzaTarih: simdi }
+            const g = await topluBakimGuncelle(tb.id, patch)
+            setImzaHedef(null)
+            if (g) yukle()
+            else toast?.error?.('İmza kaydedilemedi.')
+          }}
+        />
+      )}
     </div>
   )
 }
