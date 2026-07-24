@@ -387,6 +387,47 @@ export async function onSiparisiOnayla(onSiparisId, {
     .single()
   if (eOs || !os) throw eOs || new Error('Ön sipariş bulunamadı')
 
+  // musteri_id çözümle — ön sipariş, müşteri kartı bağlanmamış bir görüşmeden
+  // açılmış olabilir; siparisler.musteri_id NOT NULL olduğundan null taşınırsa
+  // insert patlar ("Sistem hatası" gibi görünür — KİPTAŞ vakası, 2026-07-24).
+  // Zincir: ön sipariş → görüşme.musteri_id → firma adı birebir eşleşmesi.
+  let musteriId = os.musteri_id
+  let gorusmeFirma = null
+  if (!musteriId && os.gorusme_id) {
+    const { data: g } = await supabase
+      .from('gorusmeler')
+      .select('musteri_id, firma_adi')
+      .eq('id', os.gorusme_id)
+      .maybeSingle()
+    if (g?.musteri_id) musteriId = Number(g.musteri_id) || null
+    gorusmeFirma = g?.firma_adi || null
+  }
+  if (!musteriId && gorusmeFirma) {
+    const { data: adaylar } = await supabase
+      .from('musteriler')
+      .select('id, firma')
+      .ilike('firma', gorusmeFirma)
+      .limit(2)
+    // Yalnız TEK eşleşme güvenlidir; birden çoksa yanlış müşteriye bağlamayalım
+    if (adaylar?.length === 1) musteriId = adaylar[0].id
+  }
+  if (!musteriId) {
+    throw new Error(
+      'Bu ön siparişin müşteri bağlantısı yok. Kaynak görüşme kaydına müşteri seçin ' +
+      '(müşteri kartı yoksa önce oluşturun), sonra tekrar onaylayın.'
+    )
+  }
+  // Self-heal: çözümlenen bağı kalıcılaştır — bir sonraki akış düz geçsin
+  if (!os.musteri_id) {
+    await supabase.from('on_siparisler').update({ musteri_id: musteriId }).eq('id', onSiparisId)
+    if (os.gorusme_id) {
+      await supabase.from('gorusmeler')
+        .update({ musteri_id: String(musteriId) })
+        .eq('id', os.gorusme_id)
+        .is('musteri_id', null)
+    }
+  }
+
   // Genel toplam hesapla (kalemlerden)
   const araToplam = (fiyatliKalemler || []).reduce((s, k) => {
     const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0)
