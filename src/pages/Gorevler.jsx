@@ -718,16 +718,12 @@ function Gorevler() {
       { ...form, sonTarih: dtToTarih(form.bitisTarih), ekip: ekipIds },
       { detayYuklendi },
     )
+    // Ekip üyelerine YALNIZ uygulama içi bildirim — SMS YOK.
+    // (Ali'nin destek talebi 2026-07-24: Abdullah her görevine Ali'yi ekip yapınca
+    // Ali'ye görev başına SMS yağıyordu. Kural: SMS SADECE atanana gider.)
     const ekipeBildir = async (gorevId, oncelik) => {
-      const sonTarihStr = form.bitisTarih
-        ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
-        : form.sonTarih
       for (const uid of ekipIds) {
         bildirimEkle(String(uid), 'Yeni Görev — Ekip', `"${form.baslik}" görevine ekip üyesi olarak eklendiniz. Öncelik: ${oncelik?.isim || form.oncelik}. Son tarih: ${form.sonTarih}`, 'gorev', '/gorevler')
-        gorevAtamaSMSGonderVeIsaretle({
-          gorevId, atananId: String(uid),
-          gorevBaslik: form.baslik, sonTarih: sonTarihStr, oncelik: oncelik?.isim || form.oncelik,
-        }).catch(() => {})
       }
     }
 
@@ -748,11 +744,13 @@ function Gorevler() {
       toast.success('Görev güncellendi.')
       if (eski?.atanan !== form.atanan) {
         bildirimEkle(form.atanan, 'Görev Güncellendi', `"${form.baslik}" görevi size yeniden atandı.`, 'bilgi', '/gorevler')
-        // Yeni atanana SMS (kısa, kurumsal). Sessiz — hata olursa toast'a çevirmiyoruz.
-        gorevAtamaSMSGonderVeIsaretle({
-          gorevId: duzenleId, atananId: form.atanan,
-          gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: form.oncelik,
-        }).catch(() => {})
+        // Yeni atanana SMS — kendine atadıysa GÖNDERME (bildirimle aynı kural)
+        if (String(form.atanan) !== String(kullanici?.id)) {
+          gorevAtamaSMSGonderVeIsaretle({
+            gorevId: duzenleId, atananId: form.atanan,
+            gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: form.oncelik,
+          }).catch(() => {})
+        }
       }
       // Ekipte yeni gelen üyelere bildir (eski ekipte olmayanlar)
       const eskiEkipSet = new Set((eski?.ekip || []).map(String))
@@ -765,12 +763,9 @@ function Gorevler() {
         const sonTarihStr = form.bitisTarih
           ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
           : form.sonTarih
+        // Ekip üyesine SMS YOK — yalnız uygulama içi bildirim (SMS sadece atanana)
         for (const uid of yeniEkipIds) {
           bildirimEkle(String(uid), 'Görev Ekibine Eklendiniz', `"${form.baslik}" görevine ekip üyesi olarak eklendiniz.`, 'gorev', '/gorevler')
-          gorevAtamaSMSGonderVeIsaretle({
-            gorevId: duzenleId, atananId: String(uid),
-            gorevBaslik: form.baslik, sonTarih: sonTarihStr, oncelik: oncelik?.isim || form.oncelik,
-          }).catch(() => {})
         }
       }
     } else {
@@ -794,11 +789,13 @@ function Gorevler() {
         toast.success('Görev eklendi.')
         const oncelik = oncelikBilgi(form.oncelik)
         bildirimEkle(form.atanan, 'Yeni Görev Atandı', `"${form.baslik}" görevi size atandı. Öncelik: ${oncelik?.isim}. Son tarih: ${form.sonTarih}`, 'gorev', '/gorevler')
-        // SMS gönder — atanan kişinin telefonu varsa
-        gorevAtamaSMSGonderVeIsaretle({
-          gorevId: eklenen.id, atananId: form.atanan,
-          gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: oncelik?.isim,
-        }).catch(() => {})
+        // SMS gönder — YALNIZ atanana; kendine görev açana SMS gitmez
+        if (String(form.atanan) !== String(kullanici?.id)) {
+          gorevAtamaSMSGonderVeIsaretle({
+            gorevId: eklenen.id, atananId: form.atanan,
+            gorevBaslik: form.baslik, sonTarih: form.bitisTarih ? new Date(form.bitisTarih).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : form.sonTarih, oncelik: oncelik?.isim,
+          }).catch(() => {})
+        }
         // Ekip üyelerine de bildirim + SMS
         ekipeBildir(eklenen.id, oncelik).catch(() => {})
 

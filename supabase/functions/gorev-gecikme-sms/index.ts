@@ -42,7 +42,8 @@ serve(async (req) => {
     .from('gorevler')
     .select('id, baslik, atanan, atanan_id, son_tarih, durum, gecikme_sms_gonderildi')
     .lte('son_tarih', dunISO)
-    .not('durum', 'in', '(tamamlandi,iptal)')
+    // Kapalı durumlar + SLA saati durmuş bekleyenler (mig 221) gecikme SMS'i almaz
+    .not('durum', 'in', '(tamamlandi,iptal,reddedildi,taslak,beklemede,bilgi_bekleniyor)')
     .eq('gecikme_sms_gonderildi', false)
 
   if (error) {
