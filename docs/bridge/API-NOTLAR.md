@@ -118,7 +118,16 @@ teyidi). updateTaskProgress `sendSms: false` DAİMA.
 - [x] Cevap tarihleri UTC — 2026-07-24 mailiyle TEYİT (istek TR yerel, cevap "…Z").
 - [x] proxyMemberId=null — güncel kılavuzda RESMEN doğrulandı.
 
-## Yerel geliştirme tuzağı
+## Ağ erişimi — GÜNDEN GÜNE DEĞİŞKEN (kritik)
 
-Bu ofis makinesinde DNS, alan adını iç ağ IP'sine (10.100.5.67) çözüyor →
-timeout. Gerçek IP: 95.0.169.114 (`curl --resolve` ile zorla). Bulutta sorun yok.
+Ofis DNS'i alan adını iç ağ IP'sine çözer (10.100.5.67; genel IP 95.0.169.114).
+- **2026-07-23:** iç IP timeout, genel IP AÇIK → testler genel IP'den geçti.
+- **2026-07-24 akşam:** TERSİNE DÖNDÜ — iç IP 200/30ms, genel IP TCP timeout
+  (hem ofisten hem Supabase'den). Yerel ağdan uçtan uca test yine BAŞARILI
+  (auth 0 / getTask 187 alan / yorum listesi 0). Yani sözleşme doğru, engel ağ.
+- **Sonuç:** genel erişim kapalı kaldıkça edge fn (bulut IP) BAĞLANAMAZ.
+  Belediyeye sorulacak: 95.0.169.114 dış erişimi bilinçli mi kapatıldı /
+  IP whitelist mi geldi? Whitelist ise sabit çıkış IP'li ara katman gerekir
+  (edge fn IP'si değişkendir).
+- Test kaydı 4392945'in **taskTypeId = 9425** çıktı — muhtemel ZNA görev tipi
+  (Orhan Bey teyidi olmadan canlı çekimde KULLANMA).
