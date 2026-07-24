@@ -139,7 +139,7 @@ export default function BakimIsleri() {
                     </span>
                   )}
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <User size={12} /> Kalemler: {tamam}/{toplam} sonuçlandı
+                    <User size={12} /> Bakımlar: {tamam}/{toplam} sonuçlandı
                   </span>
                 </div>
 

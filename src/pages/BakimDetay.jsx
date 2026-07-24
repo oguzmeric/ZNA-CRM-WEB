@@ -200,7 +200,7 @@ export default function BakimDetay() {
           {/* İlerleme */}
           <Card style={{ padding: '12px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              <span><strong>{tamam}</strong> / {tb.kalemler.length} kalem tamamlandı</span>
+              <span><strong>{tamam}</strong> / {tb.kalemler.length} bakım sonuçlandı</span>
               <span style={{ fontWeight: 700 }}>%{oran}</span>
             </div>
             <div style={{ height: 8, borderRadius: 4, background: 'var(--surface-sunken)', overflow: 'hidden' }}>
