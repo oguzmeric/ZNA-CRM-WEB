@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { kullanicilariGetir } from '../services/kullaniciService'
 import {
   topluBakimGetir, topluBakimGuncelle, topluBakimKalemEkle, topluBakimKalemSil,
+  topluBakimSil,
   tbDurumBilgi, kalemBilgi, kalemDurumBilgi, sahaSorumlusuMu, BAKIM_KALEMLERI,
 } from '../services/topluBakimService'
 import { Button, Card, Badge } from '../components/ui'
@@ -65,6 +66,14 @@ export default function BakimDetay() {
     else toast?.error?.('İptal edilemedi.')
   }
 
+  const kaliciSil = async () => {
+    if (!window.confirm(`${tb.tbNo} kalıcı olarak silinecek (tüm kalemleriyle birlikte). Emin misiniz?`)) return
+    const s = await topluBakimSil(tb.id)
+    if (s?.hata) { toast?.error?.('Silinemedi: ' + s.hata); return }
+    toast?.success?.('Bakım işi silindi.')
+    navigate('/bakim-isleri')
+  }
+
   if (yukleniyor) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
   if (!tb) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Bakım işi bulunamadı.</div>
 
@@ -91,10 +100,17 @@ export default function BakimDetay() {
             {d.isim}
           </span>
         </div>
-        {sahaMi && tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && (
-          <Button variant="ghost" onClick={iptalEt} style={{ color: '#dc2626' }}>
-            <XCircle size={15} /> İptal Et
-          </Button>
+        {sahaMi && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && (
+              <Button variant="ghost" onClick={iptalEt} style={{ color: '#dc2626' }}>
+                <XCircle size={15} /> İptal Et
+              </Button>
+            )}
+            <Button variant="ghost" onClick={kaliciSil} style={{ color: '#dc2626' }}>
+              <Trash2 size={15} /> Sil
+            </Button>
+          </div>
         )}
       </div>
 

@@ -153,6 +153,13 @@ export const topluBakimGuncelle = async (id, patch) => {
   return toCamel(data)
 }
 
+// Kalıcı silme — yalnız saha sorumlusu (RLS de korur); kalemler CASCADE gider.
+export const topluBakimSil = async (id) => {
+  const { error } = await supabase.from('toplu_bakimlar').delete().eq('id', id)
+  if (error) { console.error('[topluBakim] sil:', error.message); return { hata: error.message } }
+  return { ok: true }
+}
+
 // Sonradan kalem ekleme (spec madde 15) — yalnız saha sorumlusu (RLS de korur).
 export const topluBakimKalemEkle = async (topluBakimId, kalemTip) => {
   const { data, error } = await supabase
