@@ -15,6 +15,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
+  Landmark,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -189,6 +190,9 @@ const menuItems = [
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
+  // Bridge Talepleri — Başakşehir Belediyesi entegrasyonu (Seçenek A: ayrı menü).
+  // lucide 'Landmark' ikonu; RLS zaten staff-only, menü tüm personele açık.
+  { id: 'bridge_talepleri', isim: 'Bridge Talepleri', Icon: Landmark, yol: '/bridge-talepleri', modul: null, grup: 'operasyon' },
   { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   { id: 'dokumanlarim', isim: 'Dokümanlarım', Icon: FolderOpen, yol: '/dokumanlarim', modul: null, grup: 'operasyon' },
@@ -269,6 +273,7 @@ const sayfaIsimleri = {
   '/sozlesmeler': 'Sözleşmeler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
+  '/bridge-talepleri': 'Bridge Talepleri',
   '/raporlar': 'Raporlar',
   '/chat': 'Sohbet',
   '/kullanici-yonetimi': 'Kullanıcı Yönetimi',

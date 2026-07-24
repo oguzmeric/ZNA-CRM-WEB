@@ -77,6 +77,7 @@ const TakvimBaglantilari = lazy(() => import('./pages/TakvimBaglantilari'))
 const OAuthGoogleCallback = lazy(() => import('./pages/OAuthGoogleCallback'))
 const Notlarim = lazy(() => import('./pages/Notlarim'))
 const Destek = lazy(() => import('./pages/Destek'))
+const BridgeTalepler = lazy(() => import('./pages/BridgeTalepler'))
 const MemnuniyetDegerlendirme = lazy(() => import('./pages/MemnuniyetDegerlendirme'))
 const MusteriDashboard = lazy(() => import('./pages/musteri/MusteriDashboard'))
 const YeniTalep = lazy(() => import('./pages/musteri/YeniTalep'))
@@ -429,6 +430,7 @@ function App() {
           <Route path="/oauth/google/callback" element={<OAuthGoogleCallback />} />
           <Route path="/notlarim" element={<Notlarim />} />
           <Route path="/destek" element={<Destek />} />
+          <Route path="/bridge-talepleri" element={<BridgeTalepler />} />
           <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
           <Route path="/sla-ayarlari" element={<YonetimGuard><SlaAyarlari /></YonetimGuard>} />
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />
