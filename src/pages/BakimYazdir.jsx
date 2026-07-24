@@ -283,8 +283,8 @@ function ImzaBloku({ tb, personelAd }) {
       <div style={imzaKutuStil}>
         <div style={imzaEtiketStil}>MÜŞTERİ YETKİLİSİ</div>
         {tb.musteriImzaUrl
-          ? <img src={tb.musteriImzaUrl} alt="Müşteri imzası" style={{ maxHeight: 52, maxWidth: '100%' }} />
-          : <div style={{ height: 52 }} />}
+          ? <img src={tb.musteriImzaUrl} alt="Müşteri imzası" style={imzaImgStil} />
+          : <div style={{ height: 90 }} />}
         <div style={{ fontSize: 11, fontWeight: 700 }}>{tb.musteriYetkiliAd || '—'}</div>
         <div style={{ fontSize: 10, color: '#64748b' }}>
           {tb.musteriYetkiliGorev || ''}{tb.musteriImzaTarih ? ` · ${fmtTarihSaat(tb.musteriImzaTarih)}` : ''}
@@ -293,8 +293,8 @@ function ImzaBloku({ tb, personelAd }) {
       <div style={imzaKutuStil}>
         <div style={imzaEtiketStil}>TEKNİK PERSONEL</div>
         {tb.personelImzaUrl
-          ? <img src={tb.personelImzaUrl} alt="Personel imzası" style={{ maxHeight: 52, maxWidth: '100%' }} />
-          : <div style={{ height: 52 }} />}
+          ? <img src={tb.personelImzaUrl} alt="Personel imzası" style={imzaImgStil} />
+          : <div style={{ height: 90 }} />}
         <div style={{ fontSize: 11, fontWeight: 700 }}>{personelAd(tb.teknikPersonelId)}</div>
         <div style={{ fontSize: 10, color: '#64748b' }}>
           {tb.personelImzaTarih ? fmtTarihSaat(tb.personelImzaTarih) : ''}
@@ -306,6 +306,11 @@ function ImzaBloku({ tb, personelAd }) {
 
 const imzaKutuStil = {
   flex: 1, border: '1px solid #cbd5e1', borderRadius: 6, padding: 10,
-  textAlign: 'center', minHeight: 110,
+  textAlign: 'center', minHeight: 150,
+  display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+}
+// İmza görseli — büyük ve kutuda tam ortalı
+const imzaImgStil = {
+  maxHeight: 90, maxWidth: '90%', display: 'block', margin: '4px auto', objectFit: 'contain',
 }
 const imzaEtiketStil = { fontSize: 10, fontWeight: 800, color: '#475569', marginBottom: 6 }
