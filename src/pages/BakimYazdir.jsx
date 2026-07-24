@@ -6,6 +6,26 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import znaBanner from '../assets/servis-formu/zna-banner.png'
+import anadolunetLogo from '../assets/servis-formu/anadolunet-logo.jpeg'
+
+// Servis formu şablonuyla AYNI kurumsal kimlik (ServisFormu.jsx ile hizalı)
+const SIRKET_BILGI = {
+  zna: {
+    bannerSrc: znaBanner, bannerYukseklik: 90, label: 'ZNA Teknoloji',
+    firmaAdi: 'ZNA TEKNOLOJİ BİLİŞİM HİZMETLERİ SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
+    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
+    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    accent: '#16365D', accentBg: '#DCE6F1',
+  },
+  anadolunet: {
+    bannerSrc: anadolunetLogo, bannerYukseklik: 80, label: 'Anadolunet',
+    firmaAdi: 'ANADOLUNET DİJİTAL YAPI A.Ş.',
+    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
+    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    accent: '#1A1A1A', accentBg: '#F0F0F0',
+  },
+}
 import { topluBakimGetir, kalemBilgi, kalemDurumBilgi } from '../services/topluBakimService'
 import { kullanicilariGetir } from '../services/kullaniciService'
 
@@ -18,6 +38,8 @@ export default function BakimYazdir() {
   const [personel, setPersonel] = useState([])
   const [secilen, setSecilen] = useState(null)   // null = birleşik; kalem id = tekil form
   const [pdfUretiliyor, setPdfUretiliyor] = useState(false)
+  const [sirket, setSirket] = useState('zna')
+  const cfg = SIRKET_BILGI[sirket]
   const sayfaRef = useRef(null)
 
   // Ekrandaki belgeyi (önizleme = sayfanın kendisi) .pdf dosyası olarak indirir.
@@ -68,13 +90,24 @@ export default function BakimYazdir() {
             {kalemBilgi(k.kalemTip).isim} Formu
           </button>
         ))}
+        <span style={{ borderLeft: '1px solid #cbd5e1', margin: '0 4px' }} />
+        {Object.entries(SIRKET_BILGI).map(([id, s]) => (
+          <button key={id} onClick={() => setSirket(id)} style={{ ...btnStil, background: sirket === id ? '#0176D3' : '#cbd5e1', color: sirket === id ? '#fff' : '#334155' }}>
+            {s.label}
+          </button>
+        ))}
         <button onClick={() => window.close()} style={{ ...btnStil, background: '#64748b' }}>Kapat</button>
       </div>
       <style>{`
-        @media print { .no-print { display: none !important; } .sayfa-kes { page-break-before: always; } }
+        @media print {
+          .no-print { display: none !important; }
+          .sayfa-kes { page-break-before: always; }
+          body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: A4; margin: 8mm; }
+        }
         table { border-collapse: collapse; width: 100%; }
         td, th { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 12px; text-align: left; }
-        th { background: #f1f5f9; }
+        th { background: ${cfg.accentBg}; color: ${cfg.accent}; }
       `}</style>
 
       {/* ═══ TEKİL BAKIM FORMU (seçilen kalem) ═══ */}
@@ -83,7 +116,7 @@ export default function BakimYazdir() {
         if (!k) return null
         return (
           <div>
-            <Baslik altBaslik={`${kalemBilgi(k.kalemTip).isim.toLocaleUpperCase('tr')} BAKIM FORMU`} tbNo={k.altNo} />
+            <Baslik altBaslik={`${kalemBilgi(k.kalemTip).isim.toLocaleUpperCase('tr')} BAKIM FORMU`} tbNo={k.altNo} cfg={cfg} />
             <BilgiTablosu tb={tb} personelAd={personelAd} kalem={k} />
             <h3 style={h3Stil}>Bakım Sonucu</h3>
             <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, padding: 12, fontSize: 12.5, lineHeight: 1.65 }}>
@@ -93,13 +126,14 @@ export default function BakimYazdir() {
             </div>
             <CevapOzeti kalem={k} />
             <ImzaBloku tb={tb} personelAd={personelAd} />
+            <KurumsalFooter cfg={cfg} />
           </div>
         )
       })()}
 
       {secilen !== null ? null : (<>
       {/* ═══ BİRLEŞİK TOPLU BAKIM RAPORU (spec 24) ═══ */}
-      <Baslik altBaslik="TOPLU BAKIM RAPORU (BİRLEŞİK)" tbNo={tb.tbNo} />
+      <Baslik altBaslik="TOPLU BAKIM RAPORU" tbNo={tb.tbNo} cfg={cfg} />
       <BilgiTablosu tb={tb} personelAd={personelAd} />
 
       <h3 style={h3Stil}>Yapılan Bakım Kalemleri ve Sonuçları</h3>
@@ -127,6 +161,7 @@ export default function BakimYazdir() {
       ))}
 
       <ImzaBloku tb={tb} personelAd={personelAd} />
+      <KurumsalFooter cfg={cfg} />
       </>)}
     </div>
   )
@@ -136,22 +171,41 @@ const btnStil = {
   padding: '10px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
   background: '#1E5AA8', color: '#fff', fontWeight: 700, fontSize: 14,
 }
-const h3Stil = { fontSize: 13, margin: '16px 0 6px', borderBottom: '2px solid #1E5AA8', paddingBottom: 4 }
+const h3Stil = { fontSize: 13, margin: '16px 0 6px', borderBottom: '2px solid #334155', paddingBottom: 4, color: '#1f2937' }
 
-function Baslik({ altBaslik, tbNo }) {
+// Servis formu şablonuyla aynı antet: şirket bannerı + belge başlık şeridi
+function Baslik({ altBaslik, tbNo, cfg }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '3px solid #1E5AA8', paddingBottom: 10, marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <img src="/logo.jpeg" alt="ZNA" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>ZNA TEKNOLOJİ</div>
-          <div style={{ fontSize: 11, color: '#475569' }}>{altBaslik}</div>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ textAlign: 'center', marginBottom: 8 }}>
+        <img
+          src={cfg.bannerSrc}
+          alt={cfg.firmaAdi}
+          style={{ maxWidth: '100%', height: cfg.bannerYukseklik, objectFit: 'contain' }}
+        />
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: cfg.accentBg, border: `1.5px solid ${cfg.accent}`,
+        padding: '6px 12px',
+      }}>
+        <div style={{ fontWeight: 800, fontSize: 13, color: cfg.accent, letterSpacing: 0.5 }}>{altBaslik}</div>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: cfg.accent }}>{tbNo}</span>
+          <span style={{ fontSize: 10, color: '#64748b', marginLeft: 10 }}>{new Date().toLocaleDateString('tr-TR')}</span>
         </div>
       </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 14, color: '#1E5AA8' }}>{tbNo}</div>
-        <div style={{ fontSize: 10, color: '#64748b' }}>{new Date().toLocaleDateString('tr-TR')}</div>
-      </div>
+    </div>
+  )
+}
+
+// Kurumsal alt bilgi (servis formu footer'ı ile aynı)
+function KurumsalFooter({ cfg }) {
+  return (
+    <div style={{ marginTop: 10, fontSize: 8.5, color: cfg.accent, textAlign: 'center', lineHeight: 1.5 }}>
+      <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
+      <div>{cfg.adres}</div>
+      <div>{cfg.iletisim}</div>
     </div>
   )
 }
