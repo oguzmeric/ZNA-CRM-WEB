@@ -2,7 +2,7 @@
 // sonradan kalem ekleme (yalnız saha sorumlusu — spec madde 15), iptal.
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Wrench, ArrowLeft, Plus, Trash2, XCircle, MapPin, Phone, FileText } from 'lucide-react'
+import { Wrench, ArrowLeft, Plus, Trash2, XCircle, MapPin, Phone, FileText, Printer, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { kullanicilariGetir } from '../services/kullaniciService'
@@ -100,19 +100,55 @@ export default function BakimDetay() {
             {d.isim}
           </span>
         </div>
-        {sahaMi && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && (
-              <Button variant="ghost" onClick={iptalEt} style={{ color: '#dc2626' }}>
-                <XCircle size={15} /> İptal Et
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" onClick={() => window.open(`/bakim-isleri/${tb.id}/yazdir`, '_blank')}>
+            <Printer size={15} /> Rapor / Yazdır
+          </Button>
+          {sahaMi && (
+            <>
+              {tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && (
+                <Button variant="ghost" onClick={iptalEt} style={{ color: '#dc2626' }}>
+                  <XCircle size={15} /> İptal Et
+                </Button>
+              )}
+              <Button variant="ghost" onClick={kaliciSil} style={{ color: '#dc2626' }}>
+                <Trash2 size={15} /> Sil
               </Button>
-            )}
-            <Button variant="ghost" onClick={kaliciSil} style={{ color: '#dc2626' }}>
-              <Trash2 size={15} /> Sil
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Sıradaki adım şeridi — "iş burada mı kalıyor?" karışıklığını önler:
+          yürütme MOBİLDE, web izleme + rapor merkezi */}
+      {tb.durum !== 'iptal' && (
+        <Card style={{
+          marginBottom: 16, padding: '10px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: tb.durum === 'tamamlandi' ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.07)',
+          border: `1px solid ${tb.durum === 'tamamlandi' ? 'rgba(34,197,94,0.35)' : 'rgba(59,130,246,0.25)'}`,
+        }}>
+          <Smartphone size={16} style={{ color: tb.durum === 'tamamlandi' ? '#16a34a' : 'var(--brand-primary)', flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            {['planlandi', 'atandi'].includes(tb.durum) && (
+              <>
+                <strong>Sıradaki adım mobilde:</strong> Bu iş, {personelAd(tb.teknikPersonelId)}'in telefonundaki
+                <strong> Bakım</strong> ekranına düştü. "Yola Çıktım → Lokasyona Ulaştım → Bakımı Başlat" akışı ve
+                bakım formları mobil uygulamada doldurulur — buradan ilerlemeyi canlı izlersiniz.
+              </>
+            )}
+            {['yola_cikildi', 'lokasyona_ulasildi', 'bakim_basladi', 'devam_ediyor', 'eksik_bakim'].includes(tb.durum) && (
+              <><strong>Teknik personel sahada</strong> — kalem durumları ve sonuç metinleri tamamlandıkça burada görünür.</>
+            )}
+            {tb.durum === 'imza_bekleniyor' && (
+              <><strong>Kalemler tamamlandı</strong> — mobilde müşteri yetkilisi ve teknik personel imzaları bekleniyor.</>
+            )}
+            {['tamamlandi', 'yonetici_kontrolunde', 'musteriye_gonderildi'].includes(tb.durum) && (
+              <><strong>Bakım tamamlandı</strong> — "Rapor / Yazdır" ile birleşik rapor ve kalem formlarını PDF alabilirsiniz.</>
+            )}
+          </span>
+        </Card>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
         {/* Sol — kalemler */}
@@ -218,6 +254,27 @@ export default function BakimDetay() {
           <Bilgi etiket="Öncelik" deger={tb.oncelik} />
           {tb.aciklama && <Bilgi etiket="Açıklama" deger={tb.aciklama} />}
           {tb.iptalSebebi && <Bilgi etiket="İptal Sebebi" deger={tb.iptalSebebi} />}
+
+          {/* İmzalar (F4 — mobilde alınır, burada görünür) */}
+          {(tb.musteriImzaUrl || tb.personelImzaUrl) && (
+            <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 6 }}>İMZALAR</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {tb.musteriImzaUrl && (
+                  <div style={{ flex: 1, border: '1px solid var(--border-default)', borderRadius: 8, padding: 6, background: '#fff', textAlign: 'center' }}>
+                    <img src={tb.musteriImzaUrl} alt="Müşteri imzası" style={{ maxHeight: 40, maxWidth: '100%' }} />
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Müşteri</div>
+                  </div>
+                )}
+                {tb.personelImzaUrl && (
+                  <div style={{ flex: 1, border: '1px solid var(--border-default)', borderRadius: 8, padding: 6, background: '#fff', textAlign: 'center' }}>
+                    <img src={tb.personelImzaUrl} alt="Personel imzası" style={{ maxHeight: 40, maxWidth: '100%' }} />
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Personel</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Saha zaman çizelgesi */}
           {(tb.yolaCikisTarih || tb.ulasmaTarih || tb.baslamaTarih || tb.bitisTarih) && (

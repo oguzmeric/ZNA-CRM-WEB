@@ -81,6 +81,7 @@ const BridgeTalepler = lazy(() => import('./pages/BridgeTalepler'))
 const BakimIsleri = lazy(() => import('./pages/BakimIsleri'))
 const YeniTopluBakim = lazy(() => import('./pages/YeniTopluBakim'))
 const BakimDetay = lazy(() => import('./pages/BakimDetay'))
+const BakimYazdir = lazy(() => import('./pages/BakimYazdir'))
 const MemnuniyetDegerlendirme = lazy(() => import('./pages/MemnuniyetDegerlendirme'))
 const MusteriDashboard = lazy(() => import('./pages/musteri/MusteriDashboard'))
 const YeniTalep = lazy(() => import('./pages/musteri/YeniTalep'))
@@ -323,6 +324,7 @@ function App() {
           <Route path="/fatura-talepleri/:id/yazdir" element={<ProformaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
           <Route path="/siparisler/:id/yazdir" element={<AdminGuard><SiparisYazdir /></AdminGuard>} />
+          <Route path="/bakim-isleri/:id/yazdir" element={<BakimYazdir />} />
         </Routes>
       </Suspense>
     )
