@@ -14,6 +14,7 @@ export default function BakimYazdir() {
   const { id } = useParams()
   const [tb, setTb] = useState(null)
   const [personel, setPersonel] = useState([])
+  const [secilen, setSecilen] = useState(null)   // null = birleşik; kalem id = tekil form
 
   useEffect(() => {
     topluBakimGetir(id).then(setTb)
@@ -28,8 +29,14 @@ export default function BakimYazdir() {
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
       {/* Yazdır butonu — çıktıya girmez */}
-      <div className="no-print" style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+      <div className="no-print" style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={() => window.print()} style={btnStil}>🖨 Yazdır / PDF Kaydet</button>
+        <button onClick={() => setSecilen(null)} style={{ ...btnStil, background: secilen === null ? '#1E5AA8' : '#94a3b8' }}>Birleşik Rapor</button>
+        {yapilanlar.map((k) => (
+          <button key={k.id} onClick={() => setSecilen(k.id)} style={{ ...btnStil, background: secilen === k.id ? '#1E5AA8' : '#94a3b8' }}>
+            {kalemBilgi(k.kalemTip).isim} Formu
+          </button>
+        ))}
         <button onClick={() => window.close()} style={{ ...btnStil, background: '#64748b' }}>Kapat</button>
       </div>
       <style>{`
@@ -39,7 +46,28 @@ export default function BakimYazdir() {
         th { background: #f1f5f9; }
       `}</style>
 
-      {/* ═══ 1) BİRLEŞİK TOPLU BAKIM RAPORU (spec 24) ═══ */}
+      {/* ═══ TEKİL BAKIM FORMU (seçilen kalem) ═══ */}
+      {secilen !== null && (() => {
+        const k = yapilanlar.find((x) => x.id === secilen)
+        if (!k) return null
+        return (
+          <div>
+            <Baslik altBaslik={`${kalemBilgi(k.kalemTip).isim.toLocaleUpperCase('tr')} BAKIM FORMU`} tbNo={k.altNo} />
+            <BilgiTablosu tb={tb} personelAd={personelAd} kalem={k} />
+            <h3 style={h3Stil}>Bakım Sonucu</h3>
+            <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, padding: 12, fontSize: 12.5, lineHeight: 1.65 }}>
+              {k.durum === 'yapilamadi'
+                ? `Bu sistemin bakımı yapılamamıştır. Sebep: ${k.yapilamadiSebep || '—'}`
+                : (k.sonucMetni || '—')}
+            </div>
+            <CevapOzeti kalem={k} />
+            <ImzaBloku tb={tb} personelAd={personelAd} />
+          </div>
+        )
+      })()}
+
+      {secilen !== null ? null : (<>
+      {/* ═══ BİRLEŞİK TOPLU BAKIM RAPORU (spec 24) ═══ */}
       <Baslik altBaslik="TOPLU BAKIM RAPORU (BİRLEŞİK)" tbNo={tb.tbNo} />
       <BilgiTablosu tb={tb} personelAd={personelAd} />
 
@@ -68,6 +96,7 @@ export default function BakimYazdir() {
       ))}
 
       <ImzaBloku tb={tb} personelAd={personelAd} />
+      </>)}
     </div>
   )
 }
