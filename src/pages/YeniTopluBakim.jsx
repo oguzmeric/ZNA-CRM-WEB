@@ -95,7 +95,7 @@ export default function YeniTopluBakim() {
 
   const kaydet = async () => {
     if (!form.musteriId) { toast?.error?.('Müşteri seçin.'); return }
-    if (!form.lokasyonId) { toast?.error?.('Lokasyon seçin.'); return }
+    // Lokasyon OPSİYONEL — lokasyonu olmayan müşteride doğrudan devam edilir (24.07)
     if (!form.planlananTarih) { toast?.error?.('Planlanan bakım tarihi girin.'); return }
     if (!form.teknikPersonelId) { toast?.error?.('Görevli teknik personel seçin.'); return }
     if (secilenKalemler.length === 0) { toast?.error?.('En az bir bakım kalemi seçin.'); return }
@@ -103,7 +103,7 @@ export default function YeniTopluBakim() {
     setKaydediliyor(true)
     const sonuc = await topluBakimOlustur({
       musteriId: Number(form.musteriId),
-      lokasyonId: Number(form.lokasyonId),
+      lokasyonId: form.lokasyonId ? Number(form.lokasyonId) : null,
       lokasyonAdi: seciliLokasyon?.ad || null,
       lokasyonAdres: form.lokasyonAdres || null,
       sozlesmeId: form.sozlesmeId ? Number(form.sozlesmeId) : null,
@@ -171,9 +171,9 @@ export default function YeniTopluBakim() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <Label>Lokasyon *</Label>
+              <Label>Lokasyon (opsiyonel)</Label>
               <Select value={form.lokasyonId ?? ''} onChange={set('lokasyonId')} disabled={!form.musteriId}>
-                <option value="">{form.musteriId ? (lokasyonlar.length ? '— Seçin —' : 'Lokasyon tanımlı değil') : 'Önce müşteri seçin'}</option>
+                <option value="">{form.musteriId ? (lokasyonlar.length ? '— Lokasyonsuz (müşteri geneli) —' : 'Lokasyon yok — müşteri geneli') : 'Önce müşteri seçin'}</option>
                 {lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.ad}</option>)}
               </Select>
               {seciliLokasyon?.bulunanSistemler?.length > 0 && (

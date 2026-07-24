@@ -297,17 +297,32 @@ function CevapOzeti({ kalem }) {
     if (c.boyut) satirlar.push(['Ekran Boyutu', c.boyut])
     if (c.sonucDurum) satirlar.push(['Bakım Sonucu', c.sonucDurum === 'sorunsuz' ? 'Sorunsuz' : `Arızalı (${c.arizaliAdet || '?'} adet)`])
   }
-  if (!satirlar.length) return null
+  const fotolar = Array.isArray(c.fotolar) ? c.fotolar : []
+  if (!satirlar.length && !fotolar.length) return null
   return (
     <>
-      <h3 style={h3Stil}>Bakım Cevapları</h3>
-      <table>
-        <tbody>
-          {satirlar.map(([e, d], i) => (
-            <tr key={i}><th style={{ width: 160 }}>{e}</th><td>{String(d)}</td></tr>
-          ))}
-        </tbody>
-      </table>
+      {satirlar.length > 0 && (
+        <>
+          <h3 style={h3Stil}>Bakım Cevapları</h3>
+          <table>
+            <tbody>
+              {satirlar.map(([e, d], i) => (
+                <tr key={i}><th style={{ width: 160 }}>{e}</th><td>{String(d)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+      {fotolar.length > 0 && (
+        <>
+          <h3 style={h3Stil}>📷 Bakım Fotoğrafları</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            {fotolar.map((url) => (
+              <img key={url} src={url} alt="Bakım fotoğrafı" style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 6, border: '1px solid #cbd5e1' }} />
+            ))}
+          </div>
+        </>
+      )}
     </>
   )
 }
