@@ -247,7 +247,10 @@ function CevapOzeti({ kalem }) {
   if (kalem.kalemTip === 'cctv') {
     ;(c.kayitCihazlari || []).forEach((k, i) => {
       const hdd = Object.entries(k.hddler || {}).filter(([, a]) => a > 0).map(([kap, a]) => `${a}×${kap}`).join(', ')
-      satirlar.push([`Kayıt Cihazı ${i + 1}`, `${k.tur}${k.ad ? ` (${k.ad})` : ''} · ${k.kayitGun} gün kayıt${hdd ? ` · HDD: ${hdd}` : ''}`])
+      // Etiket = cihazın kendi adı (yoksa türü); aynı türden birden çoksa numaralandır
+      const ayniTur = (c.kayitCihazlari || []).filter((x) => !x.ad && x.tur === k.tur)
+      const etiket = k.ad || (ayniTur.length > 1 ? `${k.tur} ${ayniTur.indexOf(k) + 1}` : k.tur)
+      satirlar.push([etiket, `${k.ad ? k.tur + ' · ' : ''}${k.kayitGun} gün kayıt${hdd ? ` · HDD: ${hdd}` : ''}`])
     })
     satirlar.push(['Kamera Sayıları', `Toplam ${c.toplamKamera} · Çalışan ${c.calisanKamera} · Arızalı ${c.arizaliKamera}`])
   } else {
