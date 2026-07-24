@@ -100,7 +100,8 @@ export default function BakimIsleri() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtreli.map((t) => {
             const d = tbDurumBilgi(t.durum)
-            const tamam = (t.kalemler || []).filter((k) => k.durum === 'tamamlandi').length
+            // "Sonuçlanan" = tamamlandı + arıza tespit + yapılamadı (hepsi kapanmış kalemdir)
+            const tamam = (t.kalemler || []).filter((k) => ['tamamlandi', 'ariza_tespit', 'yapilamadi'].includes(k.durum)).length
             const toplam = (t.kalemler || []).length
             return (
               <Card
@@ -138,7 +139,7 @@ export default function BakimIsleri() {
                     </span>
                   )}
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <User size={12} /> Kalemler: {tamam}/{toplam} tamamlandı
+                    <User size={12} /> Kalemler: {tamam}/{toplam} sonuçlandı
                   </span>
                 </div>
 

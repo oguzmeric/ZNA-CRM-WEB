@@ -83,7 +83,7 @@ export default function BakimDetay() {
   if (!tb) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Bakım işi bulunamadı.</div>
 
   const d = tbDurumBilgi(tb.durum)
-  const tamam = tb.kalemler.filter((k) => k.durum === 'tamamlandi').length
+  const tamam = tb.kalemler.filter((k) => ['tamamlandi', 'ariza_tespit', 'yapilamadi'].includes(k.durum)).length
   const oran = tb.kalemler.length ? Math.round((tamam / tb.kalemler.length) * 100) : 0
   const eklenebilirKalemler = Object.keys(BAKIM_KALEMLERI)
     .filter((tip) => !tb.kalemler.some((k) => k.kalemTip === tip))
