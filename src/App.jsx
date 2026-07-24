@@ -78,6 +78,9 @@ const OAuthGoogleCallback = lazy(() => import('./pages/OAuthGoogleCallback'))
 const Notlarim = lazy(() => import('./pages/Notlarim'))
 const Destek = lazy(() => import('./pages/Destek'))
 const BridgeTalepler = lazy(() => import('./pages/BridgeTalepler'))
+const BakimIsleri = lazy(() => import('./pages/BakimIsleri'))
+const YeniTopluBakim = lazy(() => import('./pages/YeniTopluBakim'))
+const BakimDetay = lazy(() => import('./pages/BakimDetay'))
 const MemnuniyetDegerlendirme = lazy(() => import('./pages/MemnuniyetDegerlendirme'))
 const MusteriDashboard = lazy(() => import('./pages/musteri/MusteriDashboard'))
 const YeniTalep = lazy(() => import('./pages/musteri/YeniTalep'))
@@ -431,6 +434,9 @@ function App() {
           <Route path="/notlarim" element={<Notlarim />} />
           <Route path="/destek" element={<Destek />} />
           <Route path="/bridge-talepleri" element={<BridgeTalepler />} />
+          <Route path="/bakim-isleri" element={<BakimIsleri />} />
+          <Route path="/bakim-isleri/yeni" element={<YeniTopluBakim />} />
+          <Route path="/bakim-isleri/:id" element={<BakimDetay />} />
           <Route path="/memnuniyet" element={<MemnuniyetDegerlendirme />} />
           <Route path="/sla-ayarlari" element={<YonetimGuard><SlaAyarlari /></YonetimGuard>} />
           <Route path="/performans" element={<YonetimGuard><Performans /></YonetimGuard>} />

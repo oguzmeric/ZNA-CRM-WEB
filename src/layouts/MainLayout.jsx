@@ -83,6 +83,7 @@ const GRUPLAR = [
   { id: 'satis',     baslik: 'Satış' },
   { id: 'tedarik',   baslik: 'Tedarik Süreçleri' },
   { id: 'operasyon', baslik: 'Operasyon' },
+  { id: 'bakim',     baslik: 'Bakım' },
   { id: 'filo',      baslik: 'ZNA Filo Yönetimi' },
   { id: 'yonetim',   baslik: 'Yönetim' },
 ]
@@ -193,6 +194,8 @@ const menuItems = [
   // Bridge Talepleri — Başakşehir Belediyesi entegrasyonu (Seçenek A: ayrı menü).
   // lucide 'Landmark' ikonu; RLS zaten staff-only, menü tüm personele açık.
   { id: 'bridge_talepleri', isim: 'Bridge Talepleri', Icon: Landmark, yol: '/bridge-talepleri', modul: null, grup: 'operasyon' },
+  // Bakım — Servis'ten TAMAMEN AYRI menü grubu (toplu bakım operasyonu)
+  { id: 'bakim_isleri', isim: 'Bakım İşleri', Icon: Wrench, yol: '/bakim-isleri', modul: null, grup: 'bakim' },
   { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   { id: 'dokumanlarim', isim: 'Dokümanlarım', Icon: FolderOpen, yol: '/dokumanlarim', modul: null, grup: 'operasyon' },
@@ -274,6 +277,7 @@ const sayfaIsimleri = {
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
   '/bridge-talepleri': 'Bridge Talepleri',
+  '/bakim-isleri': 'Bakım İşleri',
   '/raporlar': 'Raporlar',
   '/chat': 'Sohbet',
   '/kullanici-yonetimi': 'Kullanıcı Yönetimi',
