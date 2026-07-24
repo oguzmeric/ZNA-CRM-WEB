@@ -59,23 +59,15 @@ export default function BakimYazdir() {
         </tbody>
       </table>
 
-      <ImzaBloku tb={tb} personelAd={personelAd} />
-
-      {/* ═══ 2) KALEM BAŞINA AYRI FORMLAR (spec 23-25) ═══ */}
+      {/* Kalem cevap detayları — ayrı form YOK, tek belge (kullanıcı kararı 24.07) */}
       {yapilanlar.map((k) => (
-        <div key={k.id} className="sayfa-kes" style={{ paddingTop: 8 }}>
-          <Baslik altBaslik={`${kalemBilgi(k.kalemTip).isim.toLocaleUpperCase('tr')} BAKIM FORMU`} tbNo={k.altNo} />
-          <BilgiTablosu tb={tb} personelAd={personelAd} kalem={k} />
-          <h3 style={h3Stil}>Bakım Sonucu</h3>
-          <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, padding: 12, fontSize: 12.5, lineHeight: 1.65 }}>
-            {k.durum === 'yapilamadi'
-              ? `Bu sistemin bakımı yapılamamıştır. Sebep: ${k.yapilamadiSebep || '—'}`
-              : (k.sonucMetni || '—')}
-          </div>
+        <div key={k.id} style={{ marginTop: 8 }}>
+          <h3 style={h3Stil}>{kalemBilgi(k.kalemTip).isim} — Detay ({k.altNo})</h3>
           <CevapOzeti kalem={k} />
-          <ImzaBloku tb={tb} personelAd={personelAd} />
         </div>
       ))}
+
+      <ImzaBloku tb={tb} personelAd={personelAd} />
     </div>
   )
 }
