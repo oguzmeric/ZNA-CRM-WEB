@@ -79,24 +79,32 @@ export default function BakimYazdir() {
   return (
     <div ref={sayfaRef} style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
       {/* Yazdır butonu — çıktıya girmez */}
-      <div className="no-print" style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={pdfIndir} disabled={pdfUretiliyor} style={{ ...btnStil, background: '#16a34a' }}>
-          {pdfUretiliyor ? '⏳ Hazırlanıyor…' : '⬇️ PDF İndir'}
-        </button>
-        <button onClick={() => window.print()} style={btnStil}>🖨 Yazdır</button>
-        <button onClick={() => setSecilen(null)} style={{ ...btnStil, background: secilen === null ? '#1E5AA8' : '#94a3b8' }}>Birleşik Rapor</button>
-        {yapilanlar.map((k) => (
-          <button key={k.id} onClick={() => setSecilen(k.id)} style={{ ...btnStil, background: secilen === k.id ? '#1E5AA8' : '#94a3b8' }}>
-            {kalemBilgi(k.kalemTip).isim} Formu
+      {/* Araç çubuğu — gruplu, sade (belge seçimi · şirket · aksiyonlar) */}
+      <div className="no-print" style={{
+        marginBottom: 20, background: '#fff', border: '1px solid #e2e8f0',
+        borderRadius: 12, padding: '12px 16px', boxShadow: '0 2px 8px rgba(15,23,42,0.06)',
+        display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
+      }}>
+        <Grup etiket="BELGE">
+          <Segment aktif={secilen === null} onClick={() => setSecilen(null)}>Birleşik Rapor</Segment>
+          {yapilanlar.map((k) => (
+            <Segment key={k.id} aktif={secilen === k.id} onClick={() => setSecilen(k.id)}>
+              {kalemBilgi(k.kalemTip).isim}
+            </Segment>
+          ))}
+        </Grup>
+        <Grup etiket="ŞİRKET">
+          {Object.entries(SIRKET_BILGI).map(([id, s]) => (
+            <Segment key={id} aktif={sirket === id} onClick={() => setSirket(id)}>{s.label}</Segment>
+          ))}
+        </Grup>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button onClick={pdfIndir} disabled={pdfUretiliyor} style={{ ...btnStil, background: '#16a34a' }}>
+            {pdfUretiliyor ? '⏳ Hazırlanıyor…' : '⬇ PDF İndir'}
           </button>
-        ))}
-        <span style={{ borderLeft: '1px solid #cbd5e1', margin: '0 4px' }} />
-        {Object.entries(SIRKET_BILGI).map(([id, s]) => (
-          <button key={id} onClick={() => setSirket(id)} style={{ ...btnStil, background: sirket === id ? '#0176D3' : '#cbd5e1', color: sirket === id ? '#fff' : '#334155' }}>
-            {s.label}
-          </button>
-        ))}
-        <button onClick={() => window.close()} style={{ ...btnStil, background: '#64748b' }}>Kapat</button>
+          <button onClick={() => window.print()} style={{ ...btnStil, background: '#fff', color: '#334155', border: '1px solid #cbd5e1' }}>🖨 Yazdır</button>
+          <button onClick={() => window.close()} style={{ ...btnStil, background: 'transparent', color: '#64748b' }}>Kapat</button>
+        </div>
       </div>
       <style>{`
         @media print {
@@ -164,6 +172,33 @@ export default function BakimYazdir() {
       <KurumsalFooter cfg={cfg} />
       </>)}
     </div>
+  )
+}
+
+// Araç çubuğu yardımcıları — etiketli grup + segment buton
+function Grup({ etiket, children }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.8, marginBottom: 5 }}>{etiket}</div>
+      <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 9, padding: 3, gap: 2, flexWrap: 'wrap' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Segment({ aktif, onClick, children }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '6px 13px', borderRadius: 7, border: 'none', cursor: 'pointer',
+      fontSize: 12.5, fontWeight: aktif ? 700 : 500,
+      background: aktif ? '#fff' : 'transparent',
+      color: aktif ? '#1E5AA8' : '#64748b',
+      boxShadow: aktif ? '0 1px 4px rgba(15,23,42,0.12)' : 'none',
+      transition: 'all 120ms',
+    }}>
+      {children}
+    </button>
   )
 }
 
