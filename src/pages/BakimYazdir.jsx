@@ -254,10 +254,13 @@ function CevapOzeti({ kalem }) {
     })
     satirlar.push(['Kamera Sayıları', `Toplam ${c.toplamKamera} · Çalışan ${c.calisanKamera} · Arızalı ${c.arizaliKamera}`])
   } else {
-    if (c.adet) satirlar.push(['Adet', c.adet])
+    // Tip'e özgü etiketler — jenerik "Adet" yerine (kullanıcı isteği 24.07)
+    const adetEtiket = kalem.kalemTip === 'turnike' ? 'Turnike Adedi'
+      : kalem.kalemTip === 'ekran_led' ? 'Ekran Adedi' : 'Adet'
+    if (c.adet) satirlar.push([adetEtiket, c.adet])
     if (c.marka) satirlar.push(['Marka', c.marka])
-    if (c.boyut) satirlar.push(['Boyut', c.boyut])
-    if (c.sonucDurum) satirlar.push(['Sonuç', c.sonucDurum === 'sorunsuz' ? 'Sorunsuz' : `Arızalı (${c.arizaliAdet || '?'} adet)`])
+    if (c.boyut) satirlar.push(['Ekran Boyutu', c.boyut])
+    if (c.sonucDurum) satirlar.push(['Bakım Sonucu', c.sonucDurum === 'sorunsuz' ? 'Sorunsuz' : `Arızalı (${c.arizaliAdet || '?'} adet)`])
   }
   if (!satirlar.length) return null
   return (
