@@ -123,11 +123,17 @@ export default function BakimIsleri() {
                           const kb = kalemBilgi(k.kalemTip)
                           const kd = kalemDurumBilgi(k.durum)
                           return (
+                            // Nötr çip — durum bilgisi yalnız soldaki küçük noktada (renk cümbüşü yerine)
                             <span key={k.id} title={`${kb.isim} — ${kd.isim}`} style={{
-                              fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
-                              border: `1px solid ${kd.renk}55`, background: `${kd.renk}12`, color: 'var(--text-secondary)',
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              fontSize: 11, fontWeight: 600, padding: '2px 8px',
+                              borderRadius: 'var(--radius-pill)',
+                              border: '1px solid var(--border-default)',
+                              background: 'var(--surface-card)',
+                              color: 'var(--text-secondary)', whiteSpace: 'nowrap',
                             }}>
-                              {kb.ikon} {kb.isim}
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: kd.renk, flexShrink: 0 }} />
+                              {kb.isim}
                             </span>
                           )
                         })}
