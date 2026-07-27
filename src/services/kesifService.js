@@ -481,3 +481,111 @@ export const kesifFotoUrlleri = async (yollar, saniye = 3600) => {
   if (error) { console.warn('kesifFotoUrlleri:', error.message); return new Map() }
   return new Map((data || []).filter(d => d.signedUrl).map(d => [d.path, d.signedUrl]))
 }
+
+// ---------- Önceki tekliften kalem aktarımı ----------
+// Daha önce teklif verilmiş bir yere sonradan keşfe gidildiğinde, o teklifin
+// kalemleri FİYATSIZ olarak keşif malzeme listesine çekilir (kullanıcı isteği).
+// Not: kesifler.teklif_id keşiften ÜRETİLEN tekliftir; buradaki kaynak_teklif_id
+// ise keşfe KAYNAK olan eski tekliftir — iki alan karıştırılmamalı.
+
+// Firma adı karşılaştırması için normalize (Türkçe harf + noktalama farklarını yutar)
+const firmaNormalize = (s = '') =>
+  String(s).toLocaleLowerCase('tr')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '')
+
+// Bir müşterinin tekliflerini (kalem aktarımı için) getir.
+// DİKKAT: tekliflerin çoğu (528/1148) musteri_id'siz, yalnız firma_adi ile açılmış —
+// sadece musteri_id ile arayınca liste boş çıkıyor. Bu yüzden musteri_id VEYA
+// firma adı eşleşmesi birlikte kullanılır; ad karşılaştırması normalize edilir.
+export const kesifIcinTeklifleriGetir = async ({ musteriId, firmaAdi } = {}) => {
+  const kolonlar = 'id, teklif_no, revizyon, tarih, konu, firma_adi, musteri_id, onay_durumu, satirlar'
+  const temizAd = String(firmaAdi || '').trim()
+  if (!musteriId && !temizAd) return []
+
+  const kosullar = []
+  if (musteriId) kosullar.push(`musteri_id.eq.${musteriId}`)
+  if (temizAd) {
+    // Ön filtre: adın ilk parçasıyla kaba eleme (payload küçülsün); kesin eşleşme altta
+    const onEk = temizAd.slice(0, 10).replace(/[%,()]/g, ' ').trim()
+    if (onEk) kosullar.push(`firma_adi.ilike.%${onEk}%`)
+  }
+  if (!kosullar.length) return []
+
+  const { data, error } = await supabase
+    .from('teklifler')
+    .select(kolonlar)
+    .or(kosullar.join(','))
+    .order('tarih', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(200)
+  if (error) { console.error('kesifIcinTeklifleriGetir:', error.message); return [] }
+
+  const hedefAd = firmaNormalize(temizAd)
+  return (data || [])
+    .filter(t =>
+      (musteriId && String(t.musteri_id) === String(musteriId)) ||
+      (hedefAd && firmaNormalize(t.firma_adi) === hedefAd))
+    .map(t => ({
+      ...toCamel(t),
+      kalemSayisi: Array.isArray(t.satirlar) ? t.satirlar.length : 0,
+    }))
+}
+
+// Teklif satırı → keşif kalemi (fiyat alanları BİLİNÇLİ olarak taşınmaz)
+const teklifSatirindanKalem = (s) => ({
+  kategori: 'diger',                      // kullanıcı keşifte düzeltebilir
+  stokKodu: s?.stokKodu || null,
+  urunAdi: (s?.stokAdi || '').trim(),
+  marka: s?.marka || null,
+  miktar: Number(s?.miktar) || 1,
+  birim: s?.birim || 'Adet',
+})
+
+// Teklif kalemlerini keşfe aktar. Aynı stok kodu (kodu yoksa ürün adı) zaten
+// listedeyse o kalem ATLANIR — kullanıcı tercihi.
+export const tekliftenKesfeKalemAktar = async ({ kesifId, teklif, mevcutKalemler = [] }) => {
+  const satirlar = Array.isArray(teklif?.satirlar) ? teklif.satirlar : []
+  if (!satirlar.length) return { eklenen: [], atlanan: 0 }
+
+  const anahtar = (k) =>
+    (k.stokKodu || k.stok_kodu)
+      ? `K:${String(k.stokKodu || k.stok_kodu).trim().toLocaleLowerCase('tr')}`
+      : `A:${String(k.urunAdi || k.urun_adi || '').trim().toLocaleLowerCase('tr')}`
+
+  const mevcutSet = new Set(mevcutKalemler.map(anahtar))
+  const eklenecek = []
+  let atlanan = 0
+
+  for (const s of satirlar) {
+    const kalem = teklifSatirindanKalem(s)
+    if (!kalem.urunAdi && !kalem.stokKodu) { atlanan++; continue }
+    const a = anahtar(kalem)
+    if (mevcutSet.has(a)) { atlanan++; continue }
+    mevcutSet.add(a)                      // teklif içinde de mükerrer olabilir
+    eklenecek.push(kalem)
+  }
+
+  if (!eklenecek.length) return { eklenen: [], atlanan }
+
+  const baslangicSira = mevcutKalemler.length
+  const kayitlar = eklenecek.map((k, i) => toSnake({
+    ...k,
+    kesifId: Number(kesifId),
+    notlar: `${teklif.teklifNo || 'Teklif'} tekliflerinden aktarıldı`,
+    siralama: baslangicSira + i,
+  }))
+
+  const { data, error } = await supabase.from('kesif_kalemleri').insert(kayitlar).select()
+  if (error) throw error
+
+  // Kaynak teklif bağlantısını keşfe yaz (rozet + izlenebilirlik)
+  const { error: bagError } = await supabase
+    .from('kesifler')
+    .update({ kaynak_teklif_id: teklif.id, kaynak_teklif_no: teklif.teklifNo || null })
+    .eq('id', kesifId)
+  if (bagError) console.warn('kaynak teklif baglanamadi:', bagError.message)
+
+  return { eklenen: arrayToCamel(data), atlanan }
+}

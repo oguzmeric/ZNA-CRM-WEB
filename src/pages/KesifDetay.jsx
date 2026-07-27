@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
-  Plus, Trash2, Save, Upload, X, Printer, Eye,
+  Plus, Trash2, Save, Upload, X, Printer, Eye, FileInput,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -19,6 +19,7 @@ import {
   KROKI_KATEGORILER, KROKI_SEMBOLLERI, KROKI_SEMBOL_PATH, sembolleriSay,
   KESIF_KATEGORILERI, KESIF_DURUMLARI,
   KESIF_ONCELIKLERI, KESIF_TURLERI,
+  kesifIcinTeklifleriGetir, tekliftenKesfeKalemAktar,
 } from '../services/kesifService'
 import KesifFotoBolumu from '../components/kesif/KesifFotoBolumu'
 import KesifKrokiBolumu from '../components/kesif/KesifKrokiBolumu'
@@ -77,6 +78,7 @@ export default function KesifDetay() {
   const [gorevModal, setGorevModal] = useState(false)
   const [donusumCalisiyor, setDonusumCalisiyor] = useState(false)
   const [yazdirModal, setYazdirModal] = useState(false)
+  const [teklifAktarModal, setTeklifAktarModal] = useState(false)   // önceki tekliften kalem çek
   const [yazdirFotoSecim, setYazdirFotoSecim] = useState('tumu') // tumu | cizimli | yok
   const [onizlemeHtml, setOnizlemeHtml] = useState(null) // rapor önizleme (iframe)
 
@@ -861,6 +863,22 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
               {k.ikon} {Number(k.toplam).toLocaleString('tr-TR')} {k.ad}
             </span>
           ))}
+
+          {/* Daha önce teklif verilmiş yere sonradan keşfe gidildiğinde:
+              eski teklifin kalemlerini fiyatsız olarak buraya çek */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {kesif.kaynakTeklifNo && (
+              <Badge tone="brand" style={{ cursor: kesif.kaynakTeklifId ? 'pointer' : 'default' }}
+                onClick={() => kesif.kaynakTeklifId && navigate(`/teklifler/${kesif.kaynakTeklifId}`)}>
+                <FileInput size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />
+                {kesif.kaynakTeklifNo} → aktarıldı
+              </Badge>
+            )}
+            <Button variant="secondary" size="sm" iconLeft={<FileInput size={14} strokeWidth={1.5} />}
+              onClick={() => setTeklifAktarModal(true)}>
+              Tekliften Aktar
+            </Button>
+          </div>
         </div>
 
         {/* Yeni kalem satırı */}
@@ -981,7 +999,165 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
           }}
         />
       )}
+
+      {/* Önceki tekliften kalem aktarma modalı */}
+      {teklifAktarModal && (
+        <TeklifAktarModal
+          kesif={kesif}
+          mevcutKalemler={kalemler}
+          onKapat={() => setTeklifAktarModal(false)}
+          onAktarildi={({ eklenen, atlanan, teklif }) => {
+            setKalemler(prev => [...prev, ...eklenen])
+            setKesif(k => ({ ...k, kaynakTeklifId: teklif.id, kaynakTeklifNo: teklif.teklifNo }))
+            setTeklifAktarModal(false)
+            const ek = atlanan ? ` ${atlanan} kalem zaten listedeydi, atlandı.` : ''
+            if (eklenen.length) toast.success(`${teklif.teklifNo}: ${eklenen.length} kalem keşfe aktarıldı.${ek}`)
+            else toast.warning(`Aktarılacak yeni kalem yok.${ek}`)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// Önceki teklif seçimi — kalemler FİYATSIZ olarak keşfe aktarılır (kullanıcı isteği).
+function TeklifAktarModal({ kesif, mevcutKalemler, onKapat, onAktarildi }) {
+  const { toast } = useToast()
+  const [teklifler, setTeklifler] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [arama, setArama] = useState('')
+  const [secili, setSecili] = useState(null)
+  const [aktariliyor, setAktariliyor] = useState(false)
+
+  useEffect(() => {
+    kesifIcinTeklifleriGetir({ musteriId: kesif.musteriId, firmaAdi: kesif.firmaAdi })
+      .then(t => setTeklifler(t || []))
+      .catch(() => toast.error('Teklifler yüklenemedi.'))
+      .finally(() => setYukleniyor(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const filtreli = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr')
+    if (!q) return teklifler
+    return teklifler.filter(t =>
+      `${t.teklifNo || ''} ${t.konu || ''}`.toLocaleLowerCase('tr').includes(q))
+  }, [teklifler, arama])
+
+  const aktar = async () => {
+    if (!secili) return
+    setAktariliyor(true)
+    try {
+      const sonuc = await tekliftenKesfeKalemAktar({
+        kesifId: kesif.id, teklif: secili, mevcutKalemler,
+      })
+      onAktarildi({ ...sonuc, teklif: secili })
+    } catch (e) {
+      toast.error('Aktarılamadı: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setAktariliyor(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onKapat} title="Önceki Tekliften Kalem Aktar" width={720}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+          <strong>{kesif.firmaAdi || 'Bu müşteri'}</strong> için verilmiş teklifler. Seçtiğin teklifin
+          ürünleri <strong>fiyatsız</strong> olarak keşif malzeme listesine eklenir; listede zaten
+          olan kalemler atlanır.
+        </div>
+
+        <Input value={arama} onChange={e => setArama(e.target.value)}
+          placeholder="Teklif no veya konu ara…" />
+
+        <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8 }}>
+          {yukleniyor ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              Teklifler yükleniyor…
+            </div>
+          ) : filtreli.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              {teklifler.length === 0
+                ? 'Bu müşteriye ait teklif bulunamadı.'
+                : 'Aramaya uyan teklif yok.'}
+            </div>
+          ) : filtreli.map(t => {
+            const aktif = secili?.id === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSecili(t)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                  padding: '10px 12px', border: 'none',
+                  borderBottom: '1px solid var(--border-default)',
+                  background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ font: '700 12.5px/18px var(--font-mono, monospace)', color: 'var(--brand-primary)' }}>
+                    {t.teklifNo}{t.revizyon ? ` (R${t.revizyon})` : ''}
+                  </span>
+                  <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                    {fmtTarih(t.tarih)}
+                  </span>
+                  <span style={{
+                    marginLeft: 'auto', font: '600 11px/16px var(--font-sans)',
+                    color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+                  }}>
+                    {t.kalemSayisi} kalem
+                  </span>
+                </div>
+                {t.konu && (
+                  <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-primary)', marginTop: 2 }}>
+                    {t.konu}
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Seçilen teklifin kalem önizlemesi — fiyat GÖSTERİLMEZ */}
+        {secili && (
+          <div style={{ border: '1px solid var(--border-default)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{
+              padding: '8px 12px', background: 'var(--surface-sunken)',
+              font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+            }}>
+              {secili.teklifNo} — aktarılacak kalemler ({(secili.satirlar || []).length})
+            </div>
+            <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+              {(secili.satirlar || []).map((s, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 10, padding: '6px 12px',
+                  borderTop: i ? '1px solid var(--border-subtle, #EEF1F5)' : 'none',
+                  font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-primary)',
+                }}>
+                  <span style={{ flex: 1 }}>
+                    {String(s.stokAdi || '').split('\n')[0] || '(adsız kalem)'}
+                    {s.marka ? <span style={{ color: 'var(--text-tertiary)' }}> · {s.marka}</span> : null}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    {s.miktar} {s.birim || 'Adet'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button variant="secondary" onClick={onKapat}>Vazgeç</Button>
+          <Button variant="primary" onClick={aktar} disabled={!secili || aktariliyor}
+            iconLeft={<FileInput size={14} strokeWidth={1.5} />}>
+            {aktariliyor ? 'Aktarılıyor…' : 'Keşfe Aktar'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
