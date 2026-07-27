@@ -272,7 +272,21 @@ function MusteriDetay() {
   const filtreliOlaylar = aktifSekme === 'hepsi' ? tumOlaylar : tumOlaylar.filter(o => o.tip === aktifSekme)
 
   return (
-    <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+      {/* Sayfa çok uzundu (10 bölüm alt alta); geniş ekranda iki kolona bölündü.
+          Dar ekranda tek kolona düşer — sıralama: künye sonra hareket. */}
+      <style>{`
+        .musteri-2kolon {
+          display: grid;
+          grid-template-columns: 360px minmax(0, 1fr);
+          gap: 16px;
+          align-items: start;
+        }
+        .musteri-kolon { min-width: 0; }
+        @media (max-width: 1180px) {
+          .musteri-2kolon { grid-template-columns: minmax(0, 1fr); }
+        }
+      `}</style>
 
       {/* Geri */}
       <button
@@ -504,315 +518,10 @@ function MusteriDetay() {
         })}
       </div>
 
-      {/* Sipariş Özeti — ZNA-SIP kayıtları (üst sırada göster) */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <CardTitle>Sipariş Özeti</CardTitle>
-          {siparisler.length > 0 && (
-            <button
-              onClick={() => navigate(`/siparisler?musteri=${musteri.id}`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
-        {siparisler.length === 0 ? (
-          <div style={{
-            padding: '20px 12px', textAlign: 'center',
-            color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)',
-            background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)',
-            border: '1px dashed var(--border-default)',
-          }}>
-            Bu müşteriye ait sipariş yok.
-          </div>
-        ) : (
-        <>
-          {(() => {
-            const aktif = siparisler.filter(s => s.durum === 'aktif').length
-            const tamamlanan = siparisler.filter(s => s.durum === 'tamamlandi').length
-            const toplamTutar = siparisler.filter(s => s.durum !== 'iptal').reduce((sum, s) => sum + Number(s.genelToplam || 0), 0)
-            return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
-                {[
-                  { label: 'TOPLAM SİPARİŞ', value: siparisler.length, color: 'var(--text-primary)' },
-                  { label: 'AKTİF',          value: aktif,             color: '#3b82f6' },
-                  { label: 'TAMAMLANDI',     value: tamamlanan,        color: 'var(--success)' },
-                  { label: 'TOPLAM TUTAR',   value: `₺${fmt(toplamTutar)}`, color: 'var(--text-primary)' },
-                ].map(k => (
-                  <div key={k.label} style={{
-                    background: 'var(--surface-sunken)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '12px 14px',
-                  }}>
-                    <div className="t-label" style={{ marginBottom: 4 }}>{k.label}</div>
-                    <div style={{ font: '600 16px/22px var(--font-sans)', color: k.color, fontVariantNumeric: 'tabular-nums' }}>
-                      {k.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          })()}
-          <div>
-            {siparisler.slice(0, 5).map(s => {
-              const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
-              const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'
-              const kaynakRenk = s.kaynakTipi === 'teklif' ? '#3b82f6' : '#10b981'
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => navigate(`/siparisler/${s.id}`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    transition: 'background 120ms',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13 }}>{s.siparisNo}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                      background: `${durumObj?.renk}22`, color: durumObj?.renk,
-                      border: `1px solid ${durumObj?.renk}55`,
-                    }}>{durumObj?.isim || s.durum}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                      background: `${kaynakRenk}15`, color: kaynakRenk,
-                    }}>{kaynakLabel}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                      ₺{fmt(s.genelToplam)}
-                    </span>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>
-                      {s.onayTarihi ? new Date(s.onayTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </>
-        )}
-      </Card>
-
-      {/* Müşterideki Demolar — aktif demo zimmetleri + geçmiş */}
-      {demoZimmetler.length > 0 && (
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <CardTitle>Demo Cihazlar</CardTitle>
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-              {demoZimmetler.filter(z => !z.gercekIadeTarihi).length} aktif · {demoZimmetler.length} toplam
-            </span>
-          </div>
-          <div>
-            {demoZimmetler.slice(0, 6).map(z => {
-              const aktifMi = !z.gercekIadeTarihi
-              const kalan = aktifMi && z.beklenenIadeTarihi
-                ? Math.floor((new Date(z.beklenenIadeTarihi) - new Date()) / 86400000)
-                : null
-              return (
-                <div
-                  key={z.id}
-                  onClick={() => navigate(`/demolar/${z.cihazId}`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                    padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                    transition: 'background 120ms',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>
-                      {z.cihaz?.ad || `Cihaz #${z.cihazId}`}
-                    </span>
-                    {z.cihaz?.seri_no && (
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        S.N. {z.cihaz.seri_no}
-                      </span>
-                    )}
-                    {aktifMi ? (
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                        background: kalan !== null && kalan < 0 ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.12)',
-                        color: kalan !== null && kalan < 0 ? '#DC2626' : '#3b82f6',
-                      }}>
-                        {kalan !== null && kalan < 0 ? `${-kalan} GÜN GECİKTİ` : 'MÜŞTERİDE'}
-                      </span>
-                    ) : (
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                        background: z.musteriKarari === 'aldi' ? 'rgba(34,197,94,0.12)' : 'var(--surface-sunken)',
-                        color: z.musteriKarari === 'aldi' ? 'var(--success)' : 'var(--text-tertiary)',
-                      }}>
-                        {z.musteriKarari === 'aldi' ? 'SATIN ALDI' : z.musteriKarari === 'almadi' ? 'ALMADI' : 'İADE EDİLDİ'}
-                      </span>
-                    )}
-                    {aktifMi && !z.imzaliTutanakUrl && (
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                        background: 'rgba(245,158,11,0.12)', color: '#B45309',
-                      }}>TUTANAK BEKLENİYOR</span>
-                    )}
-                  </div>
-                  <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'right' }}>
-                    {z.verisTarihi ? new Date(z.verisTarihi).toLocaleDateString('tr-TR') : ''}
-                    {aktifMi && z.beklenenIadeTarihi ? ` → ${new Date(z.beklenenIadeTarihi).toLocaleDateString('tr-TR')}` : ''}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* Servis Talepleri — müşterinin tüm servis geçmişi (id veya firma adı eşleşmesi) */}
-      {(() => {
-        const musteriTalepleri = (talepler || [])
-          .filter(t => Number(t.musteriId) === Number(id) || (musteri?.firma && t.firmaAdi === musteri.firma))
-          .sort((a, b) => new Date(b.olusturmaTarihi || 0) - new Date(a.olusturmaTarihi || 0))
-        if (!musteriTalepleri.length) return null
-        const acik = musteriTalepleri.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
-        return (
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <CardTitle>Servis Talepleri</CardTitle>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {acik.length > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{acik.length} açık · </span>}
-                {musteriTalepleri.length} toplam
-              </span>
-            </div>
-            <div>
-              {musteriTalepleri.slice(0, 8).map(t => {
-                const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => navigate(`/servis-talepleri/${t.id}`)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                      padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                      transition: 'background 120ms',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)', flexShrink: 0 }}>
-                        {t.talepNo || `#${t.id}`}
-                      </span>
-                      <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
-                        {t.konu || '—'}
-                      </span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-                        background: `${meta.renk}1f`, color: meta.renk,
-                      }}>
-                        {meta.isim.toUpperCase()}
-                      </span>
-                    </div>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {t.olusturmaTarihi ? new Date(t.olusturmaTarihi).toLocaleDateString('tr-TR') : ''}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-            {musteriTalepleri.length > 8 && (
-              <button
-                onClick={() => navigate('/servis-talepleri')}
-                style={{ marginTop: 8, padding: '6px 12px', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: 6, cursor: 'pointer', font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)', width: '100%' }}
-              >
-                Tümünü gör ({musteriTalepleri.length})
-              </button>
-            )}
-          </Card>
-        )
-      })()}
-
-      {/* Müşteri Cihaz Envanteri — SN/IP/MAC/kimlik takibi + arıza durumu */}
-      <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} />
-
-      {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
-      <Card padding={0} style={{ marginBottom: 16 }}>
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
-          <SegmentedControl
-            options={[
-              { value: 'hepsi',   label: 'Tümü',       count: tumOlaylar.length },
-              { value: 'gorusme', label: 'Görüşmeler', count: gorusmeler.length },
-              { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
-              { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
-              { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
-            ]}
-            value={aktifSekme}
-            onChange={setAktifSekme}
-          />
-        </div>
-        <div style={{ padding: 12, maxHeight: 360, overflowY: 'auto' }}>
-          {filtreliOlaylar.length === 0 ? (
-            <div style={{
-              padding: '10px 14px',
-              font: '400 12px/16px var(--font-sans)',
-              color: 'var(--text-tertiary)',
-              fontStyle: 'italic',
-              textAlign: 'center',
-            }}>
-              Bu kategoride kayıt bulunamadı.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {filtreliOlaylar.map(olay => {
-                const IconC = TIMELINE_ICONS[olay.tip] ?? FileText
-                const renk = TIMELINE_RENK[olay.tip] ?? 'var(--brand-primary)'
-                return (
-                  <div
-                    key={olay.id}
-                    onClick={() => navigate(olay.hedef)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      transition: 'background 120ms',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{
-                      width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'var(--surface-sunken)',
-                      color: renk,
-                      flexShrink: 0,
-                    }}>
-                      <IconC size={14} strokeWidth={1.5} />
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {olay.baslik}
-                      </div>
-                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {olay.detay}
-                      </div>
-                    </div>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {olay.tarih}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </Card>
-
+      {/* İki kolon: SOL = künye (kişi/lokasyon/finans), SAĞ = hareket
+          (sipariş/servis/cihaz/geçmiş). 1100px altında tek kolona düşer. */}
+      <div className="musteri-2kolon">
+        <div className="musteri-kolon">
       {/* İlgili kişiler */}
       <Card padding={0} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
@@ -1215,6 +924,321 @@ function MusteriDetay() {
           </div>
         </Card>
       )}
+
+        </div>
+
+        <div className="musteri-kolon">
+      {/* Sipariş Özeti — ZNA-SIP kayıtları (üst sırada göster) */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <CardTitle>Sipariş Özeti</CardTitle>
+          {siparisler.length > 0 && (
+            <button
+              onClick={() => navigate(`/siparisler?musteri=${musteri.id}`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+        {siparisler.length === 0 ? (
+          <div style={{
+            padding: '20px 12px', textAlign: 'center',
+            color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)',
+            background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)',
+            border: '1px dashed var(--border-default)',
+          }}>
+            Bu müşteriye ait sipariş yok.
+          </div>
+        ) : (
+        <>
+          {(() => {
+            const aktif = siparisler.filter(s => s.durum === 'aktif').length
+            const tamamlanan = siparisler.filter(s => s.durum === 'tamamlandi').length
+            const toplamTutar = siparisler.filter(s => s.durum !== 'iptal').reduce((sum, s) => sum + Number(s.genelToplam || 0), 0)
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+                {[
+                  { label: 'TOPLAM SİPARİŞ', value: siparisler.length, color: 'var(--text-primary)' },
+                  { label: 'AKTİF',          value: aktif,             color: '#3b82f6' },
+                  { label: 'TAMAMLANDI',     value: tamamlanan,        color: 'var(--success)' },
+                  { label: 'TOPLAM TUTAR',   value: `₺${fmt(toplamTutar)}`, color: 'var(--text-primary)' },
+                ].map(k => (
+                  <div key={k.label} style={{
+                    background: 'var(--surface-sunken)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 14px',
+                  }}>
+                    <div className="t-label" style={{ marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ font: '600 16px/22px var(--font-sans)', color: k.color, fontVariantNumeric: 'tabular-nums' }}>
+                      {k.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+          <div>
+            {siparisler.slice(0, 5).map(s => {
+              const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
+              const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'
+              const kaynakRenk = s.kaynakTipi === 'teklif' ? '#3b82f6' : '#10b981'
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => navigate(`/siparisler/${s.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13 }}>{s.siparisNo}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                      background: `${durumObj?.renk}22`, color: durumObj?.renk,
+                      border: `1px solid ${durumObj?.renk}55`,
+                    }}>{durumObj?.isim || s.durum}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                      background: `${kaynakRenk}15`, color: kaynakRenk,
+                    }}>{kaynakLabel}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      ₺{fmt(s.genelToplam)}
+                    </span>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>
+                      {s.onayTarihi ? new Date(s.onayTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+        )}
+      </Card>
+
+      {/* Müşterideki Demolar — aktif demo zimmetleri + geçmiş */}
+      {demoZimmetler.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <CardTitle>Demo Cihazlar</CardTitle>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {demoZimmetler.filter(z => !z.gercekIadeTarihi).length} aktif · {demoZimmetler.length} toplam
+            </span>
+          </div>
+          <div>
+            {demoZimmetler.slice(0, 6).map(z => {
+              const aktifMi = !z.gercekIadeTarihi
+              const kalan = aktifMi && z.beklenenIadeTarihi
+                ? Math.floor((new Date(z.beklenenIadeTarihi) - new Date()) / 86400000)
+                : null
+              return (
+                <div
+                  key={z.id}
+                  onClick={() => navigate(`/demolar/${z.cihazId}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                    transition: 'background 120ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>
+                      {z.cihaz?.ad || `Cihaz #${z.cihazId}`}
+                    </span>
+                    {z.cihaz?.seri_no && (
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        S.N. {z.cihaz.seri_no}
+                      </span>
+                    )}
+                    {aktifMi ? (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: kalan !== null && kalan < 0 ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.12)',
+                        color: kalan !== null && kalan < 0 ? '#DC2626' : '#3b82f6',
+                      }}>
+                        {kalan !== null && kalan < 0 ? `${-kalan} GÜN GECİKTİ` : 'MÜŞTERİDE'}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: z.musteriKarari === 'aldi' ? 'rgba(34,197,94,0.12)' : 'var(--surface-sunken)',
+                        color: z.musteriKarari === 'aldi' ? 'var(--success)' : 'var(--text-tertiary)',
+                      }}>
+                        {z.musteriKarari === 'aldi' ? 'SATIN ALDI' : z.musteriKarari === 'almadi' ? 'ALMADI' : 'İADE EDİLDİ'}
+                      </span>
+                    )}
+                    {aktifMi && !z.imzaliTutanakUrl && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                        background: 'rgba(245,158,11,0.12)', color: '#B45309',
+                      }}>TUTANAK BEKLENİYOR</span>
+                    )}
+                  </div>
+                  <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'right' }}>
+                    {z.verisTarihi ? new Date(z.verisTarihi).toLocaleDateString('tr-TR') : ''}
+                    {aktifMi && z.beklenenIadeTarihi ? ` → ${new Date(z.beklenenIadeTarihi).toLocaleDateString('tr-TR')}` : ''}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Servis Talepleri — müşterinin tüm servis geçmişi (id veya firma adı eşleşmesi) */}
+      {(() => {
+        const musteriTalepleri = (talepler || [])
+          .filter(t => Number(t.musteriId) === Number(id) || (musteri?.firma && t.firmaAdi === musteri.firma))
+          .sort((a, b) => new Date(b.olusturmaTarihi || 0) - new Date(a.olusturmaTarihi || 0))
+        if (!musteriTalepleri.length) return null
+        const acik = musteriTalepleri.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
+        return (
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <CardTitle>Servis Talepleri</CardTitle>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                {acik.length > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{acik.length} açık · </span>}
+                {musteriTalepleri.length} toplam
+              </span>
+            </div>
+            <div>
+              {musteriTalepleri.slice(0, 8).map(t => {
+                const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => navigate(`/servis-talepleri/${t.id}`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)', flexShrink: 0 }}>
+                        {t.talepNo || `#${t.id}`}
+                      </span>
+                      <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
+                        {t.konu || '—'}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                        background: `${meta.renk}1f`, color: meta.renk,
+                      }}>
+                        {meta.isim.toUpperCase()}
+                      </span>
+                    </div>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {t.olusturmaTarihi ? new Date(t.olusturmaTarihi).toLocaleDateString('tr-TR') : ''}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            {musteriTalepleri.length > 8 && (
+              <button
+                onClick={() => navigate('/servis-talepleri')}
+                style={{ marginTop: 8, padding: '6px 12px', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: 6, cursor: 'pointer', font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)', width: '100%' }}
+              >
+                Tümünü gör ({musteriTalepleri.length})
+              </button>
+            )}
+          </Card>
+        )
+      })()}
+
+      {/* Müşteri Cihaz Envanteri — SN/IP/MAC/kimlik takibi + arıza durumu */}
+      <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} />
+
+      {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
+      <Card padding={0} style={{ marginBottom: 16 }}>
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
+          <SegmentedControl
+            options={[
+              { value: 'hepsi',   label: 'Tümü',       count: tumOlaylar.length },
+              { value: 'gorusme', label: 'Görüşmeler', count: gorusmeler.length },
+              { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
+              { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
+              { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
+            ]}
+            value={aktifSekme}
+            onChange={setAktifSekme}
+          />
+        </div>
+        <div style={{ padding: 12, maxHeight: 360, overflowY: 'auto' }}>
+          {filtreliOlaylar.length === 0 ? (
+            <div style={{
+              padding: '10px 14px',
+              font: '400 12px/16px var(--font-sans)',
+              color: 'var(--text-tertiary)',
+              fontStyle: 'italic',
+              textAlign: 'center',
+            }}>
+              Bu kategoride kayıt bulunamadı.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {filtreliOlaylar.map(olay => {
+                const IconC = TIMELINE_ICONS[olay.tip] ?? FileText
+                const renk = TIMELINE_RENK[olay.tip] ?? 'var(--brand-primary)'
+                return (
+                  <div
+                    key={olay.id}
+                    onClick={() => navigate(olay.hedef)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--surface-sunken)',
+                      color: renk,
+                      flexShrink: 0,
+                    }}>
+                      <IconC size={14} strokeWidth={1.5} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.baslik}
+                      </div>
+                      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {olay.detay}
+                      </div>
+                    </div>
+                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {olay.tarih}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+
+        </div>
+      </div>
 
       <MusteriDavetModal
         open={davetAcik}
