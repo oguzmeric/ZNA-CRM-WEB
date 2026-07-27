@@ -589,3 +589,53 @@ export const tekliftenKesfeKalemAktar = async ({ kesifId, teklif, mevcutKalemler
 
   return { eklenen: arrayToCamel(data), atlanan }
 }
+
+// ---------- Görüşme bağlama ----------
+// Keşif görüşmeden açıldığında gorusme_id otomatik dolar; sonradan açılan
+// keşifler için (ya da yanlış bağlananlar için) elle bağlama.
+//
+// DİKKAT: gorusmeler.musteri_id TEXT tipinde — sayısal karşılaştırma yapma.
+export const kesifIcinGorusmeleriGetir = async ({ musteriId, firmaAdi } = {}) => {
+  const kolonlar = 'id, gorusme_no, akt_no, tarih, saat, konu, firma_adi, musteri_id, gorusen, hazirlayan, tip, durum'
+  const temizAd = String(firmaAdi || '').trim()
+  if (!musteriId && !temizAd) return []
+
+  const kosullar = []
+  if (musteriId) kosullar.push(`musteri_id.eq.${musteriId}`)   // TEXT kolon, string eşitlik
+  if (temizAd) {
+    const onEk = temizAd.slice(0, 10).replace(/[%,()]/g, ' ').trim()
+    if (onEk) kosullar.push(`firma_adi.ilike.%${onEk}%`)
+  }
+  if (!kosullar.length) return []
+
+  const { data, error } = await supabase
+    .from('gorusmeler')
+    .select(kolonlar)
+    .or(kosullar.join(','))
+    .order('tarih', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(200)
+  if (error) { console.error('kesifIcinGorusmeleriGetir:', error.message); return [] }
+
+  const hedefAd = firmaNormalize(temizAd)
+  return arrayToCamel(
+    (data || []).filter(g =>
+      (musteriId && String(g.musteri_id) === String(musteriId)) ||
+      (hedefAd && firmaNormalize(g.firma_adi) === hedefAd))
+  )
+}
+
+// Keşfi bir görüşmeye bağla (gorusmeId null verilirse bağ kaldırılır)
+export const kesifGorusmeBagla = async (kesifId, gorusme) => {
+  const { data, error } = await supabase
+    .from('kesifler')
+    .update({
+      gorusme_id: gorusme ? gorusme.id : null,
+      gorusme_no: gorusme ? (gorusme.gorusmeNo || gorusme.aktNo || null) : null,
+    })
+    .eq('id', kesifId)
+    .select()
+    .single()
+  if (error) throw error
+  return toCamel(data)
+}

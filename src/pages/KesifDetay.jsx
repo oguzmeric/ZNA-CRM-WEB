@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
-  Plus, Trash2, Save, Upload, X, Printer, Eye, FileInput,
+  Plus, Trash2, Save, Upload, X, Printer, Eye, FileInput, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -20,6 +20,7 @@ import {
   KESIF_KATEGORILERI, KESIF_DURUMLARI,
   KESIF_ONCELIKLERI, KESIF_TURLERI,
   kesifIcinTeklifleriGetir, tekliftenKesfeKalemAktar,
+  kesifIcinGorusmeleriGetir, kesifGorusmeBagla,
 } from '../services/kesifService'
 import KesifFotoBolumu from '../components/kesif/KesifFotoBolumu'
 import KesifKrokiBolumu from '../components/kesif/KesifKrokiBolumu'
@@ -93,6 +94,7 @@ export default function KesifDetay() {
   const [yazdirModal, setYazdirModal] = useState(false)
   const [teklifAktarModal, setTeklifAktarModal] = useState(false)   // önceki tekliften kalem çek
   const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([]) // lokasyon önerisi + bağ (mig 236)
+  const [gorusmeModal, setGorusmeModal] = useState(false)            // görüşmeye bağla
   const [yazdirFotoSecim, setYazdirFotoSecim] = useState('tumu') // tumu | cizimli | yok
   const [onizlemeHtml, setOnizlemeHtml] = useState(null) // rapor önizleme (iframe)
 
@@ -574,6 +576,20 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
               }}
             >{kesif.gorusmeNo}</button>
           )}
+          {/* Görüşme bağla / değiştir — keşif görüşmeden açılmadıysa da bağlanabilsin */}
+          <button
+            onClick={() => setGorusmeModal(true)}
+            title={kesif.gorusmeNo ? 'Bağlı görüşmeyi değiştir veya kaldır' : 'Bu keşfi bir görüşmeye bağla'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 11, fontWeight: 600, padding: '3px 8px',
+              color: 'var(--text-secondary)', background: 'transparent',
+              borderRadius: 6, border: '1px dashed var(--border-default)', cursor: 'pointer',
+            }}
+          >
+            <MessageSquare size={11} strokeWidth={1.8} />
+            {kesif.gorusmeNo ? 'Görüşmeyi değiştir' : 'Görüşmeye bağla'}
+          </button>
           {kesif.teklifId && (
             <Badge tone="brand" style={{ cursor: 'pointer' }} onClick={() => navigate(`/teklifler/${kesif.teklifId}`)}>
               <FileText size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />Teklif oluşturuldu →
@@ -1035,6 +1051,19 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
         />
       )}
 
+      {/* Görüşmeye bağlama modalı */}
+      {gorusmeModal && (
+        <GorusmeBaglaModal
+          kesif={kesif}
+          onKapat={() => setGorusmeModal(false)}
+          onBaglandi={(g) => {
+            setKesif(k => ({ ...k, gorusmeId: g ? g.id : null, gorusmeNo: g ? (g.gorusmeNo || g.aktNo) : null }))
+            setGorusmeModal(false)
+            toast.success(g ? `Keşif ${g.gorusmeNo || g.aktNo} görüşmesine bağlandı.` : 'Görüşme bağlantısı kaldırıldı.')
+          }}
+        />
+      )}
+
       {/* Önceki tekliften kalem aktarma modalı */}
       {teklifAktarModal && (
         <TeklifAktarModal
@@ -1052,6 +1081,126 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
         />
       )}
     </div>
+  )
+}
+
+// Keşfi bir görüşmeye bağla. Keşif görüşmeden açıldığında bağ otomatik kurulur;
+// bu modal sonradan açılan (ya da yanlış bağlanan) keşifler için.
+function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
+  const { toast } = useToast()
+  const [gorusmeler, setGorusmeler] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [arama, setArama] = useState('')
+  const [secili, setSecili] = useState(null)
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  useEffect(() => {
+    kesifIcinGorusmeleriGetir({ musteriId: kesif.musteriId, firmaAdi: kesif.firmaAdi })
+      .then(g => setGorusmeler(g || []))
+      .catch(() => toast.error('Görüşmeler yüklenemedi.'))
+      .finally(() => setYukleniyor(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const filtreli = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr')
+    if (!q) return gorusmeler
+    return gorusmeler.filter(g =>
+      `${g.gorusmeNo || ''} ${g.aktNo || ''} ${g.konu || ''} ${g.gorusen || ''}`
+        .toLocaleLowerCase('tr').includes(q))
+  }, [gorusmeler, arama])
+
+  const bagla = async (g) => {
+    setKaydediliyor(true)
+    try {
+      await kesifGorusmeBagla(kesif.id, g)
+      onBaglandi(g)
+    } catch (e) {
+      toast.error('Bağlanamadı: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onKapat} title="Keşfi Görüşmeye Bağla" width={700}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
+          <strong>{kesif.firmaAdi || 'Bu müşteri'}</strong> ile yapılan görüşmeler. Seçtiğin görüşme
+          bu keşfe kaynak olarak bağlanır; keşif üstünde görüşme numarası rozeti çıkar.
+        </div>
+
+        <Input value={arama} onChange={e => setArama(e.target.value)}
+          placeholder="Görüşme no, konu veya görüşen kişi ara…" />
+
+        <div style={{ maxHeight: 380, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8 }}>
+          {yukleniyor ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              Görüşmeler yükleniyor…
+            </div>
+          ) : filtreli.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              {gorusmeler.length === 0
+                ? 'Bu müşteriye ait görüşme bulunamadı.'
+                : 'Aramaya uyan görüşme yok.'}
+            </div>
+          ) : filtreli.map(g => {
+            const aktif = secili?.id === g.id
+            const bagliMi = String(kesif.gorusmeId || '') === String(g.id)
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setSecili(g)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                  padding: '10px 12px', border: 'none',
+                  borderBottom: '1px solid var(--border-default)',
+                  background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ font: '700 12.5px/18px var(--font-mono, monospace)', color: 'var(--brand-primary)' }}>
+                    {g.gorusmeNo || g.aktNo || `#${g.id}`}
+                  </span>
+                  <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                    {fmtTarih(g.tarih)}{g.saat ? ` · ${g.saat}` : ''}
+                  </span>
+                  {bagliMi && <Badge tone="aktif">şu an bağlı</Badge>}
+                  {g.gorusen && (
+                    <span style={{ marginLeft: 'auto', font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+                      {g.gorusen}
+                    </span>
+                  )}
+                </div>
+                {g.konu && (
+                  <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-primary)', marginTop: 2 }}>
+                    {g.konu}
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            {kesif.gorusmeId && (
+              <Button variant="ghost" onClick={() => bagla(null)} disabled={kaydediliyor}>
+                <X size={14} /> Bağlantıyı kaldır
+              </Button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" onClick={onKapat}>Vazgeç</Button>
+            <Button variant="primary" onClick={() => bagla(secili)} disabled={!secili || kaydediliyor}
+              iconLeft={<MessageSquare size={14} strokeWidth={1.5} />}>
+              {kaydediliyor ? 'Bağlanıyor…' : 'Görüşmeye Bağla'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
