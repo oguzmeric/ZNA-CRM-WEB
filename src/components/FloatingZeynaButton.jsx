@@ -247,6 +247,7 @@ export default function FloatingZeynaButton() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onClick={panelAc}
       >
         <button
           className="zeyna-fab"
