@@ -24,6 +24,7 @@ import {
 import KesifFotoBolumu from '../components/kesif/KesifFotoBolumu'
 import KesifKrokiBolumu from '../components/kesif/KesifKrokiBolumu'
 import { stokUrunleriniGetir } from '../services/stokService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import { gorevEkle } from '../services/gorevService'
 import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
@@ -38,6 +39,18 @@ import {
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 const birimler = ['Adet', 'Metre', 'Paket', 'Kutu', 'Takım', 'Saat']
+
+// Serbest metin lokasyonu müşterinin alt lokasyon kaydına çöz (mig 236)
+const lokNorm = (s = '') =>
+  String(s).toLocaleLowerCase('tr')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '')
+const lokasyonIdCoz = (metin, lokasyonlar = []) => {
+  const q = lokNorm(metin)
+  if (!q) return null
+  return lokasyonlar.find(l => lokNorm(l.ad) === q)?.id ?? null
+}
 
 // Sembol Özeti çipi ikonu — kroki tuvaliyle aynı path kaynağı
 function SembolMiniIkon({ id, renk, size = 22 }) {
@@ -79,6 +92,7 @@ export default function KesifDetay() {
   const [donusumCalisiyor, setDonusumCalisiyor] = useState(false)
   const [yazdirModal, setYazdirModal] = useState(false)
   const [teklifAktarModal, setTeklifAktarModal] = useState(false)   // önceki tekliften kalem çek
+  const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([]) // lokasyon önerisi + bağ (mig 236)
   const [yazdirFotoSecim, setYazdirFotoSecim] = useState('tumu') // tumu | cizimli | yok
   const [onizlemeHtml, setOnizlemeHtml] = useState(null) // rapor önizleme (iframe)
 
@@ -112,6 +126,14 @@ export default function KesifDetay() {
   }
 
   useEffect(() => { yukle() }, [id])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Müşterinin alt lokasyonları — lokasyon alanına öneri + kaydederken gerçek bağ
+  useEffect(() => {
+    if (!kesif?.musteriId) { setMusteriLokasyonlari([]); return }
+    musteriLokasyonlariniGetir(kesif.musteriId)
+      .then(l => setMusteriLokasyonlari(l || []))
+      .catch(() => setMusteriLokasyonlari([]))
+  }, [kesif?.musteriId])
 
   // Kategori bazlı özet chip'leri (📷 12 Kamera gibi)
   const kategoriOzet = useMemo(() => {
@@ -180,6 +202,9 @@ export default function KesifDetay() {
         projeAdi: kesif.projeAdi,
         kesifBasligi: kesif.kesifBasligi,
         lokasyon: kesif.lokasyon,
+        // Yazılan lokasyon müşterinin alt lokasyon kaydıyla eşleşiyorsa gerçek
+        // bağı da kur (mig 236) — müşteri detayındaki lokasyon dökümü bunu kullanır
+        lokasyonId: lokasyonIdCoz(kesif.lokasyon, musteriLokasyonlari),
         musteriYetkilisi: kesif.musteriYetkilisi,
         yetkiliTelefon: kesif.yetkiliTelefon,
         yetkiliEmail: kesif.yetkiliEmail,
@@ -616,7 +641,17 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <Label>Keşif adresi</Label>
-              <Input value={kesif.lokasyon || ''} onChange={e => setKesif(k => ({ ...k, lokasyon: e.target.value }))} placeholder="Saha adresi" />
+              {/* Müşterinin kayıtlı alt lokasyonları öneri olarak gelir; seçilirse
+                  müşteri detayındaki lokasyon dökümüne bu keşif de düşer */}
+              <Input
+                list="kesif-lokasyon-onerileri"
+                value={kesif.lokasyon || ''}
+                onChange={e => setKesif(k => ({ ...k, lokasyon: e.target.value }))}
+                placeholder={musteriLokasyonlari.length ? 'Kayıtlı lokasyonlardan seç veya yaz…' : 'Saha adresi'}
+              />
+              <datalist id="kesif-lokasyon-onerileri">
+                {musteriLokasyonlari.map(l => <option key={l.id} value={l.ad} />)}
+              </datalist>
             </div>
             <div>
               <Label>Müşteri yetkilisi</Label>

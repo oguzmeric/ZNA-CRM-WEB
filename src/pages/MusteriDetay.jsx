@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
-  CheckCircle2, Send, User,
+  CheckCircle2, Send, User, Compass, HardDrive, Wrench, Cpu,
 } from 'lucide-react'
 import MusteriDavetModal from '../components/MusteriDavetModal'
 import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
@@ -14,7 +14,7 @@ import { musteriGetir, musteriGuncelle, musterileriGetir } from '../services/mus
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonDetay } from '../components/Skeleton'
 import { musteriKisileriniGetir, musteriKisiEkle, musteriKisiGuncelle, musteriKisiSil } from '../services/musteriKisiService'
-import { musteriLokasyonlariniGetir, musteriLokasyonEkle, musteriLokasyonGuncelle, musteriLokasyonSil } from '../services/musteriLokasyonService'
+import { musteriLokasyonlariniGetir, musteriLokasyonEkle, musteriLokasyonGuncelle, musteriLokasyonSil, lokasyonKayitlariGetir } from '../services/musteriLokasyonService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
@@ -85,6 +85,7 @@ function MusteriDetay() {
 
   const [lokasyonlar, setLokasyonlar]   = useState([])
   const [lokasyonForm, setLokasyonForm] = useState(null)
+  const [seciliLok, setSeciliLok]       = useState(null)   // lokasyon bazlı döküm paneli
   const [lokKaydediliyor, setLokKaydediliyor] = useState(false)
   const [lokArama, setLokArama] = useState('')
   const [lokHepsi, setLokHepsi] = useState(false)
@@ -1034,12 +1035,16 @@ function MusteriDetay() {
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: 10,
                         padding: '10px 12px',
-                        border: '1px solid var(--border-default)',
+                        border: `1px solid ${seciliLok?.id === lok.id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
                         borderRadius: 'var(--radius-sm)',
                         transition: 'background 120ms',
+                        background: seciliLok?.id === lok.id ? 'var(--brand-primary-soft)' : 'transparent',
+                        cursor: 'pointer',
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      // Karta tıkla → altta bu lokasyona ait kayıt dökümü açılır
+                      onClick={() => setSeciliLok(s => s?.id === lok.id ? null : lok)}
+                      onMouseEnter={e => { if (seciliLok?.id !== lok.id) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+                      onMouseLeave={e => { if (seciliLok?.id !== lok.id) e.currentTarget.style.background = 'transparent' }}
                     >
                       <span style={{
                         width: 26, height: 26, borderRadius: 'var(--radius-sm)',
@@ -1070,7 +1075,7 @@ function MusteriDetay() {
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         <button
                           aria-label="Düzenle"
-                          onClick={() => setLokasyonForm({ ...lok })}
+                          onClick={e => { e.stopPropagation(); setLokasyonForm({ ...lok }) }}
                           style={{
                             width: 26, height: 26,
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1084,7 +1089,7 @@ function MusteriDetay() {
                         </button>
                         <button
                           aria-label="Sil"
-                          onClick={() => lokasyonSil(lok.id)}
+                          onClick={e => { e.stopPropagation(); lokasyonSil(lok.id) }}
                           style={{
                             width: 26, height: 26,
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1117,6 +1122,15 @@ function MusteriDetay() {
                   >
                     {lokHepsi ? '▲ Daralt' : `▼ Tümünü göster (${filtreli.length})`}
                   </button>
+                )}
+
+                {/* Seçilen lokasyonun kayıt dökümü — modal yerine altta panel */}
+                {seciliLok && (
+                  <LokasyonKayitPaneli
+                    lokasyon={seciliLok}
+                    musteriId={Number(id)}
+                    onKapat={() => setSeciliLok(null)}
+                  />
                 )}
               </div>
             )
@@ -1208,6 +1222,161 @@ function MusteriDetay() {
         musteri={musteri}
         onayKisi={kisiler.find(k => k.anaKisi) || kisiler[0] || null}
       />
+    </div>
+  )
+}
+
+// Bir alt lokasyona tıklanınca açılan döküm paneli: o lokasyondaki keşifler,
+// takılı S/N ürünler, cihazlar, servis talepleri, toplu bakımlar.
+// Modal DEĞİL — liste altında panel (kullanıcı modal katmanlarından hoşlanmıyor).
+function LokasyonKayitPaneli({ lokasyon, musteriId, onKapat }) {
+  const navigate = useNavigate()
+  const [veri, setVeri] = useState(null)
+  const [yukleniyor, setYukleniyor] = useState(true)
+
+  useEffect(() => {
+    let iptal = false
+    setYukleniyor(true)
+    lokasyonKayitlariGetir({
+      musteriId, lokasyonId: lokasyon.id, lokasyonAdi: lokasyon.ad,
+    })
+      .then(d => { if (!iptal) setVeri(d) })
+      .catch(() => { if (!iptal) setVeri(null) })
+      .finally(() => { if (!iptal) setYukleniyor(false) })
+    return () => { iptal = true }
+  }, [lokasyon.id, lokasyon.ad, musteriId])
+
+  const toplam = veri
+    ? veri.kesifler.length + veri.snKalemler.length + veri.cihazlar.length +
+      veri.servisler.length + veri.bakimlar.length
+    : 0
+
+  const Bolum = ({ ikon, baslik, sayi, children }) => {
+    if (!sayi) return null
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          {ikon}
+          <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+            {baslik}
+          </span>
+          <span className="tabular-nums" style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+            ({sayi})
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{children}</div>
+      </div>
+    )
+  }
+
+  const Satir = ({ kod, ad, sag, onClick }) => (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 10px', borderRadius: 'var(--radius-sm)',
+        background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+        cursor: onClick ? 'pointer' : 'default',
+        font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-primary)',
+      }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.borderColor = 'var(--brand-primary)' }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.borderColor = 'var(--border-default)' }}
+    >
+      {kod && (
+        <span style={{ font: '700 11.5px/16px var(--font-mono, monospace)', color: 'var(--brand-primary)', whiteSpace: 'nowrap' }}>
+          {kod}
+        </span>
+      )}
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad}</span>
+      {sag && (
+        <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+          {sag}
+        </span>
+      )}
+    </div>
+  )
+
+  return (
+    <div style={{
+      marginTop: 14, padding: '14px 16px',
+      border: '1px solid var(--brand-primary)', borderRadius: 'var(--radius-sm)',
+      background: 'var(--surface-sunken)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <MapPin size={15} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+        <span style={{ font: '700 13.5px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+          {lokasyon.ad}
+        </span>
+        <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+          — bu lokasyondaki kayıtlar
+        </span>
+        <button
+          onClick={onKapat}
+          aria-label="Kapat"
+          style={{
+            marginLeft: 'auto', width: 24, height: 24, display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            background: 'transparent', border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)',
+          }}
+        >
+          <X size={12} strokeWidth={1.5} />
+        </button>
+      </div>
+
+      {yukleniyor ? (
+        <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0 }}>
+          Kayıtlar yükleniyor…
+        </p>
+      ) : !veri || toplam === 0 ? (
+        <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0, fontStyle: 'italic' }}>
+          Bu lokasyona bağlı keşif, ürün, cihaz, servis veya bakım kaydı yok. Kayıtlar
+          keşif/servis/bakım açarken lokasyon seçildikçe burada birikir.
+        </p>
+      ) : (
+        <>
+          <Bolum ikon={<Compass size={13} strokeWidth={1.5} style={{ color: '#0ea5e9' }} />} baslik="KEŞİFLER" sayi={veri.kesifler.length}>
+            {veri.kesifler.map(k => (
+              <Satir key={k.id} kod={k.kesifNo}
+                ad={k.projeAdi || k.kesifBasligi || 'Keşif'}
+                sag={[k.kesifTarihi ? new Date(k.kesifTarihi).toLocaleDateString('tr-TR') : null, k.durum].filter(Boolean).join(' · ')}
+                onClick={() => navigate(`/kesifler/${k.id}`)} />
+            ))}
+          </Bolum>
+
+          <Bolum ikon={<HardDrive size={13} strokeWidth={1.5} style={{ color: '#8b5cf6' }} />} baslik="TAKILI S/N ÜRÜNLER" sayi={veri.snKalemler.length}>
+            {veri.snKalemler.map(s => (
+              <Satir key={s.id} kod={s.seriNo}
+                ad={[s.marka, s.model].filter(Boolean).join(' ') || s.stokKodu || 'Ürün'}
+                sag={[s.altLokasyon, s.kanalNo ? `Kanal ${s.kanalNo}` : null, s.durum].filter(Boolean).join(' · ')} />
+            ))}
+          </Bolum>
+
+          <Bolum ikon={<Cpu size={13} strokeWidth={1.5} style={{ color: '#059669' }} />} baslik="CİHAZLAR" sayi={veri.cihazlar.length}>
+            {veri.cihazlar.map(c => (
+              <Satir key={c.id} kod={c.seriNo}
+                ad={[c.cihazAdi, c.marka, c.model].filter(Boolean).join(' ')}
+                sag={[c.ipAdresi, c.durum].filter(Boolean).join(' · ')} />
+            ))}
+          </Bolum>
+
+          <Bolum ikon={<Wrench size={13} strokeWidth={1.5} style={{ color: '#f59e0b' }} />} baslik="SERVİS TALEPLERİ" sayi={veri.servisler.length}>
+            {veri.servisler.map(t => (
+              <Satir key={t.id} kod={t.talepNo} ad={t.konu || 'Servis talebi'}
+                sag={t.durum}
+                onClick={() => navigate(`/servis-talepleri/${t.id}`)} />
+            ))}
+          </Bolum>
+
+          <Bolum ikon={<Wrench size={13} strokeWidth={1.5} style={{ color: '#0891b2' }} />} baslik="TOPLU BAKIMLAR" sayi={veri.bakimlar.length}>
+            {veri.bakimlar.map(b => (
+              <Satir key={b.id} kod={b.tbNo} ad={b.lokasyonAdi || lokasyon.ad}
+                sag={[b.planlananTarih ? new Date(b.planlananTarih).toLocaleDateString('tr-TR') : null, b.durum].filter(Boolean).join(' · ')}
+                onClick={() => navigate(`/bakim-isleri/${b.id}`)} />
+            ))}
+          </Bolum>
+        </>
+      )}
     </div>
   )
 }
