@@ -1093,6 +1093,8 @@ function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
   const [arama, setArama] = useState('')
   const [secili, setSecili] = useState(null)
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [tumMusteriler, setTumMusteriler] = useState(false)  // farklı firma adına kaydedilmişse
+  const [tumSonuc, setTumSonuc] = useState([])
 
   useEffect(() => {
     kesifIcinGorusmeleriGetir({ musteriId: kesif.musteriId, firmaAdi: kesif.firmaAdi })
@@ -1102,13 +1104,28 @@ function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Tüm müşterilerde arama — sunucu tarafı (ACT/GRS no, konu, firma adı)
+  useEffect(() => {
+    if (!tumMusteriler) return
+    const q = arama.trim()
+    if (q.length < 3) { setTumSonuc([]); return }
+    let iptal = false
+    const zaman = setTimeout(() => {
+      kesifIcinGorusmeleriGetir({ tumMusteriler: true, arama: q })
+        .then(g => { if (!iptal) setTumSonuc(g || []) })
+        .catch(() => { if (!iptal) setTumSonuc([]) })
+    }, 350)
+    return () => { iptal = true; clearTimeout(zaman) }
+  }, [tumMusteriler, arama])
+
   const filtreli = useMemo(() => {
+    if (tumMusteriler) return tumSonuc
     const q = arama.trim().toLocaleLowerCase('tr')
     if (!q) return gorusmeler
     return gorusmeler.filter(g =>
       `${g.gorusmeNo || ''} ${g.aktNo || ''} ${g.konu || ''} ${g.gorusen || ''}`
         .toLocaleLowerCase('tr').includes(q))
-  }, [gorusmeler, arama])
+  }, [gorusmeler, arama, tumMusteriler, tumSonuc])
 
   const bagla = async (g) => {
     setKaydediliyor(true)
@@ -1126,23 +1143,41 @@ function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
     <Modal open onClose={onKapat} title="Keşfi Görüşmeye Bağla" width={700}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
-          <strong>{kesif.firmaAdi || 'Bu müşteri'}</strong> ile yapılan görüşmeler. Seçtiğin görüşme
-          bu keşfe kaynak olarak bağlanır; keşif üstünde görüşme numarası rozeti çıkar.
+          <strong>{kesif.firmaAdi || 'Bu müşteri'}</strong> ile yapılan görüşmeler
+          {!tumMusteriler && gorusmeler.length > 0 && ` (${gorusmeler.length} kayıt)`}. Seçtiğin
+          görüşme bu keşfe kaynak olarak bağlanır; keşif üstünde numara rozeti çıkar.
         </div>
 
         <Input value={arama} onChange={e => setArama(e.target.value)}
-          placeholder="Görüşme no, konu veya görüşen kişi ara…" />
+          placeholder={tumMusteriler
+            ? 'Tüm görüşmelerde ara: ACT/GRS no, konu veya firma… (en az 3 harf)'
+            : 'ACT/GRS no, konu veya görüşen kişi ara…'} />
+
+        <label style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none',
+          font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+        }}>
+          <input
+            type="checkbox"
+            checked={tumMusteriler}
+            onChange={e => { setTumMusteriler(e.target.checked); setSecili(null) }}
+            style={{ width: 15, height: 15, accentColor: 'var(--brand-primary)' }}
+          />
+          Tüm müşterilerde ara (görüşme farklı firma adına kaydedilmişse)
+        </label>
 
         <div style={{ maxHeight: 380, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8 }}>
-          {yukleniyor ? (
+          {yukleniyor && !tumMusteriler ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
               Görüşmeler yükleniyor…
             </div>
           ) : filtreli.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-              {gorusmeler.length === 0
-                ? 'Bu müşteriye ait görüşme bulunamadı.'
-                : 'Aramaya uyan görüşme yok.'}
+              {tumMusteriler
+                ? (arama.trim().length < 3 ? 'Aramak için en az 3 harf yaz.' : 'Aramaya uyan görüşme yok.')
+                : gorusmeler.length === 0
+                  ? `${kesif.firmaAdi || 'Bu müşteri'} için görüşme kaydı yok. Üstteki kutuyu işaretleyip tüm görüşmelerde arayabilirsin.`
+                  : 'Aramaya uyan görüşme yok.'}
             </div>
           ) : filtreli.map(g => {
             const aktif = secili?.id === g.id
@@ -1160,9 +1195,15 @@ function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {/* Kayıtlar sahada ACT no ile tanınıyor — ACT önde, GRS ikincil */}
                   <span style={{ font: '700 12.5px/18px var(--font-mono, monospace)', color: 'var(--brand-primary)' }}>
-                    {g.gorusmeNo || g.aktNo || `#${g.id}`}
+                    {g.aktNo || g.gorusmeNo || `#${g.id}`}
                   </span>
+                  {g.aktNo && g.gorusmeNo && (
+                    <span style={{ font: '500 11px/16px var(--font-mono, monospace)', color: 'var(--text-tertiary)' }}>
+                      {g.gorusmeNo}
+                    </span>
+                  )}
                   <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                     {fmtTarih(g.tarih)}{g.saat ? ` · ${g.saat}` : ''}
                   </span>
@@ -1176,6 +1217,12 @@ function GorusmeBaglaModal({ kesif, onKapat, onBaglandi }) {
                 {g.konu && (
                   <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-primary)', marginTop: 2 }}>
                     {g.konu}
+                  </div>
+                )}
+                {/* Tüm müşterilerde ararken hangi firmaya ait olduğu görünmeli */}
+                {tumMusteriler && g.firmaAdi && (
+                  <div style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    {g.firmaAdi}
                   </div>
                 )}
               </button>

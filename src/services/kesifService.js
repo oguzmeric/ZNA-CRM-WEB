@@ -595,9 +595,26 @@ export const tekliftenKesfeKalemAktar = async ({ kesifId, teklif, mevcutKalemler
 // keşifler için (ya da yanlış bağlananlar için) elle bağlama.
 //
 // DİKKAT: gorusmeler.musteri_id TEXT tipinde — sayısal karşılaştırma yapma.
-export const kesifIcinGorusmeleriGetir = async ({ musteriId, firmaAdi } = {}) => {
+export const kesifIcinGorusmeleriGetir = async ({ musteriId, firmaAdi, tumMusteriler, arama } = {}) => {
   const kolonlar = 'id, gorusme_no, akt_no, tarih, saat, konu, firma_adi, musteri_id, gorusen, hazirlayan, tip, durum'
   const temizAd = String(firmaAdi || '').trim()
+
+  // Görüşme başka bir firma adıyla kaydedilmiş olabilir: tüm kayıtlarda ara.
+  // Numara (ACT/GRS), konu ve firma adında arar — en az 3 karakter ister.
+  if (tumMusteriler) {
+    const q = String(arama || '').trim().replace(/[%,()]/g, ' ')
+    if (q.length < 3) return []
+    const { data, error } = await supabase
+      .from('gorusmeler')
+      .select(kolonlar)
+      .or(`gorusme_no.ilike.%${q}%,akt_no.ilike.%${q}%,konu.ilike.%${q}%,firma_adi.ilike.%${q}%`)
+      .order('tarih', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(100)
+    if (error) { console.error('kesifIcinGorusmeleriGetir(tum):', error.message); return [] }
+    return arrayToCamel(data || [])
+  }
+
   if (!musteriId && !temizAd) return []
 
   const kosullar = []
