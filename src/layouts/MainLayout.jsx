@@ -227,7 +227,10 @@ const menuItems = [
   // (grupIK). DİKKAT: statik grup 'yonetim' YAPILMAZ — filtrede 'yonetim' grubu yalnız
   // Oğuz/Ali/Ferdi'ye açık, o zaman normal personelde sayfa kaybolurdu.
   { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'operasyon', grupIK: 'yonetim' },
-  { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  // Personel ekleme/çıkarma + modül yetkileri. Eski adı "Kullanıcılar" idi;
+  // kullanıcı personel eklemeyi burada bulamadığı için adı netleştirildi (27.07).
+  // İK bloğunun (İK Yönetimi > Mesai Raporu > İzin & Bordro) hemen ardında.
+  { id: 'kullanici_yonetimi', isim: 'Personel Yönetimi', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
@@ -289,7 +292,7 @@ const sayfaIsimleri = {
   '/bakim-isleri': 'Bakım İşleri',
   '/raporlar': 'Raporlar',
   '/chat': 'Sohbet',
-  '/kullanici-yonetimi': 'Kullanıcı Yönetimi',
+  '/kullanici-yonetimi': 'Personel Yönetimi',
   '/sla-ayarlari': 'SLA Ayarları',
   '/performans': 'Personel Performansı',
   '/profil': 'Profilim',
