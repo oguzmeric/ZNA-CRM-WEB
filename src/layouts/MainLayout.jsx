@@ -3,6 +3,7 @@ import { faturaYetkisi } from '../services/faturaTalepService'
 import { siparisYonetimiGorebilirMi } from '../lib/siparisYetki'
 import { filoGorebilirMi } from '../lib/filoYetki'
 import { ikGorebilirMi } from '../lib/ikYetki'
+import { mesaiRaporuGorebilirMi } from '../lib/mesaiYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -217,6 +218,9 @@ const menuItems = [
   // İK Yönetimi: yonetim grubunda ama erişim ikGorebilirMi ile (Abdullah + admin) —
   // grup 'yonetim' filtresinden ÖNCE sadeceIK bayrağıyla değerlendirilir
   { id: 'ik_yonetim', isim: 'İK Yönetimi', Icon: Wallet, yol: '/ik-yonetim', modul: null, grup: 'yonetim', sadeceIK: true },
+  // Mesai Raporu — saha ekiplerinin QR mesai saatleri (günlük/haftalık/aylık).
+  // İK yetkilileri (Ali/Oğuz/Abdullah) + Ferdi; App.jsx MesaiRaporGuard ile paralel.
+  { id: 'mesai_raporu', isim: 'Mesai Raporu', Icon: Timer, yol: '/mesai-raporu', modul: null, grup: 'yonetim', sadeceMesaiRapor: true },
   // Kişisel özlük alanı — Dokümanlarım'ın yanında (kullanıcı kararı: GÜNLÜK'te değil)
   // Kişisel sayfa: HERKES kendi izin/bordrosunu görür → grup 'operasyon', modul null.
   // İK yetkilisinde (Abdullah + admin) 'yonetim' grubuna, İK Yönetimi'nin yanına taşınır
@@ -277,6 +281,7 @@ const sayfaIsimleri = {
   '/gunluk-ozet': 'Günlük Özet',
   '/izin-bordro': 'İzin & Bordro',
   '/ik-yonetim': 'İK Yönetimi',
+  '/mesai-raporu': 'Mesai Raporu',
   '/sozlesmeler': 'Sözleşmeler',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
@@ -426,6 +431,9 @@ function MainLayout({ children }) {
     if (m.sadeceOguz) return oguzMu
     // İK Yönetimi: Abdullah (ik_yonetim modülü) + admin — grup 'yonetim' kuralından ÖNCE
     if (m.sadeceIK) return ikGorebilirMi(kullanici)
+    // Mesai Raporu: İK yetkilileri + Ferdi — 'yonetim' grup kuralından ÖNCE
+    // (Abdullah personel rolünde, yonetimErisimi'ne takılırdı)
+    if (m.sadeceMesaiRapor) return mesaiRaporuGorebilirMi(kullanici)
     // Sipariş Yönetimi: admin + izinli istisnalar (App.jsx AdminGuard ile paralel)
     if (m.sadeceAdmin) return siparisYonetimiGorebilirMi(kullanici)
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel

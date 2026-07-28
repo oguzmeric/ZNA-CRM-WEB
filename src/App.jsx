@@ -6,6 +6,7 @@ import { siparisYonetimiGorebilirMi } from './lib/siparisYetki'
 import { demirbasIsleyebilirMi } from './lib/zimmetYetki'
 import { filoGorebilirMi } from './lib/filoYetki'
 import { ikGorebilirMi } from './lib/ikYetki'
+import { mesaiRaporuGorebilirMi } from './lib/mesaiYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -63,6 +64,7 @@ const DokumanMerkezi = lazy(() => import('./pages/DokümanMerkezi'))
 const KisiselDokumanlar = lazy(() => import('./pages/KisiselDokumanlar'))
 const IzinBordro = lazy(() => import('./pages/IzinBordro'))
 const IKYonetim = lazy(() => import('./pages/IKYonetim'))
+const MesaiRaporu = lazy(() => import('./pages/MesaiRaporu'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Profil = lazy(() => import('./pages/Profil'))
 const FirmaGecmisi = lazy(() => import('./pages/FirmaGecmisi'))
@@ -126,6 +128,14 @@ function YonetimGuard({ children }) {
 function IKGuard({ children }) {
   const { kullanici } = useAuth()
   if (!ikGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// Mesai Raporu guard'ı — İK yetkilileri (Ali/Oğuz/Abdullah) + Ferdi.
+// MainLayout sadeceMesaiRapor filtresi ile AYNI kaynak; DB tarafı mig 237.
+function MesaiRaporGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!mesaiRaporuGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -428,6 +438,7 @@ function App() {
           <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
           <Route path="/izin-bordro" element={<IzinBordro />} />
           <Route path="/ik-yonetim" element={<IKGuard><IKYonetim /></IKGuard>} />
+          <Route path="/mesai-raporu" element={<MesaiRaporGuard><MesaiRaporu /></MesaiRaporGuard>} />
           <Route path="/kargolar" element={<Kargolar />} />
           <Route path="/kargolar/:id" element={<KargoDetay />} />
           <Route path="/takvim" element={<Takvim />} />

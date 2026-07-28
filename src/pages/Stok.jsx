@@ -95,6 +95,9 @@ function Stok() {
   const { kullanici, kullanicilar } = useAuth()
   const { bildirimEkle } = useBildirim()
   const dosyaRef = useRef(null)
+  // Form kartına otomatik kaydırma — içerik alanı KENDİ kapsayıcısında kayıyor
+  // (MainLayout overflowY:auto), bu yüzden window.scrollTo İŞE YARAMIYOR.
+  const formCardRef = useRef(null)
 
   const [urunler, setUrunler] = useState([])
   const [hareketler, setHareketler] = useState([])
@@ -463,7 +466,7 @@ function Stok() {
     setDuzenleId(null)
     setOzellikDegerleri({})
     setGoster(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   const duzenleAc = (u) => {
@@ -500,7 +503,7 @@ function Stok() {
     setKodModu('manuel')
     setDuzenleId(u.id)
     setGoster(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     // Ürünün kayıtlı teknik özellik değerlerini yükle (Faz 2)
     setOzellikDegerleri({})
     urunOzellikleriGetir(u.id)
@@ -957,7 +960,7 @@ function Stok() {
 
       {/* Form card */}
       {goster && (
-        <Card style={{ marginBottom: 16 }}>
+        <Card ref={formCardRef} style={{ marginBottom: 16 }}>
           <h2 className="t-h2" style={{ marginBottom: 16 }}>
             {duzenleId ? 'Ürünü düzenle' : 'Yeni stok kartı'}
           </h2>
