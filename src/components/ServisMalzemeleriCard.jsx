@@ -70,7 +70,6 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
       .catch(() => setUrunler([]))
   }, [servisId])
 
-  const planlananlar = useMemo(() => malzemeler.filter(m => m.durum === 'planlanan'), [malzemeler])
   const kullanilanlar = useMemo(() => malzemeler.filter(m => m.durum !== 'planlanan'), [malzemeler])
   const genelToplam = useMemo(
     () => kullanilanlar.reduce((s, m) => s + (Number(m.tutar) || 0), 0),
@@ -162,27 +161,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
     }
   }
 
-  const kullandim = async (m) => {
-    let kalem = null
-    if (m.stokKodu) {
-      const urun = urunler.find(u => u.stokKodu === m.stokKodu)
-      if (urun?.seriTakipli) {
-        const kalemler = await teknisyendekiKalemler(m.stokKodu)
-        if (!kalemler.length) {
-          toast.error('Bu ürün S/N takipli ve teknisyende hiç SN yok — önce "Teknisyene Ver" yapılmalı.')
-          return
-        }
-        kalem = kalemler[0]
-      }
-    }
-    try {
-      await servisMalzemeKullanildiYap(m, { kalem, servisKodu })
-      await yenile()
-      toast.success(kalem ? `${kalem.seriNo} düşüldü — müşteri formuna eklendi.` : 'Kullanıldı olarak işaretlendi.')
-    } catch (e) {
-      toast.error(e?.message || 'İşaretlenemedi.')
-    }
-  }
+  // NOT: planlanan -> kullanildi gecisi ServisMalzemePlanCard'a tasindi.
 
   const sil = async (m) => {
     const onay = await confirm({
@@ -314,42 +293,10 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
         Buraya eklenenler müşteri servis formundaki “Yedek Parçalar” listesine aynen basılır.
       </p>
 
-      {/* Keşiften gelen planlanan malzemeler */}
-      {planlananlar.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div className="t-caption" style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>
-            Keşifte planlanan ({planlananlar.length}) — kullandıkça işaretle; forma basılmaz, stok düşmez
-          </div>
-          <div style={{ display: 'grid', gap: 6 }}>
-            {planlananlar.map(m => (
-              <div key={m.id} style={{ ...satirKutu, borderStyle: 'dashed' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ font: '500 13px/18px var(--font-sans)' }}>{m.urunAdi}</span>
-                    {m.stokKodu && <CodeBadge>{m.stokKodu}</CodeBadge>}
-                    <Badge tone="uyari">Planlanan</Badge>
-                  </div>
-                  <div className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    <span className="tabular-nums">{m.miktar}</span> {m.birim || 'Adet'}
-                  </div>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => kullandim(m)}
-                  iconLeft={<Check size={12} strokeWidth={2} />}>
-                  Kullandım
-                </Button>
-                <button aria-label="Kaldır" title="Planlanan listesinden çıkar" onClick={() => sil(m)}
-                  style={{
-                    width: 28, height: 28, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'transparent', border: '1px solid var(--border-default)', color: 'var(--danger)',
-                  }}>
-                  <Trash2 size={12} strokeWidth={1.5} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* NOT: 'planlanan' satırlar artık ÜSTTEKİ "Kullanılacak Malzemeler"
+          kartında yönetiliyor (ServisMalzemePlanCard) — iki yerde birden
+          göstermek karışıklık yaratıyordu. Bu kart yalnız KULLANILAN
+          malzemeleri (müşteri formuna basılanları) tutar. */}
 
       {/* Ekleme satırı — akıllı arama: "2 mp dome kamera" veya model/kod */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
