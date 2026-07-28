@@ -199,8 +199,6 @@ const menuItems = [
   { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
   { id: 'dokuman_merkezi', isim: 'Doküman Merkezi', Icon: FolderOpen, yol: '/dokuman-merkezi', modul: null, grup: 'operasyon' },
   { id: 'dokumanlarim', isim: 'Dokümanlarım', Icon: FolderOpen, yol: '/dokumanlarim', modul: null, grup: 'operasyon' },
-  // Kişisel özlük alanı — Dokümanlarım'ın yanında (kullanıcı kararı: GÜNLÜK'te değil)
-  { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'operasyon' },
   {
     id: 'raporlar',
     isim: 'Raporlar',
@@ -219,6 +217,12 @@ const menuItems = [
   // İK Yönetimi: yonetim grubunda ama erişim ikGorebilirMi ile (Abdullah + admin) —
   // grup 'yonetim' filtresinden ÖNCE sadeceIK bayrağıyla değerlendirilir
   { id: 'ik_yonetim', isim: 'İK Yönetimi', Icon: Wallet, yol: '/ik-yonetim', modul: null, grup: 'yonetim', sadeceIK: true },
+  // Kişisel özlük alanı — Dokümanlarım'ın yanında (kullanıcı kararı: GÜNLÜK'te değil)
+  // Kişisel sayfa: HERKES kendi izin/bordrosunu görür → grup 'operasyon', modul null.
+  // İK yetkilisinde (Abdullah + admin) 'yonetim' grubuna, İK Yönetimi'nin yanına taşınır
+  // (grupIK). DİKKAT: statik grup 'yonetim' YAPILMAZ — filtrede 'yonetim' grubu yalnız
+  // Oğuz/Ali/Ferdi'ye açık, o zaman normal personelde sayfa kaybolurdu.
+  { id: 'izin_bordro', isim: 'İzin & Bordro', Icon: CalendarCheck, yol: '/izin-bordro', modul: null, grup: 'operasyon', grupIK: 'yonetim' },
   { id: 'kullanici_yonetimi', isim: 'Kullanıcılar', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
@@ -537,9 +541,13 @@ function MainLayout({ children }) {
   // Grup başlıklarını menu listesine entrilaştır — item map'i içinde header vs item ayrımı yapılır.
   // useMenuSiralama tarafından döndürülen siparişi bozmadan grup bazında sıralar.
   const menuEntries = (() => {
+    // grupIK: İK yetkilisinde öğe farklı gruba düşer (İzin & Bordro → Yönetim).
+    // Filtre aşaması statik m.grup ile çalıştığı için burada, RENDER'da uygulanır.
+    const ikYetkili = ikGorebilirMi(kullanici)
+    const etkinGrup = (m) => (ikYetkili && m.grupIK) ? m.grupIK : (m.grup || 'gunluk')
     const gruplu = GRUPLAR.map(g => ({
       grup: g,
-      items: gorunenMenu.filter(m => (m.grup || 'gunluk') === g.id),
+      items: gorunenMenu.filter(m => etkinGrup(m) === g.id),
     })).filter(g => g.items.length > 0)
     const result = []
     gruplu.forEach(g => {
