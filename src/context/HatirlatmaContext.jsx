@@ -12,6 +12,7 @@ import { lisanslariGetir } from '../services/lisansService'
 import { teklifleriGetir } from '../services/teklifService'
 import { musterileriGetir } from '../services/musteriService'
 import { useAuth } from './AuthContext'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 
 // Demo bitişi <= bu kadar gün ise hatırlatma çıkar
 const LISANS_UYARI_GUN = 3
@@ -31,6 +32,7 @@ export function HatirlatmaProvider({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { kullanici } = useAuth()
+  const teklifGorur = teklifGorebilirMi(kullanici)
   // Popup'ın ÇIKMAMASI gereken ekranlar:
   //  - /skor: ofis kiosk ekranı, kişisel hatırlatmanın yeri değil
   //  - /yazdir: yazdırma önizlemesi — popup faturanın/teklifin üstüne biniyor,
@@ -53,12 +55,17 @@ export function HatirlatmaProvider({ children }) {
     Promise.all([
       hatirlatmalariGetir(),
       lisanslariGetir().catch(() => []),
-      teklifleriGetir().catch(() => []),
+      teklifGorur ? teklifleriGetir().catch(() => []) : Promise.resolve([]),
       musterileriGetir().catch(() => []),
     ]).then(async ([listeHam, lisanslar, teklifler, musteriler]) => {
-      // Silinmiş tekliflere ait teklif hatırlatmalarını at ve DB'den temizle
+      // Silinmiş tekliflere ait teklif hatırlatmalarını at ve DB'den temizle.
+      // DİKKAT: teklif yetkisi olmayanda liste ZATEN boş gelir (mig 238 RLS);
+      // temizliği çalıştırırsak tüm teklif hatırlatmalarını yetim sanıp SİLER.
+      // Bu yüzden yalnız teklifleri gerçekten görebilen kullanıcıda çalışır.
       const mevcutTeklifIds = new Set(teklifler.map(t => t.id))
-      const orphan = listeHam.filter(h => h.tip === 'teklif' && h.teklifId && !mevcutTeklifIds.has(h.teklifId))
+      const orphan = teklifGorur
+        ? listeHam.filter(h => h.tip === 'teklif' && h.teklifId && !mevcutTeklifIds.has(h.teklifId))
+        : []
       const liste = listeHam.filter(h => !orphan.includes(h))
       // Silinen teklif hatırlatmalarını arka planda DB'den sil (best-effort)
       // NOT: hatirlatmaKaydiSil PK ile siler; hatirlatmaSilDB(h.id) yanlıştı
@@ -127,7 +134,7 @@ export function HatirlatmaProvider({ children }) {
       }
     })
     // Kullanıcı değişince (giriş/çoklu hesap) filtreler yeniden kurulmalı
-  }, [kullanici?.id])
+  }, [kullanici?.id, teklifGorur])
 
   const hatirlatmaEkle = async (teklifData, gunSayisi = 7) => {
     if (!gunSayisi || gunSayisi <= 0) return null

@@ -4,6 +4,7 @@ import { siparisYonetimiGorebilirMi } from '../lib/siparisYetki'
 import { filoGorebilirMi } from '../lib/filoYetki'
 import { ikGorebilirMi } from '../lib/ikYetki'
 import { mesaiRaporuGorebilirMi } from '../lib/mesaiYetki'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -115,7 +116,10 @@ const menuItems = [
     grup: 'satis',
     altMenu: [
       { id: 'kesif-liste', isim: 'Keşifler', yol: '/kesifler' },
-      { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler' },
+      // Teklifler fiyat/kâr içerir: teknisyen, saha ekibi ve depo GÖREMEZ (mig 238).
+      // sadeceTeklif → altMenu filtresinde teklifGorebilirMi ile değerlendirilir;
+      // Keşifler (fiyatsız) sahada kalmaya devam eder.
+      { id: 'teklif-liste', isim: 'Teklifler', yol: '/teklifler', sadeceTeklif: true },
       // 'Satış Faturaları' menüden KALDIRILDI (2026-07-15): fatura işleri tek
       // merkezden — Proforma Fatura — yürüyor (Faturalanan sekmesi: PDF +
       // satış kaydına git + müşteriye gönder). /satislar rotaları YAŞIYOR:
@@ -455,7 +459,15 @@ function MainLayout({ children }) {
       || (m.modul === '_siparis_onay_yetkilisi' && kullanici?.siparisOnayYetkilisi)
       || (m.modul === '_onay_yetkisi' && (kullanici?.siparisOnayYetkilisi || kullanici?.teklifOnayYetkilisi))
       || kullanici?.moduller?.includes(m.modul)
-  })
+  }).map((m) => {
+    // Alt menü içi yetki filtresi — şimdilik yalnız 'sadeceTeklif' (Teklifler).
+    // Üst başlık görünür kalıyor ama yetkisiz alt madde düşüyor; hepsi düşerse
+    // üst başlık da kaybolur.
+    if (!m.altMenu) return m
+    const alt = m.altMenu.filter(a => !a.sadeceTeklif || teklifGorebilirMi(kullanici))
+    if (alt.length === m.altMenu.length) return m
+    return alt.length ? { ...m, altMenu: alt } : null
+  }).filter(Boolean)
 
   // Kullanıcı bazlı menü sıralaması (drag-drop ile yeniden sıralanabilir)
   const { siralanmis: gorunenMenu, yenidenSirala, ozellestirildiMi, sifirla: menuSifirla } =

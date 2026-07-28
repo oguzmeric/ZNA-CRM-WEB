@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { gorevleriGetir } from '../services/gorevService'
 import { lisanslariGetir } from '../services/lisansService'
 import { musterileriGetir } from '../services/musteriService'
@@ -152,7 +153,10 @@ function FirmaGecmisi() {
       setYukleniyor(true)
       try {
         const [g, t, l, gr, m] = await Promise.all([
-          gorusmeleriGetir(), teklifleriGetir(), lisanslariGetir(), gorevleriGetir(), musterileriGetir(),
+          // Teklif tutarları: teknisyen/saha/depo göremez (mig 238)
+          gorusmeleriGetir(),
+          teklifGorebilirMi(kullanici) ? teklifleriGetir() : Promise.resolve([]),
+          lisanslariGetir(), gorevleriGetir(), musterileriGetir(),
         ])
         // "Sadece yönetici" görüşmeler (mig 188): RLS + bayat önbelleğe karşı istemci süzgeci
         setGorusmeler((g || []).filter(i =>

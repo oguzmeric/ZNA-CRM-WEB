@@ -18,6 +18,7 @@ import { musteriLokasyonlariniGetir, musteriLokasyonEkle, musteriLokasyonGuncell
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { satislariGetir } from '../services/satisService'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { musteriSiparisleri, SIPARIS_DURUMLARI } from '../services/siparisService'
 import { gorevleriGetir } from '../services/gorevService'
 import { musteriDemoZimmetleri } from '../services/demoService'
@@ -66,6 +67,8 @@ function MusteriDetay() {
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const { kullanici, kullanicilar } = useAuth()
+  // Teklif + fatura tutarları: teknisyen/saha/depo göremez (mig 238)
+  const teklifGorur = teklifGorebilirMi(kullanici)
   const { talepler } = useServisTalebi()
   const personelListesi = (kullanicilar || []).filter(k => k.tip === 'zna')
   const lokasyonBolumRef = useRef(null)
@@ -108,8 +111,9 @@ function MusteriDetay() {
           musteriKisileriniGetir(musteriIdNum),
           musteriLokasyonlariniGetir(musteriIdNum),
           gorusmeleriGetir(),
-          teklifleriGetir(),
-          satislariGetir(),
+          // Teklif + satış faturası: teknisyen/saha/depo göremez (mig 238)
+          teklifGorur ? teklifleriGetir() : Promise.resolve([]),
+          teklifGorur ? satislariGetir() : Promise.resolve([]),
           gorevleriGetir(),
           musteriSiparisleri(musteriIdNum).catch(() => []),
         ])
@@ -143,7 +147,7 @@ function MusteriDetay() {
       }
     }
     yukle()
-  }, [id])
+  }, [id, teklifGorur])
 
   if (yukleniyor) return <SkeletonDetay />
 
@@ -481,7 +485,7 @@ function MusteriDetay() {
           { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
           { key: 'fatura',  isim: 'Fatura',  sayi: satislar.length,   Icon: Receipt },
           { key: 'gorev',   isim: 'Görev',   sayi: gorevler.length,   Icon: CheckSquare },
-        ].map((k, i, arr) => {
+        ].filter(k => teklifGorur || (k.key !== 'teklif' && k.key !== 'fatura')).map((k, i, arr) => {
           const aktif = aktifSekme === k.key
           return [
             <button
@@ -1174,7 +1178,7 @@ function MusteriDetay() {
               { value: 'teklif',  label: 'Teklifler',  count: teklifler.length },
               { value: 'fatura',  label: 'Faturalar',  count: satislar.length },
               { value: 'gorev',   label: 'Görevler',   count: gorevler.length },
-            ]}
+            ].filter(o => teklifGorur || (o.value !== 'teklif' && o.value !== 'fatura'))}
             value={aktifSekme}
             onChange={setAktifSekme}
           />

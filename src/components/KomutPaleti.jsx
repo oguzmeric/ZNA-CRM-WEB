@@ -10,6 +10,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { gorevleriGetir } from '../services/gorevService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { satislariGetir } from '../services/satisService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -108,6 +109,8 @@ export default function KomutPaleti({ acik, onClose }) {
   const navigate = useNavigate()
   const { kullanici } = useAuth()
   const isMusteri = kullanici?.tip === 'musteri'
+  // Teklif + satış faturası arama sonuçları yetkisizde hiç çekilmez (mig 238)
+  const teklifGorur = teklifGorebilirMi(kullanici)
 
   // Servis talepleri zaten context'te yüklü
   const { talepler: servisTalepleri } = useServisTalebi() || { talepler: [] }
@@ -129,8 +132,8 @@ export default function KomutPaleti({ acik, onClose }) {
       musterileriGetir().catch(() => []),
       gorevleriGetir().catch(() => []),
       gorusmeleriGetir().catch(() => []),
-      teklifleriGetir().catch(() => []),
-      satislariGetir().catch(() => []),
+      teklifGorur ? teklifleriGetir().catch(() => []) : Promise.resolve([]),
+      teklifGorur ? satislariGetir().catch(() => []) : Promise.resolve([]),
       stokUrunleriniGetir().catch(() => []),
     ]).then(([m, g, gr, t, s, st]) => {
       setVeri({
@@ -138,7 +141,7 @@ export default function KomutPaleti({ acik, onClose }) {
         teklif: t || [], satis: s || [], stok: st || [],
       })
     }).finally(() => setYukleniyor(false))
-  }, [acik, isMusteri])
+  }, [acik, isMusteri, teklifGorur])
 
   // Recent yükle
   useEffect(() => {
@@ -211,7 +214,8 @@ export default function KomutPaleti({ acik, onClose }) {
 
     // Hızlı eylem filtre
     const eylemEslesen = HIZLI_EYLEMLER.filter(e =>
-      trContains(e.ara + ' ' + e.label, q)
+      (teklifGorur || !(e.yol.startsWith('/teklifler') || e.yol.startsWith('/satislar')))
+      && trContains(e.ara + ' ' + e.label, q)
     )
 
     const gruplar = tumOgeler.map(g => ({ baslik: g.baslik.toUpperCase(), ogeler: g.ogeler }))

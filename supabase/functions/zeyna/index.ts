@@ -268,7 +268,7 @@ const TOOLS = [
 
 // ─── Tool execution — DB sorguları ───────────────────────────────────────
 
-interface ToolContext { kullaniciId: number; kullaniciAd: string; rolAdmin: boolean }
+interface ToolContext { kullaniciId: number; kullaniciAd: string; rolAdmin: boolean; teklifGorur: boolean }
 
 async function toolCalistir(
   ad: string,
@@ -327,6 +327,11 @@ async function toolCalistir(
     }
 
     case 'teklifler_ara': {
+      // Teknisyen/saha/depo teklif ve fiyat goremez (mig 238). service_role
+      // RLS'i bypass ettigi icin kapiyi burada aciyoruz.
+      if (!ctx.teklifGorur) {
+        return { hata: 'Teklif ve fiyat bilgilerini goruntuleme yetkiniz yok.' }
+      }
       const firma = String(girdi.firma ?? '').trim()
       const durum = String(girdi.durum ?? '').trim()
       const limit = Number(girdi.limit ?? 10)
@@ -397,19 +402,21 @@ async function toolCalistir(
         supa.from('trassir_lisanslar').select('id, lisans_no, lisans_turu, bitis_tarihi, durum, kamera_sayisi').eq('musteri_id', mid),
       ])
       if (mst.error || !mst.data) return { hata: 'Müşteri bulunamadı' }
+      // Teklif + satis tutarlari yetkisizde HIC donmez (mig 238); sayac bile
+      // vermeyelim — "kac teklif verilmis" de ticari bilgi.
       return {
         musteri: mst.data,
         ozet: {
           toplam_talep:    tlp.count ?? 0,
-          toplam_teklif:   tkf.count ?? 0,
+          ...(ctx.teklifGorur ? { toplam_teklif: tkf.count ?? 0, toplam_satis: sts.count ?? 0 } : {}),
           toplam_gorusme:  grs.count ?? 0,
-          toplam_satis:    sts.count ?? 0,
           trassir_lisans:  trs.data?.length ?? 0,
         },
         son_talepler:   tlp.data ?? [],
-        son_teklifler:  tkf.data ?? [],
+        ...(ctx.teklifGorur
+          ? { son_teklifler: tkf.data ?? [], son_satislar: sts.data ?? [] }
+          : { teklif_ve_satis: 'Bu kullanicinin teklif/fiyat goruntuleme yetkisi yok.' }),
         son_gorusmeler: grs.data ?? [],
-        son_satislar:   sts.data ?? [],
         trassir_lisanslari: trs.data ?? [],
       }
     }
@@ -446,6 +453,10 @@ async function toolCalistir(
     }
 
     case 'satislar_ara': {
+      // Fatura tutarlari da teklif kapisindan gecer (mig 238)
+      if (!ctx.teklifGorur) {
+        return { hata: 'Satis/fatura tutarlarini goruntuleme yetkiniz yok.' }
+      }
       const limit = Number(girdi.limit ?? 15)
       let q = supa
         .from('satislar')
@@ -626,7 +637,7 @@ async function kullaniciCek(authHeader: string): Promise<(ToolContext & { kalanS
     if (!ures?.user) return null
     const { data: krow } = await supa
       .from('kullanicilar')
-      .select('id, ad, tip, rol, zeyna_kalan_soru')
+      .select('id, ad, tip, rol, moduller, zeyna_kalan_soru')
       .eq('auth_id', ures.user.id)
       .maybeSingle()
     if (!krow || krow.tip === 'musteri') return null
@@ -634,6 +645,9 @@ async function kullaniciCek(authHeader: string): Promise<(ToolContext & { kalanS
       kullaniciId: krow.id,
       kullaniciAd: krow.ad,
       rolAdmin: krow.rol === 'admin',
+      // Teklif/fiyat kapisi — mig 238 ile ayni kural. Zeyna service_role ile
+      // calisir, RLS'i BYPASS eder; bu yuzden yetkiyi burada elle uygulamak sart.
+      teklifGorur: krow.rol === 'admin' || (Array.isArray(krow.moduller) && krow.moduller.includes('teklifler')),
       kalanSoru: Number(krow.zeyna_kalan_soru ?? 0),
     }
   } catch { return null }

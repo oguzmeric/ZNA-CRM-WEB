@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { teklifleriGetir } from '../services/teklifService'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { gorevleriGetir } from '../services/gorevService'
 import { aktiviteLoglariGetir } from '../services/aktiviteService'
@@ -136,7 +137,9 @@ function Profil() {
       setYukleniyor(true)
       try {
         const [t, g, gr, loglar] = await Promise.all([
-          teklifleriGetir(), gorevleriGetir(), gorusmeleriGetir(),
+          // Teklif istatistikleri: teknisyen/saha/depo göremez (mig 238)
+          teklifGorebilirMi(kullanici) ? teklifleriGetir() : Promise.resolve([]),
+          gorevleriGetir(), gorusmeleriGetir(),
           aktiviteLoglariGetir({ limit: 5000 }),
         ])
         setTeklifler(t || []); setGorevler(g || []); setGorusmeler(gr || [])

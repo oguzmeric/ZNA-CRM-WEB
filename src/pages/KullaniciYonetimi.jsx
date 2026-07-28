@@ -20,6 +20,10 @@ import { aktiviteLoglariGetir, aktiviteLoglariTemizle } from '../services/aktivi
 
 const tumModuller = [
   { id: 'musteriler',        isim: 'Müşteri & Satış' },
+  // Teklif + satış faturası (fiyat/kâr) erişimi — teknisyen, saha ekibi ve depo
+  // personelinde KAPALI olmalı. Web menü/rota, mobil menü ve DB RLS (mig 238)
+  // aynı anahtara bakar; buradan verilen yetki üç yerde de anında geçerlidir.
+  { id: 'teklifler',         isim: 'Teklifler & Fiyatlar' },
   { id: 'gorevler',          isim: 'Görev Atama' },
   { id: 'gorusmeler',        isim: 'Görüşmeler' },
   { id: 'stok',              isim: 'Stok' },

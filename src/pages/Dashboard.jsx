@@ -12,6 +12,7 @@ import { gorevleriGetir } from '../services/gorevService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { tekliftenDurum, TEKLIF_DURUM } from '../lib/teklifDurumlari'
+import { teklifGorebilirMi } from '../lib/teklifYetki'
 import { lisanslariGetir } from '../services/lisansService'
 import { gecikmisDemolar, yaklasanDemolar } from '../services/demoService'
 import {
@@ -141,16 +142,20 @@ export default function Dashboard() {
   const [demoGecikmis, setDemoGecikmis] = useState([])
   const [demoYaklasan, setDemoYaklasan] = useState([])
   const [veriYukleniyor, setVeriYukleniyor] = useState(true)
+  // Teklif/fatura tutarı görebilir mi (teknisyen-saha-depo göremez, mig 238)
+  const teklifGorur = teklifGorebilirMi(kullanici)
 
   const veriYukle = useCallback(() => {
     const bugun = new Date()
     bugun.setHours(0, 0, 0, 0)
     Promise.all([
-      satislariGetir(),
+      // Teklif/fatura tutarları yetkisizde hiç çekilmez (mig 238 RLS zaten boş
+      // döndürür; boşuna sorgu atmayalım).
+      teklifGorur ? satislariGetir() : Promise.resolve([]),
       musterileriGetir(),
       gorevleriGetir(),
       gorusmeleriGetir(),
-      teklifleriGetir(),
+      teklifGorur ? teklifleriGetir() : Promise.resolve([]),
       lisanslariGetir(),
       gecikmisDemolar(),
       yaklasanDemolar(),
@@ -165,7 +170,7 @@ export default function Dashboard() {
       setDemoYaklasan(dy || [])
       setVeriYukleniyor(false)
     }).catch((e) => { console.error('Dashboard veri yüklenemedi:', e); setVeriYukleniyor(false) })
-  }, [])
+  }, [teklifGorur])
 
   // İlk yükleme
   useEffect(() => { veriYukle() }, [veriYukle])
@@ -237,7 +242,7 @@ export default function Dashboard() {
           : <span style={{ color: 'var(--text-tertiary)' }}>Hepsi güncel</span>,
       })
     }
-    if (kullanici?.moduller?.includes('musteriler')) {
+    if (teklifGorur) {
       list.push({
         label: 'Toplam Teklif', value: teklifler.length,
         icon: <FileText size={16} strokeWidth={1.5} />,
@@ -245,7 +250,7 @@ export default function Dashboard() {
       })
     }
     return list
-  }, [musteriler, gorevler, gorusmeler, teklifler, trassirLisanslar, aktifLisanslar, yakindaBitenLisanslar])
+  }, [musteriler, gorevler, gorusmeler, teklifler, trassirLisanslar, aktifLisanslar, yakindaBitenLisanslar, teklifGorur])
 
   const gorevDurumuData = useMemo(() => [
     { label: 'Bekliyor',   deger: gorevler.filter(g => g.durum === 'bekliyor' || !g.durum).length, renk: 'var(--warning)' },
@@ -292,12 +297,12 @@ export default function Dashboard() {
 
   const hizliAksiyonlar = useMemo(() => {
     const a = []
-    if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni teklif',   yol: '/teklifler/yeni' })
+    if (teklifGorur) a.push({ isim: 'Yeni teklif',   yol: '/teklifler/yeni' })
     if (kullanici?.moduller?.includes('gorusmeler')) a.push({ isim: 'Yeni görüşme',  yol: '/gorusmeler' })
     if (kullanici?.moduller?.includes('gorevler'))   a.push({ isim: 'Yeni görev',    yol: '/gorevler' })
     if (kullanici?.moduller?.includes('musteriler')) a.push({ isim: 'Yeni müşteri',  yol: '/musteriler?yeni=1' })
     return a
-  }, [kullanici])
+  }, [kullanici, teklifGorur])
 
   const bugunTileleri = [
     { modul: 'musteriler', d: teklifler.filter(t => t.tarih === bugunStr && t.hazirlayan === kullanici?.ad).length, label: 'Teklif' },

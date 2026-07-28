@@ -7,6 +7,7 @@ import { demirbasIsleyebilirMi } from './lib/zimmetYetki'
 import { filoGorebilirMi } from './lib/filoYetki'
 import { ikGorebilirMi } from './lib/ikYetki'
 import { mesaiRaporuGorebilirMi } from './lib/mesaiYetki'
+import { teklifGorebilirMi } from './lib/teklifYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -120,6 +121,15 @@ function YonetimGuard({ children }) {
   const ad = (kullanici?.ad || '').toLocaleLowerCase('tr')
   const izinli = /\b(oğuz|oguz|ali|ferdi)\b/i.test(ad)
   if (!izinli) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// Teklif guard'ı — teknisyen/saha/depo teklif ve fiyat göremez (mig 238).
+// MainLayout menü filtresi ve mobil MODUL_ESLEME ile AYNI kaynak: teklifGorebilirMi.
+// Satış faturaları da aynı fiyat verisi olduğu için aynı kapıdan geçer.
+function TeklifGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!teklifGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -329,8 +339,8 @@ function App() {
     return (
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
-          <Route path="/teklifler/:id/yazdir" element={<TeklifYazdir />} />
-          <Route path="/satislar/:id/yazdir" element={<FaturaYazdir />} />
+          <Route path="/teklifler/:id/yazdir" element={<TeklifGuard><TeklifYazdir /></TeklifGuard>} />
+          <Route path="/satislar/:id/yazdir" element={<TeklifGuard><FaturaYazdir /></TeklifGuard>} />
           <Route path="/fatura-talepleri/:id/yazdir" element={<ProformaYazdir />} />
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
           <Route path="/siparisler/:id/yazdir" element={<AdminGuard><SiparisYazdir /></AdminGuard>} />
@@ -406,19 +416,19 @@ function App() {
           <Route path="/depo-raporlar" element={<DepoRaporlar />} />
           <Route path="/bagimsiz-sn" element={<BagimsizSnEtiketleri />} />
           <Route path="/trassir-lisanslar" element={<TrassirLisanslar />} />
-          <Route path="/teklifler" element={<Teklifler />} />
+          <Route path="/teklifler" element={<TeklifGuard><Teklifler /></TeklifGuard>} />
           <Route path="/kesifler" element={<Kesifler />} />
           <Route path="/kesifler/:id" element={<KesifDetay />} />
-          <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifKiyasla />} />
-          <Route path="/teklifler/:id" element={<TeklifDetay />} />
+          <Route path="/teklifler/kiyasla/:id1/:id2" element={<TeklifGuard><TeklifKiyasla /></TeklifGuard>} />
+          <Route path="/teklifler/:id" element={<TeklifGuard><TeklifDetay /></TeklifGuard>} />
           <Route path="/siparis-onaylari" element={<SiparisOnayGuard><SiparisOnaylari /></SiparisOnayGuard>} />
           <Route path="/siparisler" element={<AdminGuard><Siparisler /></AdminGuard>} />
           <Route path="/siparisler/:id" element={<AdminGuard><SiparisDetay /></AdminGuard>} />
           <Route path="/kullanilan-malzemeler" element={<AdminGuard><KullanilanMalzemeler /></AdminGuard>} />
           <Route path="/teklif-onaylari" element={<TeklifOnayGuard><TeklifOnaylari /></TeklifOnayGuard>} />
           <Route path="/fatura-talepleri" element={<FaturaYetkiGuard><FaturaTalepleri /></FaturaYetkiGuard>} />
-          <Route path="/satislar" element={<Satislar />} />
-          <Route path="/satislar/:id" element={<SatisDetay />} />
+          <Route path="/satislar" element={<TeklifGuard><Satislar /></TeklifGuard>} />
+          <Route path="/satislar/:id" element={<TeklifGuard><SatisDetay /></TeklifGuard>} />
           <Route path="/raporlar" element={<YonetimGuard><Raporlar /></YonetimGuard>} />
           <Route path="/rapor-merkezi" element={<YonetimGuard><RaporMerkezi /></YonetimGuard>} />
           <Route path="/teklif-cikti-kayitlari" element={<YonetimGuard><TeklifCiktiKayitlari /></YonetimGuard>} />
