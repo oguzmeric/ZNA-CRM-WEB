@@ -267,7 +267,7 @@ function Chat() {
                 }}
               />
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
                 {seciliKisiGuncel.ad}
               </div>
@@ -275,6 +275,30 @@ function Chat() {
                 {durumIsim[efektifDurum(seciliKisiGuncel)]}
               </div>
             </div>
+
+            {/* SOHBETİ SİL — tüm yazışmayı benden temizler (tek tek mesaj silme
+                DEĞİL). Karşı tarafta kalır; tekrar yazınca sohbet geri döner
+                (mig 240 gizlendi_tarih + birebir_sohbet_ac damgayı kaldırır). */}
+            <button
+              onClick={sohbetiSilTikla}
+              title="Bu sohbetin tamamını benden sil"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                background: 'transparent', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)', padding: '6px 12px', cursor: 'pointer',
+                font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--danger)'
+                e.currentTarget.style.color = 'var(--danger)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-default)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
+            >
+              <Trash2 size={13} strokeWidth={1.5} /> Sohbeti sil
+            </button>
           </div>
 
           {/* Mesajlar */}
