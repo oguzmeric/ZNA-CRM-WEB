@@ -127,13 +127,29 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
         @media print {
           /* Modal ve tüm sayfa gizli, sadece etiket alanı */
           body > * { display: none !important; }
+
+          /* Uygulama kabuğu ekranda iç kaydırmalı (MainLayout overflow:auto) ve
+             yüksekliği viewport'a sabit — yazdırmada bu, içeriği tek sayfaya
+             kırpar. Akışı serbest bırak. */
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            background: #fff !important;
+          }
+
+          /* DİKKAT: burada position:fixed KULLANMA. Sabit konumlu eleman
+             yazdırmada viewport'a çakılır ve taşan içerik BASILMAZ —
+             100 etiket seçilip tek sayfa çıkmasının sebebi buydu (29.07).
+             Normal akışta kalırsa tarayıcı grid'i sayfalara böler. */
           .etiket-yazdir-alani {
             display: block !important;
-            position: fixed !important;
-            inset: 0 !important;
+            position: static !important;
+            width: auto !important;
+            height: auto !important;
+            overflow: visible !important;
             background: #fff !important;
             color: #000 !important;
-            padding: 5mm !important;
+            padding: 0 !important;
           }
           @page { size: A4; margin: 5mm; }
 
@@ -153,6 +169,7 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             gap: 1mm;
             text-align: center;
             page-break-inside: avoid;
+            break-inside: avoid;   /* modern karşılığı — etiket ikiye bölünmesin */
           }
           .etiket-marka {
             font-size: 11pt;
