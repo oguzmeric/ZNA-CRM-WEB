@@ -16,7 +16,18 @@ import {
   grubaKisiEkle as dbGrubaKisiEkle,
   gruptanAyril as dbGruptanAyril,
   grupAdiDegistir as dbGrupAdiDegistir,
+  sohbetDosyaYukle,
+  sohbetDosyaSil,
+  DOSYA_LIMIT,
 } from '../services/chatService'
+
+// Dosya mesajının Storage yolu (yeni format). Eski base64 mesajlarda yok.
+const dosyaYolu = (icerik) => {
+  try {
+    const j = JSON.parse(icerik)
+    return j?.tip === 'dosya' ? (j.yol || null) : null
+  } catch { return null }
+}
 
 const ChatContext = createContext(null)
 
@@ -207,18 +218,26 @@ export function ChatProvider({ children }) {
   ), [mesajlar])
 
   // ── Gönderme ──────────────────────────────────────────────────────────────
+  // Hedefin sohbet_id'sini getirir; birebirde henüz sohbet yoksa açtırır.
+  // Dosya yüklemesi mesajdan ÖNCE olduğu için ayrı fonksiyon gerekti
+  // (dosya yolu `<sohbet_id>/...` — yükleme öncesi id şart).
+  const sohbetIdSagla = useCallback(async (hedef) => {
+    if (!hedef) return null
+    if (hedef.tip === 'grup') return hedef.sohbetId
+    const mevcut = birebirSohbetIdBul(hedef.kisiId)
+    if (mevcut) return mevcut
+    // Yarış koşulu DB'de advisory lock ile tekilleştiriliyor
+    const r = await birebirSohbetAc(hedef.kisiId)
+    if (r.__error) { toast?.error?.(`Sohbet açılamadı: ${r.__error}`); return null }
+    sohbetleriYenile()
+    return r.sohbetId
+  }, [birebirSohbetIdBul, sohbetleriYenile, toast])
+
   // hedef: { tip: 'kisi', kisiId } | { tip: 'grup', sohbetId }
   const mesajGonder = useCallback(async (hedef, icerik) => {
     if (!icerik?.trim() || !kullanici?.id || !hedef) return
 
-    let sohbetId = hedef.tip === 'grup' ? hedef.sohbetId : birebirSohbetIdBul(hedef.kisiId)
-    if (hedef.tip === 'kisi' && !sohbetId) {
-      // İlk mesaj: sohbeti açtır (yarış koşulu DB'de advisory lock ile tekil)
-      const r = await birebirSohbetAc(hedef.kisiId)
-      if (r.__error) { toast?.error?.(`Sohbet açılamadı: ${r.__error}`); return }
-      sohbetId = r.sohbetId
-      sohbetleriYenile()
-    }
+    const sohbetId = await sohbetIdSagla(hedef)
     if (!sohbetId) { toast?.error?.('Sohbet bulunamadı'); return }
 
     const yeni = await dbMesajGonder(
@@ -234,7 +253,28 @@ export function ChatProvider({ children }) {
         s.id === sohbetId ? { ...s, sonMesajTarih: yeni.tarih } : s
       ))
     }
-  }, [kullanici?.id, birebirSohbetIdBul, sohbetleriYenile, toast])
+  }, [kullanici?.id, sohbetIdSagla, toast])
+
+  // Dosya gönder — önce Storage'a yüklenir, mesaja SADECE yolu yazılır (mig 244)
+  const dosyaGonder = useCallback(async (hedef, dosya) => {
+    if (!dosya || !kullanici?.id) return { __error: 'Dosya yok' }
+    if (dosya.size > DOSYA_LIMIT) return { __error: 'Dosya 25 MB\'dan büyük olamaz' }
+
+    const sohbetId = await sohbetIdSagla(hedef)
+    if (!sohbetId) return { __error: 'Sohbet bulunamadı' }
+
+    const y = await sohbetDosyaYukle(sohbetId, dosya)
+    if (y.__error) return y
+
+    await mesajGonder(hedef, JSON.stringify({
+      tip: 'dosya',
+      dosyaAdi: dosya.name,
+      dosyaTipi: dosya.type,
+      dosyaBoyutu: dosya.size,
+      yol: y.yol,
+    }))
+    return { ok: true }
+  }, [kullanici?.id, sohbetIdSagla, mesajGonder])
 
   const aktifKonusmaAyarla = useCallback((anahtar) => {
     aktifKonusmaRef.current = anahtar
@@ -261,10 +301,15 @@ export function ChatProvider({ children }) {
 
   // ── Silme ─────────────────────────────────────────────────────────────────
   const mesajSil = useCallback(async (id) => {
+    // Dosya mesajıysa Storage'daki kopyayı da bırakma (yetim dosya kalmasın)
+    const yol = dosyaYolu(mesajlar.find((m) => m.id === id)?.icerik || '')
     const sonuc = await dbMesajSil(id)
-    if (!sonuc.__error) setMesajlar((prev) => prev.filter((m) => m.id !== id))
+    if (!sonuc.__error) {
+      setMesajlar((prev) => prev.filter((m) => m.id !== id))
+      if (yol) sohbetDosyaSil(yol)
+    }
     return sonuc
-  }, [])
+  }, [mesajlar])
 
   // Sohbeti kendi tarafımdan temizle (karşı tarafta kalır).
   // hedef: { tip:'kisi', kisiId } | { tip:'grup', sohbetId }
@@ -353,6 +398,7 @@ export function ChatProvider({ children }) {
       sohbetler,
       okunmamis,
       mesajGonder,
+      dosyaGonder,
       mesajlariOku,
       grubuOku,
       aktifKonusmaAyarla,

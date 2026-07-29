@@ -79,6 +79,47 @@ export const mesajGonder = async (gondericId, aliciId, icerik, sohbetId) => {
   return toCamel(data)
 }
 
+// ── Dosyalar (mig 244) ─────────────────────────────────────────────────────
+// Dosya ARTIK mesajın içinde base64 değil; `sohbet-dosyalari` bucket'ında.
+// Yolun ilk klasörü sohbet_id — storage politikası katılımcılığı oradan
+// doğruluyor. Eski (base64) mesajlar okunmaya devam ediyor, dokunulmadı.
+export const SOHBET_BUCKET = 'sohbet-dosyalari'
+export const DOSYA_LIMIT = 25 * 1024 * 1024
+
+const guvenliAd = (ad = 'dosya') => ad
+  .normalize('NFKD').replace(/[̀-ͯ]/g, '')   // aksanları düşür
+  .replace(/[^a-zA-Z0-9._-]/g, '_')
+  .slice(-80)
+
+export const sohbetDosyaYukle = async (sohbetId, dosya) => {
+  if (!sohbetId) return { __error: 'Sohbet bulunamadı' }
+  if (dosya.size > DOSYA_LIMIT) return { __error: 'Dosya 25 MB\'dan büyük olamaz' }
+  const yol = `${sohbetId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${guvenliAd(dosya.name)}`
+  const { error } = await supabase.storage
+    .from(SOHBET_BUCKET)
+    .upload(yol, dosya, { contentType: dosya.type || 'application/octet-stream', upsert: false })
+  if (error) { console.error('sohbetDosyaYukle hata:', error.message); return { __error: error.message } }
+  return { yol }
+}
+
+// Private bucket → imzalı URL (1 saat). indirmeAdi verilirse tarayıcı
+// dosyayı sekmede açmak yerine o adla indirir (imzalı URL çapraz köken
+// olduğu için <a download> tek başına yetmiyor).
+export const sohbetDosyaUrl = async (yol, indirmeAdi) => {
+  const { data, error } = await supabase.storage
+    .from(SOHBET_BUCKET)
+    .createSignedUrl(yol, 3600, indirmeAdi ? { download: indirmeAdi } : undefined)
+  if (error) { console.error('sohbetDosyaUrl hata:', error.message); return { __error: error.message } }
+  return { url: data.signedUrl }
+}
+
+export const sohbetDosyaSil = async (yol) => {
+  if (!yol) return { ok: true }
+  const { error } = await supabase.storage.from(SOHBET_BUCKET).remove([yol])
+  if (error) { console.error('sohbetDosyaSil hata:', error.message); return { __error: error.message } }
+  return { ok: true }
+}
+
 // ── Silme (mig 240-243) ────────────────────────────────────────────────────
 // Kural (kullanıcı, 29.07): "kendi mesajını herkes siler". RLS de aynı:
 // gonderici_id = kendisi VEYA admin. Başkasının mesajı silinemez.

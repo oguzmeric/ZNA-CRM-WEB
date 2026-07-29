@@ -10,6 +10,7 @@ import {
 import { Avatar, Button, Textarea, EmptyState, Modal, Input, Label, Select } from '../components/ui'
 import CokluSelect from '../components/CokluSelect'
 import EmojiSecici from '../components/EmojiSecici'
+import { sohbetDosyaUrl, DOSYA_LIMIT } from '../services/chatService'
 
 const durumRenk = {
   cevrimici:    'var(--success)',
@@ -62,7 +63,7 @@ const dosyaBoyutFormat = (b) => {
 function Chat() {
   const { kullanici, kullanicilar } = useAuth()
   const {
-    mesajGonder, konusmaGetir, grupMesajlari, mesajlariOku, grubuOku,
+    mesajGonder, dosyaGonder, konusmaGetir, grupMesajlari, mesajlariOku, grubuOku,
     okunmamisSay, grupOkunmamisSay, aktifKonusmaAyarla, efektifDurum,
     mesajSil, sohbetiSil, sohbetler, grupOlustur, grubaKisiEkle, gruptanAyril,
   } = useChat()
@@ -72,6 +73,7 @@ function Chat() {
   const [secili, setSecili] = useState(null)
   const [yeniMesaj, setYeniMesaj] = useState('')
   const [emojiAcik, setEmojiAcik] = useState(false)
+  const [yukleniyor, setYukleniyor] = useState(null)   // yüklenen dosya adı
   const [grupModal, setGrupModal] = useState(false)
   const [grupAd, setGrupAd] = useState('')
   const [grupUyeler, setGrupUyeler] = useState([])
@@ -201,30 +203,36 @@ function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); gonder() }
   }
 
-  const dosyaSecildi = (e) => {
+  // Dosya artık mesajın içine base64 gömülmüyor; Storage'a yükleniyor (mig 244)
+  const dosyaSecildi = async (e) => {
     const dosya = e.target.files[0]
-    if (!dosya || !secili) return
-    if (dosya.size > 5 * 1024 * 1024) { toast.error('Dosya boyutu 5 MB\'dan büyük olamaz.'); return }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      mesajGonder(
-        secili.tip === 'grup' ? { tip: 'grup', sohbetId: secili.id } : { tip: 'kisi', kisiId: secili.id },
-        JSON.stringify({
-          tip: 'dosya', dosyaAdi: dosya.name, dosyaTipi: dosya.type,
-          dosyaBoyutu: dosya.size, dosyaData: ev.target.result,
-        }),
-      )
-    }
-    reader.readAsDataURL(dosya)
     e.target.value = ''
+    if (!dosya || !secili) return
+    if (dosya.size > DOSYA_LIMIT) { toast.error('Dosya boyutu 25 MB\'dan büyük olamaz.'); return }
+    setYukleniyor(dosya.name)
+    const r = await dosyaGonder(
+      secili.tip === 'grup' ? { tip: 'grup', sohbetId: secili.id } : { tip: 'kisi', kisiId: secili.id },
+      dosya,
+    )
+    setYukleniyor(null)
+    if (r?.__error) toast.error('Dosya gönderilemedi: ' + r.__error)
   }
 
-  const dosyaIndir = (icerik) => {
-    try {
-      const d = JSON.parse(icerik)
+  const dosyaIndir = async (icerik) => {
+    let d
+    try { d = JSON.parse(icerik) } catch { return }
+    // Yeni format: Storage yolu → imzalı URL
+    if (d.yol) {
+      const r = await sohbetDosyaUrl(d.yol, d.dosyaAdi)
+      if (r.__error) { toast.error('Dosya açılamadı: ' + r.__error); return }
+      window.open(r.url, '_blank', 'noopener')
+      return
+    }
+    // Eski format (base64 gömülü) — bozulmadan çalışmaya devam ediyor
+    if (d.dosyaData) {
       const link = document.createElement('a')
       link.href = d.dosyaData; link.download = d.dosyaAdi; link.click()
-    } catch {}
+    }
   }
 
   const tarihFormat = (tarih) => {
@@ -624,8 +632,15 @@ function Chat() {
               <button
                 onClick={() => dosyaInputRef.current?.click()}
                 aria-label="Dosya ekle"
-                style={araButonStil}
-                onMouseEnter={araButonHover} onMouseLeave={araButonCik}
+                title={yukleniyor ? `Yükleniyor: ${yukleniyor}` : 'Dosya ekle'}
+                disabled={!!yukleniyor}
+                style={{
+                  ...araButonStil,
+                  opacity: yukleniyor ? 0.5 : 1,
+                  cursor: yukleniyor ? 'progress' : 'pointer',
+                }}
+                onMouseEnter={yukleniyor ? undefined : araButonHover}
+                onMouseLeave={yukleniyor ? undefined : araButonCik}
               >
                 <Paperclip size={16} strokeWidth={1.5} />
               </button>
@@ -634,7 +649,7 @@ function Chat() {
                 type="file"
                 onChange={dosyaSecildi}
                 style={{ display: 'none' }}
-                accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
+                accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.heic,.webp,.zip,.rar,.txt,.csv,.mp4,.mov"
               />
               <Textarea
                 ref={metinRef}
@@ -655,7 +670,9 @@ function Chat() {
               </Button>
             </div>
             <p className="t-caption" style={{ marginTop: 6, marginLeft: 88 }}>
-              PDF, Excel, Word, resim ve ZIP (max 5 MB)
+              {yukleniyor
+                ? <span style={{ color: 'var(--brand-primary)' }}>Yükleniyor: {yukleniyor}…</span>
+                : 'PDF, Excel, Word, resim, video ve ZIP (max 25 MB)'}
             </p>
           </div>
         </div>
