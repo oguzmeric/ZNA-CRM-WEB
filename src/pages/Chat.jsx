@@ -282,7 +282,7 @@ function Chat() {
               font: '600 11px/16px var(--font-sans)',
             }}
           >
-            <Plus size={12} strokeWidth={2} /> Grup
+            <Plus size={12} strokeWidth={2} /> Grup Sohbeti
           </button>
         </div>
 
