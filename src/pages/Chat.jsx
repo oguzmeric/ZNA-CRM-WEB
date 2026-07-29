@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useChat } from '../context/ChatContext'
+import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import {
-  Paperclip, Send, MessageSquare, FileText, FileSpreadsheet, FileImage, FileArchive, File,
+  Paperclip, Send, MessageSquare, FileText, FileSpreadsheet, FileImage, FileArchive, File, Trash2,
 } from 'lucide-react'
 import { Avatar, Button, Textarea, EmptyState } from '../components/ui'
 
@@ -46,7 +48,9 @@ const dosyaBoyutFormat = (b) => {
 
 function Chat() {
   const { kullanici, kullanicilar } = useAuth()
-  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla, efektifDurum } = useChat()
+  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla, efektifDurum, mesajSil, sohbetiSil } = useChat()
+  const { toast } = useToast()
+  const { confirm } = useConfirm()
   const [seciliKisi, setSeciliKisi] = useState(null)
   const [yeniMesaj, setYeniMesaj] = useState('')
   const mesajSonuRef = useRef(null)
@@ -64,6 +68,33 @@ function Chat() {
     if (!yeniMesaj.trim() || !seciliKisi) return
     mesajGonder(seciliKisi.id, yeniMesaj)
     setYeniMesaj('')
+  }
+
+  // Tek mesaj sil — yalnız kendi mesajın
+  const mesajSilTikla = async (id) => {
+    const onay = await confirm({
+      baslik: 'Mesajı Sil',
+      mesaj: 'Bu mesaj karşı taraftan da kalkacak. Emin misin?',
+      onayMetin: 'Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const r = await mesajSil(id)
+    if (r?.__error) toast.error('Mesaj silinemedi: ' + r.__error)
+  }
+
+  // Sohbeti sil — SADECE benden; karşı tarafta durur, tekrar yazınca geri gelir
+  const sohbetiSilTikla = async () => {
+    if (!seciliKisi) return
+    const onay = await confirm({
+      baslik: 'Sohbeti Sil',
+      mesaj: `${seciliKisi.ad} ile olan yazışma SENİN ekranından kaldırılacak. Karşı tarafta kalmaya devam eder; tekrar yazdığında sohbet geri gelir.`,
+      onayMetin: 'Sohbeti sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const r = await sohbetiSil(seciliKisi.id)
+    if (r?.__error) { toast.error('Sohbet silinemedi: ' + r.__error); return }
+    toast.success('Sohbet temizlendi.')
+    setSeciliKisi(null)
   }
 
   const handleKeyDown = (e) => {
@@ -274,12 +305,31 @@ function Chat() {
               return (
                 <div
                   key={item.id}
+                  className="chat-satir"
                   style={{
                     display: 'flex',
+                    alignItems: 'center',
                     justifyContent: benimMesajim ? 'flex-end' : 'flex-start',
                     marginBottom: 10,
                   }}
                 >
+                  {/* Kendi mesajını herkes silebilir — RLS ile aynı kural (mig 242).
+                      Başkasının mesajında bu buton hiç çıkmaz. */}
+                  {benimMesajim && (
+                    <button
+                      className="chat-sil-btn"
+                      onClick={() => mesajSilTikla(item.id)}
+                      title="Mesajı sil"
+                      aria-label="Mesajı sil"
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: 'var(--text-tertiary)', padding: 4, marginRight: 4,
+                        display: 'inline-flex', alignItems: 'center',
+                      }}
+                    >
+                      <Trash2 size={13} strokeWidth={1.5} />
+                    </button>
+                  )}
                   {!benimMesajim && (
                     <div style={{ marginRight: 8, alignSelf: 'flex-end' }}>
                       <Avatar name={gondererAd} size="xs" />

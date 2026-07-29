@@ -167,3 +167,9 @@ body {
 input.sayi-sade::-webkit-outer-spin-button,
 input.sayi-sade::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.sayi-sade { -moz-appearance: textfield; appearance: textfield; }
+
+/* Sohbet — mesaj silme butonu yalnız satırın üstüne gelince görünsün.
+   Her balonun yanında sürekli çöp kutusu durması gürültü yaratıyordu. */
+.chat-sil-btn { opacity: 0; transition: opacity 120ms; }
+.chat-satir:hover .chat-sil-btn { opacity: 1; }
+.chat-sil-btn:hover { color: var(--danger) !important; }

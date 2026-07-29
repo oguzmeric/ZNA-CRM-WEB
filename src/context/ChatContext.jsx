@@ -7,6 +7,8 @@ import {
   mesajlariGetir,
   mesajGonder as dbMesajGonder,
   konusmayiOkunduYap,
+  mesajSil as dbMesajSil,
+  sohbetiSil as dbSohbetiSil,
 } from '../services/chatService'
 
 const ChatContext = createContext(null)
@@ -171,6 +173,27 @@ export function ChatProvider({ children }) {
       .sort((a, b) => new Date(a.tarih) - new Date(b.tarih))
   }, [mesajlar, kullanici?.id])
 
+  // Tek mesaj sil — yalnız kendi mesajın (RLS de aynı kuralı uyguluyor)
+  const mesajSil = useCallback(async (id) => {
+    const sonuc = await dbMesajSil(id)
+    if (!sonuc.__error) setMesajlar((prev) => prev.filter((m) => m.id !== id))
+    return sonuc
+  }, [])
+
+  // Bir kişiyle olan sohbeti kendi tarafımdan temizle (karşı tarafta kalır).
+  // Yeniden yazınca sohbet geri döner — birebir_sohbet_ac damgayı kaldırıyor.
+  const sohbetiSil = useCallback(async (kisiId) => {
+    if (!kullanici?.id) return { __error: 'Oturum yok' }
+    const sonuc = await dbSohbetiSil(kullanici.id, kisiId)
+    if (!sonuc.__error) {
+      setMesajlar((prev) => prev.filter((m) => !(
+        (m.gondericiId === kullanici.id && m.aliciId === kisiId) ||
+        (m.gondericiId === kisiId && m.aliciId === kullanici.id)
+      )))
+    }
+    return sonuc
+  }, [kullanici?.id])
+
   const okunmamisSay = useCallback((kisiId) => {
     if (!kullanici?.id) return 0
     return mesajlar.filter((m) =>
@@ -186,6 +209,8 @@ export function ChatProvider({ children }) {
       mesajlariOku,
       aktifKonusmaAyarla,
       konusmaGetir,
+      mesajSil,
+      sohbetiSil,
       okunmamisSay,
       cevrimiciMi,
       efektifDurum,
