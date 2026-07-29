@@ -326,7 +326,7 @@ function Chat() {
                         font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>
-                        {uyeler.length} kişi · {uyeler.slice(0, 2).join(', ')}{uyeler.length > 2 ? '…' : ''}
+                        {(g.katilimcilar || []).length} kişi · {uyeler.slice(0, 2).join(', ')}{uyeler.length > 2 ? '…' : ''}
                       </div>
                       {sonMesaj && (
                         <div style={onizlemeStil}>
