@@ -305,9 +305,17 @@ const loginStyles = `
   display: flex; align-items: center; gap: 14px;
   z-index: 5;
 }
+/* Marka logosu, merkezdeki yörünge logosuyla aynı dili konuşur:
+   yuvarlatılmış kart köşesi + ince çerçeve. Kavis oranı merkezdekiyle
+   eşit (92px karta 22px → 54px'e 13px). drop-shadow yerine box-shadow,
+   çünkü drop-shadow logonun şekline oturur, kartın köşelerine değil. */
 .zna-login .brand-logo {
-  height: 44px; width: auto; object-fit: contain;
-  filter: drop-shadow(0 4px 12px rgba(30,90,168,0.18));
+  height: 54px; width: auto; object-fit: contain;
+  border-radius: 13px;
+  background: var(--surface-card);
+  box-shadow:
+    0 8px 20px -8px rgba(30,90,168,0.24),
+    0 0 0 1px var(--border-default);
 }
 .zna-login .brand-text {
   font-family: 'Bricolage Grotesque', var(--font-sans);
