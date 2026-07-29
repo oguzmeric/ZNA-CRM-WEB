@@ -1,14 +1,21 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
 import {
   mesajlariGetir,
+  sohbetleriGetir,
   mesajGonder as dbMesajGonder,
   konusmayiOkunduYap,
   mesajSil as dbMesajSil,
-  sohbetiSil as dbSohbetiSil,
+  sohbetiGizle as dbSohbetiGizle,
+  sohbetOkunduIsaretle,
+  birebirSohbetAc,
+  grupSohbetAc,
+  grubaKisiEkle as dbGrubaKisiEkle,
+  gruptanAyril as dbGruptanAyril,
+  grupAdiDegistir as dbGrupAdiDegistir,
 } from '../services/chatService'
 
 const ChatContext = createContext(null)
@@ -35,25 +42,55 @@ const bildirimSesiCal = () => {
 
 const MANUEL_DURUMLAR = ['mesgul', 'disarida', 'toplantida']
 
+const onizlemeMetni = (icerik = '') => {
+  try {
+    const j = JSON.parse(icerik)
+    if (j?.tip === 'dosya') return '📎 Dosya gönderdi'
+  } catch { /* düz metin */ }
+  return icerik.length > 60 ? icerik.slice(0, 60) + '…' : icerik
+}
+
 export function ChatProvider({ children }) {
   const { kullanici, kullanicilar } = useAuth()
   const toast = useToast()
   const [mesajlar, setMesajlar] = useState([])
+  const [sohbetler, setSohbetler] = useState([])
   const [okunmamis, setOkunmamis] = useState(0)
   const [cevrimiciIdSeti, setCevrimiciIdSeti] = useState(() => new Set())
-  const aktifKonusmaRef = useRef(null) // Açık olan sohbetin kisiId'si
+  // Açık olan sohbetin anahtarı: 'k:<kisiId>' veya 'g:<sohbetId>'
+  const aktifKonusmaRef = useRef(null)
 
-  // İlk yükleme + kullanıcı değişiminde mesajları çek
+  const sohbetleriYenile = useCallback(async () => {
+    if (!kullanici?.id) { setSohbetler([]); return [] }
+    const d = await sohbetleriGetir()
+    setSohbetler(d)
+    return d
+  }, [kullanici?.id])
+
+  // İlk yükleme + kullanıcı değişiminde mesaj ve sohbetleri çek
   useEffect(() => {
-    if (!kullanici?.id) { setMesajlar([]); return }
+    if (!kullanici?.id) { setMesajlar([]); setSohbetler([]); return }
     let iptal = false
-    mesajlariGetir(kullanici.id).then((d) => {
-      if (!iptal) setMesajlar(d ?? [])
-    })
+    mesajlariGetir(kullanici.id).then((d) => { if (!iptal) setMesajlar(d ?? []) })
+    sohbetleriGetir().then((d) => { if (!iptal) setSohbetler(d ?? []) })
     return () => { iptal = true }
   }, [kullanici?.id])
 
-  // Realtime: yeni mesaj geldiğinde state'e ekle + ses + toast
+  const grupIdler = useMemo(
+    () => sohbetler.filter(s => s.tip === 'grup').map(s => s.id),
+    [sohbetler],
+  )
+  const grupIdAnahtar = grupIdler.join(',')
+
+  const yeniMesajGeldi = useCallback((yeni, anahtar, baslik) => {
+    setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
+    if (yeni.gondericiId === kullanici?.id) return          // kendi mesajım
+    if (aktifKonusmaRef.current === anahtar) return          // zaten bakıyorum
+    bildirimSesiCal()
+    toast?.info?.(`${baslik}: ${onizlemeMetni(yeni.icerik)}`)
+  }, [kullanici?.id, toast])
+
+  // Realtime — birebir: bana gelen mesajlar
   useEffect(() => {
     if (!kullanici?.id) return
     const kanal = supabase
@@ -63,21 +100,8 @@ export function ChatProvider({ children }) {
         { event: 'INSERT', schema: 'public', table: 'mesajlar', filter: `alici_id=eq.${kullanici.id}` },
         (payload) => {
           const yeni = toCamel(payload.new)
-          setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
-          // Aktif sohbet bu kişi değilse bildirim göster
-          if (aktifKonusmaRef.current !== yeni.gondericiId) {
-            bildirimSesiCal()
-            const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericiId)
-            const ad = gonderen?.ad || 'Yeni mesaj'
-            const onizleme = (() => {
-              try {
-                const j = JSON.parse(yeni.icerik)
-                if (j?.tip === 'dosya') return '📎 Dosya gönderdi'
-              } catch {}
-              return yeni.icerik.length > 60 ? yeni.icerik.slice(0, 60) + '…' : yeni.icerik
-            })()
-            toast?.info?.(`${ad}: ${onizleme}`)
-          }
+          const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericiId)
+          yeniMesajGeldi(yeni, `k:${yeni.gondericiId}`, gonderen?.ad || 'Yeni mesaj')
         }
       )
       .on(
@@ -88,9 +112,42 @@ export function ChatProvider({ children }) {
           setMesajlar((prev) => prev.map((m) => m.id === yeni.id ? { ...m, ...yeni } : m))
         }
       )
+      // Bir gruba eklendiğimde/çıkarıldığımda sohbet listesi tazelensin
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sohbet_katilimcilar', filter: `kullanici_id=eq.${kullanici.id}` },
+        () => { sohbetleriYenile() }
+      )
       .subscribe()
     return () => { supabase.removeChannel(kanal) }
-  }, [kullanici?.id, kullanicilar, toast])
+  }, [kullanici?.id, kullanicilar, yeniMesajGeldi, sohbetleriYenile])
+
+  // Realtime — grup: grup mesajında alici_id yok, sohbet başına abone oluyoruz.
+  // (Filtre yalnız tek kolonda eq destekliyor; "sohbet_id in (...)" yok.)
+  useEffect(() => {
+    if (!kullanici?.id || !grupIdAnahtar) return
+    const idler = grupIdAnahtar.split(',').filter(Boolean)
+    let kanal = supabase.channel(`mesajlar_gruplar_${kullanici.id}`)
+    idler.forEach((gid) => {
+      kanal = kanal.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mesajlar', filter: `sohbet_id=eq.${gid}` },
+        (payload) => {
+          const yeni = toCamel(payload.new)
+          const grup = sohbetler.find(s => String(s.id) === String(gid))
+          const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericiId)
+          const baslik = `${grup?.ad || 'Grup'} · ${gonderen?.ad || '?'}`
+          yeniMesajGeldi(yeni, `g:${gid}`, baslik)
+        }
+      )
+    })
+    kanal.subscribe()
+    return () => { supabase.removeChannel(kanal) }
+    // sohbetler'i bilerek bağımlılığa koymuyoruz — her son_mesaj_tarih
+    // değişiminde tüm kanalları yeniden kurmak gereksiz. Grup listesi
+    // değiştiğinde (grupIdAnahtar) yeniden kuruluyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kullanici?.id, grupIdAnahtar, kullanicilar, yeniMesajGeldi])
 
   // Realtime Presence: kim gerçekten bağlı?
   useEffect(() => {
@@ -102,15 +159,12 @@ export function ChatProvider({ children }) {
       const state = kanal.presenceState()
       setCevrimiciIdSeti(new Set(Object.keys(state).map((k) => Number(k))))
     }
-    // sync: ilk bağlantıda ve büyük güncellemelerde tetiklenir (gecikmeli olabilir)
-    // join/leave: tek bir kullanıcı bağlandığında/koptuğunda anında tetiklenir
     kanal.on('presence', { event: 'sync' }, guncelle)
     kanal.on('presence', { event: 'join' }, guncelle)
     kanal.on('presence', { event: 'leave' }, guncelle)
     kanal.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await kanal.track({ id: kullanici.id, ad: kullanici.ad, at: Date.now() })
-        // Track sonrası state'i hemen yansıt (sync event'ini beklemeye gerek yok)
         guncelle()
       }
     })
@@ -119,7 +173,7 @@ export function ChatProvider({ children }) {
 
   const cevrimiciMi = useCallback((id) => cevrimiciIdSeti.has(id), [cevrimiciIdSeti])
 
-  // Görünen durum: bağlı değilse 'cevrimdisi'; bağlıysa manuel statüyü göster (yoksa 'cevrimici')
+  // Görünen durum: bağlı değilse 'cevrimdisi'; bağlıysa manuel statüyü göster
   const efektifDurum = useCallback((k) => {
     if (!k) return 'cevrimdisi'
     if (k.id === kullanici?.id) return k.durum || 'cevrimici'
@@ -128,40 +182,13 @@ export function ChatProvider({ children }) {
     return 'cevrimici'
   }, [cevrimiciIdSeti, kullanici?.id])
 
-  // Toplam okunmamış sayısı (alıcı = ben, okundu = false)
-  useEffect(() => {
-    if (!kullanici?.id) { setOkunmamis(0); return }
-    const sayi = mesajlar.filter((m) => m.aliciId === kullanici.id && !m.okundu).length
-    setOkunmamis(sayi)
-  }, [mesajlar, kullanici?.id])
-
-  const mesajGonder = useCallback(async (aliciId, icerik) => {
-    if (!icerik?.trim() || !kullanici?.id) return
-    const yeni = await dbMesajGonder(kullanici.id, aliciId, icerik)
-    if (yeni?.__error) {
-      toast?.error?.(`Mesaj gönderilemedi: ${yeni.__error}`)
-      return
-    }
-    if (yeni) {
-      setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
-    }
-  }, [kullanici?.id, toast])
-
-  const aktifKonusmaAyarla = useCallback((kisiId) => {
-    aktifKonusmaRef.current = kisiId
-  }, [])
-
-  const mesajlariOku = useCallback(async (kisiId) => {
-    if (!kullanici?.id) return
-    aktifKonusmaRef.current = kisiId
-    // Optimistic
-    setMesajlar((prev) => prev.map((m) =>
-      m.gondericiId === kisiId && m.aliciId === kullanici.id && !m.okundu
-        ? { ...m, okundu: true }
-        : m
-    ))
-    await konusmayiOkunduYap(kullanici.id, kisiId)
-  }, [kullanici?.id])
+  // ── Birebir yardımcıları ──────────────────────────────────────────────────
+  const birebirSohbetIdBul = useCallback((kisiId) => {
+    const s = sohbetler.find(x =>
+      x.tip === 'birebir' && (x.katilimcilar || []).includes(Number(kisiId))
+    )
+    return s?.id ?? null
+  }, [sohbetler])
 
   const konusmaGetir = useCallback((kisiId) => {
     if (!kullanici?.id) return []
@@ -173,27 +200,119 @@ export function ChatProvider({ children }) {
       .sort((a, b) => new Date(a.tarih) - new Date(b.tarih))
   }, [mesajlar, kullanici?.id])
 
-  // Tek mesaj sil — yalnız kendi mesajın (RLS de aynı kuralı uyguluyor)
+  const grupMesajlari = useCallback((sohbetId) => (
+    mesajlar
+      .filter((m) => m.sohbetId === sohbetId)
+      .sort((a, b) => new Date(a.tarih) - new Date(b.tarih))
+  ), [mesajlar])
+
+  // ── Gönderme ──────────────────────────────────────────────────────────────
+  // hedef: { tip: 'kisi', kisiId } | { tip: 'grup', sohbetId }
+  const mesajGonder = useCallback(async (hedef, icerik) => {
+    if (!icerik?.trim() || !kullanici?.id || !hedef) return
+
+    let sohbetId = hedef.tip === 'grup' ? hedef.sohbetId : birebirSohbetIdBul(hedef.kisiId)
+    if (hedef.tip === 'kisi' && !sohbetId) {
+      // İlk mesaj: sohbeti açtır (yarış koşulu DB'de advisory lock ile tekil)
+      const r = await birebirSohbetAc(hedef.kisiId)
+      if (r.__error) { toast?.error?.(`Sohbet açılamadı: ${r.__error}`); return }
+      sohbetId = r.sohbetId
+      sohbetleriYenile()
+    }
+    if (!sohbetId) { toast?.error?.('Sohbet bulunamadı'); return }
+
+    const yeni = await dbMesajGonder(
+      kullanici.id,
+      hedef.tip === 'kisi' ? hedef.kisiId : null,
+      icerik,
+      sohbetId,
+    )
+    if (yeni?.__error) { toast?.error?.(`Mesaj gönderilemedi: ${yeni.__error}`); return }
+    if (yeni) {
+      setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
+      setSohbetler((prev) => prev.map(s =>
+        s.id === sohbetId ? { ...s, sonMesajTarih: yeni.tarih } : s
+      ))
+    }
+  }, [kullanici?.id, birebirSohbetIdBul, sohbetleriYenile, toast])
+
+  const aktifKonusmaAyarla = useCallback((anahtar) => {
+    aktifKonusmaRef.current = anahtar
+  }, [])
+
+  const mesajlariOku = useCallback(async (kisiId) => {
+    if (!kullanici?.id) return
+    aktifKonusmaRef.current = `k:${kisiId}`
+    setMesajlar((prev) => prev.map((m) =>
+      m.gondericiId === kisiId && m.aliciId === kullanici.id && !m.okundu
+        ? { ...m, okundu: true }
+        : m
+    ))
+    await konusmayiOkunduYap(kullanici.id, kisiId)
+  }, [kullanici?.id])
+
+  const grubuOku = useCallback(async (sohbetId) => {
+    if (!kullanici?.id) return
+    aktifKonusmaRef.current = `g:${sohbetId}`
+    const simdi = new Date().toISOString()
+    setSohbetler((prev) => prev.map(s => s.id === sohbetId ? { ...s, sonOkumaTarih: simdi } : s))
+    await sohbetOkunduIsaretle(sohbetId)
+  }, [kullanici?.id])
+
+  // ── Silme ─────────────────────────────────────────────────────────────────
   const mesajSil = useCallback(async (id) => {
     const sonuc = await dbMesajSil(id)
     if (!sonuc.__error) setMesajlar((prev) => prev.filter((m) => m.id !== id))
     return sonuc
   }, [])
 
-  // Bir kişiyle olan sohbeti kendi tarafımdan temizle (karşı tarafta kalır).
-  // Yeniden yazınca sohbet geri döner — birebir_sohbet_ac damgayı kaldırıyor.
-  const sohbetiSil = useCallback(async (kisiId) => {
-    if (!kullanici?.id) return { __error: 'Oturum yok' }
-    const sonuc = await dbSohbetiSil(kullanici.id, kisiId)
+  // Sohbeti kendi tarafımdan temizle (karşı tarafta kalır).
+  // hedef: { tip:'kisi', kisiId } | { tip:'grup', sohbetId }
+  const sohbetiSil = useCallback(async (hedef) => {
+    if (!kullanici?.id || !hedef) return { __error: 'Oturum yok' }
+    let sohbetId = hedef.tip === 'grup' ? hedef.sohbetId : birebirSohbetIdBul(hedef.kisiId)
+    if (!sohbetId) return { ok: true }   // hiç yazışma yoksa silinecek bir şey de yok
+
+    const sonuc = await dbSohbetiGizle(sohbetId)
     if (!sonuc.__error) {
-      setMesajlar((prev) => prev.filter((m) => !(
-        (m.gondericiId === kullanici.id && m.aliciId === kisiId) ||
-        (m.gondericiId === kisiId && m.aliciId === kullanici.id)
-      )))
+      setMesajlar((prev) => prev.filter((m) => m.sohbetId !== sohbetId))
+      sohbetleriYenile()
     }
     return sonuc
-  }, [kullanici?.id])
+  }, [kullanici?.id, birebirSohbetIdBul, sohbetleriYenile])
 
+  // ── Grup işlemleri ────────────────────────────────────────────────────────
+  const grupOlustur = useCallback(async (ad, katilimciIdler) => {
+    const r = await grupSohbetAc(ad, katilimciIdler)
+    if (r.__error) return r
+    await sohbetleriYenile()
+    return r
+  }, [sohbetleriYenile])
+
+  const grubaKisiEkle = useCallback(async (sohbetId, kullaniciId) => {
+    const r = await dbGrubaKisiEkle(sohbetId, kullaniciId)
+    if (!r.__error) await sohbetleriYenile()
+    return r
+  }, [sohbetleriYenile])
+
+  const gruptanAyril = useCallback(async (sohbetId) => {
+    const r = await dbGruptanAyril(sohbetId)
+    if (!r.__error) {
+      setMesajlar((prev) => prev.filter((m) => m.sohbetId !== sohbetId))
+      await sohbetleriYenile()
+    }
+    return r
+  }, [sohbetleriYenile])
+
+  const grupAdiDegistir = useCallback(async (sohbetId, ad) => {
+    const r = await dbGrupAdiDegistir(sohbetId, ad)
+    if (!r.__error) {
+      setSohbetler((prev) => prev.map(s => s.id === sohbetId ? { ...s, ad } : s))
+    }
+    return r
+  }, [])
+
+  // ── Okunmamış sayaçları ───────────────────────────────────────────────────
   const okunmamisSay = useCallback((kisiId) => {
     if (!kullanici?.id) return 0
     return mesajlar.filter((m) =>
@@ -201,17 +320,54 @@ export function ChatProvider({ children }) {
     ).length
   }, [mesajlar, kullanici?.id])
 
+  const grupOkunmamisSay = useCallback((sohbetId) => {
+    if (!kullanici?.id) return 0
+    const s = sohbetler.find(x => x.id === sohbetId)
+    if (!s) return 0
+    const damga = s.sonOkumaTarih ? new Date(s.sonOkumaTarih) : null
+    return mesajlar.filter((m) =>
+      m.sohbetId === sohbetId &&
+      m.gondericiId !== kullanici.id &&
+      (!damga || new Date(m.tarih) > damga)
+    ).length
+  }, [mesajlar, sohbetler, kullanici?.id])
+
+  // Toplam rozet: birebir okunmamışlar + grup okunmamışları
+  useEffect(() => {
+    if (!kullanici?.id) { setOkunmamis(0); return }
+    const birebir = mesajlar.filter((m) => m.aliciId === kullanici.id && !m.okundu).length
+    const grup = sohbetler
+      .filter(s => s.tip === 'grup')
+      .reduce((t, s) => {
+        const damga = s.sonOkumaTarih ? new Date(s.sonOkumaTarih) : null
+        return t + mesajlar.filter((m) =>
+          m.sohbetId === s.id && m.gondericiId !== kullanici.id && (!damga || new Date(m.tarih) > damga)
+        ).length
+      }, 0)
+    setOkunmamis(birebir + grup)
+  }, [mesajlar, sohbetler, kullanici?.id])
+
   return (
     <ChatContext.Provider value={{
       mesajlar,
+      sohbetler,
       okunmamis,
       mesajGonder,
       mesajlariOku,
+      grubuOku,
       aktifKonusmaAyarla,
       konusmaGetir,
+      grupMesajlari,
       mesajSil,
       sohbetiSil,
+      grupOlustur,
+      grubaKisiEkle,
+      gruptanAyril,
+      grupAdiDegistir,
+      sohbetleriYenile,
+      birebirSohbetIdBul,
       okunmamisSay,
+      grupOkunmamisSay,
       cevrimiciMi,
       efektifDurum,
     }}>

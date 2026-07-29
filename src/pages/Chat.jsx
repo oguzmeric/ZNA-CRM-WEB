@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useChat } from '../context/ChatContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
-  Paperclip, Send, MessageSquare, FileText, FileSpreadsheet, FileImage, FileArchive, File, Trash2,
+  Paperclip, Send, MessageSquare, FileText, FileSpreadsheet, FileImage, FileArchive, File,
+  Trash2, Users, UserPlus, LogOut, Smile, Plus,
 } from 'lucide-react'
-import { Avatar, Button, Textarea, EmptyState } from '../components/ui'
+import { Avatar, Button, Textarea, EmptyState, Modal, Input, Label, Select } from '../components/ui'
+import CokluSelect from '../components/CokluSelect'
+import EmojiSecici from '../components/EmojiSecici'
 
 const durumRenk = {
   cevrimici:    'var(--success)',
@@ -37,6 +40,16 @@ const isDosyaMesaj = (icerik) => {
   } catch { return false }
 }
 
+// Sadece emojiden oluşan kısa mesajlar büyük gösterilir (WhatsApp/Slack davranışı)
+const sadeceEmojiMi = (metin = '') => {
+  const t = metin.trim()
+  if (!t || t.length > 24) return false
+  try {
+    if (!/^(\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍|\s)+$/u.test(t)) return false
+  } catch { return false }   // eski tarayıcıda Unicode property yoksa sessizce vazgeç
+  return [...t.replace(/\s/g, '')].length > 0
+}
+
 const saatFormat = (tarih) =>
   new Date(tarih).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
@@ -48,26 +61,76 @@ const dosyaBoyutFormat = (b) => {
 
 function Chat() {
   const { kullanici, kullanicilar } = useAuth()
-  const { mesajGonder, konusmaGetir, mesajlariOku, okunmamisSay, aktifKonusmaAyarla, efektifDurum, mesajSil, sohbetiSil } = useChat()
+  const {
+    mesajGonder, konusmaGetir, grupMesajlari, mesajlariOku, grubuOku,
+    okunmamisSay, grupOkunmamisSay, aktifKonusmaAyarla, efektifDurum,
+    mesajSil, sohbetiSil, sohbetler, grupOlustur, grubaKisiEkle, gruptanAyril,
+  } = useChat()
   const { toast } = useToast()
   const { confirm } = useConfirm()
-  const [seciliKisi, setSeciliKisi] = useState(null)
+  // secili: { tip: 'kisi' | 'grup', id }
+  const [secili, setSecili] = useState(null)
   const [yeniMesaj, setYeniMesaj] = useState('')
+  const [emojiAcik, setEmojiAcik] = useState(false)
+  const [grupModal, setGrupModal] = useState(false)
+  const [grupAd, setGrupAd] = useState('')
+  const [grupUyeler, setGrupUyeler] = useState([])
+  const [grupKaydediliyor, setGrupKaydediliyor] = useState(false)
+  const [kisiEkleModal, setKisiEkleModal] = useState(false)
+  const [eklenecekKisi, setEklenecekKisi] = useState('')
   const mesajSonuRef = useRef(null)
   const dosyaInputRef = useRef(null)
+  const metinRef = useRef(null)
 
   // Sadece personel (ZNA) ile mesajlasilir — musteriler chat listesine girmez
   const digerKullanicilar = kullanicilar.filter(k => k.id !== kullanici?.id && k.tip !== 'musteri')
-  const konusma = seciliKisi ? konusmaGetir(seciliKisi.id) : []
+  const gruplar = useMemo(() => sohbetler.filter(s => s.tip === 'grup'), [sohbetler])
 
-  useEffect(() => { if (seciliKisi) mesajlariOku(seciliKisi.id) }, [seciliKisi, konusma.length])
+  const seciliKisi = secili?.tip === 'kisi' ? digerKullanicilar.find(k => k.id === secili.id) : null
+  const seciliGrup = secili?.tip === 'grup' ? gruplar.find(g => g.id === secili.id) : null
+
+  const konusma = secili
+    ? (secili.tip === 'grup' ? grupMesajlari(secili.id) : konusmaGetir(secili.id))
+    : []
+
+  const kisiAd = (id) => kullanicilar.find(k => k.id === id)?.ad || 'Bilinmeyen'
+
+  useEffect(() => {
+    if (!secili) return
+    if (secili.tip === 'kisi') mesajlariOku(secili.id)
+    else grubuOku(secili.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secili?.tip, secili?.id, konusma.length])
+
   useEffect(() => () => aktifKonusmaAyarla?.(null), [aktifKonusmaAyarla])
   useEffect(() => { mesajSonuRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [konusma.length])
 
+  // Seçili grup silinirse/ayrıldıysak seçimi bırak
+  useEffect(() => {
+    if (secili?.tip === 'grup' && !gruplar.some(g => g.id === secili.id)) setSecili(null)
+  }, [gruplar, secili])
+
   const gonder = () => {
-    if (!yeniMesaj.trim() || !seciliKisi) return
-    mesajGonder(seciliKisi.id, yeniMesaj)
+    if (!yeniMesaj.trim() || !secili) return
+    mesajGonder(
+      secili.tip === 'grup' ? { tip: 'grup', sohbetId: secili.id } : { tip: 'kisi', kisiId: secili.id },
+      yeniMesaj,
+    )
     setYeniMesaj('')
+    setEmojiAcik(false)
+  }
+
+  const emojiEkle = (e) => {
+    const ta = metinRef.current
+    if (!ta) { setYeniMesaj(p => p + e); return }
+    const bas = ta.selectionStart ?? yeniMesaj.length
+    const son = ta.selectionEnd ?? yeniMesaj.length
+    setYeniMesaj(yeniMesaj.slice(0, bas) + e + yeniMesaj.slice(son))
+    requestAnimationFrame(() => {
+      ta.focus()
+      const p = bas + e.length
+      ta.setSelectionRange(p, p)
+    })
   }
 
   // Tek mesaj sil — yalnız kendi mesajın
@@ -82,19 +145,56 @@ function Chat() {
     if (r?.__error) toast.error('Mesaj silinemedi: ' + r.__error)
   }
 
-  // Sohbeti sil — SADECE benden; karşı tarafta durur, tekrar yazınca geri gelir
+  // Sohbeti sil — SADECE benden; karşı tarafta durur, yeni mesajla geri gelir
   const sohbetiSilTikla = async () => {
-    if (!seciliKisi) return
+    if (!secili) return
+    const ad = seciliGrup ? seciliGrup.ad : seciliKisi?.ad
     const onay = await confirm({
       baslik: 'Sohbeti Sil',
-      mesaj: `${seciliKisi.ad} ile olan yazışma SENİN ekranından kaldırılacak. Karşı tarafta kalmaya devam eder; tekrar yazdığında sohbet geri gelir.`,
+      mesaj: `${ad} sohbeti SENİN ekranından kaldırılacak. Diğer katılımcılarda kalmaya devam eder; yeni mesaj gelince sohbet geri gelir (eski mesajlar gizli kalır).`,
       onayMetin: 'Sohbeti sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    const r = await sohbetiSil(seciliKisi.id)
+    const r = await sohbetiSil(
+      secili.tip === 'grup' ? { tip: 'grup', sohbetId: secili.id } : { tip: 'kisi', kisiId: secili.id },
+    )
     if (r?.__error) { toast.error('Sohbet silinemedi: ' + r.__error); return }
     toast.success('Sohbet temizlendi.')
-    setSeciliKisi(null)
+    setSecili(null)
+  }
+
+  const gruptanAyrilTikla = async () => {
+    if (!seciliGrup) return
+    const onay = await confirm({
+      baslik: 'Gruptan Ayrıl',
+      mesaj: `"${seciliGrup.ad}" grubundan ayrılacaksın. Yeni mesajları görmezsin; tekrar eklenmen için grup üyelerinden birinin seni eklemesi gerekir.`,
+      onayMetin: 'Ayrıl', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const r = await gruptanAyril(seciliGrup.id)
+    if (r?.__error) { toast.error('Ayrılamadın: ' + r.__error); return }
+    toast.success('Gruptan ayrıldın.')
+    setSecili(null)
+  }
+
+  const grupKaydet = async () => {
+    if (!grupAd.trim()) { toast.error('Grup adı gerekli'); return }
+    if (grupUyeler.length === 0) { toast.error('En az bir kişi seç'); return }
+    setGrupKaydediliyor(true)
+    const r = await grupOlustur(grupAd.trim(), grupUyeler)
+    setGrupKaydediliyor(false)
+    if (r?.__error) { toast.error('Grup oluşturulamadı: ' + r.__error); return }
+    toast.success('Grup oluşturuldu.')
+    setGrupModal(false); setGrupAd(''); setGrupUyeler([])
+    if (r?.sohbetId) setSecili({ tip: 'grup', id: r.sohbetId })
+  }
+
+  const kisiEkleKaydet = async () => {
+    if (!seciliGrup || !eklenecekKisi) return
+    const r = await grubaKisiEkle(seciliGrup.id, Number(eklenecekKisi))
+    if (r?.__error) { toast.error('Kişi eklenemedi: ' + r.__error); return }
+    toast.success('Kişi gruba eklendi.')
+    setKisiEkleModal(false); setEklenecekKisi('')
   }
 
   const handleKeyDown = (e) => {
@@ -103,14 +203,17 @@ function Chat() {
 
   const dosyaSecildi = (e) => {
     const dosya = e.target.files[0]
-    if (!dosya || !seciliKisi) return
-    if (dosya.size > 5 * 1024 * 1024) { alert('Dosya boyutu 5 MB\'dan büyük olamaz.'); return }
+    if (!dosya || !secili) return
+    if (dosya.size > 5 * 1024 * 1024) { toast.error('Dosya boyutu 5 MB\'dan büyük olamaz.'); return }
     const reader = new FileReader()
     reader.onload = (ev) => {
-      mesajGonder(seciliKisi.id, JSON.stringify({
-        tip: 'dosya', dosyaAdi: dosya.name, dosyaTipi: dosya.type,
-        dosyaBoyutu: dosya.size, dosyaData: ev.target.result,
-      }))
+      mesajGonder(
+        secili.tip === 'grup' ? { tip: 'grup', sohbetId: secili.id } : { tip: 'kisi', kisiId: secili.id },
+        JSON.stringify({
+          tip: 'dosya', dosyaAdi: dosya.name, dosyaTipi: dosya.type,
+          dosyaBoyutu: dosya.size, dosyaData: ev.target.result,
+        }),
+      )
     }
     reader.readAsDataURL(dosya)
     e.target.value = ''
@@ -132,40 +235,119 @@ function Chat() {
   }
 
   const grupluMesajlar = () => {
-    const gruplar = []
+    const gruplanmis = []
     let sonTarih = null
     konusma.forEach(m => {
       const t = tarihFormat(m.tarih)
-      if (t !== sonTarih) { gruplar.push({ tip: 'tarih', tarih: t }); sonTarih = t }
-      gruplar.push({ tip: 'mesaj', ...m })
+      if (t !== sonTarih) { gruplanmis.push({ tip: 'tarih', tarih: t }); sonTarih = t }
+      gruplanmis.push({ tip: 'mesaj', ...m })
     })
-    return gruplar
+    return gruplanmis
   }
 
-  const seciliKisiGuncel = digerKullanicilar.find(k => k.id === seciliKisi?.id)
+  const grupUyeAdlari = (g) => (g?.katilimcilar || [])
+    .filter(id => id !== kullanici?.id)
+    .map(kisiAd)
+
+  const acikSohbetVar = !!(seciliKisi || seciliGrup)
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 56px)', background: 'var(--surface-card)' }}>
 
-      {/* Kişi listesi */}
+      {/* Sol panel: gruplar + kişiler */}
       <div style={{
         width: 280, flexShrink: 0,
         background: 'var(--surface-card)',
         borderRight: '1px solid var(--border-default)',
         display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-default)' }}>
-          <h2 className="t-h2" style={{ margin: 0 }}>Mesajlar</h2>
-          <p className="t-caption" style={{ marginTop: 2 }}>
-            <span className="tabular-nums">{digerKullanicilar.length}</span> kişi
-          </p>
+        <div style={{
+          padding: '14px 16px', borderBottom: '1px solid var(--border-default)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 className="t-h2" style={{ margin: 0 }}>Mesajlar</h2>
+            <p className="t-caption" style={{ marginTop: 2 }}>
+              <span className="tabular-nums">{digerKullanicilar.length}</span> kişi
+              {gruplar.length > 0 && <> · <span className="tabular-nums">{gruplar.length}</span> grup</>}
+            </p>
+          </div>
+          <button
+            onClick={() => setGrupModal(true)}
+            title="Yeni grup sohbeti"
+            style={{
+              flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4,
+              background: 'var(--brand-primary)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-sm)', padding: '6px 10px', cursor: 'pointer',
+              font: '600 11px/16px var(--font-sans)',
+            }}
+          >
+            <Plus size={12} strokeWidth={2} /> Grup
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* ── Gruplar ── */}
+          {gruplar.length > 0 && (
+            <>
+              <div style={baslikSeridi}>Gruplar</div>
+              {gruplar.map(g => {
+                const okunmamis = grupOkunmamisSay(g.id)
+                const sonMesaj = grupMesajlari(g.id).slice(-1)[0]
+                const aktif = secili?.tip === 'grup' && secili.id === g.id
+                const uyeler = grupUyeAdlari(g)
+                return (
+                  <div
+                    key={`g-${g.id}`}
+                    onClick={() => setSecili({ tip: 'grup', id: g.id })}
+                    style={satirStil(aktif)}
+                    onMouseEnter={e => { if (!aktif) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+                    onMouseLeave={e => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 'var(--radius-sm)',
+                        background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                        display: 'grid', placeItems: 'center',
+                      }}>
+                        <Users size={17} strokeWidth={1.6} />
+                      </div>
+                      {okunmamis > 0 && <span style={rozetStil}>{okunmamis}</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        font: okunmamis > 0 ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {g.ad}
+                      </div>
+                      <div style={{
+                        font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {uyeler.length} kişi · {uyeler.slice(0, 2).join(', ')}{uyeler.length > 2 ? '…' : ''}
+                      </div>
+                      {sonMesaj && (
+                        <div style={onizlemeStil}>
+                          {sonMesaj.gondericiId === kullanici?.id ? 'Sen: ' : `${kisiAd(sonMesaj.gondericiId).split(' ')[0]}: `}
+                          {isDosyaMesaj(sonMesaj.icerik) ? 'Dosya' : sonMesaj.icerik}
+                        </div>
+                      )}
+                    </div>
+                    {sonMesaj && <span style={saatStil}>{saatFormat(sonMesaj.tarih)}</span>}
+                  </div>
+                )
+              })}
+            </>
+          )}
+
+          {/* ── Kişiler ── */}
+          {gruplar.length > 0 && <div style={baslikSeridi}>Kişiler</div>}
           {digerKullanicilar.map(k => {
             const okunmamis = okunmamisSay(k.id)
             const sonMesaj = konusmaGetir(k.id).slice(-1)[0]
-            const aktif = seciliKisi?.id === k.id
+            const aktif = secili?.tip === 'kisi' && secili.id === k.id
             const kisiDurum = efektifDurum(k)
             const sonMesajMetin = sonMesaj
               ? isDosyaMesaj(sonMesaj.icerik) ? 'Dosya' : sonMesaj.icerik
@@ -174,17 +356,8 @@ function Chat() {
             return (
               <div
                 key={k.id}
-                onClick={() => setSeciliKisi(k)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '12px 16px',
-                  borderBottom: '1px solid var(--border-default)',
-                  borderLeft: `3px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
-                  paddingLeft: 13,
-                  background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'background 120ms',
-                }}
+                onClick={() => setSecili({ tip: 'kisi', id: k.id })}
+                style={satirStil(aktif)}
                 onMouseEnter={e => { if (!aktif) e.currentTarget.style.background = 'var(--surface-sunken)' }}
                 onMouseLeave={e => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
               >
@@ -199,18 +372,7 @@ function Chat() {
                       border: '2px solid var(--surface-card)',
                     }}
                   />
-                  {okunmamis > 0 && (
-                    <span style={{
-                      position: 'absolute', top: -4, right: -4,
-                      minWidth: 16, height: 16, padding: '0 4px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'var(--danger)', color: '#fff',
-                      fontSize: 10, fontWeight: 600,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {okunmamis}
-                    </span>
-                  )}
+                  {okunmamis > 0 && <span style={rozetStil}>{okunmamis}</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -224,20 +386,12 @@ function Chat() {
                     {durumIsim[kisiDurum]}
                   </div>
                   {sonMesajMetin && (
-                    <div style={{
-                      font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      marginTop: 2,
-                    }}>
+                    <div style={onizlemeStil}>
                       {sonMesaj.gondericiId === kullanici?.id ? 'Sen: ' : ''}{sonMesajMetin}
                     </div>
                   )}
                 </div>
-                {sonMesaj && (
-                  <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                    {saatFormat(sonMesaj.tarih)}
-                  </span>
-                )}
+                {sonMesaj && <span style={saatStil}>{saatFormat(sonMesaj.tarih)}</span>}
               </div>
             )
           })}
@@ -245,7 +399,7 @@ function Chat() {
       </div>
 
       {/* Konuşma alanı */}
-      {seciliKisiGuncel ? (
+      {acikSohbetVar ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
           {/* Header */}
@@ -255,50 +409,65 @@ function Chat() {
             background: 'var(--surface-card)',
             borderBottom: '1px solid var(--border-default)',
           }}>
-            <div style={{ position: 'relative' }}>
-              <Avatar name={seciliKisiGuncel.ad} size="md" />
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute', bottom: -1, right: -1,
-                  width: 10, height: 10, borderRadius: '50%',
-                  background: durumRenk[efektifDurum(seciliKisiGuncel)],
-                  border: '2px solid var(--surface-card)',
-                }}
-              />
-            </div>
+            {seciliGrup ? (
+              <div style={{
+                width: 36, height: 36, borderRadius: 'var(--radius-sm)', flexShrink: 0,
+                background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                display: 'grid', placeItems: 'center',
+              }}>
+                <Users size={17} strokeWidth={1.6} />
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <Avatar name={seciliKisi.ad} size="md" />
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute', bottom: -1, right: -1,
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: durumRenk[efektifDurum(seciliKisi)],
+                    border: '2px solid var(--surface-card)',
+                  }}
+                />
+              </div>
+            )}
+
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>
-                {seciliKisiGuncel.ad}
+                {seciliGrup ? seciliGrup.ad : seciliKisi.ad}
               </div>
-              <div style={{ font: '400 12px/16px var(--font-sans)', color: durumRenk[efektifDurum(seciliKisiGuncel)] }}>
-                {durumIsim[efektifDurum(seciliKisiGuncel)]}
+              <div style={{
+                font: '400 12px/16px var(--font-sans)',
+                color: seciliGrup ? 'var(--text-tertiary)' : durumRenk[efektifDurum(seciliKisi)],
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {seciliGrup
+                  ? `Sen, ${grupUyeAdlari(seciliGrup).join(', ')}`
+                  : durumIsim[efektifDurum(seciliKisi)]}
               </div>
             </div>
 
+            {seciliGrup && (
+              <button onClick={() => setKisiEkleModal(true)} title="Gruba kişi ekle" style={ustButonStil}
+                onMouseEnter={vurgula('var(--brand-primary)')} onMouseLeave={vurguKaldir}>
+                <UserPlus size={13} strokeWidth={1.5} /> Kişi ekle
+              </button>
+            )}
+
             {/* SOHBETİ SİL — tüm yazışmayı benden temizler (tek tek mesaj silme
-                DEĞİL). Karşı tarafta kalır; tekrar yazınca sohbet geri döner
-                (mig 240 gizlendi_tarih + birebir_sohbet_ac damgayı kaldırır). */}
-            <button
-              onClick={sohbetiSilTikla}
-              title="Bu sohbetin tamamını benden sil"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                background: 'transparent', border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-sm)', padding: '6px 12px', cursor: 'pointer',
-                font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--danger)'
-                e.currentTarget.style.color = 'var(--danger)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-default)'
-                e.currentTarget.style.color = 'var(--text-secondary)'
-              }}
-            >
+                DEĞİL). Diğer katılımcılarda kalır; yeni mesajla sohbet geri döner
+                ama gizlenen eski mesajlar geri gelmez (mig 240/243). */}
+            <button onClick={sohbetiSilTikla} title="Bu sohbetin tamamını benden sil" style={ustButonStil}
+              onMouseEnter={vurgula('var(--danger)')} onMouseLeave={vurguKaldir}>
               <Trash2 size={13} strokeWidth={1.5} /> Sohbeti sil
             </button>
+
+            {seciliGrup && (
+              <button onClick={gruptanAyrilTikla} title="Gruptan ayrıl" style={ustButonStil}
+                onMouseEnter={vurgula('var(--danger)')} onMouseLeave={vurguKaldir}>
+                <LogOut size={13} strokeWidth={1.5} /> Ayrıl
+              </button>
+            )}
           </div>
 
           {/* Mesajlar */}
@@ -312,7 +481,7 @@ function Chat() {
             {grupluMesajlar().map((item, i) => {
               if (item.tip === 'tarih') {
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+                  <div key={`t-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
                     <span className="t-caption">{item.tarih}</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
@@ -321,10 +490,11 @@ function Chat() {
               }
 
               const benimMesajim = item.gondericiId === kullanici?.id
-              const gondererAd = benimMesajim ? kullanici?.ad : (kullanicilar.find(k => k.id === item.gondericiId)?.ad || '?')
+              const gondererAd = benimMesajim ? kullanici?.ad : kisiAd(item.gondericiId)
               const dosyaMi = isDosyaMesaj(item.icerik)
               const dosyaBilgi = dosyaMi ? JSON.parse(item.icerik) : null
               const IconC = dosyaMi ? dosyaIcon(dosyaBilgi.dosyaTipi) : null
+              const buyukEmoji = !dosyaMi && sadeceEmojiMi(item.icerik)
 
               return (
                 <div
@@ -337,7 +507,7 @@ function Chat() {
                     marginBottom: 10,
                   }}
                 >
-                  {/* Kendi mesajını herkes silebilir — RLS ile aynı kural (mig 242).
+                  {/* Kendi mesajını herkes silebilir — RLS ile aynı kural.
                       Başkasının mesajında bu buton hiç çıkmaz. */}
                   {benimMesajim && (
                     <button
@@ -364,6 +534,15 @@ function Chat() {
                     display: 'flex', flexDirection: 'column',
                     alignItems: benimMesajim ? 'flex-end' : 'flex-start',
                   }}>
+                    {/* Grupta kimin yazdığı belli olsun */}
+                    {seciliGrup && !benimMesajim && (
+                      <span style={{
+                        font: '600 11px/14px var(--font-sans)', color: 'var(--brand-primary)',
+                        marginBottom: 2, padding: '0 4px',
+                      }}>
+                        {gondererAd}
+                      </span>
+                    )}
                     {dosyaMi ? (
                       <div
                         onClick={() => dosyaIndir(item.icerik)}
@@ -392,6 +571,10 @@ function Chat() {
                           </div>
                         </div>
                       </div>
+                    ) : buyukEmoji ? (
+                      <div style={{ fontSize: 34, lineHeight: '42px', padding: '0 4px' }}>
+                        {item.icerik}
+                      </div>
                     ) : (
                       <div style={{
                         padding: '8px 12px',
@@ -409,7 +592,7 @@ function Chat() {
                     )}
                     <span style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4, padding: '0 4px', fontVariantNumeric: 'tabular-nums' }}>
                       {saatFormat(item.tarih)}
-                      {benimMesajim && <span style={{ marginLeft: 4 }}>{item.okundu ? '✓✓' : '✓'}</span>}
+                      {benimMesajim && !seciliGrup && <span style={{ marginLeft: 4 }}>{item.okundu ? '✓✓' : '✓'}</span>}
                     </span>
                   </div>
                 </div>
@@ -424,21 +607,25 @@ function Chat() {
             background: 'var(--surface-card)',
             borderTop: '1px solid var(--border-default)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, position: 'relative' }}>
+              <button
+                data-emoji-buton
+                onClick={() => setEmojiAcik(a => !a)}
+                aria-label="Emoji ekle"
+                title="Emoji"
+                style={{ ...araButonStil, color: emojiAcik ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
+                onMouseEnter={araButonHover} onMouseLeave={araButonCik}
+              >
+                <Smile size={16} strokeWidth={1.5} />
+              </button>
+              {emojiAcik && (
+                <EmojiSecici onSec={emojiEkle} onKapat={() => setEmojiAcik(false)} />
+              )}
               <button
                 onClick={() => dosyaInputRef.current?.click()}
                 aria-label="Dosya ekle"
-                style={{
-                  flexShrink: 0, width: 36, height: 36,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--surface-card)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)'; e.currentTarget.style.borderColor = 'var(--brand-primary)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                style={araButonStil}
+                onMouseEnter={araButonHover} onMouseLeave={araButonCik}
               >
                 <Paperclip size={16} strokeWidth={1.5} />
               </button>
@@ -450,6 +637,7 @@ function Chat() {
                 accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
               />
               <Textarea
+                ref={metinRef}
                 value={yeniMesaj}
                 onChange={e => setYeniMesaj(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -466,7 +654,7 @@ function Chat() {
                 Gönder
               </Button>
             </div>
-            <p className="t-caption" style={{ marginTop: 6, marginLeft: 44 }}>
+            <p className="t-caption" style={{ marginTop: 6, marginLeft: 88 }}>
               PDF, Excel, Word, resim ve ZIP (max 5 MB)
             </p>
           </div>
@@ -476,12 +664,152 @@ function Chat() {
           <EmptyState
             icon={<MessageSquare size={32} strokeWidth={1.5} />}
             title="Mesajlaşmaya başla"
-            description="Sol taraftan bir kişi seç"
+            description="Sol taraftan bir kişi ya da grup seç"
           />
         </div>
       )}
+
+      {/* Yeni grup */}
+      <Modal
+        open={grupModal}
+        onClose={() => setGrupModal(false)}
+        title="Yeni Grup Sohbeti"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setGrupModal(false)}>Vazgeç</Button>
+            <Button variant="primary" onClick={grupKaydet} disabled={grupKaydediliyor}>
+              {grupKaydediliyor ? 'Oluşturuluyor…' : 'Grubu Oluştur'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <Label>Grup adı</Label>
+            <Input
+              value={grupAd}
+              onChange={e => setGrupAd(e.target.value)}
+              placeholder="Örn. Saha Ekibi, Bahçeşehir Projesi"
+              autoFocus
+            />
+          </div>
+          <div>
+            <Label>Katılımcılar</Label>
+            <CokluSelect
+              degerler={grupUyeler}
+              onChange={setGrupUyeler}
+              secenekler={digerKullanicilar.map(k => ({ id: k.id, ad: k.ad }))}
+              placeholder="Kişi seç…"
+            />
+            <p className="t-caption" style={{ marginTop: 6 }}>
+              Sen otomatik olarak gruba dahilsin. Sonradan da kişi ekleyebilirsin.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Gruba kişi ekle */}
+      <Modal
+        open={kisiEkleModal}
+        onClose={() => setKisiEkleModal(false)}
+        title="Gruba Kişi Ekle"
+        width={420}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setKisiEkleModal(false)}>Vazgeç</Button>
+            <Button variant="primary" onClick={kisiEkleKaydet} disabled={!eklenecekKisi}>Ekle</Button>
+          </>
+        }
+      >
+        <Label>Kişi</Label>
+        <Select value={eklenecekKisi} onChange={e => setEklenecekKisi(e.target.value)}>
+          <option value="">Seç…</option>
+          {digerKullanicilar
+            .filter(k => !(seciliGrup?.katilimcilar || []).includes(k.id))
+            .map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}
+        </Select>
+        <p className="t-caption" style={{ marginTop: 8 }}>
+          Eklenen kişi gruptaki eski mesajları da görür.
+        </p>
+      </Modal>
     </div>
   )
+}
+
+// ── Ortak stiller ───────────────────────────────────────────────────────────
+const baslikSeridi = {
+  padding: '8px 16px 4px',
+  font: '600 10px/14px var(--font-sans)',
+  letterSpacing: '0.06em', textTransform: 'uppercase',
+  color: 'var(--text-tertiary)',
+  background: 'var(--surface-card)',
+}
+
+const satirStil = (aktif) => ({
+  display: 'flex', alignItems: 'center', gap: 10,
+  padding: '12px 16px',
+  borderBottom: '1px solid var(--border-default)',
+  borderLeft: `3px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+  paddingLeft: 13,
+  background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
+  cursor: 'pointer',
+  transition: 'background 120ms',
+})
+
+const rozetStil = {
+  position: 'absolute', top: -4, right: -4,
+  minWidth: 16, height: 16, padding: '0 4px',
+  borderRadius: 'var(--radius-pill)',
+  background: 'var(--danger)', color: '#fff',
+  fontSize: 10, fontWeight: 600,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+}
+
+const onizlemeStil = {
+  font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  marginTop: 2,
+}
+
+const saatStil = {
+  font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)',
+  flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+}
+
+const ustButonStil = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+  background: 'transparent', border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)', padding: '6px 12px', cursor: 'pointer',
+  font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+}
+
+const vurgula = (renk) => (e) => {
+  e.currentTarget.style.borderColor = renk
+  e.currentTarget.style.color = renk
+}
+const vurguKaldir = (e) => {
+  e.currentTarget.style.borderColor = 'var(--border-default)'
+  e.currentTarget.style.color = 'var(--text-secondary)'
+}
+
+const araButonStil = {
+  flexShrink: 0, width: 36, height: 36,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--surface-card)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
+}
+const araButonHover = (e) => {
+  e.currentTarget.style.background = 'var(--brand-primary-soft)'
+  e.currentTarget.style.color = 'var(--brand-primary)'
+  e.currentTarget.style.borderColor = 'var(--brand-primary)'
+}
+const araButonCik = (e) => {
+  e.currentTarget.style.background = 'var(--surface-card)'
+  e.currentTarget.style.color = 'var(--text-secondary)'
+  e.currentTarget.style.borderColor = 'var(--border-default)'
 }
 
 export default Chat
