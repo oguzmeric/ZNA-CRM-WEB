@@ -16,6 +16,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import BelgePaylasModal from '../components/BelgePaylasModal'
+import BelgeOnizlemeModal from '../components/BelgeOnizlemeModal'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
 import { siparisGetir, kalemleriGetir } from '../services/siparisService'
 import { musteriGetir, musterileriGetir } from '../services/musteriService'
@@ -120,6 +121,7 @@ export default function SatisSozlesmeForm() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [mesgul, setMesgul] = useState(false)
   const [onizleme, setOnizleme] = useState(false)
+  const [belge, setBelge] = useState(null)       // { url, baslik, indirmeAdi } — depodaki PDF
   const [gonderAcik, setGonderAcik] = useState(false)
   const [gonderEmail, setGonderEmail] = useState('')
   const [redAcik, setRedAcik] = useState(false)
@@ -546,11 +548,21 @@ export default function SatisSozlesmeForm() {
       : 'İmzalı sözleşme yüklendi. ✅')
   }
 
-  const imzaliAc = async () => {
-    const url = await ssDosyaUrl(kayit.imzaliPdfUrl)
-    if (url) window.open(url, '_blank')
+  // Belgeler uygulama İÇİNDE açılır: signed URL adres çubuğuna (ve geçmişe)
+  // düşmesin, PDF sayfaya sığdırılsın. Bkz. BelgeOnizlemeModal.
+  const belgeAc = async (yol, baslik, indirmeAdi) => {
+    const url = await ssDosyaUrl(yol)
+    if (url) setBelge({ url, baslik, indirmeAdi })
     else toast.error('Dosya açılamadı.')
   }
+
+  const belgeAdi = (ek) => {
+    const no = (kayit?.sozlesmeNo || 'sozlesme').replace(/[\\/:*?"<>|]/g, '-')
+    return `${no}${ek}.pdf`
+  }
+
+  const imzaliAc = () =>
+    belgeAc(kayit.imzaliPdfUrl, `${kayit.sozlesmeNo} — İmzalı Nüsha`, belgeAdi(' - imzali'))
 
   // ---- Evrak checklist ----
   const evrakToggle = async (idx) => {
@@ -573,11 +585,9 @@ export default function SatisSozlesmeForm() {
     toast.success('Evrak yüklendi.')
   }
 
-  const evrakAc = async (e) => {
-    const url = await ssDosyaUrl(e.dosyaUrl)
-    if (url) window.open(url, '_blank')
-    else toast.error('Dosya açılamadı.')
-  }
+  const evrakAc = (e) =>
+    belgeAc(e.dosyaUrl, `${kayit.sozlesmeNo} — ${e.isim || 'Evrak'}`,
+      belgeAdi(` - ${(e.isim || 'evrak').replace(/[\\/:*?"<>|]/g, '-')}`))
 
   // ---- Kur farkı takip (spec §10) ----
   const [tahsilKuru, setTahsilKuru] = useState('')
@@ -1200,11 +1210,9 @@ export default function SatisSozlesmeForm() {
                     </div>
                     {s.imzaliPdfUrl && (
                       <Button variant="ghost" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
-                        onClick={async () => {
-                          const url = await ssDosyaUrl(s.imzaliPdfUrl)
-                          if (url) window.open(url, '_blank')
-                          else toast.error('Arşiv dosyası açılamadı.')
-                        }}>
+                        onClick={() => belgeAc(s.imzaliPdfUrl,
+                          `${kayit.sozlesmeNo} — Rev. ${s.revizyon ?? 0} İmzalı Nüsha`,
+                          belgeAdi(` - rev${s.revizyon ?? 0} imzali`))}>
                         İmzalı PDF
                       </Button>
                     )}
@@ -1448,6 +1456,15 @@ export default function SatisSozlesmeForm() {
             <Button variant="ghost" onClick={() => setOnizleme(false)}>Kapat</Button>
           </div>
         </Modal>
+      )}
+
+      {belge && (
+        <BelgeOnizlemeModal
+          baslik={belge.baslik}
+          url={belge.url}
+          indirmeAdi={belge.indirmeAdi}
+          onKapat={() => setBelge(null)}
+        />
       )}
     </div>
   )

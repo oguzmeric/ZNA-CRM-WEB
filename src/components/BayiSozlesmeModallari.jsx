@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { Printer, Send, FileUp, ExternalLink, RotateCcw, XCircle, AlertTriangle } from 'lucide-react'
 import { Button, Modal, Input, Label, Badge, Textarea } from './ui'
 import CustomSelect from './CustomSelect'
+import BelgeOnizlemeModal from './BelgeOnizlemeModal'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { belgePaylas } from '../services/belgePaylasimService'
@@ -249,6 +250,7 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
   const [revizeAcik, setRevizeAcik] = useState(false)
   const [revizeSebep, setRevizeSebep] = useState('')
   const [mesgul, setMesgul] = useState(false)
+  const [belge, setBelge] = useState(null) // imzalı PDF signed URL'i (önizleme)
 
   const durum = SOZLESME_DURUMLARI[sozlesme.durum] || SOZLESME_DURUMLARI.olusturuldu
   const yasiyor = ['olusturuldu', 'imza_bekleniyor', 'imzalandi'].includes(sozlesme.durum)
@@ -303,9 +305,11 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
     onDegisti?.()
   }
 
+  // Belge uygulama İÇİNDE açılır — signed URL adres çubuğuna düşmesin, PDF
+  // sayfaya sığdırılsın (bkz. BelgeOnizlemeModal).
   const imzaliAc = async () => {
     const url = await bayiDosyaUrl(sozlesme.imzaliPdfUrl)
-    if (url) window.open(url, '_blank')
+    if (url) setBelge(url)
     else toast.error('Dosya açılamadı.')
   }
 
@@ -416,6 +420,17 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
         <input ref={pdfRef} type="file" accept="application/pdf" style={{ display: 'none' }}
           onChange={e => { imzaliYukle(e.target.files?.[0]); e.target.value = '' }} />
       </div>
+
+      {/* Sözleşme modalının İÇİNDE render ediliyor: aynı z-index'te sonra gelen
+          DOM düğümü üstte kalır — belge penceresi sözleşme penceresini örter. */}
+      {belge && (
+        <BelgeOnizlemeModal
+          baslik={`${sozlesme.sozlesmeNo} — İmzalı Nüsha`}
+          url={belge}
+          indirmeAdi={`${(sozlesme.sozlesmeNo || 'bayi-sozlesme').replace(/[\\/:*?"<>|]/g, '-')} - imzali.pdf`}
+          onKapat={() => setBelge(null)}
+        />
+      )}
     </Modal>
   )
 }

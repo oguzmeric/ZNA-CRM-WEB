@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button, Card, Badge, CodeBadge, EmptyState, Label, Input, Table, THead, TBody, TR, TH, TD } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
+import BelgeOnizlemeModal from '../components/BelgeOnizlemeModal'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -47,6 +48,7 @@ export default function BayiDetay() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [wizardAcik, setWizardAcik] = useState(false)
   const [acikSozlesme, setAcikSozlesme] = useState(null)
+  const [belge, setBelge] = useState(null) // { url, baslik, indirmeAdi } — evrak önizleme
   const [gecerlilikler, setGecerlilikler] = useState({}) // evrak tipi → tarih (süreli evraklar)
   const dosyaRef = useRef(null)
   const yuklenecekTip = useRef(null)
@@ -105,10 +107,17 @@ export default function BayiDetay() {
     yukle(true)
   }
 
+  // Evrak uygulama İÇİNDE açılır — signed URL adres çubuğuna düşmesin, PDF
+  // sayfaya sığdırılsın (bkz. BelgeOnizlemeModal).
   const evrakAc = async (kayit) => {
     const url = await bayiDosyaUrl(kayit.dosyaUrl)
-    if (url) window.open(url, '_blank')
-    else toast.error('Dosya açılamadı.')
+    if (!url) { toast.error('Dosya açılamadı.'); return }
+    const tanim = EVRAK_TIPLERI.find(t => t.id === kayit.evrakTipi)
+    setBelge({
+      url,
+      baslik: tanim?.isim || kayit.dosyaAdi || 'Evrak',
+      indirmeAdi: kayit.dosyaAdi || `${(tanim?.isim || 'evrak').replace(/[\\/:*?"<>|]/g, '-')}.pdf`,
+    })
   }
 
   const onayla = async (kayit) => {
@@ -476,6 +485,15 @@ export default function BayiDetay() {
           kullanici={kullanici}
           onKapat={() => setAcikSozlesme(null)}
           onDegisti={() => { setAcikSozlesme(null); yukle(true) }}
+        />
+      )}
+
+      {belge && (
+        <BelgeOnizlemeModal
+          baslik={belge.baslik}
+          url={belge.url}
+          indirmeAdi={belge.indirmeAdi}
+          onKapat={() => setBelge(null)}
         />
       )}
     </div>
