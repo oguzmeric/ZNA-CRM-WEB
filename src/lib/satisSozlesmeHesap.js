@@ -145,7 +145,9 @@ export const agirlikliVadeGunu = (satirlar) => {
   const toplam = liste.reduce((a, s) => a + (Number(s.tutar) || 0), 0)
   if (!toplam) return 0
   const agirlikli = liste.reduce((a, s) => a + (Number(s.tutar) || 0) * (Number(s.vadeGunu) || 0), 0)
-  return Math.round(agirlikli / toplam)
+  // r2 önce: kuruş yuvarlamasından gelen 52,4999… artığı temizlenmezse aynı
+  // yüzdelerle bedel değiştiğinde vade 52/53 arasında zıplıyor.
+  return Math.round(r2(agirlikli / toplam))
 }
 
 /** Planda çek/senet var mı — evrak listesi ve çek maddeleri buna bakar. */

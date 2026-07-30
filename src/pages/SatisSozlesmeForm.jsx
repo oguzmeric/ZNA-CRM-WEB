@@ -940,12 +940,15 @@ export default function SatisSozlesmeForm() {
                       <span style={{ color: 'var(--text-tertiary)' }}>
                         Nihai bedel: {paraFmt(hesap.nihaiToplam, form.paraBirimi)}
                       </span>
+                      {/* Bedel 0 iken "karşılıyor" demek yanıltıcı olur (0 = 0) */}
                       {(form.odemePlani || []).length > 0 && (
-                        plan.dengeli
-                          ? <Badge tone="aktif" icon={<CheckCircle2 size={11} strokeWidth={2} />}>Plan bedeli karşılıyor</Badge>
-                          : <Badge tone="uyari" icon={<AlertTriangle size={11} strokeWidth={2} />}>
-                              {plan.fark > 0 ? `${paraFmt(plan.fark, form.paraBirimi)} eksik` : `${paraFmt(Math.abs(plan.fark), form.paraBirimi)} fazla`}
-                            </Badge>
+                        hesap.nihaiToplam <= 0
+                          ? <Badge tone="beklemede">Tutar girilince hesaplanır</Badge>
+                          : plan.dengeli
+                            ? <Badge tone="aktif" icon={<CheckCircle2 size={11} strokeWidth={2} />}>Plan bedeli karşılıyor</Badge>
+                            : <Badge tone="uyari" icon={<AlertTriangle size={11} strokeWidth={2} />}>
+                                {plan.fark > 0 ? `${paraFmt(plan.fark, form.paraBirimi)} eksik` : `${paraFmt(Math.abs(plan.fark), form.paraBirimi)} fazla`}
+                              </Badge>
                       )}
                       {plan.agirlikliVade > 0 && duzenlenebilir && Number(form.vadeGunu) !== plan.agirlikliVade && (
                         <Button variant="ghost" size="sm" iconLeft={<Calculator size={13} strokeWidth={1.75} />} onClick={agirlikliVadeUygula}>
