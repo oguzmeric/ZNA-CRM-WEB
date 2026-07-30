@@ -84,8 +84,23 @@ function Chat() {
   const dosyaInputRef = useRef(null)
   const metinRef = useRef(null)
 
-  // Sadece personel (ZNA) ile mesajlasilir — musteriler chat listesine girmez
-  const digerKullanicilar = kullanicilar.filter(k => k.id !== kullanici?.id && k.tip !== 'musteri')
+  // Personel + YAZIŞMASI OLAN herkes.
+  //
+  // Sadece `tip !== 'musteri'` süzülüyordu; ama okunmamış sayacı DB'den ham
+  // sayıyor. tip='musteri' bir hesaptan mesaj gelince sayaç artıyor, kişi
+  // listede çıkmıyordu → okunmamışı göremiyor, sohbeti açamadığı için
+  // sayacı düşüremiyordu (30.07 vakası: ZNA TEST rol=personel, tip=musteri).
+  const yazismaliIdler = useMemo(() => new Set(
+    (sohbetler || [])
+      .filter(s => s.tip === 'birebir')
+      .flatMap(s => s.katilimcilar || [])
+      .filter(id => id !== kullanici?.id)
+  ), [sohbetler, kullanici?.id])
+
+  const digerKullanicilar = kullanicilar.filter(k =>
+    k.id !== kullanici?.id &&
+    (k.tip !== 'musteri' || yazismaliIdler.has(k.id))
+  )
   const gruplar = useMemo(() => sohbetler.filter(s => s.tip === 'grup'), [sohbetler])
 
   const seciliKisi = secili?.tip === 'kisi' ? digerKullanicilar.find(k => k.id === secili.id) : null
