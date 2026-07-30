@@ -36,7 +36,9 @@ import {
   tekliftenTalep, faturaTalebiEkle, teklifFaturaTalebiGetir,
 } from '../services/faturaTalepService'
 import { musteriKisileriniGetir } from '../services/musteriKisiService'
-import { teklifinAktifSozlesmesi } from '../services/satisSozlesmeService'
+import {
+  teklifinAktifSozlesmesi, eklenebilirSozlesmeler, teklifiSozlesmeyeEkle,
+} from '../services/satisSozlesmeService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
@@ -158,6 +160,10 @@ function TeklifDetay() {
   // Fatura talebi (mig 165) — early return'ün ÜSTÜNDE (Rules of Hooks)
   const [faturaTalebi, setFaturaTalebi] = useState(null)
   const [mevcutSozlesme, setMevcutSozlesme] = useState(null)
+  // Çoklu teklif (mig 247): bu teklifin eklenebileceği açık sözleşmeler
+  const [eklenebilirSozler, setEklenebilirSozler] = useState([])
+  const [sozlesmeEkleAcik, setSozlesmeEkleAcik] = useState(false)
+  const [sozlesmeEkleMesgul, setSozlesmeEkleMesgul] = useState(false)
   const [faturaTalepAcik, setFaturaTalepAcik] = useState(false)
   const [faturaTalepTaslak, setFaturaTalepTaslak] = useState(null)
   const [faturaTalepNotu, setFaturaTalepNotu] = useState('')
@@ -443,6 +449,19 @@ function TeklifDetay() {
     proformaOtoAcRef.current = false   // tek sefer — form her düzenlemede değişir
     if (form.onayDurumu === 'kabul') faturaTalebiAcRef.current?.()
   }, [form])
+
+  // Bir binanın yangın / kamera / kartlı geçiş teklifleri ayrı onaylanıyor ama TEK
+  // sözleşmeye giriyor. Kabul edilen teklif için aynı müşterinin açık sözleşmeleri
+  // varsa "Mevcut Sözleşmeye Ekle" yolu açılır (mig 247).
+  // NOT: Bu effect erken return'lerin ÜSTÜNDE olmak zorunda (Rules of Hooks).
+  useEffect(() => {
+    if (yeni || form?.onayDurumu !== 'kabul' || mevcutSozlesme) { setEklenebilirSozler([]); return }
+    let iptal = false
+    eklenebilirSozlesmeler({ musteriId: form.musteriId, firmaAdi: form.firmaAdi })
+      .then(d => { if (!iptal) setEklenebilirSozler(d || []) })
+      .catch(() => {})
+    return () => { iptal = true }
+  }, [yeni, form?.onayDurumu, form?.musteriId, form?.firmaAdi, mevcutSozlesme])
 
   if (!veriYuklendi) {
     return <SkeletonDetay />
@@ -745,6 +764,21 @@ function TeklifDetay() {
   const revizyon = () => setForm({ ...form, revizyon: form.revizyon + 1 })
 
   // ── Teklif şablonları ──────────────────────────────────────────────
+  // Teklifi mevcut bir sözleşmeye bağla — bedel ve ürün listesi servis tarafında tazelenir
+  const sozlesmeyeEkleTikla = async (sozlesmeId) => {
+    setSozlesmeEkleMesgul(true)
+    const kaynak = mevcutTeklif || { ...form, id: Number(id) }
+    const sonuc = await teklifiSozlesmeyeEkle(sozlesmeId, kaynak)
+    setSozlesmeEkleMesgul(false)
+    if (sonuc?._hata) { toast.error(sonuc._hata); return }
+    setSozlesmeEkleAcik(false)
+    toast.success(
+      `${sonuc._eklenenTeklifNo || 'Teklif'} → ${sonuc.sozlesmeNo} sözleşmesine bağlandı ` +
+      `(toplam ${sonuc._teklifSayisi} teklif). Bedel yeniden hesaplandı.`
+    )
+    navigate(`/sozlesmeler/satis/${sozlesmeId}`)
+  }
+
   const sablonModaliAc = async () => {
     setSablonModalAcik(true)
     if (sablonlar === null) {
@@ -1297,13 +1331,28 @@ function TeklifDetay() {
                 🔒 Sözleşme: {mevcutSozlesme.sozlesmeNo}
               </Button>
             ) : (
-              <Button
-                variant="secondary"
-                iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
-                onClick={() => navigate(`/sozlesmeler/satis/yeni?teklifId=${id}`)}
-              >
-                Satış Sözleşmesi Oluştur
-              </Button>
+              <>
+                {/* Aynı müşterinin açık sözleşmesi varsa: yeni açmak yerine ona ekle.
+                    Bina projesinde yangın / kamera / kartlı geçiş ayrı onaylanıp
+                    aynı sözleşmede birleşiyor (mig 247). */}
+                {eklenebilirSozler.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
+                    onClick={() => setSozlesmeEkleAcik(true)}
+                    title="Bu teklifi müşterinin açık sözleşmelerinden birine bağla"
+                  >
+                    Mevcut Sözleşmeye Ekle ({eklenebilirSozler.length})
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  iconLeft={<FileSignature size={14} strokeWidth={1.5} />}
+                  onClick={() => navigate(`/sozlesmeler/satis/yeni?teklifId=${id}`)}
+                >
+                  Satış Sözleşmesi Oluştur
+                </Button>
+              </>
             )
           )}
           <Button variant="primary" onClick={kaydet}>Kaydet</Button>
@@ -2257,6 +2306,54 @@ function TeklifDetay() {
           />
         )
       })()}
+
+      {/* Mevcut sözleşmeye ekle (mig 247) — bir proje birden fazla teklifle anlaşıldığında
+          onaylanan her teklif aynı sözleşmeye bağlanır, yeni sözleşme açılmaz. */}
+      <Modal
+        open={sozlesmeEkleAcik}
+        onClose={() => setSozlesmeEkleAcik(false)}
+        title="Mevcut Sözleşmeye Ekle"
+        width={640}
+      >
+        <p className="t-caption" style={{ marginBottom: 12 }}>
+          <strong>{form.firmaAdi || 'Müşteri'}</strong> için düzenlemeye açık sözleşmeler.
+          Seçtiğiniz sözleşmeye bu teklif eklenir; sözleşme bedeli, ürün listesi ve belge metni
+          yeniden hesaplanır. Onaylanıp kilitlenmiş sözleşmeler listede görünmez.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {eklenebilirSozler.map(s => (
+            <div key={s.id} style={{
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '10px 12px',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <span style={{ font: '600 13.5px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{s.sozlesmeNo}</span>
+                  <Badge tone={s.durum === 'taslak' ? 'neutral' : 'uyari'}>
+                    {s.durum === 'taslak' ? 'Taslak' : 'Yönetici Onayında'}
+                  </Badge>
+                </div>
+                <div className="t-caption" style={{ marginBottom: 2 }}>{s.projeAdi || s.isinKonusu || 'Proje adı girilmemiş'}</div>
+                <div className="t-caption">Bağlı teklifler: {s.teklifNo || '—'}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', marginBottom: 6 }}>
+                  {(Number(s.anaToplam) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {s.paraBirimi === 'USD' ? '$' : s.paraBirimi === 'EUR' ? '€' : '₺'}
+                </div>
+                <Button variant="primary" size="sm" disabled={sozlesmeEkleMesgul}
+                  onClick={() => sozlesmeyeEkleTikla(s.id)}>
+                  {sozlesmeEkleMesgul ? 'Ekleniyor…' : 'Bu sözleşmeye ekle'}
+                </Button>
+              </div>
+            </div>
+          ))}
+          {!eklenebilirSozler.length && (
+            <p className="t-caption">
+              Bu müşteri için düzenlemeye açık sözleşme yok. "Satış Sözleşmesi Oluştur" ile yeni bir sözleşme açın.
+            </p>
+          )}
+        </div>
+      </Modal>
 
       {/* Fatura Talebi — numarasız; muhasebe kesip numarasını ve PDF'ini girecek */}
       {faturaTalepAcik && faturaTalepTaslak && (() => {

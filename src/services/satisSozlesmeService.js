@@ -124,6 +124,81 @@ export const teklifiSozlesmeSatiri = (teklif, gorusmeNo = '') => {
   }
 }
 
+/**
+ * Bir teklifin bağlanabileceği MEVCUT sözleşmeler (aynı müşteri, hâlâ düzenlenebilir).
+ * Onaylanmış/imzalanmış sözleşme kilitlidir — belgesi dondurulmuştur, teklif eklenmez.
+ * Tekliflerin bir kısmında musteri_id boş olduğu için firma adıyla da eşleştiriyoruz.
+ */
+export const eklenebilirSozlesmeler = async ({ musteriId, firmaAdi }) => {
+  const { data, error } = await supabase
+    .from('satis_sozlesmeleri')
+    .select('id, sozlesme_no, durum, kilitli, musteri_id, firma_adi, proje_adi, isin_konusu, ana_toplam, para_birimi, teklif_no')
+    .in('durum', ['taslak', 'yonetici_onayinda'])
+    .order('id', { ascending: false })
+  if (error) { console.error('eklenebilirSozlesmeler hata:', error.message); return [] }
+  const norm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+  const hedefFirma = norm(firmaAdi)
+  return arrayToCamel(data || []).filter(s =>
+    !s.kilitli && (
+      (musteriId && Number(s.musteriId) === Number(musteriId)) ||
+      (hedefFirma && norm(s.firmaAdi) === hedefFirma)
+    )
+  )
+}
+
+/**
+ * Teklifi MEVCUT bir sözleşmeye bağlar ve sözleşmenin tutarını / ürün listesini /
+ * belge içeriğini yeniden üretir. Bu son adım olmadan ara tabloya satır girer ama
+ * sözleşme bedeli eski kalırdı — kullanıcı elle "Kaydet"e basana kadar tutarsız görünür.
+ */
+export const teklifiSozlesmeyeEkle = async (sozlesmeId, teklif, gorusmeNo = '') => {
+  const sozlesme = await satisSozlesmeGetir(Number(sozlesmeId))
+  if (!sozlesme) return { _hata: 'Sözleşme okunamadı.' }
+  if (sozlesme.kilitli || !['taslak', 'yonetici_onayinda'].includes(sozlesme.durum)) {
+    return { _hata: `${sozlesme.sozlesmeNo} kilitli — teklif eklemek için yönetici kilidi açmalı.` }
+  }
+
+  const mevcut = await sozlesmeTeklifleriGetir(sozlesmeId)
+  if (mevcut.some(t => Number(t.teklifId) === Number(teklif.id))) {
+    return { _hata: 'Bu teklif zaten bu sözleşmede bağlı.' }
+  }
+
+  const satir = teklifiSozlesmeSatiri(teklif, gorusmeNo)
+  const { error } = await supabase.from('satis_sozlesme_teklifleri').insert({
+    sozlesme_id: Number(sozlesmeId),
+    teklif_id: Number(satir.teklifId),
+    teklif_no: satir.teklifNo || null,
+    firma_adi: satir.firmaAdi || null,
+    konu: satir.konu || null,
+    tutar: satir.tutar,
+    urun_listesi: satir.urunListesi || [],
+    sira: mevcut.length,
+  })
+  // Tekillik trigger'ı reddederse sebebi doğrudan kullanıcıya taşıyoruz
+  if (error) return { _hata: error.message }
+
+  // Ana kolonlar trigger'la senkronlandı; tutar/ürün/belge burada tazelenir
+  const [taze, bagli] = await Promise.all([
+    satisSozlesmeGetir(sozlesmeId),
+    sozlesmeTeklifleriGetir(sozlesmeId),
+  ])
+  const birlesik = tekliflerdenBirlesik(bagli)
+  const guncelForm = {
+    ...taze,
+    sozlesmeTeklifleri: bagli,
+    anaToplam: birlesik.anaToplam || taze.anaToplam,
+    urunListesi: birlesik.urunListesi,
+  }
+  const hazir = hesapVeIcerikHazirla(guncelForm)
+  const sonuc = await satisSozlesmeGuncelle(sozlesmeId, {
+    anaToplam: hazir.anaToplam, vadeFarki: hazir.vadeFarki,
+    damgaVergisi: hazir.damgaVergisi, nihaiToplam: hazir.nihaiToplam,
+    urunListesi: birlesik.urunListesi, uretilenIcerik: hazir.uretilenIcerik,
+  })
+  if (sonuc?._hata) return sonuc
+  return { ...sonuc, _eklenenTeklifNo: satir.teklifNo, _teklifSayisi: bagli.length }
+}
+
 /** Bağlı tekliflerin kalemlerini ve toplamlarını tek sözleşme gövdesinde birleştirir. */
 export const tekliflerdenBirlesik = (satirlar) => {
   const liste = (satirlar || []).filter(Boolean)
