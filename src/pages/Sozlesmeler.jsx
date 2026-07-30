@@ -19,6 +19,7 @@ import {
   SOZLESME_DURUMLARI, EVRAK_TIPLERI, EVRAK_DURUMLARI, ONAY_ADIMLARI, bayiStatu,
 } from '../services/bayiService'
 import { YeniSozlesmeWizard, SozlesmeGoruntuleModal } from '../components/BayiSozlesmeModallari'
+import BelgeOnizlemeModal from '../components/BelgeOnizlemeModal'
 import { satisSozlesmeleriGetir, satisSozlesmeSil } from '../services/satisSozlesmeService'
 import { SS_DURUMLARI, SABLON_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import { paraFmt, planCekliMi } from '../lib/satisSozlesmeHesap'
@@ -741,6 +742,7 @@ function GenelSozlesmeler() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [modal, setModal] = useState(null) // null | {} (yeni) | sozlesme (düzenle)
   const [tipFiltre, setTipFiltre] = useState('')
+  const [belge, setBelge] = useState(null) // { baslik, url } — belge önizleme
 
   const yukle = async () => {
     const [s, m] = await Promise.all([sozlesmeleriGetir(), musterileriGetir()])
@@ -774,9 +776,11 @@ function GenelSozlesmeler() {
     if (ok) { toast.success('Sözleşme silindi.'); yukle() } else toast.error('Silinemedi.')
   }
 
-  const dosyaAc = async (path) => {
-    const url = await filoDosyaUrl(path)
-    if (url) window.open(url, '_blank')
+  // Belge uygulama içinde açılır — signed URL adres çubuğuna düşmesin ve PDF
+  // sayfaya sığdırılsın (arşiv ekranıyla aynı davranış).
+  const dosyaAc = async (s) => {
+    const url = await filoDosyaUrl(s.dosyaUrl)
+    if (url) setBelge({ baslik: s.baslik || 'Sözleşme Belgesi', url })
     else toast.error('Dosya açılamadı.')
   }
 
@@ -841,7 +845,7 @@ function GenelSozlesmeler() {
                   <TD>{fmtTL(s.tutar)}</TD>
                   <TD>
                     {s.dosyaUrl ? (
-                      <Button variant="ghost" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={() => dosyaAc(s.dosyaUrl)}>Aç</Button>
+                      <Button variant="ghost" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />} onClick={() => dosyaAc(s)}>Aç</Button>
                     ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                   </TD>
                   <TD>
@@ -859,6 +863,15 @@ function GenelSozlesmeler() {
             </TBody>
           </Table>
         </Card>
+      )}
+
+      {belge && (
+        <BelgeOnizlemeModal
+          baslik={belge.baslik}
+          url={belge.url}
+          indirmeAdi={`${(belge.baslik || 'sozlesme').replace(/[\\/:*?"<>|]/g, '-')}.pdf`}
+          onKapat={() => setBelge(null)}
+        />
       )}
 
       {modal !== null && (

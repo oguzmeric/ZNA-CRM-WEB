@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Table, THead, TBody, TR, TH, TD, Badge } from '../components/ui'
 import { FiloKpi } from '../components/FiloOrtak'
+import BelgeOnizlemeModal from '../components/BelgeOnizlemeModal'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -41,7 +42,8 @@ export default function SozlesmeArsivi() {
   const [kaynakFiltre, setKaynakFiltre] = useState('')
   const [arama, setArama] = useState('')
   const [yuklenen, setYuklenen] = useState(null)   // yükleme sürerken satır anahtarı
-  const [onizleme, setOnizleme] = useState(null)   // { kayit, icerik }
+  const [onizleme, setOnizleme] = useState(null)   // { kayit, icerik } — sözleşme metni
+  const [belge, setBelge] = useState(null)         // { kayit, url }    — imzalı PDF
 
   const formaGirebilir = sozlesmeFormunaGirebilirMi(kullanici)
 
@@ -87,10 +89,19 @@ export default function SozlesmeArsivi() {
     yukle()
   }
 
+  // Belge uygulama İÇİNDE açılır — signed URL adres çubuğuna düşmez ve PDF
+  // sayfaya sığdırılarak gösterilir (bkz. BelgeOnizlemeModal).
   const belgeAc = async (k) => {
     const url = await arsivDosyaUrl(k)
-    if (url) window.open(url, '_blank', 'noopener')
-    else toast.error('Belge açılamadı. Dosya taşınmış olabilir.')
+    if (!url) { toast.error('Belge açılamadı. Dosya taşınmış olabilir.'); return }
+    setBelge({ kayit: k, url })
+  }
+
+  // Storage'daki ad "imzali-1784883594087.pdf" — indirirken belge no verilir
+  const indirmeAdi = (k) => {
+    const uzanti = (k?.dosyaYolu?.split('.').pop() || 'pdf').toLowerCase()
+    const no = (k?.belgeNo || 'belge').replace(/[\\/:*?"<>|]/g, '-').trim()
+    return `${no} - imzali.${uzanti}`
   }
 
   const onizlemeAc = async (k) => {
@@ -296,6 +307,15 @@ export default function SozlesmeArsivi() {
       )}
 
       <input ref={dosyaRef} type="file" accept="application/pdf,.pdf" style={{ display: 'none' }} onChange={dosyaSecildi} />
+
+      {belge && (
+        <BelgeOnizlemeModal
+          baslik={`${belge.kayit.belgeNo} — İmzalı Nüsha`}
+          url={belge.url}
+          indirmeAdi={indirmeAdi(belge.kayit)}
+          onKapat={() => setBelge(null)}
+        />
+      )}
 
       {onizleme && (
         <Modal open onClose={() => setOnizleme(null)}
