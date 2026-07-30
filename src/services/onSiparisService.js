@@ -125,6 +125,30 @@ export const gorusmeninOnSiparisleri = async (gorusmeId) => {
   return arrayToCamel(data || [])
 }
 
+// Ön siparişten üretilen SİPARİŞ numarası — sadece no + durum, TUTAR YOK.
+//
+// Neden gerekti: "Sipariş Yönetimi" menüsü admin + Abdullah (44) ile sınırlı,
+// çünkü tutar/kâr içeriyor (siparisYetki.js). Ama ön siparişi AÇAN kişi kendi
+// işinin numarasını göremiyordu — Salih Çakmaklı (34, depo) ön siparişi açtı,
+// onaylandı, ZNA-SIP-2026-000023 üretildi ve hiçbir ekranında görünmedi.
+// Kolon whitelist'i bilinçli: tutar/kâr alanları ÇEKİLMİYOR, dolayısıyla
+// fiyat görünürlüğü politikası (mig 238) bozulmuyor.
+export const onSiparisSiparisNolari = async (onSiparisIdler) => {
+  const idler = [...new Set((onSiparisIdler || []).filter(Boolean))]
+  if (!idler.length) return {}
+  const { data, error } = await supabase
+    .from('siparisler')
+    .select('id, siparis_no, durum, on_siparis_id')
+    .in('on_siparis_id', idler)
+  if (error) {
+    console.error('onSiparisSiparisNolari hata:', error.message)
+    return {}
+  }
+  const harita = {}
+  for (const s of data || []) harita[s.on_siparis_id] = toCamel(s)
+  return harita
+}
+
 export const onSiparisGetir = async (id) => {
   const { data, error } = await supabase
     .from('on_siparisler')

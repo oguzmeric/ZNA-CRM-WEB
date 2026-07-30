@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
-  BellRing, Clock, Check, X, ShoppingCart, Receipt, Compass, Wrench,
+  BellRing, Clock, Check, X, ShoppingCart, Receipt, Compass, Wrench, PackageCheck,
 } from 'lucide-react'
 import { servisTalepEkle, servisTalebiBildirimGonder } from '../services/servisService'
 import { useConfirm } from '../context/ConfirmContext'
@@ -23,7 +23,7 @@ import { ekleriYukle } from '../lib/ekDosya'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { musterileriGetir } from '../services/musteriService'
-import { gorusmeninOnSiparisleri, ON_SIPARIS_DURUMLARI } from '../services/onSiparisService'
+import { gorusmeninOnSiparisleri, onSiparisSiparisNolari, ON_SIPARIS_DURUMLARI } from '../services/onSiparisService'
 import { kesifEkle } from '../services/kesifService'
 import { supabase } from '../lib/supabase'
 import OnSiparisModal from '../components/OnSiparisModal'
@@ -83,6 +83,8 @@ function GorusmeDetay() {
   const [onSiparisModalAcik, setOnSiparisModalAcik] = useState(false)
   const [duzenlenenOnSiparis, setDuzenlenenOnSiparis] = useState(null)
   const [onSiparisler, setOnSiparisler] = useState([])
+  // { [onSiparisId]: { siparisNo, durum } } — onaylanınca üretilen sipariş no
+  const [siparisHaritasi, setSiparisHaritasi] = useState({})
 
   const [gorusme, setGorusme] = useState(null)
   const [gorevler, setGorevler] = useState([])
@@ -129,7 +131,14 @@ function GorusmeDetay() {
 
   const onSiparisleriYenile = () => {
     gorusmeninOnSiparisleri(id)
-      .then(setOnSiparisler)
+      .then(async (liste) => {
+        setOnSiparisler(liste)
+        // Onaylanan ön siparişin SİPARİŞ numarasını da getir — ön siparişi açan
+        // kişi (ör. depo) Sipariş Yönetimi menüsünü görmüyor, numarayı burada
+        // görecek. Tutar çekilmiyor.
+        const harita = await onSiparisSiparisNolari((liste || []).map(o => o.id))
+        setSiparisHaritasi(harita)
+      })
       .catch(e => console.warn('[GorusmeDetay] ön siparişler yenilenemedi:', e?.message))
   }
 
@@ -688,6 +697,23 @@ function GorusmeDetay() {
                     {os.aciklama && (
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {os.aciklama}
+                      </div>
+                    )}
+                    {/* Onaylanınca üretilen SİPARİŞ numarası — ön siparişi açan
+                        kişi Sipariş Yönetimi menüsünü görmese de numarayı görür.
+                        Tutar/kâr GÖSTERİLMEZ. */}
+                    {siparisHaritasi[os.id]?.siparisNo && (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6,
+                        padding: '3px 8px', borderRadius: 4,
+                        background: 'var(--success-soft, rgba(16,185,129,0.12))',
+                        border: '1px solid rgba(16,185,129,0.35)',
+                      }}>
+                        <PackageCheck size={12} strokeWidth={1.8} style={{ color: 'var(--success)' }} />
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Sipariş no:</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>
+                          {siparisHaritasi[os.id].siparisNo}
+                        </span>
                       </div>
                     )}
                   </div>
