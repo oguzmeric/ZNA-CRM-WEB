@@ -8,6 +8,7 @@ import { filoGorebilirMi } from './lib/filoYetki'
 import { ikGorebilirMi } from './lib/ikYetki'
 import { mesaiRaporuGorebilirMi } from './lib/mesaiYetki'
 import { teklifGorebilirMi } from './lib/teklifYetki'
+import { sozlesmeArsiviGorebilirMi } from './lib/sozlesmeArsivYetki'
 import { faturaYetkisi } from './services/faturaTalepService'
 
 // Komut Paleti — lazy: sadece kullanıcı ⌘K'ye bastığında yüklensin
@@ -113,6 +114,7 @@ const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 const GunlukOzet = lazy(() => import('./pages/GunlukOzet'))
 const Sozlesmeler = lazy(() => import('./pages/Sozlesmeler'))
 const SatisSozlesmeForm = lazy(() => import('./pages/SatisSozlesmeForm'))
+const SozlesmeArsivi = lazy(() => import('./pages/SozlesmeArsivi'))
 
 // Yönetim grubu erişim guard'ı — Ali, Oğuz, Ferdi.
 // URL'yi elle yazmayı engeller; sidebar'daki gizleme ile paralel.
@@ -184,6 +186,16 @@ function SiparisOnayGuard({ children }) {
 function FaturaYetkiGuard({ children }) {
   const { kullanici } = useAuth()
   if (!faturaYetkisi(kullanici)) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// Sözleşme Arşivi — imzalı nüsha toplama ekranı. /sozlesmeler YonetimGuard'a
+// tabi olduğu için muhasebe müdürü oraya giremiyor; arşiv yalnız listeler ve
+// imzalı PDF alır, sözleşme metnini değiştirmez. MainLayout sadeceSozlesmeArsiv
+// filtresiyle AYNI kaynak: sozlesmeArsiviGorebilirMi.
+function SozlesmeArsivGuard({ children }) {
+  const { kullanici } = useAuth()
+  if (!sozlesmeArsiviGorebilirMi(kullanici)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -471,6 +483,7 @@ function App() {
           <Route path="/sozlesmeler" element={<YonetimGuard><Sozlesmeler /></YonetimGuard>} />
           <Route path="/sozlesmeler/satis/yeni" element={<YonetimGuard><SatisSozlesmeForm /></YonetimGuard>} />
           <Route path="/sozlesmeler/satis/:id" element={<YonetimGuard><SatisSozlesmeForm /></YonetimGuard>} />
+          <Route path="/sozlesme-arsivi" element={<SozlesmeArsivGuard><SozlesmeArsivi /></SozlesmeArsivGuard>} />
           <Route path="/filo/bakim" element={<FiloGuard><FiloBakim /></FiloGuard>} />
           <Route path="/filo/belgeler" element={<FiloGuard><FiloBelgeler /></FiloGuard>} />
           <Route path="/filo/yakit" element={<FiloGuard><FiloYakit /></FiloGuard>} />

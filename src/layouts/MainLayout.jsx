@@ -5,6 +5,7 @@ import { filoGorebilirMi } from '../lib/filoYetki'
 import { ikGorebilirMi } from '../lib/ikYetki'
 import { mesaiRaporuGorebilirMi } from '../lib/mesaiYetki'
 import { teklifGorebilirMi } from '../lib/teklifYetki'
+import { sozlesmeArsiviGorebilirMi } from '../lib/sozlesmeArsivYetki'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
@@ -17,7 +18,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
-  Landmark,
+  Landmark, Archive,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -219,6 +220,9 @@ const menuItems = [
   // Sohbet: sidebar'dan kaldirildi, sag alt FloatingSohbetButton ile erisilir
   { id: 'sabah_ozeti', isim: 'Günlük Özet', Icon: Sun, yol: '/gunluk-ozet', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceSabahOzeti: true },
   { id: 'sozlesmeler', isim: 'Sözleşmeler', Icon: FileSignature, yol: '/sozlesmeler', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  // Sözleşme Arşivi: muhasebe de görür (Abdullah) — 'yonetim' grup kuralından
+  // ÖNCE değerlendirilir, yoksa yonetimErisimi'ne takılıp menüden düşerdi.
+  { id: 'sozlesme_arsivi', isim: 'Sözleşme Arşivi', Icon: Archive, yol: '/sozlesme-arsivi', modul: null, grup: 'yonetim', sadeceSozlesmeArsiv: true },
   // İK Yönetimi: yonetim grubunda ama erişim ikGorebilirMi ile (Abdullah + admin) —
   // grup 'yonetim' filtresinden ÖNCE sadeceIK bayrağıyla değerlendirilir
   { id: 'ik_yonetim', isim: 'İK Yönetimi', Icon: Wallet, yol: '/ik-yonetim', modul: null, grup: 'yonetim', sadeceIK: true },
@@ -290,6 +294,7 @@ const sayfaIsimleri = {
   '/ik-yonetim': 'İK Yönetimi',
   '/mesai-raporu': 'Mesai Raporu',
   '/sozlesmeler': 'Sözleşmeler',
+  '/sozlesme-arsivi': 'Sözleşme Arşivi',
   '/trassir-lisanslar': 'Trassir Lisanslar',
   '/servis-talepleri': 'Servis Talepleri',
   '/bridge-talepleri': 'Bridge Talepleri',
@@ -441,6 +446,9 @@ function MainLayout({ children }) {
     // Mesai Raporu: İK yetkilileri + Ferdi — 'yonetim' grup kuralından ÖNCE
     // (Abdullah personel rolünde, yonetimErisimi'ne takılırdı)
     if (m.sadeceMesaiRapor) return mesaiRaporuGorebilirMi(kullanici)
+    // Sözleşme Arşivi: muhasebe/fatura yetkilisi + yönetim — App.jsx
+    // SozlesmeArsivGuard ile AYNI kaynak: sozlesmeArsiviGorebilirMi
+    if (m.sadeceSozlesmeArsiv) return sozlesmeArsiviGorebilirMi(kullanici)
     // Sipariş Yönetimi: admin + izinli istisnalar (App.jsx AdminGuard ile paralel)
     if (m.sadeceAdmin) return siparisYonetimiGorebilirMi(kullanici)
     // Sabah Özeti: sadece Ali Uğur (id 1) + Oğuz (id 2) — App.jsx SabahOzetiGuard ile paralel

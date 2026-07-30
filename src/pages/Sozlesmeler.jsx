@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileSignature, Plus, Trash2, Pencil, ExternalLink, Paperclip, ArrowRight } from 'lucide-react'
+import { FileSignature, Plus, Trash2, Pencil, ExternalLink, Paperclip, ArrowRight, Archive } from 'lucide-react'
 import { Button, Card, EmptyState, Modal, Input, Select, Label, Textarea, Table, THead, TBody, TR, TH, TD, Badge, CodeBadge } from '../components/ui'
 import { sozlesmeleriGetir, sozlesmeEkle, sozlesmeGuncelle, sozlesmeSil, SOZLESME_TIPLERI } from '../services/sozlesmeService'
 import { filoDosyaYukle, filoDosyaUrl, sonYuklemeHata } from '../services/filoService'
@@ -52,13 +52,19 @@ function YenilemeRozet({ bitis }) {
 
 export default function Sozlesmeler() {
   const [sekme, setSekme] = useState('satis')
+  const navigate = useNavigate()
 
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <FileSignature size={22} strokeWidth={1.75} /> Sözleşmeler
         </h1>
+        {/* Muhasebenin imzalı nüsha topladığı ekran — satış/bayi/bakım hepsi tek listede */}
+        <Button variant="secondary" size="sm" iconLeft={<Archive size={14} strokeWidth={1.5} />}
+          onClick={() => navigate('/sozlesme-arsivi')}>
+          Sözleşme Arşivi (İmza Takibi)
+        </Button>
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border-default)', flexWrap: 'wrap' }}>
