@@ -35,7 +35,9 @@ export const satisSozlesmeEkle = async (payload) => {
   return toCamel(data)
 }
 
-// Teklif başına tek sözleşme kuralı — iptal edilmemiş sözleşmeyi bulur (mig 186)
+// Teklif başına tek sözleşme kuralı — iptal edilmemiş sözleşmeyi bulur (mig 186).
+// mig 247: teklif ana kolonda DEĞİL, çoklu teklif ara tablosunda 2. sırada da olabilir;
+// yalnız teklif_id'ye bakmak "sözleşmesi yok" yanılgısı üretirdi.
 export const teklifinAktifSozlesmesi = async (teklifId) => {
   if (!teklifId) return null
   const { data, error } = await supabase
@@ -45,7 +47,95 @@ export const teklifinAktifSozlesmesi = async (teklifId) => {
     .neq('durum', 'iptal')
     .limit(1)
   if (error) { console.error('teklifinAktifSozlesmesi hata:', error.message); return null }
-  return data?.[0] ? toCamel(data[0]) : null
+  if (data?.[0]) return toCamel(data[0])
+
+  const { data: baglar } = await supabase
+    .from('satis_sozlesme_teklifleri').select('sozlesme_id').eq('teklif_id', Number(teklifId))
+  const idler = [...new Set((baglar || []).map(b => b.sozlesme_id).filter(Boolean))]
+  if (!idler.length) return null
+  const { data: sozler } = await supabase
+    .from('satis_sozlesmeleri').select('id, sozlesme_no, durum')
+    .in('id', idler).neq('durum', 'iptal').limit(1)
+  return sozler?.[0] ? toCamel(sozler[0]) : null
+}
+
+// ---------- Çoklu teklif (mig 247) ----------
+// Bir binanın yangın / kamera / kartlı geçiş / ses sistemi ayrı tekliflenip TEK
+// sözleşmeye bağlanabilir. Ara tablo tek doğru kaynak; satis_sozlesmeleri.teklif_id
+// ve teklif_no DB trigger'ı ile buradan türetilir.
+
+export const sozlesmeTeklifleriGetir = async (sozlesmeId) => {
+  if (!sozlesmeId) return []
+  const { data, error } = await supabase
+    .from('satis_sozlesme_teklifleri').select('*')
+    .eq('sozlesme_id', Number(sozlesmeId))
+    .order('sira', { ascending: true }).order('id', { ascending: true })
+  if (error) { console.error('sozlesmeTeklifleriGetir hata:', error.message); return [] }
+  return arrayToCamel(data || [])
+}
+
+/** Form'daki teklif listesini ara tabloya yansıtır (ekle / güncelle / sil). */
+export const sozlesmeTekliflerimiKaydet = async (sozlesmeId, liste) => {
+  if (!sozlesmeId) return { _hata: 'Sözleşme kaydedilmeden teklif bağlanamaz.' }
+  const hedef = (liste || []).filter(t => t?.teklifId)
+  const mevcut = await sozlesmeTeklifleriGetir(sozlesmeId)
+  const hedefIdler = new Set(hedef.map(t => Number(t.teklifId)))
+  const hatalar = []
+
+  for (const m of mevcut) {
+    if (hedefIdler.has(Number(m.teklifId))) continue
+    const { error } = await supabase.from('satis_sozlesme_teklifleri').delete().eq('id', m.id)
+    if (error) hatalar.push(`${m.teklifNo || m.teklifId} kaldırılamadı: ${error.message}`)
+  }
+
+  const mevcutMap = new Map(mevcut.map(m => [Number(m.teklifId), m]))
+  for (let i = 0; i < hedef.length; i++) {
+    const t = hedef[i]
+    const satir = {
+      sozlesme_id: Number(sozlesmeId),
+      teklif_id: Number(t.teklifId),
+      teklif_no: t.teklifNo || null,
+      firma_adi: t.firmaAdi || null,
+      konu: t.konu || null,
+      tutar: Number(t.tutar) || 0,
+      urun_listesi: t.urunListesi || [],
+      sira: i,
+    }
+    const eski = mevcutMap.get(Number(t.teklifId))
+    const { error } = eski
+      ? await supabase.from('satis_sozlesme_teklifleri').update(satir).eq('id', eski.id)
+      : await supabase.from('satis_sozlesme_teklifleri').insert(satir)
+    // Tekillik trigger'ı burada konuşur: "Bu teklif zaten ZNA-SS-... sözleşmesine bağlı"
+    if (error) hatalar.push(`${t.teklifNo || t.teklifId}: ${error.message}`)
+  }
+  return hatalar.length ? { _hata: hatalar.join(' · ') } : { ok: true }
+}
+
+/** Teklif kaydını sözleşme teklif satırına çevirir (tutar + kalemler dondurulur). */
+export const teklifiSozlesmeSatiri = (teklif, gorusmeNo = '') => {
+  const veri = tekliftenForm(teklif, gorusmeNo)
+  return {
+    teklifId: teklif.id,
+    teklifNo: teklif.teklifNo || '',
+    firmaAdi: teklif.firmaAdi || '',
+    konu: teklif.konu || '',
+    tutar: veri.anaToplam,
+    urunListesi: veri.urunListesi,
+  }
+}
+
+/** Bağlı tekliflerin kalemlerini ve toplamlarını tek sözleşme gövdesinde birleştirir. */
+export const tekliflerdenBirlesik = (satirlar) => {
+  const liste = (satirlar || []).filter(Boolean)
+  const urunListesi = liste.flatMap(t =>
+    (t.urunListesi || []).map(u => ({ ...u, teklifNo: t.teklifNo || '' }))
+  )
+  return {
+    urunListesi,
+    anaToplam: r2(liste.reduce((a, t) => a + (Number(t.tutar) || 0), 0)),
+    teklifNo: liste.map(t => t.teklifNo).filter(Boolean).join(', '),
+    teklifId: liste[0]?.teklifId || null,
+  }
 }
 
 export const satisSozlesmeGuncelle = async (id, patch) => {
@@ -62,7 +152,11 @@ export const hesapVeIcerikHazirla = (form) => {
   const hesap = sozlesmeHesapla(form)
   const evraklar = form.evraklar?.length
     ? form.evraklar
-    : evrakListesiUret({ firmaTipi: form.firmaTipi, odemeTipi: form.odemeTipi, imzaBelgesiIstenir: form.imzaBelgesiIstenir })
+    // odemePlani: parçalı planda çek satırı varsa çek fotokopisi de istenir (mig 247)
+    : evrakListesiUret({
+      firmaTipi: form.firmaTipi, odemeTipi: form.odemeTipi,
+      odemePlani: form.odemePlani, imzaBelgesiIstenir: form.imzaBelgesiIstenir,
+    })
   // Logo göreli tutulur — uygulama içinde doğrudan, yazdırma penceresinde <base> ile çözülür
   const icerik = sozlesmeHtmlUret({ ...form, ...hesap, evraklar }, { logoUrl: '/logo.jpeg' })
   return { ...hesap, evraklar, uretilenIcerik: icerik }

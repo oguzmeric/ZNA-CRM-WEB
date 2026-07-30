@@ -21,7 +21,7 @@ import {
 import { YeniSozlesmeWizard, SozlesmeGoruntuleModal } from '../components/BayiSozlesmeModallari'
 import { satisSozlesmeleriGetir } from '../services/satisSozlesmeService'
 import { SS_DURUMLARI, SABLON_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
-import { paraFmt } from '../lib/satisSozlesmeHesap'
+import { paraFmt, planCekliMi } from '../lib/satisSozlesmeHesap'
 import { fmtTL, kalanGun, BitisRozet, FiloKpi } from '../components/FiloOrtak'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -123,7 +123,8 @@ function SatisSozlesmeleriSekmesi() {
       case 'gonderilen':  return s.durum === 'gonderildi'
       case 'imzalanan':   return s.durum === 'imzalandi'
       case 'eksik_evrak': return ssYasayan(s) && (s.evraklar || []).some(e => e.durum !== 'tamam')
-      case 'vadeli':      return ssYasayan(s) && (['cek', 'senet'].includes(s.odemeTipi) || Number(s.vadeGunu) > 0)
+      // Parçalı planda çek/senet satırı varsa ödeme tipi 'parcali' olsa da vadelidir (mig 247)
+      case 'vadeli':      return ssYasayan(s) && (['cek', 'senet'].includes(s.odemeTipi) || planCekliMi(s.odemePlani) || Number(s.vadeGunu) > 0)
       case 'kur_farki':   return ssYasayan(s) && (s.kurFarkiUygulanir || s.paraBirimi !== 'TL') && s.kurFarkiDurumu !== 'faturalandi'
       case 'tahsilat': {
         const g = kalanGunSS(s.vadeTarihi)
@@ -239,9 +240,11 @@ function SatisSozlesmeleriSekmesi() {
                         : <span className="t-caption">Peşin</span>}
                     </TD>
                     <TD>
-                      {['cek', 'senet'].includes(s.odemeTipi)
-                        ? <Badge tone="beklemede">{s.cekNo ? `Çek ${s.cekNo}` : 'Çekli'}</Badge>
-                        : <span className="t-caption">—</span>}
+                      {s.odemeTipi === 'parcali' && (s.odemePlani || []).length
+                        ? <Badge tone="beklemede">{(s.odemePlani || []).length} parçalı{planCekliMi(s.odemePlani) ? ' · çekli' : ''}</Badge>
+                        : ['cek', 'senet'].includes(s.odemeTipi)
+                          ? <Badge tone="beklemede">{s.cekNo ? `Çek ${s.cekNo}` : 'Çekli'}</Badge>
+                          : <span className="t-caption">—</span>}
                     </TD>
                     <TD>
                       {kf === 'faturalandi' ? <Badge tone="aktif">Faturalandı</Badge>

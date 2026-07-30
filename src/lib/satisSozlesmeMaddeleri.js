@@ -2,7 +2,9 @@
 // Kullanıcı seçenek seçtikçe (çekli / döviz / montaj / damga) ilgili maddeler
 // otomatik eklenir; firma tipine göre talep edilecek belgeler listelenir.
 
-import { sozlesmeHesapla, paraFmt } from './satisSozlesmeHesap'
+import {
+  sozlesmeHesapla, paraFmt, odemePlaniHesapla, odemeSatirIsim, planCekliMi,
+} from './satisSozlesmeHesap'
 
 export const SABLON_TIPLERI_SS = [
   { id: 'standart',       isim: 'Standart Satış Sözleşmesi' },
@@ -49,9 +51,10 @@ export const SS_DURUMLARI = {
   iptal:             { isim: 'İptal',                     tone: 'kayip' },
 }
 
-// Firma tipine göre talep edilecek belgeler (spec §7) — çek fotokopisi yalnız çekli ödemede
-export const evrakListesiUret = ({ firmaTipi, odemeTipi, imzaBelgesiIstenir = true }) => {
-  const cekli = odemeTipi === 'cek' || odemeTipi === 'senet'
+// Firma tipine göre talep edilecek belgeler (spec §7) — çek fotokopisi yalnız çekli ödemede.
+// Parçalı planda çek/senet satırı varsa ödeme tipi 'parcali' olsa da çek evrakı istenir.
+export const evrakListesiUret = ({ firmaTipi, odemeTipi, odemePlani, imzaBelgesiIstenir = true }) => {
+  const cekli = odemeTipi === 'cek' || odemeTipi === 'senet' || planCekliMi(odemePlani)
   const liste = []
   if (firmaTipi === 'sahis') {
     liste.push({ tip: 'vergi_levhasi', isim: 'Vergi Levhası' })
@@ -95,6 +98,9 @@ const KUR_KORUMA_METNI = (paraBirimi, kurTipi) =>
 export const maddeleriOlustur = (s) => {
   const maddeler = []
   const ekle = (baslik, metin) => maddeler.push({ baslik, metin })
+  // Çoklu teklif (mig 247): tek proje, birden fazla teklif — konu maddesi hepsine atıf yapar
+  const teklifler = (Array.isArray(s.sozlesmeTeklifleri) ? s.sozlesmeTeklifleri : [])
+    .filter(t => t && (t.teklifNo || t.teklifId))
   const kapsamlar = [
     s.montajDahil && 'montaj',
     s.devreyeAlmaDahil && 'devreye alma',
@@ -106,7 +112,12 @@ export const maddeleriOlustur = (s) => {
     `İşbu sözleşmenin konusu; Satıcı tarafından Alıcı'ya, ${s.projeAdi ? `"${s.projeAdi}" projesi kapsamında ` : ''}` +
     `${s.isinKonusu || 'ekli ürün listesinde belirtilen ürün ve hizmetlerin satışı'}` +
     `${kapsamlar.length ? ` ile ${kapsamlar.join(', ')} hizmetlerinin verilmesi` : ''}dir. ` +
-    `Sözleşme kapsamındaki ürün ve hizmetler Ek-2 Ürün Listesi'nde ayrıntılı olarak yer alır.`)
+    (teklifler.length > 1
+      ? `Sözleşme kapsamı, aşağıda numaraları belirtilen ${teklifler.length} adet teklifin toplamından oluşur: ` +
+        `${teklifler.map(t => t.teklifNo || `#${t.teklifId}`).join(', ')}. Her teklifin kalemleri ve ara toplamı ` +
+        `Ek-2 Ürün Listesi'nde ayrı ayrı gösterilmiştir; tekliflerden herhangi birinin kapsamı dışındaki işler ` +
+        `bu sözleşmeye dahil değildir.`
+      : `Sözleşme kapsamındaki ürün ve hizmetler Ek-2 Ürün Listesi'nde ayrıntılı olarak yer alır.`))
 
   ekle('Sözleşme Bedeli',
     `Sözleşme bedeli, vade farkı${s.damgaDahil !== false ? ', damga vergisi' : ''} ve iskonto dahil ` +
@@ -114,19 +125,48 @@ export const maddeleriOlustur = (s) => {
     `bölümünde gösterilmiştir. Aksi yazılı olarak kararlaştırılmadıkça bedele nakliye, sigorta ve ` +
     `sözleşme dışı ek işler dahil değildir.`)
 
-  ekle('Ödeme Şekli',
-    `Ödeme, ${odemeIsim(s.odemeTipi)} yoluyla${s.vadeGunu > 0 ? ` ve ${s.vadeGunu} gün vade ile` : ' peşin olarak'} yapılacaktır. ` +
-    `Ödemeler Satıcı'nın yazılı olarak bildirdiği banka hesabına yapılır. ` +
-    `${s.vadeGunu > 0 && s.vadeOrani > 0 ? `Vade farkı aylık %${Number(s.vadeOrani).toLocaleString('tr-TR')} oranı üzerinden hesaplanmış ve sözleşme bedeline yansıtılmıştır. ` : ''}` +
-    `Vadesinde ödenmeyen tutarlara ayrıca ihtara gerek olmaksızın kanuni ticari temerrüt faizi uygulanır.`)
+  // Parçalı ödeme planı (mig 247): satır satır anlaşma metne dökülür.
+  const plan = odemePlaniHesapla(s.odemePlani, s.nihaiToplam)
+  const parcali = s.odemeTipi === 'parcali' && plan.satirlar.length > 0
 
-  // Çekli ödeme maddeleri (spec §5)
-  if (s.odemeTipi === 'cek' || s.odemeTipi === 'senet') {
-    const belge = s.odemeTipi === 'cek' ? 'çek' : 'senet'
+  if (parcali) {
+    ekle('Ödeme Şekli (Parçalı Ödeme Planı)',
+      `Sözleşme bedeli, aşağıdaki ödeme planına göre ödenecektir: ` +
+      plan.satirlar.map((p, i) =>
+        `(${i + 1}) ${paraFmt(p.tutar, s.paraBirimi)}` +
+        `${p.yuzde ? ` (bedelin %${Number(p.yuzde).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}'i)` : ''}` +
+        ` ${odemeSatirIsim(p.tip)} olarak${p.vadeGunu > 0 ? ` ${p.vadeGunu} gün vadeli` : ' peşin'}` +
+        `${p.vadeTarihi ? ` (vade ${trTarih(p.vadeTarihi)})` : ''}` +
+        `${p.banka ? `, ${p.banka}` : ''}${p.belgeNo ? `, belge no ${p.belgeNo}` : ''}` +
+        `${p.aciklama ? ` — ${p.aciklama}` : ''}`
+      ).join('; ') + '. ' +
+      `Plan, sözleşmenin "Ödeme Planı" tablosunda ayrıca gösterilmiştir. Her bir ödemenin vadesinde yapılması esastır; ` +
+      `taksitlerden birinin vadesinde ödenmemesi halinde başkaca ihtara gerek olmaksızın bakiye borcun tamamı ` +
+      `muaccel olur. Ödemeler Satıcı'nın yazılı olarak bildirdiği banka hesabına yapılır. ` +
+      `${s.vadeGunu > 0 && s.vadeOrani > 0 ? `Vade farkı aylık %${Number(s.vadeOrani).toLocaleString('tr-TR')} oranı üzerinden hesaplanmış ve sözleşme bedeline yansıtılmıştır. ` : ''}` +
+      `Vadesinde ödenmeyen tutarlara kanuni ticari temerrüt faizi uygulanır.`)
+  } else {
+    ekle('Ödeme Şekli',
+      `Ödeme, ${odemeIsim(s.odemeTipi)} yoluyla${s.vadeGunu > 0 ? ` ve ${s.vadeGunu} gün vade ile` : ' peşin olarak'} yapılacaktır. ` +
+      `Ödemeler Satıcı'nın yazılı olarak bildirdiği banka hesabına yapılır. ` +
+      `${s.vadeGunu > 0 && s.vadeOrani > 0 ? `Vade farkı aylık %${Number(s.vadeOrani).toLocaleString('tr-TR')} oranı üzerinden hesaplanmış ve sözleşme bedeline yansıtılmıştır. ` : ''}` +
+      `Vadesinde ödenmeyen tutarlara ayrıca ihtara gerek olmaksızın kanuni ticari temerrüt faizi uygulanır.`)
+  }
+
+  // Çekli ödeme maddeleri (spec §5) — parçalı planda çek/senet satırı varsa da uygulanır
+  const cekliOdeme = s.odemeTipi === 'cek' || s.odemeTipi === 'senet' || planCekliMi(s.odemePlani)
+  if (cekliOdeme) {
+    const belge = s.odemeTipi === 'senet' ? 'senet'
+      : s.odemeTipi === 'cek' ? 'çek'
+        : ((s.odemePlani || []).some(p => p.tip === 'cek') ? 'çek' : 'senet')
     ekle('Çek / Senet Teslim Şartı',
-      `Alıcı, sözleşme imzasıyla birlikte${s.cekTarihi ? ` ${trTarih(s.cekTarihi)} keşide/vade tarihli` : ''}` +
-      `${s.cekBankasi ? ` ${s.cekBankasi} bankasına ait` : ''}${s.cekNo ? ` ${s.cekNo} numaralı` : ''} ` +
-      `${belge}i Satıcı'ya teslim eder. ${belge.charAt(0).toUpperCase() + belge.slice(1)} teslim edilmeden Satıcı ifa yükümlülüğü altına girmez.`)
+      parcali
+        ? `Alıcı, ödeme planında ${belge} olarak belirtilen ödemeler için ilgili kıymetli evrakı, planda gösterilen ` +
+          `vade tarihleri ve tutarlarla uyumlu şekilde sözleşme imzasıyla birlikte Satıcı'ya teslim eder. ` +
+          `${belge.charAt(0).toUpperCase() + belge.slice(1)}ler teslim edilmeden Satıcı ifa yükümlülüğü altına girmez.`
+        : `Alıcı, sözleşme imzasıyla birlikte${s.cekTarihi ? ` ${trTarih(s.cekTarihi)} keşide/vade tarihli` : ''}` +
+          `${s.cekBankasi ? ` ${s.cekBankasi} bankasına ait` : ''}${s.cekNo ? ` ${s.cekNo} numaralı` : ''} ` +
+          `${belge}i Satıcı'ya teslim eder. ${belge.charAt(0).toUpperCase() + belge.slice(1)} teslim edilmeden Satıcı ifa yükümlülüğü altına girmez.`)
     ekle('Karşılıksız Çıkma ve Temerrüt',
       `${belge.charAt(0).toUpperCase() + belge.slice(1)}in karşılıksız çıkması, ödenmemesi veya ödemeden men talimatı verilmesi halinde ` +
       `Alıcı başkaca ihtara gerek olmaksızın temerrüde düşer; bakiye borcun tamamı muaccel olur ve Satıcı ` +
@@ -238,18 +278,26 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
   })
   const maddeler = maddeleriOlustur({ ...s, nihaiToplam: hesap.nihaiToplam })
   const evraklar = (s.evraklar?.length ? s.evraklar : evrakListesiUret({
-    firmaTipi: s.firmaTipi, odemeTipi: s.odemeTipi, imzaBelgesiIstenir: s.imzaBelgesiIstenir,
+    firmaTipi: s.firmaTipi, odemeTipi: s.odemeTipi, odemePlani: s.odemePlani,
+    imzaBelgesiIstenir: s.imzaBelgesiIstenir,
   }))
   const sablonIsim = SABLON_TIPLERI_SS.find(t => t.id === s.sablonTipi)?.isim || 'Satış Sözleşmesi'
   const urunler = Array.isArray(s.urunListesi) ? s.urunListesi : []
   const pb = s.paraBirimi || 'TL'
+  // Çoklu teklif (mig 247): tek proje birden fazla teklifle anlaşıldığında
+  // Ek-2 teklif teklif ayrılır — hangi kalemin hangi teklifden geldiği belli olsun.
+  const sozTeklifler = (Array.isArray(s.sozlesmeTeklifleri) ? s.sozlesmeTeklifleri : [])
+    .filter(t => t && (t.teklifNo || t.teklifId))
+  const cokluTeklif = sozTeklifler.length > 1
+  const plan = odemePlaniHesapla(s.odemePlani, hesap.nihaiToplam)
+  const planVar = s.odemeTipi === 'parcali' && plan.satirlar.length > 0
   const firmaTipiIsim = FIRMA_TIPLERI_SS.find(f => f.id === s.firmaTipi)?.isim || '—'
   const kapsamRozet = [
     ['Montaj', s.montajDahil], ['Devreye Alma', s.devreyeAlmaDahil],
     ['Eğitim', s.egitimDahil], ['Bakım', s.bakimDahil],
   ].map(([ad, v]) => `${ad}: ${v ? 'Dahil' : 'Hariç'}`).join(' · ')
 
-  const satirlar = urunler.map((u, i) => `
+  const urunSatirlari = (liste) => (liste || []).map((u, i) => `
     <tr>
       <td class="c">${i + 1}</td>
       <td>${esc(u.stokKodu || u.stok_kodu || '')}</td>
@@ -258,6 +306,14 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
       <td class="r">${u.birimFiyat != null ? paraFmt(u.birimFiyat, pb) : '—'}</td>
       <td class="r">${u.toplam != null ? paraFmt(u.toplam, pb) : (u.birimFiyat != null && u.miktar != null ? paraFmt(u.birimFiyat * u.miktar, pb) : '—')}</td>
     </tr>`).join('')
+
+  const urunTablosu = (liste) => `
+    <table>
+      <tr><th class="c" style="width:34px">#</th><th style="width:110px">Stok Kodu</th><th>Ürün / Hizmet</th><th class="c" style="width:80px">Miktar</th><th class="r" style="width:110px">Birim Fiyat</th><th class="r" style="width:120px">Toplam</th></tr>
+      ${urunSatirlari(liste)}
+    </table>`
+
+  const satirlar = urunSatirlari(urunler)
 
   return `
 <style>
@@ -323,7 +379,7 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
     <div style="text-align:center; font-size:10.5pt; color:#333; margin-bottom:14px;">
       Sözleşme No: <strong>${esc(s.sozlesmeNo || 'TASLAK')}</strong> &nbsp;·&nbsp; Tarih: <strong>${trTarih(s.olusturmaTarih || new Date())}</strong>
       ${s.gorusmeNo ? ` &nbsp;·&nbsp; Görüşme: ${esc(s.gorusmeNo)}` : ''}
-      ${s.teklifNo ? ` &nbsp;·&nbsp; Teklif: ${esc(s.teklifNo)}` : ''}
+      ${s.teklifNo ? ` &nbsp;·&nbsp; ${cokluTeklif ? 'Teklifler' : 'Teklif'}: ${esc(s.teklifNo)}` : ''}
       ${s.siparisNo ? ` &nbsp;·&nbsp; Sipariş: ${esc(s.siparisNo)}` : ''}
     </div>
 
@@ -344,6 +400,7 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
       ${s.kurumAdi ? `<tr><td>Belediye / Kurum</td><td>${esc(s.kurumAdi)}</td></tr>` : ''}
       ${s.anaYuklenici ? `<tr><td>Ana Yüklenici</td><td>${esc(s.anaYuklenici)}</td></tr>` : ''}
       ${s.isinKonusu ? `<tr><td>İşin Konusu</td><td>${esc(s.isinKonusu)}</td></tr>` : ''}
+      ${cokluTeklif ? `<tr><td>Kapsanan Teklifler</td><td>${sozTeklifler.map(t => esc(t.teklifNo || `#${t.teklifId}`)).join(' · ')} <em>(${sozTeklifler.length} teklif tek sözleşmede birleştirilmiştir)</em></td></tr>` : ''}
       ${s.isSuresi ? `<tr><td>İş Süresi</td><td>${esc(s.isSuresi)}</td></tr>` : ''}
       ${s.teslimSekli ? `<tr><td>Teslim Şekli</td><td>${esc(s.teslimSekli)}</td></tr>` : ''}
       <tr><td>Kapsam</td><td>${esc(kapsamRozet)}</td></tr>
@@ -360,15 +417,50 @@ export const sozlesmeHtmlUret = (s, { logoUrl = '/logo.jpeg' } = {}) => {
       <tr class="ss-toplam"><td>NİHAİ SÖZLEŞME BEDELİ</td><td class="r">${paraFmt(hesap.nihaiToplam, pb)}</td></tr>
     </table>
 
+    ${planVar ? `
+    <h2>3.1. Ödeme Planı</h2>
+    <table>
+      <tr>
+        <th class="c" style="width:30px">#</th><th style="width:120px">Ödeme Şekli</th>
+        <th class="c" style="width:56px">Oran</th><th class="r" style="width:120px">Tutar</th>
+        <th class="c" style="width:96px">Vade</th><th style="width:150px">Banka / Belge No</th><th>Açıklama</th>
+      </tr>
+      ${plan.satirlar.map((p, i) => `
+      <tr>
+        <td class="c">${i + 1}</td>
+        <td>${esc(odemeSatirIsim(p.tip))}</td>
+        <td class="c">${p.yuzde ? `%${Number(p.yuzde).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}</td>
+        <td class="r">${paraFmt(p.tutar, pb)}</td>
+        <td class="c">${p.vadeGunu > 0 ? `${p.vadeGunu} gün` : 'Peşin'}${p.vadeTarihi ? `<br/><span style="font-size:9pt">${trTarih(p.vadeTarihi)}</span>` : ''}</td>
+        <td>${[esc(p.banka || ''), esc(p.belgeNo || '')].filter(Boolean).join(' · ') || '—'}</td>
+        <td>${esc(p.aciklama || '')}</td>
+      </tr>`).join('')}
+      <tr class="ss-toplam"><td colspan="3">PLAN TOPLAMI</td><td class="r">${paraFmt(plan.planToplam, pb)}</td><td colspan="3">Ağırlıklı ortalama vade: ${plan.agirlikliVade} gün</td></tr>
+      ${Math.abs(plan.fark) >= 1 ? `<tr><td colspan="3">Plan dışında kalan bakiye</td><td class="r">${paraFmt(plan.fark, pb)}</td><td colspan="3">Taraflarca ayrıca mutabık kalınacaktır</td></tr>` : ''}
+    </table>` : ''}
+
     <h2>4. Sözleşme Maddeleri</h2>
     ${maddeler.map((m, i) => `<h3>4.${i + 1}. ${esc(m.baslik)}</h3><p class="madde">${esc(m.metin)}</p>`).join('')}
 
     <h2>Ek-1 / Ek-2 — Fiyat Teklifi ve Ürün Listesi</h2>
-    ${urunler.length ? `
+    ${cokluTeklif ? `
+    <p class="madde">Aşağıdaki ${sozTeklifler.length} teklif işbu sözleşme kapsamında tek proje olarak birleştirilmiştir.
+      Her teklifin kalemleri ve ara toplamı ayrı gösterilmiştir.</p>
+    ${sozTeklifler.map((t, ti) => `
+      <h3>Ek-2.${ti + 1} — ${esc(t.teklifNo || `Teklif #${t.teklifId}`)}${t.konu ? ` · ${esc(t.konu)}` : ''}</h3>
+      ${(t.urunListesi || []).length
+        ? urunTablosu(t.urunListesi)
+        : `<p class="madde">Bu teklifin kalem listesi teklif ekinde yer almaktadır.</p>`}
+      <p class="madde" style="text-align:right"><strong>Ara toplam (KDV dahil): ${paraFmt(t.tutar, pb)}</strong></p>
+    `).join('')}
+    <table>
+      <tr class="ss-toplam"><td>TEKLİFLER TOPLAMI (${sozTeklifler.length} teklif)</td><td class="r" style="width:140px">${paraFmt(sozTeklifler.reduce((a, t) => a + (Number(t.tutar) || 0), 0), pb)}</td></tr>
+    </table>`
+    : (urunler.length ? `
     <table>
       <tr><th class="c" style="width:34px">#</th><th style="width:110px">Stok Kodu</th><th>Ürün / Hizmet</th><th class="c" style="width:80px">Miktar</th><th class="r" style="width:110px">Birim Fiyat</th><th class="r" style="width:120px">Toplam</th></tr>
       ${satirlar}
-    </table>` : `<p class="madde">Ürün listesi ${s.teklifNo ? `${esc(s.teklifNo)} numaralı teklif ekinde` : 'sözleşme ekinde'} yer almaktadır.</p>`}
+    </table>` : `<p class="madde">Ürün listesi ${s.teklifNo ? `${esc(s.teklifNo)} numaralı teklif ekinde` : 'sözleşme ekinde'} yer almaktadır.</p>`)}
 
     <h2>Ek-3 — Teknik Kapsam</h2>
     <p class="madde">${esc(s.isinKonusu || 'Teknik kapsam, taraflarca onaylanan keşif ve teklif dokümanı ile sınırlıdır.')}${kapsamlarMetni(s)}</p>

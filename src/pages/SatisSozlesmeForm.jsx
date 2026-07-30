@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, FileSignature, Lock, Unlock, Printer, Send, FileUp, ExternalLink,
-  Eye, CheckCircle2, XCircle, AlertTriangle, Calculator,
+  Eye, CheckCircle2, XCircle, AlertTriangle, Calculator, Plus, Trash2, Wallet,
 } from 'lucide-react'
 import { Button, Card, Badge, Input, Label, Textarea, Modal } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
@@ -25,8 +25,12 @@ import {
   onayaGonder, sozlesmeOnayla, sozlesmeReddet, gonderildiIsaretle, sozlesmeIptalEt, kilidiAc,
   imzaliSozlesmeYukleSS, ssDosyaUrl, ssDosyaYukle, kurFarkiKaydet,
   tekliftenForm, siparistenForm, musteridenKunye, teklifinAktifSozlesmesi,
+  sozlesmeTeklifleriGetir, sozlesmeTekliflerimiKaydet, teklifiSozlesmeSatiri, tekliflerdenBirlesik,
 } from '../services/satisSozlesmeService'
-import { sozlesmeHesapla, kurFarkiHesapla, paraFmt } from '../lib/satisSozlesmeHesap'
+import {
+  sozlesmeHesapla, kurFarkiHesapla, paraFmt,
+  odemePlaniHesapla, ODEME_SATIR_TIPLERI, ODEME_PLANI_SABLONLARI, BOS_ODEME_SATIRI,
+} from '../lib/satisSozlesmeHesap'
 import {
   SABLON_TIPLERI_SS, FIRMA_TIPLERI_SS, ODEME_TIPLERI_SS, KUR_TIPLERI_SS, SS_DURUMLARI,
   evrakListesiUret, sozlesmeHtmlUret, ssBelgeGoster,
@@ -43,7 +47,7 @@ const BOS_FORM = {
   projeAdi: '', lokasyon: '', kurumAdi: '', anaYuklenici: '', isinKonusu: '',
   isSuresi: '', teslimSekli: '',
   montajDahil: false, devreyeAlmaDahil: false, egitimDahil: false, bakimDahil: false,
-  paraBirimi: 'TL', odemeTipi: 'pesin', vadeGunu: 0, vadeOrani: 0,
+  paraBirimi: 'TL', odemeTipi: 'pesin', vadeGunu: 0, vadeOrani: 0, odemePlani: [],
   damgaOrani: 0.00948, damgaDahil: true,
   kurFarkiUygulanir: false, kurTipi: 'tcmb_satis', ozelKur: '',
   cekTarihi: '', cekBankasi: '', cekNo: '', cekTutarTl: '', cekKuru: '',
@@ -59,6 +63,19 @@ const BOLUM = {
 }
 
 const trTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
+
+// Ödeme planı / teklif tabloları — dar hücreler, satır içi input'lar
+const TBL_TH = {
+  padding: '4px 6px', font: '600 11px/15px var(--font-sans)', color: 'var(--text-tertiary)',
+  textAlign: 'left', whiteSpace: 'nowrap',
+}
+const TBL_TD = { padding: '3px 6px', verticalAlign: 'middle' }
+const MINI_INPUT = { height: 32, fontSize: 12.5, padding: '0 8px' }
+const SABLON_CHIP = {
+  padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border-default)',
+  background: 'var(--surface-card)', color: 'var(--text-secondary)',
+  font: '500 11.5px/16px var(--font-sans)', cursor: 'pointer', whiteSpace: 'nowrap',
+}
 
 const trNorm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
 
@@ -91,6 +108,10 @@ export default function SatisSozlesmeForm() {
 
   const [form, setForm] = useState(BOS_FORM)
   const [kayit, setKayit] = useState(null)       // DB'deki sözleşme (yeni ise null)
+  // Bağlı teklifler (mig 247). form İÇİNDE TUTULMAZ: satis_sozlesmeleri'nde böyle bir
+  // kolon yok, payload'a karışırsa PostgREST insert'i düşer.
+  const [sozTeklifler, setSozTeklifler] = useState([])
+  const [teklifEkleId, setTeklifEkleId] = useState('')
   const [teklifler, setTeklifler] = useState([])
   const [gorusmeler, setGorusmeler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -162,8 +183,12 @@ export default function SatisSozlesmeForm() {
     setGorusmeler(gList || [])
 
     if (id) {
-      const s = await satisSozlesmeGetir(Number(id))
+      const [s, bagliTeklifler] = await Promise.all([
+        satisSozlesmeGetir(Number(id)),
+        sozlesmeTeklifleriGetir(Number(id)),
+      ])
       if (s) { setKayit(s); setForm(kayittanForma(s)); setGonderEmail(s.email || '') }
+      setSozTeklifler(bagliTeklifler || [])
     } else if (params.get('teklifId')) {
       // Teklif başına tek sözleşme (mig 186) — varsa yenisini açma, mevcuda git
       const mevcut = await teklifinAktifSozlesmesi(params.get('teklifId'))
@@ -173,7 +198,10 @@ export default function SatisSozlesmeForm() {
         return
       }
       const t = await teklifGetir(Number(params.get('teklifId')))
-      if (t) await tekliftenDoldur(t)
+      if (t) {
+        await tekliftenDoldur(t)
+        setSozTeklifler([teklifiSozlesmeSatiri(t)])   // ilk teklif listeye de girer (mig 247)
+      }
     } else if (params.get('siparisId')) {
       const sip = await siparisGetir(Number(params.get('siparisId')))
       if (sip) await siparistenDoldur(sip)
@@ -234,12 +262,98 @@ export default function SatisSozlesmeForm() {
     toast.success(`${sip.siparisNo || 'Sipariş'} bilgileri yüklendi.`)
   }
 
+  // ---- Çoklu teklif (mig 247) ----
+  // Teklif listesi değişince ana toplam, ürün listesi ve teklif numaraları tekliflerden türetilir.
+  const tekliflerdenFormaYansit = (liste) => {
+    const b = tekliflerdenBirlesik(liste)
+    setForm(f => ({
+      ...f,
+      teklifId: b.teklifId,
+      teklifNo: b.teklifNo || f.teklifNo,
+      urunListesi: b.urunListesi,
+      // Liste boşaldıysa elle girilmiş tutarı silmiyoruz
+      anaToplam: b.anaToplam || f.anaToplam,
+    }))
+  }
+
+  const teklifEkleTikla = async () => {
+    const tid = Number(teklifEkleId)
+    if (!tid) { toast.error('Eklenecek teklifi seçin.'); return }
+    if (sozTeklifler.some(t => Number(t.teklifId) === tid)) { toast.info('Bu teklif zaten ekli.'); return }
+    setMesgul(true)
+    const t = await teklifGetir(tid).catch(() => null)
+    setMesgul(false)
+    if (!t) { toast.error('Teklif okunamadı.'); return }
+    // İlk teklif firma künyesini de doldurur; sonrakiler yalnız kalem ve tutar ekler
+    if (!sozTeklifler.length) await tekliftenDoldur(t)
+    const satir = teklifiSozlesmeSatiri(t)
+    const yeni = [...sozTeklifler, satir]
+    setSozTeklifler(yeni)
+    tekliflerdenFormaYansit(yeni)
+    setTeklifEkleId('')
+    toast.success(`${satir.teklifNo || `#${tid}`} eklendi — ${paraFmt(satir.tutar, form.paraBirimi)}`)
+  }
+
+  const teklifKaldirTikla = (teklifId) => {
+    const yeni = sozTeklifler.filter(t => Number(t.teklifId) !== Number(teklifId))
+    setSozTeklifler(yeni)
+    tekliflerdenFormaYansit(yeni)
+  }
+
+  const tekliflerToplami = useMemo(
+    () => sozTeklifler.reduce((a, t) => a + (Number(t.tutar) || 0), 0),
+    [sozTeklifler],
+  )
+
+  // Eklenebilir teklifler: zaten bağlı olanlar düşer, aynı müşterinin teklifleri üste
+  // çıkar (çoklu teklif senaryosu daima tek firmada geçer).
+  const eklenebilirTeklifler = useMemo(() => {
+    const ekli = new Set(sozTeklifler.map(t => Number(t.teklifId)))
+    const liste = (teklifler || []).filter(t => !ekli.has(Number(t.id)))
+    const firma = trNorm(form.firmaAdi)
+    if (!firma && !form.musteriId) return liste.slice(0, 200)
+    const ayniMi = (t) =>
+      (form.musteriId && Number(t.musteriId) === Number(form.musteriId)) || (firma && trNorm(t.firmaAdi) === firma)
+    const ayni = liste.filter(ayniMi)
+    const diger = liste.filter(t => !ayniMi(t)).slice(0, 200)
+    return [...ayni, ...diger]
+  }, [teklifler, sozTeklifler, form.firmaAdi, form.musteriId])
+
+  // ---- Parçalı ödeme planı (mig 247) ----
+  const plan = useMemo(
+    () => odemePlaniHesapla(form.odemePlani, hesap.nihaiToplam),
+    [form.odemePlani, hesap.nihaiToplam],
+  )
+
+  const planSatirGuncelle = (idx, kolon, deger) => {
+    const liste = [...(form.odemePlani || [])]
+    liste[idx] = { ...liste[idx], [kolon]: deger }
+    // Oran girilirse tutar ondan TÜRETİLİR (odemePlaniHesapla) — elle tutar girilecekse oran boşaltılır
+    if (kolon === 'yuzde' && deger !== '') liste[idx].tutar = ''
+    if (kolon === 'tutar' && deger !== '') liste[idx].yuzde = ''
+    alan('odemePlani', liste)
+  }
+
+  const planSatirEkle = () => alan('odemePlani', [...(form.odemePlani || []), { ...BOS_ODEME_SATIRI }])
+  const planSatirSil = (idx) => alan('odemePlani', (form.odemePlani || []).filter((_, i) => i !== idx))
+  const planSablonUygula = (sablon) => {
+    alan('odemePlani', sablon.satirlar.map(s => ({ ...BOS_ODEME_SATIRI, ...s })))
+    toast.success(`"${sablon.isim}" planı uygulandı — tutarlar nihai bedelden hesaplandı.`)
+  }
+  const agirlikliVadeUygula = () => {
+    alan('vadeGunu', plan.agirlikliVade)
+    toast.success(`Vade ${plan.agirlikliVade} güne ayarlandı — vade farkı bu süreden hesaplanacak.`)
+  }
+
   // ---- Kaydet ----
   const dogrula = () => {
     if (!form.firmaAdi?.trim()) { toast.error('Firma adı zorunludur.'); return false }
     if (!Number(form.anaToplam)) { toast.error('Ana toplam (KDV dahil) girilmelidir.'); return false }
     if ((form.odemeTipi === 'cek' || form.odemeTipi === 'senet') && !form.vadeTarihi && !form.cekTarihi) {
       toast.error('Çekli/senetli ödemede çek tarihi veya vade tarihi girilmelidir.'); return false
+    }
+    if (form.odemeTipi === 'parcali' && !(form.odemePlani || []).length) {
+      toast.error('Parçalı ödemede en az bir ödeme satırı girilmelidir.'); return false
     }
     return true
   }
@@ -248,28 +362,46 @@ export default function SatisSozlesmeForm() {
     if (kilitli) { toast.error('Sözleşme kilitli — değişiklik için yönetici kilidi açmalı.'); return null }
     if (!dogrula()) return null
     setMesgul(true)
-    const hazir = hesapVeIcerikHazirla({ ...form, sozlesmeNo: kayit?.sozlesmeNo, olusturmaTarih: kayit?.olusturmaTarih })
+    const hazir = hesapVeIcerikHazirla({
+      ...form, sozlesmeTeklifleri: sozTeklifler,
+      sozlesmeNo: kayit?.sozlesmeNo, olusturmaTarih: kayit?.olusturmaTarih,
+    })
     const payload = {
       ...form,
       ozelKur: form.ozelKur || null, cekTutarTl: form.cekTutarTl || null, cekKuru: form.cekKuru || null,
       cekTarihi: form.cekTarihi || null, vadeTarihi: form.vadeTarihi || null,
+      odemePlani: form.odemeTipi === 'parcali' ? (form.odemePlani || []) : [],
       anaToplam: hazir.anaToplam, vadeFarki: hazir.vadeFarki,
       damgaVergisi: hazir.damgaVergisi, nihaiToplam: hazir.nihaiToplam,
       evraklar: hazir.evraklar, uretilenIcerik: hazir.uretilenIcerik,
     }
-    let sonuc
-    if (kayit) {
-      sonuc = await satisSozlesmeGuncelle(kayit.id, payload)
-    } else {
-      sonuc = await satisSozlesmeEkle({ ...payload, hazirlayanId: kullanici?.id || null, hazirlayanAd: kullanici?.ad || null })
-      if (!sonuc?._hata) {
-        // Numara trigger'dan geldi — içeriği gerçek numarayla yeniden üret
-        const hazir2 = hesapVeIcerikHazirla({ ...form, sozlesmeNo: sonuc.sozlesmeNo, olusturmaTarih: sonuc.olusturmaTarih, evraklar: hazir.evraklar })
-        sonuc = await satisSozlesmeGuncelle(sonuc.id, { uretilenIcerik: hazir2.uretilenIcerik })
-      }
-    }
+    let sonuc = kayit
+      ? await satisSozlesmeGuncelle(kayit.id, payload)
+      : await satisSozlesmeEkle({ ...payload, hazirlayanId: kullanici?.id || null, hazirlayanAd: kullanici?.ad || null })
+    if (sonuc?._hata) { setMesgul(false); toast.error('Kaydedilemedi: ' + sonuc._hata); return null }
+
+    // Bağlı teklifleri ara tabloya yansıt (mig 247). Tekillik trigger'ı bir teklifi
+    // reddederse sözleşme kaydı ayakta kalır, kullanıcı hangi teklif olduğunu görür.
+    const tSonuc = await sozlesmeTekliflerimiKaydet(sonuc.id, sozTeklifler)
+    if (tSonuc?._hata) toast.error('Teklif bağlanamadı — ' + tSonuc._hata)
+
+    // teklif_no DB trigger'ında birleştiriliyor ("TEK-1, TEK-2") → belge içeriğini
+    // taze numarayla yeniden üret. Yeni kayıtta sözleşme numarası da bu turda gelir.
+    const [taze, bagli] = await Promise.all([
+      satisSozlesmeGetir(sonuc.id),
+      sozlesmeTeklifleriGetir(sonuc.id),
+    ])
+    setSozTeklifler(bagli || [])
+    const hazir2 = hesapVeIcerikHazirla({
+      ...form,
+      teklifNo: taze?.teklifNo ?? form.teklifNo,
+      sozlesmeTeklifleri: bagli,
+      sozlesmeNo: sonuc.sozlesmeNo, olusturmaTarih: sonuc.olusturmaTarih,
+      evraklar: hazir.evraklar,
+    })
+    sonuc = await satisSozlesmeGuncelle(sonuc.id, { uretilenIcerik: hazir2.uretilenIcerik })
     setMesgul(false)
-    if (sonuc?._hata) { toast.error('Kaydedilemedi: ' + sonuc._hata); return null }
+    if (sonuc?._hata) { toast.error('Belge içeriği güncellenemedi: ' + sonuc._hata); return null }
     setKayit(sonuc)
     setForm(kayittanForma(sonuc))
     if (!sessiz) toast.success(`Kaydedildi: ${sonuc.sozlesmeNo}`)
@@ -336,7 +468,7 @@ export default function SatisSozlesmeForm() {
 
   // ---- Yazdır / önizleme ----
   const icerikHtml = () => kayit?.uretilenIcerik
-    || hesapVeIcerikHazirla({ ...form, sozlesmeNo: kayit?.sozlesmeNo }).uretilenIcerik
+    || hesapVeIcerikHazirla({ ...form, sozlesmeTeklifleri: sozTeklifler, sozlesmeNo: kayit?.sozlesmeNo }).uretilenIcerik
 
   const yazdir = () => {
     const w = window.open('', '_blank', 'width=920,height=1000')
@@ -476,21 +608,6 @@ export default function SatisSozlesmeForm() {
                 </CustomSelect>
               </div>
               <div>
-                <Label>Kaynak teklif</Label>
-                <CustomSelect value={form.teklifId || ''} disabled={!duzenlenebilir}
-                  onChange={async e => {
-                    if (!e.target.value) { alan('teklifId', null); return }
-                    // Liste objesi satirlar içermez — tam kaydı çek (ürün listesi + toplam için)
-                    const t = await teklifGetir(Number(e.target.value)).catch(() => null)
-                    if (t) await tekliftenDoldur(t)
-                  }}>
-                  <option value="">— Bağımsız / seçilmedi —</option>
-                  {(teklifler || []).slice(0, 200).map(t => (
-                    <option key={t.id} value={t.id}>{t.teklifNo || `#${t.id}`} · {t.firmaAdi}</option>
-                  ))}
-                </CustomSelect>
-              </div>
-              <div>
                 <Label>Bağlı görüşme</Label>
                 <CustomSelect value={form.gorusmeNo || ''} disabled={!duzenlenebilir}
                   selectedDisplay={(v) => {
@@ -506,7 +623,11 @@ export default function SatisSozlesmeForm() {
               </div>
               <div>
                 <Label>Teklif no</Label>
-                <Input value={form.teklifNo} disabled={!duzenlenebilir} onChange={e => alan('teklifNo', e.target.value)} placeholder="TEK-0123" />
+                <Input value={form.teklifNo} disabled={!duzenlenebilir || sozTeklifler.length > 0}
+                  onChange={e => alan('teklifNo', e.target.value)} placeholder="TEK-0123" />
+                {sozTeklifler.length > 0 && (
+                  <p className="t-caption" style={{ marginTop: 3 }}>Bağlı tekliflerden otomatik yazılıyor.</p>
+                )}
               </div>
 
               <div style={BOLUM}>Müşteri / Alıcı Bilgileri</div>
@@ -694,6 +815,148 @@ export default function SatisSozlesmeForm() {
                 </>
               )}
 
+              {/* Parçalı ödeme planı (mig 247) — "%30 nakit ön ödeme + 60/90 gün çek" gibi
+                  anlaşmalar tek satırlık ödeme tipine sığmıyordu */}
+              {form.odemeTipi === 'parcali' && (
+                <div style={{
+                  gridColumn: '1 / -1', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)', padding: 12, background: 'var(--surface-subtle)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                      <Wallet size={15} strokeWidth={1.75} /> Parçalı Ödeme Planı
+                    </span>
+                    {duzenlenebilir && (
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {ODEME_PLANI_SABLONLARI.map(s => (
+                          <button key={s.id} type="button" style={SABLON_CHIP} onClick={() => planSablonUygula(s)}>
+                            {s.isim}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="t-caption" style={{ marginBottom: 8 }}>
+                    Oran girerseniz tutar nihai bedelden hesaplanır. Tutarı elle yazmak için oranı boş bırakın.
+                  </p>
+
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...TBL_TH, width: 26 }}>#</th>
+                          <th style={{ ...TBL_TH, width: 140 }}>Ödeme şekli</th>
+                          <th style={{ ...TBL_TH, width: 78 }}>Oran %</th>
+                          <th style={{ ...TBL_TH, width: 130, textAlign: 'right' }}>Tutar</th>
+                          <th style={{ ...TBL_TH, width: 86 }}>Vade (gün)</th>
+                          <th style={{ ...TBL_TH, width: 138 }}>Vade tarihi</th>
+                          <th style={{ ...TBL_TH, width: 120 }}>Banka</th>
+                          <th style={{ ...TBL_TH, width: 110 }}>Çek/senet no</th>
+                          <th style={TBL_TH}>Açıklama</th>
+                          <th style={{ ...TBL_TH, width: 34 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(form.odemePlani || []).map((p, i) => {
+                          const oranModu = p.yuzde !== '' && p.yuzde != null && Number(p.yuzde) > 0
+                          const hesapli = plan.satirlar[i] || {}
+                          return (
+                            <tr key={i} style={{ borderTop: '1px solid var(--border-default)' }}>
+                              <td style={{ ...TBL_TD, color: 'var(--text-tertiary)', font: '500 12px/16px var(--font-sans)' }}>{i + 1}</td>
+                              <td style={TBL_TD}>
+                                <CustomSelect value={p.tip || 'nakit'} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'tip', e.target.value)}>
+                                  {ODEME_SATIR_TIPLERI.map(t => <option key={t.id} value={t.id}>{t.isim}</option>)}
+                                </CustomSelect>
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input type="number" className="sayi-sade" style={MINI_INPUT} placeholder="30"
+                                  value={p.yuzde ?? ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'yuzde', e.target.value)} />
+                              </td>
+                              <td style={{ ...TBL_TD, textAlign: 'right' }}>
+                                {oranModu ? (
+                                  <span title="Orandan hesaplandı" style={{ font: '500 12.5px/32px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {paraFmt(hesapli.tutar, form.paraBirimi)}
+                                  </span>
+                                ) : (
+                                  <Input type="number" className="sayi-sade" style={{ ...MINI_INPUT, textAlign: 'right' }}
+                                    value={p.tutar ?? ''} disabled={!duzenlenebilir}
+                                    onChange={e => planSatirGuncelle(i, 'tutar', e.target.value)} />
+                                )}
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input type="number" className="sayi-sade" style={MINI_INPUT} placeholder="60"
+                                  value={p.vadeGunu ?? 0} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'vadeGunu', e.target.value)} />
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input type="date" style={MINI_INPUT} value={p.vadeTarihi || ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'vadeTarihi', e.target.value)} />
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input style={MINI_INPUT} value={p.banka || ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'banka', e.target.value)} />
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input style={MINI_INPUT} value={p.belgeNo || ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'belgeNo', e.target.value)} />
+                              </td>
+                              <td style={TBL_TD}>
+                                <Input style={MINI_INPUT} placeholder="Sözleşme imzasında" value={p.aciklama || ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'aciklama', e.target.value)} />
+                              </td>
+                              <td style={TBL_TD}>
+                                {duzenlenebilir && (
+                                  <button type="button" onClick={() => planSatirSil(i)} title="Satırı sil"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 4, display: 'inline-flex' }}>
+                                    <Trash2 size={14} strokeWidth={1.75} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {!(form.odemePlani || []).length && (
+                    <p className="t-caption" style={{ marginTop: 6 }}>
+                      Henüz satır yok — üstteki hazır planlardan birini seçin veya elle satır ekleyin.
+                    </p>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                    {duzenlenebilir && (
+                      <Button variant="secondary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.75} />} onClick={planSatirEkle}>
+                        Satır Ekle
+                      </Button>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', font: '500 12.5px/18px var(--font-sans)' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        Plan toplamı: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{paraFmt(plan.planToplam, form.paraBirimi)}</strong>
+                      </span>
+                      <span style={{ color: 'var(--text-tertiary)' }}>
+                        Nihai bedel: {paraFmt(hesap.nihaiToplam, form.paraBirimi)}
+                      </span>
+                      {(form.odemePlani || []).length > 0 && (
+                        plan.dengeli
+                          ? <Badge tone="aktif" icon={<CheckCircle2 size={11} strokeWidth={2} />}>Plan bedeli karşılıyor</Badge>
+                          : <Badge tone="uyari" icon={<AlertTriangle size={11} strokeWidth={2} />}>
+                              {plan.fark > 0 ? `${paraFmt(plan.fark, form.paraBirimi)} eksik` : `${paraFmt(Math.abs(plan.fark), form.paraBirimi)} fazla`}
+                            </Badge>
+                      )}
+                      {plan.agirlikliVade > 0 && duzenlenebilir && Number(form.vadeGunu) !== plan.agirlikliVade && (
+                        <Button variant="ghost" size="sm" iconLeft={<Calculator size={13} strokeWidth={1.75} />} onClick={agirlikliVadeUygula}>
+                          Ağırlıklı vadeyi uygula ({plan.agirlikliVade} gün)
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={BOLUM}>Tutar</div>
               <div>
                 <Label required>Ana toplam — KDV dahil ({form.paraBirimi})</Label>
@@ -706,6 +969,105 @@ export default function SatisSozlesmeForm() {
             </div>
           </Card>
 
+          {/* Bağlı teklifler (mig 247) — tek proje, birden fazla teklif */}
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div>
+                <h2 className="t-h2">Bağlı Teklifler</h2>
+                <p className="t-caption">
+                  Bir binanın yangın, kamera, kartlı geçiş ve ses sistemi ayrı tekliflenmiş olsa da tek sözleşmede
+                  birleşir. Ana toplam ve ürün listesi buradaki tekliflerden hesaplanır.
+                </p>
+              </div>
+              {sozTeklifler.length > 0 && (
+                <Badge tone="bilgi">{sozTeklifler.length} teklif · {paraFmt(tekliflerToplami, form.paraBirimi)}</Badge>
+              )}
+            </div>
+
+            {duzenlenebilir && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 340px', minWidth: 240 }}>
+                  <Label>Teklif ekle</Label>
+                  <CustomSelect value={teklifEkleId} onChange={e => setTeklifEkleId(e.target.value)}>
+                    <option value="">— Teklif seçin —</option>
+                    {eklenebilirTeklifler.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.teklifNo || `#${t.id}`} · {t.firmaAdi}{t.konu ? ` · ${t.konu}` : ''}
+                      </option>
+                    ))}
+                  </CustomSelect>
+                </div>
+                <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.75} />}
+                  disabled={!teklifEkleId || mesgul} onClick={teklifEkleTikla}>
+                  Ekle
+                </Button>
+              </div>
+            )}
+
+            {sozTeklifler.length === 0 ? (
+              <p className="t-caption">
+                Henüz teklif bağlanmadı. Sözleşme bağımsız olarak da hazırlanabilir — o durumda tutarı elle girin.
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12.5px/18px var(--font-sans)' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...TBL_TH, width: 26 }}>#</th>
+                      <th style={{ ...TBL_TH, width: 120 }}>Teklif No</th>
+                      <th style={TBL_TH}>Konu</th>
+                      <th style={{ ...TBL_TH, width: 70 }}>Kalem</th>
+                      <th style={{ ...TBL_TH, width: 140, textAlign: 'right' }}>Tutar (KDV dahil)</th>
+                      <th style={{ ...TBL_TH, width: 96 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sozTeklifler.map((t, i) => (
+                      <tr key={t.teklifId} style={{ borderTop: '1px solid var(--border-default)' }}>
+                        <td style={{ ...TBL_TD, color: 'var(--text-tertiary)' }}>{i + 1}</td>
+                        <td style={{ ...TBL_TD, fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>
+                          {t.teklifNo || `#${t.teklifId}`}
+                        </td>
+                        <td style={TBL_TD}>{t.konu || '—'}</td>
+                        <td style={{ ...TBL_TD, color: 'var(--text-tertiary)' }}>{(t.urunListesi || []).length}</td>
+                        <td style={{ ...TBL_TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {paraFmt(t.tutar, form.paraBirimi)}
+                        </td>
+                        <td style={{ ...TBL_TD, whiteSpace: 'nowrap' }}>
+                          <Button variant="ghost" size="sm" iconLeft={<ExternalLink size={12} strokeWidth={1.5} />}
+                            onClick={() => window.open(`/teklifler/${t.teklifId}`, '_blank')}>Aç</Button>
+                          {duzenlenebilir && (
+                            <button type="button" onClick={() => teklifKaldirTikla(t.teklifId)} title="Bağı kaldır"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 4, display: 'inline-flex', verticalAlign: 'middle' }}>
+                              <Trash2 size={14} strokeWidth={1.75} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr style={{ borderTop: '2px solid var(--border-default)' }}>
+                      <td style={{ ...TBL_TD, font: '600 12.5px/18px var(--font-sans)' }} colSpan={4}>TEKLİFLER TOPLAMI</td>
+                      <td style={{ ...TBL_TD, textAlign: 'right', font: '600 12.5px/18px var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}>
+                        {paraFmt(tekliflerToplami, form.paraBirimi)}
+                      </td>
+                      <td style={TBL_TD}></td>
+                    </tr>
+                  </tbody>
+                </table>
+                {Math.abs(Number(form.anaToplam) - tekliflerToplami) >= 1 && (
+                  <p className="t-caption" style={{ marginTop: 8, color: 'var(--warning)' }}>
+                    Ana toplam ({paraFmt(form.anaToplam, form.paraBirimi)}) teklifler toplamından farklı —
+                    elle değiştirilmiş. Tekliflerden hesaplamak için{' '}
+                    <button type="button" onClick={() => alan('anaToplam', tekliflerToplami)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand-primary)', cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>
+                      buraya tıklayın
+                    </button>.
+                  </p>
+                )}
+              </div>
+            )}
+          </Card>
+
           {/* Ürün listesi */}
           {(form.urunListesi || []).length > 0 && (
             <Card>
@@ -716,6 +1078,7 @@ export default function SatisSozlesmeForm() {
                     <tr style={{ color: 'var(--text-tertiary)', textAlign: 'left' }}>
                       <th style={{ padding: '4px 8px' }}>#</th><th style={{ padding: '4px 8px' }}>Kod</th>
                       <th style={{ padding: '4px 8px' }}>Ürün</th><th style={{ padding: '4px 8px' }}>Miktar</th>
+                      {sozTeklifler.length > 1 && <th style={{ padding: '4px 8px' }}>Teklif</th>}
                       <th style={{ padding: '4px 8px', textAlign: 'right' }}>Toplam (KDV dahil)</th>
                     </tr>
                   </thead>
@@ -726,6 +1089,9 @@ export default function SatisSozlesmeForm() {
                         <td style={{ padding: '4px 8px', fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>{u.stokKodu || '—'}</td>
                         <td style={{ padding: '4px 8px' }}>{u.urunAdi}</td>
                         <td style={{ padding: '4px 8px' }}>{u.miktar} {u.birim}</td>
+                        {sozTeklifler.length > 1 && (
+                          <td style={{ padding: '4px 8px', fontFamily: 'var(--font-mono)', fontSize: 11 , color: 'var(--text-tertiary)' }}>{u.teklifNo || '—'}</td>
+                        )}
                         <td style={{ padding: '4px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{paraFmt(u.toplam, form.paraBirimi)}</td>
                       </tr>
                     ))}
