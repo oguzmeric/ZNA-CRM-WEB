@@ -19,7 +19,7 @@ import {
   SOZLESME_DURUMLARI, EVRAK_TIPLERI, EVRAK_DURUMLARI, ONAY_ADIMLARI, bayiStatu,
 } from '../services/bayiService'
 import { YeniSozlesmeWizard, SozlesmeGoruntuleModal } from '../components/BayiSozlesmeModallari'
-import { satisSozlesmeleriGetir } from '../services/satisSozlesmeService'
+import { satisSozlesmeleriGetir, satisSozlesmeSil } from '../services/satisSozlesmeService'
 import { SS_DURUMLARI, SABLON_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import { paraFmt, planCekliMi } from '../lib/satisSozlesmeHesap'
 import { fmtTL, kalanGun, BitisRozet, FiloKpi } from '../components/FiloOrtak'
@@ -105,6 +105,10 @@ const ssYasayan = (s) => !['iptal'].includes(s.durum)
 
 function SatisSozlesmeleriSekmesi() {
   const navigate = useNavigate()
+  const { kullanici } = useAuth()
+  const { confirm } = useConfirm()
+  const { toast } = useToast()
+  const ssAdmin = kullanici?.rol === 'admin'
   const [sozlesmeler, setSozlesmeler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [filtre, setFiltre] = useState('tumu')
@@ -112,6 +116,21 @@ function SatisSozlesmeleriSekmesi() {
   useEffect(() => {
     satisSozlesmeleriGetir().then(s => { setSozlesmeler(s); setYukleniyor(false) })
   }, [])
+
+  // Kalıcı silme — hatalı/deneme kayıtları için. İş akışında doğru yol "İptal Et".
+  const ssSil = async (s) => {
+    const onay = await confirm({
+      baslik: 'Sözleşmeyi Kalıcı Sil',
+      mesaj: `${s.sozlesmeNo} — ${s.firmaAdi || ''} KALICI olarak silinecek. ` +
+        `Bağlı teklif kayıtları, imzalı PDF ve evraklar da gider. Geri alınamaz. Devam edilsin mi?`,
+      onayMetin: 'Kalıcı Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const g = await satisSozlesmeSil(s)
+    if (g?._hata) { toast.error('Silinemedi: ' + g._hata); return }
+    setSozlesmeler(liste => liste.filter(x => x.id !== s.id))
+    toast.success(`${s.sozlesmeNo} silindi.`)
+  }
 
   const bugun = new Date(new Date().toDateString())
   const kalanGunSS = (t) => t ? Math.round((new Date(t) - bugun) / 86400000) : null
@@ -262,8 +281,14 @@ function SatisSozlesmeleriSekmesi() {
                         : evrakEksik === 0 ? <Badge tone="aktif">Tamam</Badge>
                         : <Badge tone="uyari">{evrakEksik} eksik</Badge>}
                     </TD>
-                    <TD>
+                    <TD style={{ whiteSpace: 'nowrap' }}>
                       <Button variant="ghost" size="sm" onClick={() => navigate(`/sozlesmeler/satis/${s.id}`)}>Aç</Button>
+                      {ssAdmin && (
+                        <Button variant="ghost" size="sm" style={{ color: 'var(--danger)' }}
+                          title="Kalıcı sil" onClick={() => ssSil(s)}>
+                          <Trash2 size={13} strokeWidth={1.5} />
+                        </Button>
+                      )}
                     </TD>
                   </TR>
                 )

@@ -303,10 +303,88 @@ export const gonderildiIsaretle = (id) => satisSozlesmeGuncelle(id, {
 
 export const sozlesmeIptalEt = (id) => satisSozlesmeGuncelle(id, { durum: 'iptal', kilitli: false })
 
-// Kilidi aç (yalnız admin çağırır) — revizyon için taslağa döner
-export const kilidiAc = (id) => satisSozlesmeGuncelle(id, {
-  durum: 'taslak', kilitli: false,
-})
+/**
+ * Sözleşmeyi KALICI sil (yalnız admin). İptal etmek kaydı arşivde tutar; silmek
+ * geri alınamaz — hatalı/deneme kayıtlarını temizlemek için.
+ * Bağlı teklif satırları FK cascade ile gider; sipariş işareti ve storage
+ * dosyaları burada elle temizlenir (yoksa öksüz kalırlar).
+ */
+export const satisSozlesmeSil = async (sozlesmeVeyaId) => {
+  const id = typeof sozlesmeVeyaId === 'object' ? sozlesmeVeyaId.id : sozlesmeVeyaId
+  if (!id) return { _hata: 'Sözleşme bulunamadı.' }
+
+  // "Sözleşmeli Sipariş" rozeti silinen sözleşmeye işaret etmesin
+  await supabase.from('siparisler').update({ sozlesme_id: null }).eq('sozlesme_id', id)
+
+  // İmzalı PDF + yüklenen evraklar (satis-sozlesme/<id>/…)
+  try {
+    const { data: dosyalar } = await supabase.storage.from('satis-sozlesme').list(String(id))
+    if (dosyalar?.length) {
+      await supabase.storage.from('satis-sozlesme').remove(dosyalar.map(d => `${id}/${d.name}`))
+    }
+  } catch (e) {
+    console.warn('[satisSozlesmeSil] dosya temizliği:', e?.message)
+  }
+
+  const { error } = await supabase.from('satis_sozlesmeleri').delete().eq('id', id)
+  if (error) return { _hata: error.message }
+  return { ok: true }
+}
+
+/**
+ * Kilidi aç (yalnız admin) — revizyon için taslağa döner.
+ *
+ * mig 248: İMZALANMIŞ sözleşmede de çalışır. İmzalı belgeyi tahrip etmeden:
+ * eski imzalı PDF + imza tarihi imza_gecmisi'ne taşınır, revizyon_no artar,
+ * imza alanları temizlenir (yeniden imza istenecek). "Müşteri hangi metni
+ * imzalamıştı?" sorusu böylece her zaman cevaplanabilir kalır.
+ */
+export const kilidiAc = async (idVeyaKayit, kullanici, sebep = '') => {
+  const id = typeof idVeyaKayit === 'object' ? idVeyaKayit.id : idVeyaKayit
+  const sozlesme = typeof idVeyaKayit === 'object' ? idVeyaKayit : await satisSozlesmeGetir(id)
+  if (!sozlesme) return { _hata: 'Sözleşme okunamadı.' }
+
+  const patch = { durum: 'taslak', kilitli: false }
+
+  if (sozlesme.durum === 'imzalandi') {
+    const gecmis = Array.isArray(sozlesme.imzaGecmisi) ? sozlesme.imzaGecmisi : []
+    patch.imzaGecmisi = [...gecmis, {
+      revizyon: Number(sozlesme.revizyonNo) || 0,
+      imzaliPdfUrl: sozlesme.imzaliPdfUrl || null,
+      imzaliPdfAd: sozlesme.imzaliPdfAd || null,
+      imzaTarihi: sozlesme.imzaTarihi || null,
+      nihaiToplam: sozlesme.nihaiToplam ?? null,
+      paraBirimi: sozlesme.paraBirimi || 'TL',
+      teklifNo: sozlesme.teklifNo || null,
+      acanId: kullanici?.id || null,
+      acanAd: kullanici?.ad || null,
+      acmaTarihi: new Date().toISOString(),
+      sebep: sebep || null,
+    }]
+    patch.revizyonNo = (Number(sozlesme.revizyonNo) || 0) + 1
+    // Yeni sürüm yeniden imzalanmalı — eski imza yeni metni bağlamaz
+    patch.imzaliPdfUrl = null
+    patch.imzaliPdfAd = null
+    patch.imzaTarihi = null
+    patch.gonderimTarihi = null
+  }
+
+  const g = await satisSozlesmeGuncelle(id, patch)
+  if (g?._hata) return g
+  if (sozlesme.durum === 'imzalandi') {
+    bildirimGonder(sozlesme.hazirlayanId, 'İmzalı sözleşme revizyona açıldı',
+      `${sozlesme.sozlesmeNo} (Rev. ${patch.revizyonNo}) — ${kullanici?.ad || 'yönetici'} kilidi açtı. ` +
+      `Önceki imzalı sürüm arşivlendi; değişiklik sonrası YENİDEN İMZA gerekiyor.` +
+      (sebep ? ` Sebep: ${sebep}` : ''))
+  }
+  return g
+}
+
+/** Arşivlenmiş imzalı sürümler (revizyon geçmişi). */
+export const imzaGecmisiGetir = (sozlesme) =>
+  (Array.isArray(sozlesme?.imzaGecmisi) ? sozlesme.imzaGecmisi : [])
+    .slice()
+    .sort((a, b) => (b.revizyon || 0) - (a.revizyon || 0))
 
 // ---------- Dosyalar (satis-sozlesme bucket) ----------
 

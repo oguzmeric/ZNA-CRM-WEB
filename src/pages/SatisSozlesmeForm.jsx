@@ -26,7 +26,7 @@ import {
   imzaliSozlesmeYukleSS, ssDosyaUrl, ssDosyaYukle, kurFarkiKaydet,
   tekliftenForm, siparistenForm, musteridenKunye, teklifinAktifSozlesmesi,
   sozlesmeTeklifleriGetir, sozlesmeTekliflerimiKaydet, teklifiSozlesmeSatiri, tekliflerdenBirlesik,
-  paraBirimiCakismasi,
+  paraBirimiCakismasi, imzaGecmisiGetir, satisSozlesmeSil,
 } from '../services/satisSozlesmeService'
 import {
   sozlesmeHesapla, kurFarkiHesapla, paraFmt,
@@ -447,16 +447,49 @@ export default function SatisSozlesmeForm() {
   }
 
   const kilidiAcTikla = async () => {
+    // İmzalı sözleşmede uyarı çok daha sert: müşterinin imzaladığı metin değişecek
+    const imzali = kayit?.durum === 'imzalandi'
     const onay = await confirm({
-      baslik: 'Kilidi Aç',
-      mesaj: 'Sözleşme taslağa dönecek ve yeniden yönetici onayı gerekecek. Devam edilsin mi?',
-      onayMetin: 'Kilidi Aç', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+      baslik: imzali ? 'İmzalı Sözleşmeyi Revizyona Aç' : 'Kilidi Aç',
+      mesaj: imzali
+        ? `${kayit.sozlesmeNo} MÜŞTERİ TARAFINDAN İMZALANMIŞ. Kilidi açarsanız:\n\n` +
+          `• Mevcut imzalı PDF arşivlenir (kaybolmaz, "Önceki İmzalı Sürümler"de kalır)\n` +
+          `• Sözleşme Rev. ${(Number(kayit.revizyonNo) || 0) + 1} olarak taslağa döner\n` +
+          `• Değişiklikten sonra yeniden onay ve YENİDEN İMZA gerekir\n\n` +
+          `Müşterinin imzaladığı metinle sistemdeki metin farklılaşacağı için, yeni sürümü ` +
+          `mutlaka yeniden imzalatın. Devam edilsin mi?`
+        : 'Sözleşme taslağa dönecek ve yeniden yönetici onayı gerekecek. Devam edilsin mi?',
+      onayMetin: imzali ? 'Revizyona Aç' : 'Kilidi Aç', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    const g = await kilidiAc(kayit.id)
+    setMesgul(true)
+    const g = await kilidiAc(kayit, kullanici)
+    setMesgul(false)
     if (g?._hata) { toast.error(g._hata); return }
     setKayit(g)
-    toast.success('Kilit açıldı — sözleşme taslağa döndü.')
+    toast.success(imzali
+      ? `Rev. ${g.revizyonNo} açıldı — önceki imzalı sürüm arşivlendi. Değişiklik sonrası yeniden imzalatın.`
+      : 'Kilit açıldı — sözleşme taslağa döndü.')
+  }
+
+  // Kalıcı silme (admin) — iptal arşivde tutar, bu geri alınamaz
+  const silTikla = async () => {
+    const onay = await confirm({
+      baslik: 'Sözleşmeyi Kalıcı Sil',
+      mesaj: `${kayit.sozlesmeNo} (${durum.isim}) KALICI olarak silinecek.\n\n` +
+        `• Bağlı ${sozTeklifler.length} teklif kaydı ile bağı kopar\n` +
+        `• Yüklenen imzalı PDF ve evraklar silinir\n` +
+        `• Geri alınamaz\n\n` +
+        `Kaydı arşivde tutmak istiyorsanız "İptal Et" kullanın. Silinsin mi?`,
+      onayMetin: 'Kalıcı Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    setMesgul(true)
+    const g = await satisSozlesmeSil(kayit)
+    setMesgul(false)
+    if (g?._hata) { toast.error('Silinemedi: ' + g._hata); return }
+    toast.success(`${kayit.sozlesmeNo} silindi.`)
+    navigate('/sozlesmeler')
   }
 
   const iptalTikla = async () => {
@@ -592,6 +625,10 @@ export default function SatisSozlesmeForm() {
             {kayit ? kayit.sozlesmeNo : 'Yeni Satış Sözleşmesi'}
             <Badge tone={durum.tone}>{durum.isim}</Badge>
             {kilitli && <Badge tone="kayip" icon={<Lock size={11} strokeWidth={2} />}>Kilitli</Badge>}
+            {/* mig 248: imzadan sonra revize edildiyse kaçıncı sürüm olduğu görünsün */}
+            {Number(kayit?.revizyonNo) > 0 && (
+              <Badge tone="uyari" title="İmzadan sonra revize edildi">Rev. {kayit.revizyonNo}</Badge>
+            )}
           </h1>
           {kayit?.redSebebi && kayit.durum === 'taslak' && (
             <p style={{ marginTop: 4, font: '400 12.5px/18px var(--font-sans)', color: 'var(--danger)' }}>
@@ -1131,6 +1168,52 @@ export default function SatisSozlesmeForm() {
             </Card>
           )}
 
+          {/* Önceki imzalı sürümler (mig 248) — revizyona açılan sözleşmenin arşivi.
+              Müşterinin hangi metni imzaladığı sorusu her zaman cevaplanabilmeli. */}
+          {kayit && imzaGecmisiGetir(kayit).length > 0 && (
+            <Card>
+              <h2 className="t-h2" style={{ marginBottom: 4 }}>Önceki İmzalı Sürümler</h2>
+              <p className="t-caption" style={{ marginBottom: 10 }}>
+                Bu sözleşme imzalandıktan sonra {imzaGecmisiGetir(kayit).length} kez revizyona açıldı.
+                Her sürümün imzalı PDF'i saklanır — güncel metin bunlardan farklı olabilir.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {imzaGecmisiGetir(kayit).map((s, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+                    padding: '8px 12px', flexWrap: 'wrap',
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        <Badge tone="neutral">Rev. {s.revizyon ?? 0}</Badge>
+                        <span className="t-caption">İmza: {trTarih(s.imzaTarihi)}</span>
+                        <span className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {paraFmt(s.nihaiToplam, s.paraBirimi || form.paraBirimi)}
+                        </span>
+                      </div>
+                      <div className="t-caption">
+                        {s.teklifNo ? `Teklifler: ${s.teklifNo} · ` : ''}
+                        Revizyona açan: {s.acanAd || '—'} · {trTarih(s.acmaTarihi)}
+                        {s.sebep ? ` · ${s.sebep}` : ''}
+                      </div>
+                    </div>
+                    {s.imzaliPdfUrl && (
+                      <Button variant="ghost" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
+                        onClick={async () => {
+                          const url = await ssDosyaUrl(s.imzaliPdfUrl)
+                          if (url) window.open(url, '_blank')
+                          else toast.error('Arşiv dosyası açılamadı.')
+                        }}>
+                        İmzalı PDF
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Evrak checklist */}
           {kayit && (kayit.evraklar || []).length > 0 && (
             <Card>
@@ -1281,9 +1364,19 @@ export default function SatisSozlesmeForm() {
                 </Button>
               )}
 
-              {kayit && kilitli && admin && kayit.durum !== 'imzalandi' && (
+              {/* mig 248: imzalı sözleşmede de açılabiliyor — eski imzalı PDF arşivleniyor */}
+              {kayit && kilitli && admin && (
                 <Button variant="ghost" iconLeft={<Unlock size={14} strokeWidth={1.5} />} onClick={kilidiAcTikla}>
-                  Kilidi Aç (Revizyon)
+                  {kayit.durum === 'imzalandi' ? 'Revizyona Aç (Yeniden İmza)' : 'Kilidi Aç (Revizyon)'}
+                </Button>
+              )}
+
+              {/* Kalıcı silme: admin. Hatalı/deneme kayıtlarını temizlemek için —
+                  iş akışı için doğru yol "İptal Et" (kayıt arşivde kalır). */}
+              {kayit && admin && (
+                <Button variant="ghost" style={{ color: 'var(--danger)' }} disabled={mesgul}
+                  iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={silTikla}>
+                  Kalıcı Sil
                 </Button>
               )}
 
