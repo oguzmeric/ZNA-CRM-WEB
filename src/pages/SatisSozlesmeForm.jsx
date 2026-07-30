@@ -64,17 +64,19 @@ const BOLUM = {
 
 const trTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
-// Ödeme planı / teklif tabloları — dar hücreler, satır içi input'lar
+// Ödeme planı / teklif tabloları — dar hücreler, satır içi input'lar.
+// 10 kolon karta sığmıyordu: başlıklar kısaltıldı, banka + belge no tek hücrede
+// birleştirildi, input yükseklikleri düşürüldü.
 const TBL_TH = {
-  padding: '4px 6px', font: '600 11px/15px var(--font-sans)', color: 'var(--text-tertiary)',
+  padding: '3px 4px', font: '600 10.5px/14px var(--font-sans)', color: 'var(--text-tertiary)',
   textAlign: 'left', whiteSpace: 'nowrap',
 }
-const TBL_TD = { padding: '3px 6px', verticalAlign: 'middle' }
-const MINI_INPUT = { height: 32, fontSize: 12.5, padding: '0 8px' }
+const TBL_TD = { padding: '2px 4px', verticalAlign: 'middle' }
+const MINI_INPUT = { height: 30, fontSize: 12, padding: '0 6px' }
 const SABLON_CHIP = {
-  padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border-default)',
+  padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border-default)',
   background: 'var(--surface-card)', color: 'var(--text-secondary)',
-  font: '500 11.5px/16px var(--font-sans)', cursor: 'pointer', whiteSpace: 'nowrap',
+  font: '500 11px/15px var(--font-sans)', cursor: 'pointer', whiteSpace: 'nowrap',
 }
 
 const trNorm = (s) => (s || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
@@ -837,88 +839,88 @@ export default function SatisSozlesmeForm() {
                     )}
                   </div>
                   <p className="t-caption" style={{ marginBottom: 8 }}>
-                    Oran girerseniz tutar nihai bedelden hesaplanır. Tutarı elle yazmak için oranı boş bırakın.
+                    Her satırın üst şeridi ödeme şekli · oran · tutar · vade, alt şeridi vade tarihi, banka, çek no ve
+                    açıklama. Oran girerseniz tutar nihai bedelden hesaplanır; tutarı elle yazmak için oranı boş bırakın.
                   </p>
 
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                      <thead>
-                        <tr>
-                          <th style={{ ...TBL_TH, width: 26 }}>#</th>
-                          <th style={{ ...TBL_TH, width: 140 }}>Ödeme şekli</th>
-                          <th style={{ ...TBL_TH, width: 78 }}>Oran %</th>
-                          <th style={{ ...TBL_TH, width: 130, textAlign: 'right' }}>Tutar</th>
-                          <th style={{ ...TBL_TH, width: 86 }}>Vade (gün)</th>
-                          <th style={{ ...TBL_TH, width: 138 }}>Vade tarihi</th>
-                          <th style={{ ...TBL_TH, width: 120 }}>Banka</th>
-                          <th style={{ ...TBL_TH, width: 110 }}>Çek/senet no</th>
-                          <th style={TBL_TH}>Açıklama</th>
-                          <th style={{ ...TBL_TH, width: 34 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(form.odemePlani || []).map((p, i) => {
-                          const oranModu = p.yuzde !== '' && p.yuzde != null && Number(p.yuzde) > 0
-                          const hesapli = plan.satirlar[i] || {}
-                          return (
-                            <tr key={i} style={{ borderTop: '1px solid var(--border-default)' }}>
-                              <td style={{ ...TBL_TD, color: 'var(--text-tertiary)', font: '500 12px/16px var(--font-sans)' }}>{i + 1}</td>
-                              <td style={TBL_TD}>
-                                <CustomSelect value={p.tip || 'nakit'} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'tip', e.target.value)}>
-                                  {ODEME_SATIR_TIPLERI.map(t => <option key={t.id} value={t.id}>{t.isim}</option>)}
-                                </CustomSelect>
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input type="number" className="sayi-sade" style={MINI_INPUT} placeholder="30"
-                                  value={p.yuzde ?? ''} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'yuzde', e.target.value)} />
-                              </td>
-                              <td style={{ ...TBL_TD, textAlign: 'right' }}>
-                                {oranModu ? (
-                                  <span title="Orandan hesaplandı" style={{ font: '500 12.5px/32px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-                                    {paraFmt(hesapli.tutar, form.paraBirimi)}
-                                  </span>
-                                ) : (
-                                  <Input type="number" className="sayi-sade" style={{ ...MINI_INPUT, textAlign: 'right' }}
-                                    value={p.tutar ?? ''} disabled={!duzenlenebilir}
-                                    onChange={e => planSatirGuncelle(i, 'tutar', e.target.value)} />
-                                )}
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input type="number" className="sayi-sade" style={MINI_INPUT} placeholder="60"
-                                  value={p.vadeGunu ?? 0} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'vadeGunu', e.target.value)} />
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input type="date" style={MINI_INPUT} value={p.vadeTarihi || ''} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'vadeTarihi', e.target.value)} />
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input style={MINI_INPUT} value={p.banka || ''} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'banka', e.target.value)} />
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input style={MINI_INPUT} value={p.belgeNo || ''} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'belgeNo', e.target.value)} />
-                              </td>
-                              <td style={TBL_TD}>
-                                <Input style={MINI_INPUT} placeholder="Sözleşme imzasında" value={p.aciklama || ''} disabled={!duzenlenebilir}
-                                  onChange={e => planSatirGuncelle(i, 'aciklama', e.target.value)} />
-                              </td>
-                              <td style={TBL_TD}>
-                                {duzenlenebilir && (
-                                  <button type="button" onClick={() => planSatirSil(i)} title="Satırı sil"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 4, display: 'inline-flex' }}>
-                                    <Trash2 size={14} strokeWidth={1.75} />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                  {/* Satır kartları — 9 kolonluk tablo bu kartın içine (≈570px) sığmıyor,
+                      yatay kaydırma gerekiyordu. Her ödeme iki şeride bölündü:
+                      üstte tutar bilgisi, altta belge/açıklama. Kaydırma kalktı. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {(form.odemePlani || []).map((p, i) => {
+                      const oranModu = p.yuzde !== '' && p.yuzde != null && Number(p.yuzde) > 0
+                      const hesapli = plan.satirlar[i] || {}
+                      return (
+                        <div key={i} style={{
+                          border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                          background: 'var(--surface-card)', padding: '6px 8px',
+                          display: 'flex', flexDirection: 'column', gap: 5,
+                        }}>
+                          {/* Üst şerit: ne, ne kadar, ne zaman.
+                              flexWrap: dar ekranda (sağ özet kolonu sabit 280px olduğu için
+                              form kolonu ~380px'e düşebiliyor) alanlar alt satıra iner, taşmaz. */}
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ width: 14, flexShrink: 0, color: 'var(--text-tertiary)', font: '600 11px/15px var(--font-sans)' }}>{i + 1}</span>
+                            <div style={{ width: 112, flexShrink: 0 }}>
+                              <CustomSelect value={p.tip || 'nakit'} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'tip', e.target.value)}>
+                                {ODEME_SATIR_TIPLERI.map(t => <option key={t.id} value={t.id}>{t.isim}</option>)}
+                              </CustomSelect>
+                            </div>
+                            <div style={{ width: 66, flexShrink: 0, position: 'relative' }}>
+                              <Input type="number" className="sayi-sade" style={{ ...MINI_INPUT, paddingRight: 18 }} placeholder="30"
+                                title="Bedele oranı" value={p.yuzde ?? ''} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'yuzde', e.target.value)} />
+                              <span style={{ position: 'absolute', right: 6, top: 7, font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', pointerEvents: 'none' }}>%</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 84, textAlign: 'right' }}>
+                              {oranModu ? (
+                                <span title="Orandan hesaplandı" style={{ font: '600 12.5px/30px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                                  {paraFmt(hesapli.tutar, form.paraBirimi)}
+                                </span>
+                              ) : (
+                                <Input type="number" className="sayi-sade" style={{ ...MINI_INPUT, textAlign: 'right' }}
+                                  placeholder="Tutar" title="Tutarı elle gir" value={p.tutar ?? ''} disabled={!duzenlenebilir}
+                                  onChange={e => planSatirGuncelle(i, 'tutar', e.target.value)} />
+                              )}
+                            </div>
+                            <div style={{ width: 78, flexShrink: 0, position: 'relative' }}>
+                              <Input type="number" className="sayi-sade" style={{ ...MINI_INPUT, paddingRight: 26 }} placeholder="0"
+                                title="Vade (gün)" value={p.vadeGunu ?? 0} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'vadeGunu', e.target.value)} />
+                              <span style={{ position: 'absolute', right: 5, top: 7, font: '500 10.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', pointerEvents: 'none' }}>gün</span>
+                            </div>
+                            {duzenlenebilir && (
+                              <button type="button" onClick={() => planSatirSil(i)} title="Satırı sil"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 2, display: 'inline-flex', flexShrink: 0, marginLeft: 'auto' }}>
+                                <Trash2 size={13} strokeWidth={1.75} />
+                              </button>
+                            )}
+                          </div>
+                          {/* Alt şerit: belge bilgileri ve not */}
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingLeft: 20, flexWrap: 'wrap' }}>
+                            <div style={{ width: 122, flexShrink: 0 }}>
+                              <Input type="date" style={{ ...MINI_INPUT, fontSize: 11.5, padding: '0 4px' }} title="Vade tarihi"
+                                value={p.vadeTarihi || ''} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'vadeTarihi', e.target.value)} />
+                            </div>
+                            <div style={{ width: 96, flexShrink: 0 }}>
+                              <Input style={MINI_INPUT} placeholder="Banka" value={p.banka || ''} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'banka', e.target.value)} />
+                            </div>
+                            <div style={{ width: 96, flexShrink: 0 }}>
+                              <Input style={MINI_INPUT} placeholder="Çek/senet no" value={p.belgeNo || ''} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'belgeNo', e.target.value)} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 120 }}>
+                              <Input style={MINI_INPUT} placeholder="Açıklama — örn. sözleşme imzasında"
+                                value={p.aciklama || ''} disabled={!duzenlenebilir}
+                                onChange={e => planSatirGuncelle(i, 'aciklama', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {!(form.odemePlani || []).length && (
