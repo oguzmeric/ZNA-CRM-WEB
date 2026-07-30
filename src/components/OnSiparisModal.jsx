@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Trash2, Package, Search, ShoppingCart, AlertCircle, UserPlus } from 'lucide-react'
+import { X, Plus, Trash2, Package, Search, ShoppingCart, AlertCircle, UserPlus, PackageCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button, Input, Textarea, Label } from './ui'
@@ -24,7 +24,11 @@ const bosKalem = () => ({
   miktar: 1, birim: 'Adet', aciklama: '',
 })
 
-export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapat, onKaydedildi }) {
+// siparisBilgi: bu ön siparişten üretilen sipariş { siparisNo, durum } — onay
+// sonrası verilen ZNA-SIP numarası. Ön siparişi açan kişi "Sipariş Yönetimi"
+// menüsünü görmüyor (tutar/kâr içerdiği için admin+44 ile sınırlı), numarayı
+// burada görüyor. TUTAR YOK.
+export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, siparisBilgi = null, onKapat, onKaydedildi }) {
   const { kullanici } = useAuth()
   const { toast } = useToast()
   const [kaydediliyor, setKaydediliyor] = useState(false)
@@ -191,6 +195,37 @@ export default function OnSiparisModal({ gorusme, mevcutOnSiparis = null, onKapa
             <X size={20} strokeWidth={1.5} />
           </button>
         </div>
+
+        {/* Onaylandıysa verilen SİPARİŞ NUMARASI — kopyalanabilir */}
+        {siparisBilgi?.siparisNo && (
+          <div style={{
+            padding: '10px 12px', borderRadius: 8, marginBottom: 12,
+            background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.35)',
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}>
+            <PackageCheck size={16} strokeWidth={1.8} style={{ color: 'var(--success)', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Bu ön sipariş onaylandı. Sipariş numarası:
+            </span>
+            <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: 'var(--success)' }}>
+              {siparisBilgi.siparisNo}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(siparisBilgi.siparisNo)
+                toast.success('Sipariş numarası kopyalandı.')
+              }}
+              style={{
+                background: 'transparent', border: '1px solid rgba(16,185,129,0.45)',
+                borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                fontSize: 11, color: 'var(--success)', fontWeight: 600,
+              }}
+            >
+              Kopyala
+            </button>
+          </div>
+        )}
 
         {/* Fiyat girişi uyarısı */}
         <div style={{

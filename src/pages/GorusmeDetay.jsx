@@ -1053,6 +1053,7 @@ function GorusmeDetay() {
         <OnSiparisModal
           gorusme={gorusme}
           mevcutOnSiparis={duzenlenenOnSiparis}
+          siparisBilgi={duzenlenenOnSiparis ? siparisHaritasi[duzenlenenOnSiparis.id] : null}
           onKapat={() => { setOnSiparisModalAcik(false); setDuzenlenenOnSiparis(null) }}
           onKaydedildi={() => { onSiparisleriYenile() }}
         />
