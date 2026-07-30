@@ -120,8 +120,25 @@ export const teklifiSozlesmeSatiri = (teklif, gorusmeNo = '') => {
     firmaAdi: teklif.firmaAdi || '',
     konu: teklif.konu || '',
     tutar: veri.anaToplam,
+    paraBirimi: veri.paraBirimi,
     urunListesi: veri.urunListesi,
   }
+}
+
+/**
+ * Farklı para birimli teklifler tek sözleşmede TOPLANAMAZ — 9.152 EUR + 45.599 USD
+ * matematiksel olarak anlamsız bir "86.094" üretir. Kur çevirmek de yanlış olur
+ * (hangi kur, hangi tarih?). Bu yüzden ekleme aşamasında engelliyoruz.
+ * @returns hata metni ya da null
+ */
+export const paraBirimiCakismasi = (mevcutSatirlar, yeniSatir, formParaBirimi) => {
+  const mevcut = (mevcutSatirlar || []).map(t => t.paraBirimi).filter(Boolean)
+  const referans = mevcut[0] || formParaBirimi || 'TL'
+  const yeni = yeniSatir?.paraBirimi || 'TL'
+  if (!mevcut.length && !formParaBirimi) return null
+  if (yeni === referans) return null
+  return `${yeniSatir?.teklifNo || 'Teklif'} ${yeni} cinsinden, sözleşme ${referans} cinsinden. ` +
+    `Farklı para birimli teklifler tek sözleşmede toplanamaz — ayrı sözleşme açın.`
 }
 
 /**
@@ -164,6 +181,9 @@ export const teklifiSozlesmeyeEkle = async (sozlesmeId, teklif, gorusmeNo = '') 
   }
 
   const satir = teklifiSozlesmeSatiri(teklif, gorusmeNo)
+  const cakisma = paraBirimiCakismasi(mevcut, satir, sozlesme.paraBirimi)
+  if (cakisma) return { _hata: cakisma }
+
   const { error } = await supabase.from('satis_sozlesme_teklifleri').insert({
     sozlesme_id: Number(sozlesmeId),
     teklif_id: Number(satir.teklifId),
@@ -210,6 +230,7 @@ export const tekliflerdenBirlesik = (satirlar) => {
     anaToplam: r2(liste.reduce((a, t) => a + (Number(t.tutar) || 0), 0)),
     teklifNo: liste.map(t => t.teklifNo).filter(Boolean).join(', '),
     teklifId: liste[0]?.teklifId || null,
+    paraBirimi: liste[0]?.paraBirimi || null,
   }
 }
 

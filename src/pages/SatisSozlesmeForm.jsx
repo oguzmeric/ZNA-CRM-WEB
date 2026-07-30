@@ -26,6 +26,7 @@ import {
   imzaliSozlesmeYukleSS, ssDosyaUrl, ssDosyaYukle, kurFarkiKaydet,
   tekliftenForm, siparistenForm, musteridenKunye, teklifinAktifSozlesmesi,
   sozlesmeTeklifleriGetir, sozlesmeTekliflerimiKaydet, teklifiSozlesmeSatiri, tekliflerdenBirlesik,
+  paraBirimiCakismasi,
 } from '../services/satisSozlesmeService'
 import {
   sozlesmeHesapla, kurFarkiHesapla, paraFmt,
@@ -286,9 +287,12 @@ export default function SatisSozlesmeForm() {
     const t = await teklifGetir(tid).catch(() => null)
     setMesgul(false)
     if (!t) { toast.error('Teklif okunamadı.'); return }
+    const satir = teklifiSozlesmeSatiri(t)
+    // 9.152 EUR + 45.599 USD toplanamaz — ilk teklif para birimini belirler, sonrakiler uymalı
+    const cakisma = sozTeklifler.length ? paraBirimiCakismasi(sozTeklifler, satir, form.paraBirimi) : null
+    if (cakisma) { toast.error(cakisma); return }
     // İlk teklif firma künyesini de doldurur; sonrakiler yalnız kalem ve tutar ekler
     if (!sozTeklifler.length) await tekliftenDoldur(t)
-    const satir = teklifiSozlesmeSatiri(t)
     const yeni = [...sozTeklifler, satir]
     setSozTeklifler(yeni)
     tekliflerdenFormaYansit(yeni)
@@ -1015,9 +1019,10 @@ export default function SatisSozlesmeForm() {
                   <Label>Teklif ekle</Label>
                   <CustomSelect value={teklifEkleId} onChange={e => setTeklifEkleId(e.target.value)}>
                     <option value="">— Teklif seçin —</option>
+                    {/* Para birimi görünsün — farklı birimli teklif eklenemiyor, önden belli olsun */}
                     {eklenebilirTeklifler.map(t => (
                       <option key={t.id} value={t.id}>
-                        {t.teklifNo || `#${t.id}`} · {t.firmaAdi}{t.konu ? ` · ${t.konu}` : ''}
+                        {t.teklifNo || `#${t.id}`} · {t.paraBirimi || 'TL'} · {t.firmaAdi}{t.konu ? ` · ${t.konu}` : ''}
                       </option>
                     ))}
                   </CustomSelect>
