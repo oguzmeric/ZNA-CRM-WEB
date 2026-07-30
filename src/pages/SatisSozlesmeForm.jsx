@@ -989,6 +989,26 @@ export default function SatisSozlesmeForm() {
               )}
             </div>
 
+            {/* Kilitli sözleşmede ekleme kutusu yok — sebebini yazmazsak kullanıcı
+                "kutu nerede?" diye arıyor (gerçekte yaşandı). */}
+            {!duzenlenebilir && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+                padding: '8px 12px', background: 'var(--surface-subtle)',
+              }}>
+                <Lock size={14} strokeWidth={1.75} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+                <span className="t-caption">
+                  {kayit?.durum === 'imzalandi'
+                    ? 'Sözleşme imzalandı — belge donduruldu, teklif eklenip çıkarılamaz.'
+                    : kayit?.durum === 'iptal'
+                      ? 'Sözleşme iptal edildi — teklif eklenip çıkarılamaz.'
+                      : 'Sözleşme onaylanıp kilitlendi — teklif eklemek için yöneticinin kilidi açması gerekir.'}
+                  {' '}Teklifi başka bir sözleşmeye bağlamak için teklif detayındaki
+                  “Mevcut Sözleşmeye Ekle” butonunu kullanın.
+                </span>
+              </div>
+            )}
             {duzenlenebilir && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 10, flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 340px', minWidth: 240 }}>
