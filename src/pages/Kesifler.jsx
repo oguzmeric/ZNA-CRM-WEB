@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { kesifleriGetir, kesifEkle, KESIF_DURUMLARI, KESIF_ONCELIKLERI } from '../services/kesifService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { trContains } from '../lib/trSearch'
@@ -167,10 +168,33 @@ function YeniKesifModal({ musteriler, kullanici, onKapat, onOlusturuldu }) {
   const [musteriId, setMusteriId] = useState('')
   const [firmaAdi, setFirmaAdi] = useState('')
   const [lokasyon, setLokasyon] = useState('')
+  // Kayıtlı alt lokasyon seçimi — GERÇEK bağ (kesifler.lokasyon_id).
+  // Önce yalnız serbest metin vardı; müşteri detayındaki lokasyon dökümü
+  // metin eşleşmesine düşüyordu ve keşif çoğu zaman o listeye girmiyordu.
+  const [lokasyonlar, setLokasyonlar] = useState([])
+  const [lokasyonId, setLokasyonId] = useState('')
   const [kesifTarihi, setKesifTarihi] = useState(new Date().toISOString().split('T')[0])
   const [kesfiYapan, setKesfiYapan] = useState(kullanici?.ad || '')
   const [genelNot, setGenelNot] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  // Müşteri değişince o müşterinin alt lokasyonlarını çek
+  useEffect(() => {
+    setLokasyonId(''); setLokasyonlar([])
+    if (!musteriId) return
+    let iptal = false
+    musteriLokasyonlariniGetir(Number(musteriId))
+      .then(d => { if (!iptal) setLokasyonlar((d || []).filter(l => l.aktif !== false)) })
+      .catch(() => {})
+    return () => { iptal = true }
+  }, [musteriId])
+
+  // Lokasyon seçilince adresi de otomatik doldur (kullanıcı yine düzenleyebilir)
+  const lokasyonSec = (secilenId) => {
+    setLokasyonId(secilenId)
+    const l = lokasyonlar.find(x => String(x.id) === String(secilenId))
+    if (l) setLokasyon(l.adres?.trim() || l.ad || '')
+  }
 
   const musteriSec = (id) => {
     setMusteriId(id)
@@ -186,6 +210,7 @@ function YeniKesifModal({ musteriler, kullanici, onKapat, onOlusturuldu }) {
         musteriId: musteriId ? Number(musteriId) : null,
         firmaAdi: firmaAdi.trim(),
         lokasyon: lokasyon.trim(),
+        lokasyonId: lokasyonId ? Number(lokasyonId) : null,
         kesifTarihi,
         kesfiYapan: kesfiYapan.trim(),
         genelNot: genelNot.trim() || null,
@@ -230,8 +255,32 @@ function YeniKesifModal({ musteriler, kullanici, onKapat, onOlusturuldu }) {
           <Label required>Firma adı</Label>
           <Input value={firmaAdi} onChange={e => setFirmaAdi(e.target.value)} placeholder="Firma / saha adı" />
         </div>
+        {/* Kayıtlı alt lokasyon — seçilirse müşteri detayındaki lokasyon
+            dökümüne (keşif + envanter) bu keşif de düşer */}
+        {musteriId && (
+          <div>
+            <Label>Alt lokasyon</Label>
+            {lokasyonlar.length > 0 ? (
+              <>
+                <CustomSelect value={lokasyonId} onChange={e => lokasyonSec(e.target.value)}>
+                  <option value="">Lokasyon seç… (yoksa boş bırak)</option>
+                  {lokasyonlar.map(l => (
+                    <option key={l.id} value={l.id}>{l.ad}</option>
+                  ))}
+                </CustomSelect>
+                <p className="t-caption" style={{ marginTop: 6 }}>
+                  Seçersen bu keşif, müşteri detayında o lokasyonun dökümünde görünür.
+                </p>
+              </>
+            ) : (
+              <p className="t-caption" style={{ margin: 0 }}>
+                Bu müşteride kayıtlı alt lokasyon yok — Müşteri detayından ekleyebilirsin.
+              </p>
+            )}
+          </div>
+        )}
         <div>
-          <Label>Lokasyon / Adres</Label>
+          <Label>Keşif adresi</Label>
           <Input value={lokasyon} onChange={e => setLokasyon(e.target.value)} placeholder="örn. Başakşehir fabrika — B blok" />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

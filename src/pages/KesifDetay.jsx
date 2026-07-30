@@ -204,9 +204,10 @@ export default function KesifDetay() {
         projeAdi: kesif.projeAdi,
         kesifBasligi: kesif.kesifBasligi,
         lokasyon: kesif.lokasyon,
-        // Yazılan lokasyon müşterinin alt lokasyon kaydıyla eşleşiyorsa gerçek
-        // bağı da kur (mig 236) — müşteri detayındaki lokasyon dökümü bunu kullanır
-        lokasyonId: lokasyonIdCoz(kesif.lokasyon, musteriLokasyonlari),
+        // Açıkça seçilen lokasyon kesindir; seçim yoksa ESKİ davranışa düş
+        // (yazılan metin lokasyon adına birebir uyuyorsa bağla) — böylece
+        // seçici gelmeden önce girilmiş keşifler bağını kaybetmez.
+        lokasyonId: kesif.lokasyonId ?? lokasyonIdCoz(kesif.lokasyon, musteriLokasyonlari),
         musteriYetkilisi: kesif.musteriYetkilisi,
         yetkiliTelefon: kesif.yetkiliTelefon,
         yetkiliEmail: kesif.yetkiliEmail,
@@ -655,19 +656,45 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
               <Label>Proje adı</Label>
               <Input value={kesif.projeAdi || ''} onChange={e => setKesif(k => ({ ...k, projeAdi: e.target.value }))} />
             </div>
-            <div style={{ gridColumn: 'span 2' }}>
+            {/* Alt lokasyon — GERÇEK seçim. Önce yalnız datalist önerisi vardı;
+                bağ, yazılan metnin lokasyon adına birebir eşleşmesine bağlıydı ve
+                çoğu keşif lokasyon dökümüne düşmüyordu. Artık id doğrudan seçiliyor. */}
+            <div>
+              <Label>Alt lokasyon</Label>
+              {musteriLokasyonlari.length > 0 ? (
+                <CustomSelect
+                  value={kesif.lokasyonId ?? ''}
+                  onChange={e => {
+                    const yeniId = e.target.value
+                    const l = musteriLokasyonlari.find(x => String(x.id) === String(yeniId))
+                    setKesif(k => ({
+                      ...k,
+                      lokasyonId: yeniId ? Number(yeniId) : null,
+                      // Adres boşsa lokasyondan doldur; doluysa kullanıcının yazdığına dokunma
+                      lokasyon: k.lokasyon?.trim() ? k.lokasyon : (l?.adres?.trim() || l?.ad || ''),
+                    }))
+                  }}
+                >
+                  <option value="">Lokasyon seç… (yoksa boş bırak)</option>
+                  {musteriLokasyonlari.map(l => (
+                    <option key={l.id} value={l.id}>{l.ad}</option>
+                  ))}
+                </CustomSelect>
+              ) : (
+                <p className="t-caption" style={{ margin: '6px 0 0' }}>
+                  {kesif.musteriId
+                    ? 'Bu müşteride kayıtlı alt lokasyon yok.'
+                    : 'Müşteri seçilmemiş keşifte lokasyon bağı kurulamaz.'}
+                </p>
+              )}
+            </div>
+            <div>
               <Label>Keşif adresi</Label>
-              {/* Müşterinin kayıtlı alt lokasyonları öneri olarak gelir; seçilirse
-                  müşteri detayındaki lokasyon dökümüne bu keşif de düşer */}
               <Input
-                list="kesif-lokasyon-onerileri"
                 value={kesif.lokasyon || ''}
                 onChange={e => setKesif(k => ({ ...k, lokasyon: e.target.value }))}
-                placeholder={musteriLokasyonlari.length ? 'Kayıtlı lokasyonlardan seç veya yaz…' : 'Saha adresi'}
+                placeholder="Saha adresi"
               />
-              <datalist id="kesif-lokasyon-onerileri">
-                {musteriLokasyonlari.map(l => <option key={l.id} value={l.ad} />)}
-              </datalist>
             </div>
             <div>
               <Label>Müşteri yetkilisi</Label>
