@@ -281,14 +281,16 @@ function SatisSozlesmeleriSekmesi() {
                         : evrakEksik === 0 ? <Badge tone="aktif">Tamam</Badge>
                         : <Badge tone="uyari">{evrakEksik} eksik</Badge>}
                     </TD>
-                    <TD style={{ whiteSpace: 'nowrap' }}>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sozlesmeler/satis/${s.id}`)}>Aç</Button>
-                      {ssAdmin && (
-                        <Button variant="ghost" size="sm" style={{ color: 'var(--danger)' }}
-                          title="Kalıcı sil" onClick={() => ssSil(s)}>
-                          <Trash2 size={13} strokeWidth={1.5} />
-                        </Button>
-                      )}
+                    {/* İki buton da metinli: ikon-only sil butonu "Aç"ın yanında
+                        dar kalıp hizasız görünüyordu */}
+                    <TD>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/sozlesmeler/satis/${s.id}`)}>Aç</Button>
+                        {ssAdmin && (
+                          <Button variant="ghost" size="sm" style={{ color: 'var(--danger)' }}
+                            title="Kalıcı sil" onClick={() => ssSil(s)}>Sil</Button>
+                        )}
+                      </div>
                     </TD>
                   </TR>
                 )
