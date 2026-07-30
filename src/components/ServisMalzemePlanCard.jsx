@@ -23,9 +23,16 @@ import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from './AkilliUrunSecici'
 import { Card, CardTitle, Button, Input, Badge, CodeBadge, Textarea } from './ui'
 
+/**
+ * TASLAK MOD (servisId yok): talep henüz kaydedilmediği için DB'ye yazamayız.
+ * Satırlar bellekte tutulur ve onTaslakDegisti ile forma bildirilir; form kaydı
+ * tamamlayınca taslakSatirlariYaz() ile gerçek kayıtlara çevirir.
+ */
 export default function ServisMalzemePlanCard({
   servisId, servisKodu, notMetni = '', onNotKaydet, onDegisti,
+  taslakSatirlar, onTaslakDegisti,
 }) {
+  const taslakMod = !servisId
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const [satirlar, setSatirlar] = useState([])
@@ -43,17 +50,29 @@ export default function ServisMalzemePlanCard({
   const [notTaslak, setNotTaslak] = useState('')
   const [notKaydediliyor, setNotKaydediliyor] = useState(false)
 
-  const yenile = () => servisMalzemeleriGetir(servisId).then(d => {
-    setSatirlar(d)
-    onDegisti?.()
-  })
+  const yenile = () => {
+    if (taslakMod) return Promise.resolve()
+    return servisMalzemeleriGetir(servisId).then(d => {
+      setSatirlar(d)
+      onDegisti?.()
+    })
+  }
+
+  // Taslakta satırlar dışarıdan gelir; kayıtlı serviste DB'den okunur
+  const taslakYaz = (yeniListe) => {
+    setSatirlar(yeniListe)
+    onTaslakDegisti?.(yeniListe)
+  }
 
   useEffect(() => {
-    servisMalzemeleriGetir(servisId).then(setSatirlar).catch(() => setSatirlar([]))
+    if (taslakMod) { setSatirlar(Array.isArray(taslakSatirlar) ? taslakSatirlar : []) }
+    else servisMalzemeleriGetir(servisId).then(setSatirlar).catch(() => setSatirlar([]))
     stokUrunleriniGetir()
       .then(d => setUrunler((d || []).filter(u => u.aktif !== false)))
       .catch(() => setUrunler([]))
-  }, [servisId])
+    // taslakSatirlar bilerek bağımlılıkta değil: her tuşta listeyi sıfırlar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servisId, taslakMod])
 
   const planlananlar = useMemo(
     () => satirlar.filter(m => m.durum === 'planlanan'),
@@ -71,15 +90,24 @@ export default function ServisMalzemePlanCard({
     if (!adet || adet <= 0) { toast.error('Miktar 0’dan büyük olmalı.'); return }
     setMesgul(true)
     try {
-      // durum='planlanan' → stok düşmez, SN seçilmez, müşteri formuna basılmaz
-      await servisMalzemeEkle({
-        servisId, servisKodu,
-        urun: { ...seciliUrun, birim },
-        miktar: adet,
-        birimFiyat: 0,
-        durum: 'planlanan',
-      })
-      await yenile()
+      if (taslakMod) {
+        taslakYaz([...satirlar, {
+          id: `taslak-${Date.now()}`, durum: 'planlanan',
+          stokKodu: seciliUrun.stokKodu || null,
+          urunAdi: seciliUrun.stokAdi || seciliUrun.urunAdi || '',
+          miktar: adet, birim, _taslak: true,
+        }])
+      } else {
+        // durum='planlanan' → stok düşmez, SN seçilmez, müşteri formuna basılmaz
+        await servisMalzemeEkle({
+          servisId, servisKodu,
+          urun: { ...seciliUrun, birim },
+          miktar: adet,
+          birimFiyat: 0,
+          durum: 'planlanan',
+        })
+        await yenile()
+      }
       setSeciliUrun(null)
       setMiktar(1)
       toast.success('Listeye eklendi.')
@@ -96,14 +124,21 @@ export default function ServisMalzemePlanCard({
     if (!ad) { toast.error('Malzeme adı gerekli.'); return }
     setMesgul(true)
     try {
-      await servisMalzemeEkle({
-        servisId, servisKodu,
-        urun: { stokKodu: null, urunAdi: ad, stokAdi: ad, birim: elleBirim || 'Adet' },
-        miktar: Number(elleMiktar) || 1,
-        birimFiyat: 0,
-        durum: 'planlanan',
-      })
-      await yenile()
+      if (taslakMod) {
+        taslakYaz([...satirlar, {
+          id: `taslak-${Date.now()}`, durum: 'planlanan', stokKodu: null,
+          urunAdi: ad, miktar: Number(elleMiktar) || 1, birim: elleBirim || 'Adet', _taslak: true,
+        }])
+      } else {
+        await servisMalzemeEkle({
+          servisId, servisKodu,
+          urun: { stokKodu: null, urunAdi: ad, stokAdi: ad, birim: elleBirim || 'Adet' },
+          miktar: Number(elleMiktar) || 1,
+          birimFiyat: 0,
+          durum: 'planlanan',
+        })
+        await yenile()
+      }
       setElleAd('')
       setElleMiktar(1)
       setElleAcik(false)
@@ -123,6 +158,7 @@ export default function ServisMalzemePlanCard({
     })
     if (!ok) return
     try {
+      if (taslakMod) { taslakYaz(satirlar.filter(s => s.id !== m.id)); return }
       await servisMalzemeSil(m, servisKodu)
       await yenile()
     } catch (e) {
@@ -241,10 +277,13 @@ export default function ServisMalzemePlanCard({
                   <span className="tabular-nums">{m.miktar}</span> {m.birim || 'Adet'}
                 </div>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => kullandim(m)}
-                iconLeft={<Check size={12} strokeWidth={2} />}>
-                Kullandım
-              </Button>
+              {/* Taslakta "Kullandım" yok: iş henüz açılmadı, stoktan düşülecek bir şey de yok */}
+              {!taslakMod && (
+                <Button variant="secondary" size="sm" onClick={() => kullandim(m)}
+                  iconLeft={<Check size={12} strokeWidth={2} />}>
+                  Kullandım
+                </Button>
+              )}
               <button
                 aria-label="Kaldır" title="Listeden çıkar" onClick={() => sil(m)}
                 style={{

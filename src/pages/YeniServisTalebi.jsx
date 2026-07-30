@@ -11,6 +11,8 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import CustomSelect from '../components/CustomSelect'
 import CokluSelect from '../components/CokluSelect'
+import ServisMalzemePlanCard from '../components/ServisMalzemePlanCard'
+import { servisMalzemeEkle } from '../services/servisMalzemeService'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
 } from '../components/ui'
@@ -49,6 +51,9 @@ export default function YeniServisTalebi() {
   const [form, setForm] = useState(bos)
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  // Talep kaydedilmeden malzeme satırları DB'ye yazılamaz — burada bekler,
+  // talep oluşunca servis_malzemeleri'ne 'planlanan' olarak aktarılır
+  const [malzemeTaslak, setMalzemeTaslak] = useState([])
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
 
   useEffect(() => {
@@ -93,7 +98,30 @@ export default function YeniServisTalebi() {
         : null
       const yeni = await talepOlusturPersonel(form, kullanici, seciliMusteri, atanan)
       if (yeni) {
-        toast.success(`Talep oluşturuldu: ${yeni.talepNo}`)
+        // Taslakta bekleyen malzeme satırlarını talebe bağla (durum='planlanan':
+        // stok düşmez, zimmet açmaz — teknisyene "ne götüreceğim" listesi)
+        let yazilan = 0, hatali = 0
+        for (const m of malzemeTaslak) {
+          try {
+            await servisMalzemeEkle({
+              servisId: yeni.id, servisKodu: yeni.talepNo,
+              urun: { stokKodu: m.stokKodu || null, urunAdi: m.urunAdi, stokAdi: m.urunAdi, birim: m.birim || 'Adet' },
+              miktar: Number(m.miktar) || 1,
+              birimFiyat: 0,
+              durum: 'planlanan',
+            })
+            yazilan++
+          } catch (e) {
+            hatali++
+            console.warn('[YeniServisTalebi] malzeme aktarılamadı:', m.urunAdi, e?.message)
+          }
+        }
+        toast.success(
+          `Talep oluşturuldu: ${yeni.talepNo}` +
+          (yazilan ? ` · ${yazilan} malzeme listeye eklendi` : '')
+        )
+        // Sessizce kaybolmasın: bir kısmı yazılamadıysa kullanıcı bilsin
+        if (hatali) toast.error(`${hatali} malzeme aktarılamadı, talep detayından tekrar ekleyin.`)
         navigate(`/servis-talepleri/${yeni.id}`)
       } else {
         toast.error('Talep oluşturulamadı.')
@@ -262,17 +290,18 @@ export default function YeniServisTalebi() {
           </p>
         </div>
 
+        {/* Kullanılacak Malzemeler — serbest metin yerine stok seçimli kart (talep
+            detayındakinin aynısı). Talep henüz kaydedilmediği için TASLAK modda
+            çalışır: satırlar bellekte tutulur, kayıtla birlikte yazılır.
+            Serbest not kartın içindeki "Ek not" alanında yaşamaya devam ediyor. */}
         <div style={{ marginBottom: 16 }}>
-          <Label>Kullanılacak Malzemeler (İç Not)</Label>
-          <Textarea
-            value={form.kullanilacakMalzemeler}
-            onChange={e => setForm(p => ({ ...p, kullanilacakMalzemeler: e.target.value }))}
-            rows={3}
-            placeholder="Örn: 2× Dahua 4MP dome, 1× 8 kanal NVR, 50m CAT6, 4× RJ45…"
+          <ServisMalzemePlanCard
+            servisId={null}
+            taslakSatirlar={malzemeTaslak}
+            onTaslakDegisti={setMalzemeTaslak}
+            notMetni={form.kullanilacakMalzemeler}
+            onNotKaydet={(v) => setForm(p => ({ ...p, kullanilacakMalzemeler: v }))}
           />
-          <p className="t-caption" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
-            🔒 Sadece personele görünür — teknisyen bu listeye göre envanterine malzeme alır. Müşteri servis formunda görünmez.
-          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
