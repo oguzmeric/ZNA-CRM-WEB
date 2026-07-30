@@ -97,6 +97,11 @@ export function BildirimProvider({ children }) {
     // Görev/servis atamalarında ayrıca tarayıcı sistem notification'ı (sekme
     // arka planda bile görünür) — kullanıcı ilk gorev/servis'te izin ister.
     subRef.current = bildirimleriDinle(kullanici.id, (yeni) => {
+      // İKİNCİ KİLİT: servis katmanı zaten eliyor, ama bu callback listeye
+      // ekleme + toast + tarayıcı bildirimi üçünü tetikliyor. ChatContext
+      // sohbet için ZATEN ses+toast atıyor; guard olmasa her mesajda ÇİFT
+      // uyarı görünür. (mig 245)
+      if (yeni?.tip === 'mesaj') return
       setBildirimler(prev => {
         if (prev.some(b => b.id === yeni.id)) return prev
         return [yeni, ...prev].slice(0, 50)

@@ -4,6 +4,13 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
+// tip='mesaj' bildirimleri SADECE push göndermek için var (mig 245); zil ve
+// listede görünmemeli — sohbet için ayrı arayüz var, zil her mesajda dolmasın.
+//
+// DİKKAT: `.neq('tip','mesaj')` KULLANMA — SQL'de NULL <> 'mesaj' → NULL →
+// false olduğu için tip'i NULL olan eski satırları da eler.
+const MESAJ_HARIC = 'tip.is.null,tip.neq.mesaj'
+
 // Kullanıcının bildirimlerini çek (en yeni 50)
 export const bildirimleriGetir = async (kullaniciId, limit = 50) => {
   if (!kullaniciId) return []
@@ -11,6 +18,7 @@ export const bildirimleriGetir = async (kullaniciId, limit = 50) => {
     .from('bildirimler')
     .select('*')
     .eq('alici_id', kullaniciId)
+    .or(MESAJ_HARIC)
     .order('olusturma_tarih', { ascending: false })
     .limit(limit)
   if (error) {
@@ -28,6 +36,7 @@ export const okunmamisBildirimSayisi = async (kullaniciId) => {
     .select('*', { count: 'exact', head: true })
     .eq('alici_id', kullaniciId)
     .eq('okundu', false)
+    .or(MESAJ_HARIC)
   if (error) {
     console.error('[okunmamisBildirimSayisi] hata:', error.message)
     return 0
@@ -122,6 +131,11 @@ export const bildirimleriDinle = (kullaniciId, onYeniBildirim) => {
       },
       (payload) => {
         try {
+          // Sohbet mesajı bildirimi (mig 245) SADECE push için var — zil/liste
+          // ve toast'a düşmemeli. Realtime'da ikinci filtre konamıyor
+          // (postgres_changes tek kolonda eq destekliyor, o da alici_id),
+          // bu yüzden eleme burada.
+          if (payload.new?.tip === 'mesaj') return
           onYeniBildirim?.(toCamel(payload.new))
         } catch (e) {
           console.error('[bildirim realtime] callback hata:', e)
