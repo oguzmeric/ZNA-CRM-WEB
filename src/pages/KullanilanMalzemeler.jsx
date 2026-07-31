@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx'
 import {
   Package, ChevronDown, ChevronRight, Receipt, Clock, Plus, History, X, FileDown, Send, Truck,
 } from 'lucide-react'
-import { Card, Badge, EmptyState, SearchInput, Modal, Button, Input, Label, Textarea } from '../components/ui'
+import { Card, EmptyState, SearchInput, Modal, Button, Input, Label, Textarea } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import {
   FATURA_DURUM, KAYNAK_META, ACIKLAMA_ZORUNLU, YONETICI_ONAYLI, BEKLEYEN_DURUMLAR,
@@ -40,14 +40,36 @@ const SEKME_DURUM = {
   faturalandi: ['faturalandi'],
 }
 
+// ─── Satır düzeni ──────────────────────────────────────────────────────────
+// Rozetler eskiden akışa bırakılmıştı: her satırda farklı yerden başlıyor,
+// göz listeyi tarayamıyordu. Artık sağ blok SABİT kolon ızgarası — kaynak,
+// fatura, teslim, geçmiş ve buton her satırda aynı x'te.
+const SAG_IZGARA = '186px 158px 118px 26px 78px'
+
+// Bütün rozetler aynı yükseklik ve tipografiyi paylaşır (satırlar zıplamasın).
+const ROZET_TEMEL = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  height: 22, padding: '0 9px', borderRadius: 'var(--radius-pill)',
+  font: '600 10.5px/1 var(--font-sans)', whiteSpace: 'nowrap',
+  maxWidth: '100%', overflow: 'hidden',
+}
+
+// RENK POLİTİKASI: satırda TEK anlamlı renk ekseni var — fatura durumu.
+// O da sol kenar şeridinde dolu, rozette yalnız çerçeve+metin olarak yaşıyor.
+// Kaynak rozeti nötr, teslim rozeti işaretliyken renkli. Böylece üç dolu pill
+// yan yana gelip "renk cümbüşü" oluşturmuyor.
 function DurumRozet({ h }) {
   const m = FATURA_DURUM[h.faturaDurumu] || { isim: h.faturaDurumu, renk: '#94a3b8' }
+  const ek = h.faturaDurumu === 'kismen_faturalandi'
+    ? ` · ${Number(h.faturalananMiktar)}/${Number(h.miktar)}`
+    : (h.faturaDurumu === 'faturalandi' && h.faturaNo ? ` · ${h.faturaNo}` : '')
   return (
-    <Badge style={{ background: `${m.renk}22`, color: m.renk, border: `1px solid ${m.renk}66`, whiteSpace: 'nowrap' }}>
-      {m.isim}
-      {h.faturaDurumu === 'kismen_faturalandi' && ` · ${Number(h.faturalananMiktar)}/${Number(h.miktar)}`}
-      {h.faturaDurumu === 'faturalandi' && h.faturaNo ? ` · ${h.faturaNo}` : ''}
-    </Badge>
+    <span
+      title={m.isim + ek}
+      style={{ ...ROZET_TEMEL, color: m.renk, border: `1px solid ${m.renk}55`, background: `${m.renk}0f` }}
+    >
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.isim}{ek}</span>
+    </span>
   )
 }
 
@@ -55,19 +77,23 @@ function KaynakRozet({ h, navigate }) {
   const m = KAYNAK_META[h.kaynak] || { isim: h.kaynak, renk: '#64748b' }
   const hedef = h.kaynak === 'siparis' && h.siparisId ? `/siparisler/${h.siparisId}`
     : h.kaynak === 'servis' && h.servisId ? `/servis-talepleri/${h.servisId}` : null
+  const etiket = `${m.isim}${h.kaynakNo ? ` · ${h.kaynakNo}` : ''}`
   return (
     <span
       onClick={hedef ? (e) => { e.stopPropagation(); navigate(hedef) } : undefined}
-      title={hedef ? 'Kaynağa git' : undefined}
+      title={hedef ? `${etiket} — kaynağa git` : etiket}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-        background: `${m.renk}18`, color: m.renk, border: `1px solid ${m.renk}55`,
-        font: '600 10.5px/14px var(--font-sans)',
-        cursor: hedef ? 'pointer' : 'default', whiteSpace: 'nowrap',
+        ...ROZET_TEMEL,
+        background: 'var(--surface-sunken)',
+        color: 'var(--text-secondary)',
+        border: '1px solid var(--border-default)',
+        cursor: hedef ? 'pointer' : 'default',
       }}
     >
-      {m.isim}{h.kaynakNo ? ` · ${h.kaynakNo}` : ''}
+      {/* Kaynak tipi rengi tek bir noktaya indirildi — pill'in tamamını
+          boyamak listeyi alacalı gösteriyordu */}
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.renk, flexShrink: 0 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{etiket}</span>
     </span>
   )
 }
@@ -85,19 +111,19 @@ function TeslimRozet({ h, onDegistir, mesgul }) {
       disabled={mesgul}
       title={`Teslim durumu: ${m?.isim || 'işaretlenmedi'} — tıkla: ${sonrakiAd}`}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-        background: m ? `${renk}18` : 'transparent',
-        color: renk,
+        ...ROZET_TEMEL,
+        // İşaretsizken tamamen nötr: 160 satırın çoğu bu halde, renkli olsa
+        // liste baştan aşağı alacalı görünürdü.
+        background: m ? `${renk}0f` : 'transparent',
+        color: m ? renk : 'var(--text-tertiary)',
         border: `1px solid ${m ? `${renk}55` : 'var(--border-default)'}`,
         borderStyle: m ? 'solid' : 'dashed',
-        font: '600 10.5px/14px var(--font-sans)',
-        cursor: mesgul ? 'progress' : 'pointer', whiteSpace: 'nowrap',
+        cursor: mesgul ? 'progress' : 'pointer',
         opacity: mesgul ? 0.5 : 1,
       }}
     >
-      {m ? <Truck size={11} strokeWidth={2} /> : null}
-      {m?.kisa || 'Teslim ?'}
+      <Truck size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: m ? 1 : 0.5 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{m?.kisa || 'Teslim ?'}</span>
     </button>
   )
 }
@@ -437,27 +463,47 @@ export default function KullanilanMalzemeler() {
               <Card key={g.ad} padding={0} style={{ overflow: 'hidden' }}>
                 <div
                   onClick={() => setAcikMusteriler(p => ({ ...p, [g.ad]: !p[g.ad] }))}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer', flexWrap: 'wrap' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer' }}
                 >
-                  {acik ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{g.ad}</div>
+                  {acik ? <ChevronDown size={16} style={{ flexShrink: 0 }} /> : <ChevronRight size={16} style={{ flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }} title={g.ad}>{g.ad}</div>
                     <div className="t-caption" style={{ marginTop: 2 }}>
                       {g.liste.length} malzeme · {g.kesilenSayi} kesildi
                       {g.kismenSayi > 0 && ` · ${g.kismenSayi} kısmen`}
                       {g.enEski && g.bekleyenSayi > 0 && ` · en eski bekleyen: ${fmtTarih(g.enEski)}`}
                     </div>
                   </div>
-                  {g.bekleyenSayi > 0 && (
-                    <Badge style={{ background: 'rgba(239,68,68,0.14)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)' }}>
-                      <Clock size={11} /> {g.bekleyenSayi} fatura bekliyor
-                    </Badge>
-                  )}
-                  {Object.entries(g.tutarlar).filter(([, t]) => t > 0).map(([pb, t]) => (
-                    <span key={pb} style={{ font: '700 13px/18px var(--font-sans)', color: '#f59e0b', whiteSpace: 'nowrap' }}>
-                      {fmtPara(t, pb)}
-                    </span>
-                  ))}
+                  {/* Rozet ve tutar sabit genişlikte: para birimi sayısı kartlar
+                      arasında değişiyor, akışa bırakılınca hiçbiri hizalanmıyordu */}
+                  <div style={{ width: 168, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+                    {g.bekleyenSayi > 0 && (
+                      <span style={{
+                        ...ROZET_TEMEL,
+                        color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)',
+                        background: 'rgba(239,68,68,0.08)',
+                      }}>
+                        <Clock size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+                        {g.bekleyenSayi} fatura bekliyor
+                      </span>
+                    )}
+                  </div>
+                  <div style={{
+                    width: 200, flexShrink: 0, textAlign: 'right',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                  }}>
+                    {Object.entries(g.tutarlar).filter(([, t]) => t > 0).map(([pb, t]) => (
+                      <span key={pb} className="tabular-nums" style={{
+                        font: '600 13px/18px var(--font-sans)',
+                        color: 'var(--text-primary)', whiteSpace: 'nowrap',
+                      }}>
+                        {fmtPara(t, pb)}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 {acik && (
@@ -467,28 +513,37 @@ export default function KullanilanMalzemeler() {
                       const durumRenk = FATURA_DURUM[h.faturaDurumu]?.renk || '#94a3b8'
                       return (
                         <div key={h.id} style={{ borderBottom: '1px solid var(--border-default)', borderLeft: `3px solid ${durumRenk}` }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
                             <input
                               type="checkbox"
                               checked={secili.has(h.id)}
                               onChange={() => seciliToggle(h.id)}
-                              style={{ cursor: 'pointer' }}
+                              style={{ cursor: 'pointer', flexShrink: 0 }}
                             />
-                            <div style={{ flex: 1, minWidth: 220 }}>
-                              <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+                            {/* minWidth:0 ŞART — yoksa uzun ürün adı grid kolonlarını iter */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }} title={h.urunAd}>
                                 {h.urunAd}
                                 {h.model ? <span style={{ color: 'var(--text-tertiary)' }}> · {h.model}</span> : null}
                               </div>
                               <div className="t-caption" style={{ marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 <span className="tabular-nums">{Number(h.miktar)} {h.birim || 'Adet'}</span>
-                                {h.birimFiyat != null && <span>{fmtPara(h.birimFiyat, h.paraBirimi)} / birim</span>}
+                                {h.birimFiyat != null && <span className="tabular-nums">{fmtPara(h.birimFiyat, h.paraBirimi)} / birim</span>}
                                 {h.stokKodu && <span>{h.stokKodu}</span>}
                                 {h.seriNo && <span>SN: {h.seriNo}</span>}
                                 {h.teknisyen && <span>👤 {h.teknisyen}</span>}
-                                <span>{fmtTarih(h.teslimTarihi || h.olusturmaTarih)}</span>
+                                <span className="tabular-nums">{fmtTarih(h.teslimTarihi || h.olusturmaTarih)}</span>
                                 {gun >= 3 && (
-                                  <span style={{ color: gun >= 15 ? '#dc2626' : '#f59e0b', fontWeight: 600 }}>
+                                  <span style={{ color: gun >= 15 ? '#dc2626' : 'var(--text-secondary)', fontWeight: 600 }}>
                                     {gun} gündür bekliyor
+                                  </span>
+                                )}
+                                {h.proformaNo && h.faturaDurumu !== 'faturalandi' && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                    <Receipt size={11} strokeWidth={1.5} /> {h.proformaNo}
                                   </span>
                                 )}
                               </div>
@@ -498,24 +553,30 @@ export default function KullanilanMalzemeler() {
                                 </div>
                               )}
                             </div>
-                            <KaynakRozet h={h} navigate={navigate} />
-                            {h.proformaNo && h.faturaDurumu !== 'faturalandi' && (
-                              <Badge style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)' }}>
-                                <Receipt size={11} /> {h.proformaNo}
-                              </Badge>
-                            )}
-                            <DurumRozet h={h} />
-                            <TeslimRozet h={h} onDegistir={teslimDegistir} mesgul={teslimMesgul === h.id} />
-                            <button
-                              title="İşlem geçmişi"
-                              onClick={() => setGecmisAcik(p => ({ ...p, [h.id]: !p[h.id] }))}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4, display: 'inline-flex' }}
-                            >
-                              <History size={14} strokeWidth={1.5} />
-                            </button>
-                            <Button size="sm" variant="secondary" onClick={() => setDurumModal({ hareketler: [h] })}>
-                              Durum
-                            </Button>
+                            {/* Sabit ızgara: her satırda kaynak / fatura / teslim / geçmiş /
+                                buton aynı x'te başlar. Eskiden akışa bırakılmıştı. */}
+                            <div style={{
+                              display: 'grid', gridTemplateColumns: SAG_IZGARA,
+                              alignItems: 'center', gap: 8, flexShrink: 0,
+                            }}>
+                              <KaynakRozet h={h} navigate={navigate} />
+                              <DurumRozet h={h} />
+                              <TeslimRozet h={h} onDegistir={teslimDegistir} mesgul={teslimMesgul === h.id} />
+                              <button
+                                title="İşlem geçmişi"
+                                onClick={() => setGecmisAcik(p => ({ ...p, [h.id]: !p[h.id] }))}
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer',
+                                  color: 'var(--text-tertiary)', padding: 4,
+                                  display: 'inline-flex', justifyContent: 'center',
+                                }}
+                              >
+                                <History size={14} strokeWidth={1.5} />
+                              </button>
+                              <Button size="sm" variant="secondary" onClick={() => setDurumModal({ hareketler: [h] })}>
+                                Durum
+                              </Button>
+                            </div>
                           </div>
                           {gecmisAcik[h.id] && (
                             <div style={{ padding: '6px 14px 12px 40px', background: 'var(--surface-sunken)' }}>
