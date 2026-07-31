@@ -293,7 +293,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
         Buraya eklenenler müşteri servis formundaki “Yedek Parçalar” listesine aynen basılır.
       </p>
 
-      {/* NOT: 'planlanan' satırlar artık ÜSTTEKİ "Kullanılacak Malzemeler"
+      {/* NOT: 'planlanan' satırlar hemen ALTTAKİ "Kullanılacak Malzemeler"
           kartında yönetiliyor (ServisMalzemePlanCard) — iki yerde birden
           göstermek karışıklık yaratıyordu. Bu kart yalnız KULLANILAN
           malzemeleri (müşteri formuna basılanları) tutar. */}

@@ -479,6 +479,23 @@ export default function ServisTalepDetay() {
           <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo}
             musteriId={talep.musteriId} musteriAd={talep.firmaAdi || talep.musteriAd} />
 
+          {/* Kullanılacak Malzemeler (İÇ NOT) — teknisyen sahaya çıkmadan
+              önce hazırlanacak liste. Serbest metin yerine STOK KALEMİ seçilir
+              (keşif/teklif deseni). Stok düşmez, zimmet oluşmaz, müşteri servis
+              formunda GÖRÜNMEZ — kullanıcı kararı 28.07: "sadece gösterecek,
+              teslim almıyor, denetim istemiyorum". Eski serbest metin alanı
+              kartın altında "Ek not" olarak yaşamaya devam eder.
+              Konum: sayfanın dibindeydi, gözden kaçıyordu — iki malzeme kartı
+              yan yana dursun diye Kullanılan Malzemeler'in altına alındı (31.07). */}
+          <ServisMalzemePlanCard
+            servisId={talep.id}
+            servisKodu={talep.talepNo}
+            notMetni={talep.kullanilacakMalzemeler || ''}
+            onNotKaydet={async (metin) => {
+              await talepGuncelle(talep.id, { kullanilacakMalzemeler: metin }, kullanici.ad, 'Kullanılacak malzeme notu güncellendi')
+            }}
+          />
+
           {/* Teknisyen envanterinden düşen S/N cihazlar (mobil teslim al → kullan) */}
           <TeknisyenDusumKart servisTalepId={talep.id} />
 
@@ -662,21 +679,6 @@ export default function ServisTalepDetay() {
               ))}
             </div>
           </Card>
-
-          {/* Kullanılacak Malzemeler (İÇ NOT) — teknisyen sahaya çıkmadan
-              önce hazırlanacak liste. Serbest metin yerine STOK KALEMİ seçilir
-              (keşif/teklif deseni). Stok düşmez, zimmet oluşmaz, müşteri servis
-              formunda GÖRÜNMEZ — kullanıcı kararı 28.07: "sadece gösterecek,
-              teslim almıyor, denetim istemiyorum". Eski serbest metin alanı
-              kartın altında "Ek not" olarak yaşamaya devam eder. */}
-          <ServisMalzemePlanCard
-            servisId={talep.id}
-            servisKodu={talep.talepNo}
-            notMetni={talep.kullanilacakMalzemeler || ''}
-            onNotKaydet={async (metin) => {
-              await talepGuncelle(talep.id, { kullanilacakMalzemeler: metin }, kullanici.ad, 'Kullanılacak malzeme notu güncellendi')
-            }}
-          />
 
           {/* Bağlı görev yorumları (read-only) — talep görevden oluşturulduysa */}
           {bagliGorev && (bagliGorev.yorumlar || []).length > 0 && (
