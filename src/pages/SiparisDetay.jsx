@@ -11,6 +11,7 @@ import {
 import { siparistenMontajServisi, montajSorumlusuGetir, servisTalebiBildirimGonder } from '../services/servisService'
 import { siparistenFaturaTalebiAc, siparisFaturaTalebiGetir } from '../services/faturaTalepService'
 import { useConfirm } from '../context/ConfirmContext'
+import AlisFaturaKarti from '../components/AlisFaturaKarti'
 import { musteriGetir } from '../services/musteriService'
 import { gorusmeGetir } from '../services/gorusmeService'
 import { useAuth } from '../context/AuthContext'
@@ -289,7 +290,7 @@ export default function SiparisDetay() {
           ) : (
             <Button variant="secondary" iconLeft={<Receipt size={14} />}
               onClick={() => { setFaturaNot(''); setFaturaModalAcik(true) }}>
-              Fatura Kesilecek
+              Müşteriye Fatura Kesilecek
             </Button>
           )
         )}
@@ -396,6 +397,11 @@ export default function SiparisDetay() {
               </Button>
             )}
           </Card>
+
+          {/* Tedarikçi (alış) faturaları — mig 249.
+              DİKKAT: buradaki faturalar bize KESİLEN faturalardır; yukarıdaki
+              "Müşteriye Fatura Kesilecek" butonu ise GİDEN proformayı açar. */}
+          <AlisFaturaKarti siparis={siparis} />
 
           {/* Onay bilgileri */}
           <Card style={{ padding: 16 }}>
