@@ -6,12 +6,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import {
-  Package, ChevronDown, ChevronRight, Receipt, Clock, Plus, History, X, FileDown, Send,
+  Package, ChevronDown, ChevronRight, Receipt, Clock, Plus, History, X, FileDown, Send, Truck,
 } from 'lucide-react'
 import { Card, Badge, EmptyState, SearchInput, Modal, Button, Input, Label, Textarea } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import {
   FATURA_DURUM, KAYNAK_META, ACIKLAMA_ZORUNLU, YONETICI_ONAYLI, BEKLEYEN_DURUMLAR,
+  TESLIM_DURUM, teslimSonraki, teslimDurumuAyarla,
   hareketleriGetir, hareketGuncelle, manuelHareketEkle, bekleyenGun, bekleyenTutar,
   hareketlerdenProformaAc,
 } from '../services/malzemeHareketService'
@@ -71,6 +72,36 @@ function KaynakRozet({ h, navigate }) {
   )
 }
 
+// Teslim durumu rozeti (mig 251) — fatura rozetinin yanında ikinci eksen.
+// Tıklayınca döner: işaretsiz → Teslim Edildi → Teslim Edilmedi → işaretsiz.
+function TeslimRozet({ h, onDegistir, mesgul }) {
+  const m = TESLIM_DURUM[h.teslimDurumu]
+  const renk = m?.renk || 'var(--text-tertiary)'
+  const sonraki = teslimSonraki(h.teslimDurumu)
+  const sonrakiAd = sonraki ? TESLIM_DURUM[sonraki].isim : 'işaretsiz'
+  return (
+    <button
+      onClick={() => onDegistir(h, sonraki)}
+      disabled={mesgul}
+      title={`Teslim durumu: ${m?.isim || 'işaretlenmedi'} — tıkla: ${sonrakiAd}`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+        background: m ? `${renk}18` : 'transparent',
+        color: renk,
+        border: `1px solid ${m ? `${renk}55` : 'var(--border-default)'}`,
+        borderStyle: m ? 'solid' : 'dashed',
+        font: '600 10.5px/14px var(--font-sans)',
+        cursor: mesgul ? 'progress' : 'pointer', whiteSpace: 'nowrap',
+        opacity: mesgul ? 0.5 : 1,
+      }}
+    >
+      {m ? <Truck size={11} strokeWidth={2} /> : null}
+      {m?.kisa || 'Teslim ?'}
+    </button>
+  )
+}
+
 export default function KullanilanMalzemeler() {
   const navigate = useNavigate()
   const { kullanici } = useAuth()
@@ -82,6 +113,8 @@ export default function KullanilanMalzemeler() {
   const [sekme, setSekme] = useState('hepsi') // hepsi | kesilmemis | proforma | kismen | faturalandi | sure
   const [sureEsik, setSureEsik] = useState(3)
   const [kaynakFiltre, setKaynakFiltre] = useState('')
+  const [teslimFiltre, setTeslimFiltre] = useState('')   // '' | teslim_edildi | teslim_edilmedi | isaretsiz
+  const [teslimMesgul, setTeslimMesgul] = useState(null) // güncellenmekte olan hareket id
   const [arama, setArama] = useState('')
   const [acikMusteriler, setAcikMusteriler] = useState({})
   const [gecmisAcik, setGecmisAcik] = useState({})       // hareketId → bool
@@ -104,12 +137,45 @@ export default function KullanilanMalzemeler() {
       if (bekleyenGun(h) < sureEsik) return false
     } else if (sekme !== 'hepsi' && !SEKME_DURUM[sekme]?.includes(h.faturaDurumu)) return false
     if (kaynakFiltre && h.kaynak !== kaynakFiltre) return false
+    if (teslimFiltre === 'isaretsiz') { if (h.teslimDurumu) return false }
+    else if (teslimFiltre && h.teslimDurumu !== teslimFiltre) return false
     if (arama.trim()) {
       const metin = `${h.musteriAd || ''} ${h.urunAd || ''} ${h.model || ''} ${h.stokKodu || ''} ${h.seriNo || ''} ${h.kaynakNo || ''} ${h.proformaNo || ''} ${h.faturaNo || ''} ${h.teknisyen || ''}`
       if (!trContains(metin, arama)) return false
     }
     return true
-  }), [hareketler, sekme, sureEsik, kaynakFiltre, arama])
+  }), [hareketler, sekme, sureEsik, kaynakFiltre, teslimFiltre, arama])
+
+  // Teslim rozetine tıklama — iyimser güncelleme yok, DB'den dönen satır yazılır
+  const teslimDegistir = async (h, yeniDurum) => {
+    setTeslimMesgul(h.id)
+    try {
+      const [guncel] = await teslimDurumuAyarla([h], yeniDurum, kullanici)
+      setHareketler(prev => prev.map(x => x.id === guncel.id ? guncel : x))
+    } catch (e) {
+      toast.error('Teslim durumu kaydedilemedi: ' + (e?.message || ''))
+    } finally {
+      setTeslimMesgul(null)
+    }
+  }
+
+  // Seçili satırların tamamına aynı teslim durumunu uygula
+  const topluTeslim = async (yeniDurum) => {
+    const secilenler = hareketler.filter(h => secili.has(h.id))
+    if (!secilenler.length) return
+    setTeslimMesgul('toplu')
+    try {
+      const guncelListe = await teslimDurumuAyarla(secilenler, yeniDurum, kullanici)
+      const harita = new Map(guncelListe.map(g => [g.id, g]))
+      setHareketler(prev => prev.map(x => harita.get(x.id) || x))
+      setSecili(new Set())
+      toast.success(`${guncelListe.length} kayıt "${TESLIM_DURUM[yeniDurum].isim}" işaretlendi.`)
+    } catch (e) {
+      toast.error('Toplu teslim güncellemesi başarısız: ' + (e?.message || ''))
+    } finally {
+      setTeslimMesgul(null)
+    }
+  }
 
   // Müşteri bazlı gruplama (23.2)
   const gruplar = useMemo(() => {
@@ -210,6 +276,7 @@ export default function KullanilanMalzemeler() {
       'Proforma No': h.proformaNo || '',
       'Fatura No': h.faturaNo || '',
       'Fatura Tarihi': h.faturaTarihi || '',
+      'Teslim Durumu': TESLIM_DURUM[h.teslimDurumu]?.isim || '',
       'Teslim Tarihi': (h.teslimTarihi || '').slice(0, 10),
       'Bekleme (gün)': bekleyenGun(h),
       'Teknisyen': h.teknisyen || '',
@@ -259,7 +326,23 @@ export default function KullanilanMalzemeler() {
                 const secilenler = hareketler.filter(h => secili.has(h.id))
                 setDurumModal({ hareketler: secilenler })
               }}>
-                Durum Değiştir ({secili.size})
+                Fatura Durumu ({secili.size})
+              </Button>
+              {/* Teslim durumu toplu — fatura durumundan bağımsız ikinci eksen */}
+              <Button
+                variant="secondary"
+                iconLeft={<Truck size={14} strokeWidth={1.5} />}
+                disabled={teslimMesgul === 'toplu'}
+                onClick={() => topluTeslim('teslim_edildi')}
+              >
+                Teslim Edildi ({secili.size})
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={teslimMesgul === 'toplu'}
+                onClick={() => topluTeslim('teslim_edilmedi')}
+              >
+                Teslim Edilmedi ({secili.size})
               </Button>
             </>
           )}
@@ -319,6 +402,13 @@ export default function KullanilanMalzemeler() {
           <CustomSelect value={kaynakFiltre} onChange={e => setKaynakFiltre(e.target.value)}>
             <option value="">Tüm Kaynaklar</option>
             {Object.entries(KAYNAK_META).map(([k, m]) => <option key={k} value={k}>{m.isim}</option>)}
+          </CustomSelect>
+        </div>
+        <div style={{ minWidth: 180 }}>
+          <CustomSelect value={teslimFiltre} onChange={e => setTeslimFiltre(e.target.value)}>
+            <option value="">Tüm Teslim Durumları</option>
+            {Object.entries(TESLIM_DURUM).map(([k, m]) => <option key={k} value={k}>{m.isim}</option>)}
+            <option value="isaretsiz">İşaretlenmemiş</option>
           </CustomSelect>
         </div>
         {sekme === 'sure' && (
@@ -415,6 +505,7 @@ export default function KullanilanMalzemeler() {
                               </Badge>
                             )}
                             <DurumRozet h={h} />
+                            <TeslimRozet h={h} onDegistir={teslimDegistir} mesgul={teslimMesgul === h.id} />
                             <button
                               title="İşlem geçmişi"
                               onClick={() => setGecmisAcik(p => ({ ...p, [h.id]: !p[h.id] }))}

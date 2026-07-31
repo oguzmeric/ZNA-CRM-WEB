@@ -34,6 +34,21 @@ export const BEKLEYEN_DURUMLAR = [
   'proforma_gonderildi', 'musteri_onayi_bekleniyor', 'kismen_faturalandi', 'fatura_iptal',
 ]
 
+// TESLİM DURUMU (mig 251) — fatura durumundan BAĞIMSIZ ikinci eksen.
+// Faturası kesilmiş ama teslim edilmemiş ya da tersi olabilir; ikisi karışmaz.
+// null = henüz işaretlenmedi ("bilinmiyor"), 'teslim_edilmedi'den farklıdır.
+export const TESLIM_DURUM = {
+  teslim_edildi:   { isim: 'Teslim Edildi',   kisa: 'Teslim Edildi',   renk: '#10b981' },
+  teslim_edilmedi: { isim: 'Teslim Edilmedi', kisa: 'Teslim Edilmedi', renk: '#f97316' },
+}
+
+// Rozete tıklayınca sıradaki duruma geçer: işaretsiz → edildi → edilmedi → işaretsiz
+export const TESLIM_SIRASI = [null, 'teslim_edildi', 'teslim_edilmedi']
+export const teslimSonraki = (mevcut) => {
+  const i = TESLIM_SIRASI.indexOf(mevcut ?? null)
+  return TESLIM_SIRASI[(i + 1) % TESLIM_SIRASI.length]
+}
+
 export const KAYNAK_META = {
   siparis:          { isim: 'Sipariş',          renk: '#3b82f6' },
   servis:           { isim: 'Servis',           renk: '#f59e0b' },
@@ -91,6 +106,35 @@ export const hareketGuncelle = async (hareket, patch, islemDetay, kullanici) => 
     .single()
   if (error) { console.error('[malzemeHareket] güncelle:', error.message); throw error }
   return toCamel(data)
+}
+
+// Teslim durumunu ayarla (mig 251). Tek satır ya da toplu seçim.
+// Fatura durumuna DOKUNMAZ — iki eksen bağımsızdır.
+export const teslimDurumuAyarla = async (hareketler, yeniDurum, kullanici) => {
+  const liste = Array.isArray(hareketler) ? hareketler : [hareketler]
+  if (!liste.length) throw new Error('Kayıt seçilmedi.')
+  if (yeniDurum != null && !TESLIM_DURUM[yeniDurum]) {
+    throw new Error('Geçersiz teslim durumu: ' + yeniDurum)
+  }
+  const etiket = yeniDurum ? TESLIM_DURUM[yeniDurum].isim : 'işaretsiz'
+  // Tek tek: her satırın kendi islem_gecmisi'ne yazmak gerekiyor (jsonb append
+  // için toplu update yeterli değil — geçmiş satır bazlı birikiyor).
+  const sonuc = []
+  for (const h of liste) {
+    const gecmis = [
+      ...(Array.isArray(h.islemGecmisi) ? h.islemGecmisi : []),
+      gecmisGirdisi('teslim', `Teslim durumu: ${etiket}`, kullanici),
+    ]
+    const { data, error } = await supabase
+      .from('malzeme_hareketleri')
+      .update({ teslim_durumu: yeniDurum, islem_gecmisi: gecmis })
+      .eq('id', h.id)
+      .select()
+      .single()
+    if (error) { console.error('[malzemeHareket] teslim:', error.message); throw error }
+    sonuc.push(toCamel(data))
+  }
+  return sonuc
 }
 
 // Manuel / demo / numune teslimi elle ekle (23.1-3)
