@@ -63,13 +63,38 @@ const onizlemeMetni = (icerik = '') => {
 
 export function ChatProvider({ children }) {
   const { kullanici, kullanicilar } = useAuth()
-  const toast = useToast()
+  // DİKKAT: destructuring ŞART. `const toast = useToast()` context objesinin
+  // KENDİSİNİ verir ({ showToast, toast }) → toast.info undefined olur ve
+  // `toast?.info?.(...)` optional-call sayesinde hata bile fırlatmadan sessizce
+  // hiçbir şey yapmaz. Bu yüzden yeni mesaj bildirimi HİÇ çıkmıyordu; aynı
+  // sebeple "Mesaj gönderilemedi" / "Sohbet açılamadı" hataları da yutuluyordu.
+  const { toast } = useToast()
   const [mesajlar, setMesajlar] = useState([])
   const [sohbetler, setSohbetler] = useState([])
   const [okunmamis, setOkunmamis] = useState(0)
   const [cevrimiciIdSeti, setCevrimiciIdSeti] = useState(() => new Set())
   // Açık olan sohbetin anahtarı: 'k:<kisiId>' veya 'g:<sohbetId>'
   const aktifKonusmaRef = useRef(null)
+
+  // ---- Mini sohbet penceresi (sağ alt) ----
+  // Durum sayfa bileşenlerinde DEĞİL burada: pencere MainLayout'ta Routes'un
+  // dışında yaşıyor, ayrıca ileride "müşteri detayından bu kişiye yaz" gibi
+  // giriş noktaları eklenince her yerden pencereAc(...) çağrılabilsin.
+  const [pencereAcik, setPencereAcik] = useState(false)
+  const [pencereHedef, setPencereHedef] = useState(null)   // null | { tip:'kisi'|'grup', id }
+  const [pencereKucuk, setPencereKucuk] = useState(false)
+
+  const pencereAc = useCallback((hedef = null) => {
+    setPencereHedef(hedef)
+    setPencereKucuk(false)
+    setPencereAcik(true)
+  }, [])
+  const pencereKapat = useCallback(() => {
+    setPencereAcik(false)
+    setPencereKucuk(false)
+  }, [])
+  const pencereKucult = useCallback((deger = true) => setPencereKucuk(!!deger), [])
+  const pencereHedefSec = useCallback((hedef) => setPencereHedef(hedef), [])
 
   const sohbetleriYenile = useCallback(async () => {
     if (!kullanici?.id) { setSohbetler([]); return [] }
@@ -416,6 +441,14 @@ export function ChatProvider({ children }) {
       grupOkunmamisSay,
       cevrimiciMi,
       efektifDurum,
+      // Mini pencere
+      pencereAcik,
+      pencereHedef,
+      pencereKucuk,
+      pencereAc,
+      pencereKapat,
+      pencereKucult,
+      pencereHedefSec,
     }}>
       {children}
     </ChatContext.Provider>

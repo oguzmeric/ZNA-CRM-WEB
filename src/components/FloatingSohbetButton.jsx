@@ -1,15 +1,17 @@
-// Sag alt kosede floating sohbet butonu — her sayfadan tek tikla /chat'e gider.
+// Sag alt kosede floating sohbet butonu — MİNİ PENCEREYİ açar (eskiden /chat'e
+// gidiyordu; kullanıcı "bir sayfada çalışırken oradan sohbeti sürdürmek"
+// istediği için sayfadan ayırmıyoruz artık). Tam sayfaya geçiş pencerenin
+// içindeki büyüt düğmesinde.
 // Okunmamis mesaj varsa pulse animasyonu + rozet sayisi gosterir.
 // /chat sayfasindayken kendini gizler (mukerrer islev).
 
 import { MessageSquare } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useChat } from '../context/ChatContext'
 
 export default function FloatingSohbetButton() {
-  const navigate = useNavigate()
   const location = useLocation()
-  const { okunmamis } = useChat()
+  const { okunmamis, pencereAcik, pencereAc, pencereKapat } = useChat()
 
   // Chat sayfasinda gizle (zaten oradayız)
   if (location.pathname === '/chat') return null
@@ -31,7 +33,7 @@ export default function FloatingSohbetButton() {
       `}</style>
       <button
         className="sohbet-fab"
-        onClick={() => navigate('/chat')}
+        onClick={() => (pencereAcik ? pencereKapat() : pencereAc(null))}
         title={varOkunmamis ? `${okunmamis} okunmamış mesaj` : 'Sohbet'}
         style={{
           position: 'fixed',

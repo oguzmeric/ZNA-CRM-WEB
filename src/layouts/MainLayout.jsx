@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
+import SohbetPenceresi from '../components/SohbetPenceresi'
 import GecikmisGorevKapisi from '../components/GecikmisGorevKapisi'
 import FloatingZeynaButton from '../components/FloatingZeynaButton'
 import GlobalBarkodAra from '../components/GlobalBarkodAra'
@@ -1188,6 +1189,10 @@ function MainLayout({ children }) {
       {/* Gecikmiş görev kapısı — ek süre girilmeden CRM kullanılamaz (2026-07-19) */}
       <GecikmisGorevKapisi />
       <FloatingSohbetButton />
+      {/* Mini sohbet penceresi — butonun KARDEŞİ, içinde değil: buton /chat ve
+          yazdır sayfalarında erken return yapıyor, pencere de onunla kaybolurdu.
+          Routes'un dışında olduğu için sayfa değişince kapanmaz. */}
+      <SohbetPenceresi />
       <FloatingZeynaButton />
       <GlobalBarkodAra />
     </div>
