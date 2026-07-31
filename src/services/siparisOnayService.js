@@ -231,6 +231,10 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
         birim: s.birim || 'Adet',
         miktar,
         birim_fiyat: fiyat,
+        // Teklifte girilen alış (maliyet) siparişe TAŞINMALI. Bu satır eksikti:
+        // kolon `not null default 0` olduğu için maliyet sessizce 0 yazılıyordu ve
+        // kâr analizinde o siparişin tamamı kâr gibi görünüyordu.
+        alis_fiyat: Number(s.alisFiyat || 0),
         iskonto_orani: isk,
         kdv_orani: Number(s.kdv || 20),
         ara_toplam: miktar * fiyat * (1 - isk / 100),
