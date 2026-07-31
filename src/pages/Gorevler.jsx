@@ -37,7 +37,7 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import LokasyonYonetModal from '../components/LokasyonYonetModal'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import CustomSelect from '../components/CustomSelect'
-import { EkSecici, panodanResimler } from '../components/EkAlani'
+import { EkSecici, EkListesi, panodanResimler } from '../components/EkAlani'
 import { ekleriYukle } from '../lib/ekDosya'
 import { SkeletonList } from '../components/Skeleton'
 import {
@@ -387,7 +387,8 @@ function Gorevler() {
   const [filtre, setFiltre] = useState('hepsi')
   const [kisiFiltre, setKisiFiltre] = useState('')
   const [sadeceBenim, setSadeceBenim] = useState(false) // "Görevlerim" — bana atanan + ekip
-  const [gorevEkleri, setGorevEkleri] = useState([])    // yeni görev ekleri (File[], mig 184)
+  const [gorevEkleri, setGorevEkleri] = useState([])    // formda seçilen YENİ ekler (File[], mig 184)
+  const [mevcutEkler, setMevcutEkler] = useState([])    // düzenlemede görevde zaten ekli olanlar (meta[])
   const [kaydetMesgul, setKaydetMesgul] = useState(false)
 
   // Liste görünümü için sütun filtreleri + sayfalama
@@ -729,6 +730,25 @@ function Gorevler() {
 
     if (duzenleId) {
       const eski = gorevler.find(g => g.id === duzenleId)
+      // Düzenlemede eklenen yeni dosyalar — MEVCUTLARIN ÜSTÜNE eklenir.
+      // payload.dosyalar sadece yeni ek varsa yazılır; yoksa alan hiç gönderilmez
+      // ki mevcut liste yanlışlıkla boşalmasın.
+      if (gorevEkleri.length) {
+        setKaydetMesgul(true)
+        try {
+          // Mevcut listeyi KAYDETME ANINDA tazele: form açıkken başkası ek
+          // eklemiş olabilir ve bayat listeyle yazmak onun eklerini silerdi.
+          const taze = await gorevGetir(duzenleId).catch(() => null)
+          const oncekiler = Array.isArray(taze?.dosyalar) ? taze.dosyalar : mevcutEkler
+          const yuklenen = await ekleriYukle('gorev-dosyalar', gorevEkleri)
+          payload.dosyalar = [...oncekiler, ...yuklenen]
+        } catch (e) {
+          toast.error('Dosya yüklenemedi: ' + (e?.message || 'hata'))
+          setKaydetMesgul(false)
+          return
+        }
+        setKaydetMesgul(false)
+      }
       // Atanan DEĞİŞTİYSE kabul akışı sıfırlanır — yeni sorumlu kabul barını
       // görmeli (gorevDevret ile aynı reset; denetim bulgusu 2026-07-19)
       if (eski && String(eski.atananId ?? eski.atanan ?? '') !== String(form.atanan)) {
@@ -816,11 +836,11 @@ function Gorevler() {
         }
       } else { toast.error('Görev kaydedilemedi.'); return }
     }
-    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([]); setDetayYuklendi(true); setGelismisAcik(false)
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([]); setMevcutEkler([]); setDetayYuklendi(true); setGelismisAcik(false)
   }
 
   const iptal = () => {
-    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([]); setDetayYuklendi(true); setGelismisAcik(false)
+    setForm(bosForm); setDuzenleId(null); setGoster(false); setGorevEkleri([]); setMevcutEkler([]); setDetayYuklendi(true); setGelismisAcik(false)
     // Garantiye al: detay sayfasından gelinmişse de listeye dön
     if (location.pathname !== '/gorevler') navigate('/gorevler', { replace: true })
   }
@@ -873,6 +893,9 @@ function Gorevler() {
     // Tam kaydı çek (beklenenCikti + hatirlatmalar) — inene kadar bu iki alan
     // update payload'undan çıkarılır ki mevcut değerler yanlışlıkla silinmesin.
     setDetayYuklendi(false)
+    // Yeni ek seçimi her düzenlemede sıfırdan başlar; mevcut ekler ayrı tutulur
+    setGorevEkleri([])
+    setMevcutEkler(Array.isArray(g.dosyalar) ? g.dosyalar : [])
     duzenleFetchRef.current = g.id
     gorevGetir(g.id).then(tam => {
       if (duzenleFetchRef.current !== g.id || !tam) return
@@ -881,6 +904,8 @@ function Gorevler() {
         beklenenCikti: tam.beklenenCikti || '',
         hatirlatmaSecim: hatirlatmalardanSecim(tam.hatirlatmalar),
       }))
+      // Liste sorgusu dosyalar kolonunu taşımayabilir — tam kayıt kesin taşır
+      setMevcutEkler(Array.isArray(tam.dosyalar) ? tam.dosyalar : [])
       setDetayYuklendi(true)
     }).catch(() => {})
     // Lokasyonları çek (varsa dropdown göstereceğiz)
@@ -1335,7 +1360,7 @@ function Gorevler() {
               onChange={e => setForm({ ...form, aciklama: e.target.value })}
               rows={3}
               placeholder="Görev detayları… (Ctrl+V ile ekran görüntüsü yapıştırabilirsin)"
-              onPaste={duzenleId ? undefined : (e) => {
+              onPaste={(e) => {
                 const resimler = panodanResimler(e)
                 if (resimler.length) { e.preventDefault(); setGorevEkleri(prev => [...prev, ...resimler]) }
               }}
@@ -1487,12 +1512,18 @@ function Gorevler() {
             </div>
           )}
 
-          {/* Ekler — yeni görevde dosya/resim (mig 184) */}
-          {!duzenleId && (
-            <div style={{ marginBottom: 16 }}>
-              <EkSecici dosyalar={gorevEkleri} onChange={setGorevEkleri} disabled={kaydetMesgul} />
-            </div>
-          )}
+          {/* Ekler — dosya/resim (mig 184). Düzenlemede de açık: Salih Çakmaklı
+              31.07'de "düzenlemeye girince foto ekleyemiyorum" diye bildirdi.
+              Düzenlemede seçilenler MEVCUT eklerin üstüne EKLENİR, silmez. */}
+          <div style={{ marginBottom: 16 }}>
+            {duzenleId && mevcutEkler.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <Label>Görevde ekli dosyalar ({mevcutEkler.length})</Label>
+                <EkListesi dosyalar={mevcutEkler} />
+              </div>
+            )}
+            <EkSecici dosyalar={gorevEkleri} onChange={setGorevEkleri} disabled={kaydetMesgul} />
+          </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="primary" onClick={kaydet} disabled={kaydetMesgul}>
