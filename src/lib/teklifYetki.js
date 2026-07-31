@@ -19,3 +19,22 @@ export function teklifGorebilirMi(kullanici) {
   if (kullanici.rol === 'admin') return true
   return Array.isArray(kullanici.moduller) && kullanici.moduller.includes('teklifler')
 }
+
+/**
+ * "Yönetici Onayı" verme ve teklif yönetici onayındayken durum değiştirme.
+ *
+ * Eskiden yalnız `rol === 'admin'` idi; bu, teklif yetkisini SİSTEM GENELİNDE
+ * admin olmaya bağlıyordu. Abdullah İğde (44, Muhasebe müdürü) teklif tarafında
+ * tam yetki alacaktı ama admin yapılması gereksiz genişlikte olurdu (tüm
+ * modüller, tüm yönetim ekranları). Bunun için zaten amaca özel bir bayrak var:
+ * teklif_onay_ust_yetkili. Yetki artık ROLE değil O BAYRAĞA bakıyor.
+ *
+ * Kapsam kontrolü: bayrak bugün Ali (1), Oğuz (2), Ahmet Agun (29) — üçü de
+ * zaten admin — ve Abdullah (44). Yani kural genişlemesi yalnız Abdullah'ı
+ * etkiliyor, kimsenin yetkisi daralmıyor.
+ */
+export function teklifYoneticiOnayiVerebilir(kullanici) {
+  if (!kullanici) return false
+  if (kullanici.rol === 'admin') return true
+  return kullanici.teklifOnayUstYetkili === true || kullanici.teklif_onay_ust_yetkili === true
+}

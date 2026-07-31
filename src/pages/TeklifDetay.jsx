@@ -45,6 +45,7 @@ import HizliStokEkleModal from '../components/HizliStokEkleModal'
 import HizliMusteriEkleModal from '../components/HizliMusteriEkleModal'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonDetay } from '../components/Skeleton'
+import { teklifYoneticiOnayiVerebilir } from '../lib/teklifYetki'
 import {
   Button, Input, Textarea, Label, Card, CardTitle, Badge, CodeBadge,
   Alert, EmptyState, Table, THead, TBody, TR, TH, TD, SegmentedControl, Modal,
@@ -141,6 +142,10 @@ function TeklifDetay() {
   const { hatirlatmaEkle, teklifHatirlatmasi, hatirlatmaSil } = useHatirlatma()
   const { toast } = useToast()
   const { confirm } = useConfirm()
+  // Yönetici onayı / onay aşamasındaki durum geçişleri. Artık role değil
+  // teklif_onay_ust_yetkili bayrağına bakıyor — muhasebe müdürü gibi teklif
+  // tarafında tam yetkili kişiler sistem geneline admin yapılmadan geçebilsin.
+  const yonOnayYetkisi = teklifYoneticiOnayiVerebilir(kullanici)
   const yeni = id === 'yeni'
 
   const [musteriler, setMusteriler] = useState([])
@@ -857,16 +862,16 @@ function TeklifDetay() {
 
   // Durum değiştirme (spec 10 durum) — durumModalAcik state yukarıda Rules of Hooks uyumlu
   const durumuDegistir = async (yeniDurum) => {
-    // YÖNETİCİ ONAYI yalnız admin verebilir — modal herkese açık olduğundan
+    // YÖNETİCİ ONAYI yalnız yetkili verebilir — modal herkese açık olduğundan
     // buton gizlense bile fonksiyon seviyesinde de kilitli (çift katman).
-    if (yeniDurum === TEKLIF_DURUM.YON_ONAYLADI && kullanici?.rol !== 'admin') {
-      toast.error('Yönetici onayını yalnız admin yetkisine sahip kullanıcılar verebilir.')
+    if (yeniDurum === TEKLIF_DURUM.YON_ONAYLADI && !yonOnayYetkisi) {
+      toast.error('Yönetici onayını yalnız teklif onay üst yetkilisi verebilir.')
       return
     }
-    // Teklif yönetici onayındayken durum tamamen adminin elinde — personelin
+    // Teklif yönetici onayındayken durum tamamen yetkilinin elinde — personelin
     // "Revizyon İstendi"ye basıp süreci karıştırması engellenir (Tarık vakası).
-    if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && kullanici?.rol !== 'admin') {
-      toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız admin değiştirebilir.')
+    if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && !yonOnayYetkisi) {
+      toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız onay yetkilisi değiştirebilir.')
       return
     }
     const alanlar = durumdanDbAlanlar(yeniDurum) // { spekDurum, onayDurumu }
@@ -1073,9 +1078,9 @@ function TeklifDetay() {
               <button
                 type="button"
                 onClick={() => {
-                  // Yönetici onayı aşamasında durum rozetine yalnız admin dokunur
-                  if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && kullanici?.rol !== 'admin') {
-                    toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız admin değiştirebilir.')
+                  // Yönetici onayı aşamasında durum rozetine yalnız yetkili dokunur
+                  if (spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR && !yonOnayYetkisi) {
+                    toast.error('Teklif yönetici onayında — bu aşamada durumu yalnız onay yetkilisi değiştirebilir.')
                     return
                   }
                   setDurumModalAcik(true)
@@ -2787,16 +2792,16 @@ function TeklifDetay() {
                 }
                 return secenekler.map(k => {
                   const meta = TEKLIF_DURUM_META[k]
-                  // Yönetici onayı yalnız admin; onay AŞAMASINDAYKEN de tüm geçişler
-                  // (Revizyon İstendi dahil) yalnız admin — personel karıştıramaz
-                  const kilitli = kullanici?.rol !== 'admin' &&
+                  // Yönetici onayı yalnız yetkili; onay AŞAMASINDAYKEN de tüm geçişler
+                  // (Revizyon İstendi dahil) yetkiliye ait — personel karıştıramaz
+                  const kilitli = !yonOnayYetkisi &&
                     (k === TEKLIF_DURUM.YON_ONAYLADI || spekDurumKey === TEKLIF_DURUM.YON_ONAY_BEKLIYOR)
                   return (
                     <button
                       key={k}
                       onClick={() => !kilitli && durumuDegistir(k)}
                       disabled={kilitli}
-                      title={kilitli ? 'Teklif yönetici onayında — bu geçişi yalnız admin yapabilir' : undefined}
+                      title={kilitli ? 'Teklif yönetici onayında — bu geçişi yalnız onay yetkilisi yapabilir' : undefined}
                       style={{
                         padding: '10px 12px', borderRadius: 8,
                         background: kilitli ? 'var(--surface-subtle)' : `${meta.renk}18`,
@@ -2813,9 +2818,9 @@ function TeklifDetay() {
               })()}
             </div>
 
-            {/* Serbest geçiş listesi adı üstünde ADMIN — herkese görünüyordu,
-                Hasan/Tarık gibi personel buradan onay verebiliyordu. */}
-            {kullanici?.rol === 'admin' && (
+            {/* Serbest geçiş listesi — herkese görünüyordu, Hasan/Tarık gibi
+                personel buradan onay verebiliyordu. Artık onay yetkilisine ait. */}
+            {yonOnayYetkisi && (
             <details style={{ marginBottom: 12 }}>
               <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.3 }}>
                 TÜM DURUMLAR (ADMIN GEÇIŞ)
