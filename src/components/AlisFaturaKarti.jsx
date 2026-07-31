@@ -187,6 +187,8 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
     : null)
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
+  const [toplam, setToplam] = useState(0)
+  const [tumCariler, setTumCariler] = useState(false)
   const [araniyor, setAraniyor] = useState(false)
   // Cari bağı olmayan eski kayıt düzenlenirken doğrudan serbest metin açılır
   const [serbest, setSerbest] = useState(() => !!mevcut && !mevcut.tedarikciMusteriId)
@@ -201,11 +203,11 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
     let iptal = false
     setAraniyor(true)
     const t = setTimeout(async () => {
-      const liste = await tedarikciAra(arama)
-      if (!iptal) { setSonuclar(liste); setAraniyor(false) }
+      const { liste, toplam: adet } = await tedarikciAra(arama, { tumCariler })
+      if (!iptal) { setSonuclar(liste); setToplam(adet); setAraniyor(false) }
     }, 280)
     return () => { iptal = true; clearTimeout(t) }
-  }, [arama, serbest])
+  }, [arama, serbest, tumCariler])
 
   const kaydet = async () => {
     // Düzenlemede dosya zorunlu değil — sadece künye düzeltiliyor olabilir
@@ -271,7 +273,8 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
                   <div style={{ padding: 10, fontSize: 12, color: 'var(--text-tertiary)' }}>Aranıyor…</div>
                 ) : sonuclar.length === 0 ? (
                   <div style={{ padding: 10, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    Eşleşen cari bulunamadı — “Listede yok, elle yaz” ile devam edebilirsiniz.
+                    Eşleşen cari bulunamadı — “Tüm carilerde ara”yı deneyin ya da
+                    “Listede yok, elle yaz” ile devam edin.
                   </div>
                 ) : sonuclar.map(m => (
                   <button key={m.id} onClick={() => setTedarikci(m)}
@@ -286,6 +289,19 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
                     </div>
                   </button>
                 ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  {toplam > sonuclar.length
+                    ? `${sonuclar.length} / ${toplam} kayıt — daraltmak için yazın`
+                    : `${sonuclar.length} kayıt`}
+                  {!tumCariler && ' · tedarikçi carileri (320 / 336)'}
+                </span>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                  <input type="checkbox" checked={tumCariler} onChange={e => setTumCariler(e.target.checked)}
+                    style={{ width: 14, height: 14, accentColor: 'var(--brand-primary)' }} />
+                  Tüm carilerde ara
+                </label>
               </div>
             </>
           )}

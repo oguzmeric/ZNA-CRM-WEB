@@ -12,10 +12,23 @@ import { toCamel, arrayToCamel } from '../lib/mapper'
 
 const BUCKET = 'alis-fatura-belge'
 
-// Muhasebe hesap kodu öneki: Tekdüzen Hesap Planı'nda 320 = SATICILAR.
-// Cari kartlar musteriler tablosuna aktarılmış durumda (227 adet); ayrı bir
-// tedarikçi tablosu yok, olanı kullanıyoruz.
-export const TEDARIKCI_KOD_ONEKI = '320'
+/**
+ * Tedarikçi cari kartlarının kod desenleri (musteriler tablosunda; ayrı bir
+ * tedarikçi tablosu yok, muhasebeden aktarılan cariler burada duruyor).
+ *
+ * Canlı dağılım (31.07.2026) — bize FATURA KESEN taraflar:
+ *   320…    SATICILAR                              227
+ *   AK320…  SATICILAR (farklı önekle aktarılmış)   113
+ *   336…    Diğer çeşitli borçlar (kargo, matbaa,
+ *           hizmet — hepsi bize fatura keser)      307
+ *                                          TOPLAM  647
+ *
+ * ⚠️ Yalnız '320%' filtrelemek 647 kartın 227'sini gösteriyordu ("çok az
+ * tedarikçi çıkıyor" şikâyeti buydu). Karşı taraf: 120… = ALICILAR (müşteri)
+ * ve 202…/2025… = CRM'in kendi ürettiği tarih bazlı müşteri kodları — onlar
+ * bu listede olmamalı.
+ */
+export const TEDARIKCI_KOD_DESENLERI = ['320%', 'AK320%', '336%']
 
 // ---------- Okuma ----------
 
@@ -54,26 +67,30 @@ export const alisFaturaOzetleri = async (siparisIdler) => {
  * eşleşmez — bu yüzden sonuç ayrıca istemcide toLocaleLowerCase('tr') ile
  * süzülür; kullanıcı "işlem" yazınca "İŞLEM" kaydını da bulsun.
  */
-export const tedarikciAra = async (q, limit = 20) => {
+export const tedarikciAra = async (q, { limit = 40, tumCariler = false } = {}) => {
   const arama = (q || '').trim()
   let sorgu = supabase
     .from('musteriler')
-    .select('id, firma, kod, vergi_no, vergi_dairesi')
-    .like('kod', `${TEDARIKCI_KOD_ONEKI}%`)
+    .select('id, firma, kod, vergi_no, vergi_dairesi', { count: 'exact' })
     .order('firma', { ascending: true })
-    .limit(arama ? 200 : limit)
+    .limit(arama ? 300 : limit)
+
+  // tumCariler: aynı firma hem müşterimiz hem tedarikçimiz olabilir ve yalnız
+  // 120'li kartı bulunabilir — kullanıcı kutuyu işaretleyip tüm carilerde arar.
+  if (!tumCariler) sorgu = sorgu.or(TEDARIKCI_KOD_DESENLERI.map(d => `kod.like.${d}`).join(','))
   if (arama) sorgu = sorgu.or(`firma.ilike.%${arama}%,kod.ilike.%${arama}%,vergi_no.ilike.%${arama}%`)
 
-  const { data, error } = await sorgu
-  if (error) { console.error('tedarikciAra hata:', error.message); return [] }
+  const { data, error, count } = await sorgu
+  if (error) { console.error('tedarikciAra hata:', error.message); return { liste: [], toplam: 0 } }
   const liste = arrayToCamel(data || [])
-  if (!arama) return liste
+  if (!arama) return { liste, toplam: count ?? liste.length }
 
   const kucuk = (s) => (s || '').toLocaleLowerCase('tr')
   const hedef = kucuk(arama)
   const tr = liste.filter(m =>
     kucuk(m.firma).includes(hedef) || kucuk(m.kod).includes(hedef) || kucuk(m.vergiNo).includes(hedef))
-  return (tr.length ? tr : liste).slice(0, limit)
+  const sonuc = (tr.length ? tr : liste)
+  return { liste: sonuc.slice(0, limit), toplam: count ?? sonuc.length }
 }
 
 // ---------- Dosya ----------
