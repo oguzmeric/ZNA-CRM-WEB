@@ -308,7 +308,8 @@ export default function MesaiRaporu() {
                 <TH>Gün</TH>
                 <TH>Toplam Süre</TH>
                 <TH>Günlük Ort.</TH>
-                <TH>Kayıt</TH>
+                {/* "Kayıt" tek başına neyi saydığını söylemiyordu */}
+                <TH title="O dönemde kaç kez mesai başlatıldı (QR okutuldu)">Mesai Girişi</TH>
               </TR>
             </THead>
             <TBody>
@@ -328,9 +329,22 @@ export default function MesaiRaporu() {
                     )}
                   </TD>
                   <TD className="tabular-nums">{r.gunSayisi ? saatBicim(r.dakika / r.gunSayisi) : '—'}</TD>
+                  {/* "1  1 devam" okunmuyordu (01.08): tek kayıt varken sayıyı iki
+                      kez yazmak yerine rozet sadece durumu söylüyor. Kısmi
+                      durumda (3 kayıt, 1'i açık) sayı korunuyor. */}
                   <TD className="tabular-nums">
                     {r.kayit}
-                    {r.devam > 0 && <Badge tone="beklemede" style={{ marginLeft: 6 }}>{r.devam} devam</Badge>}
+                    {r.devam > 0 && (
+                      <Badge
+                        tone="beklemede"
+                        style={{ marginLeft: 6 }}
+                        title={r.devam === r.kayit
+                          ? 'Mesai hâlâ açık — çıkış yapılmadı, 18:30\'da otomatik kapanır'
+                          : `${r.kayit} kayıttan ${r.devam} tanesi hâlâ açık`}
+                      >
+                        {r.devam === r.kayit ? 'devam ediyor' : `${r.devam}'i devam`}
+                      </Badge>
+                    )}
                   </TD>
                 </TR>
               ))}
