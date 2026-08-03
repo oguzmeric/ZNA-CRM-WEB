@@ -82,6 +82,36 @@ const saatBicim = (dk) => {
 }
 const saatGoster = (i) => i ? new Date(i).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'
 
+// ── Excel süre sütunları ────────────────────────────────────────────────────
+// Excel süreyi GÜN KESRİ olarak tutar (8sa30dk = 8.5/24). Hücreye [h]:mm
+// biçimi verilince "8:30" görünür AMA sayı olarak kalır: SUM, ortalama,
+// 24 saati aşan toplamlar hepsi çalışır. Metin "8:30" yazsaydık toplanamazdı —
+// eskiden bu yüzden her sürenin yanına ayrı "... Dakika" sütunu konuyordu.
+const sureDeger = (dk) => (Number(dk) || 0) / 1440
+const SURE_BICIMI = '[h]:mm'   // köşeli parantez: 24 saati aşınca sıfırlanmaz
+
+const sureBicimle = (ws, basliklar) => {
+  if (!basliklar?.length || !ws['!ref']) return
+  const aralik = XLSX.utils.decode_range(ws['!ref'])
+  // Başlık satırı künyeden sonra geliyor; sabit indeks varsaymak yerine
+  // aranan başlıkların geçtiği ilk satırı bul (künye satır sayısı değişebilir).
+  let basSatir = -1
+  const sutunlar = []
+  for (let r = aralik.s.r; r <= aralik.e.r && basSatir < 0; r++) {
+    for (let c = aralik.s.c; c <= aralik.e.c; c++) {
+      const h = ws[XLSX.utils.encode_cell({ r, c })]
+      if (h && basliklar.includes(h.v)) { basSatir = r; sutunlar.push(c) }
+    }
+  }
+  if (basSatir < 0) return
+  for (const c of sutunlar) {
+    for (let r = basSatir + 1; r <= aralik.e.r; r++) {
+      const hucre = ws[XLSX.utils.encode_cell({ r, c })]
+      if (hucre && hucre.t === 'n') hucre.z = SURE_BICIMI
+    }
+  }
+}
+
 export default function MesaiRaporu() {
   const { toast } = useToast()
   const [aralikId, setAralikId] = useState('buhafta')
@@ -198,13 +228,14 @@ export default function MesaiRaporu() {
       Personel: r.ad,
       Ünvan: r.unvan,
       'Gün Sayısı': r.gunSayisi,
-      // Puantaj için üç sütun ayrı: normal ve fazla mesai farklı ücretlendirilir
-      'Normal (sa:dk)': saatBicim(r.normalDk),
-      'Normal Dakika': r.normalDk,
-      'Fazla Mesai (sa:dk)': r.fazlaDk > 0 ? saatBicim(r.fazlaDk) : '',
-      'Fazla Mesai Dakika': r.fazlaDk,
-      'Toplam Süre (sa:dk)': saatBicim(r.dakika),
-      'Toplam Dakika': r.dakika,
+      // Normal ve fazla mesai farklı ücretlendirildiği için ayrı sütun.
+      // Değerler GERÇEK SÜRE (Excel gün kesri) — sayfa yazılırken [h]:mm
+      // biçimi veriliyor: "08:30" görünür ve SUM/ortalama çalışır.
+      // (Eskiden metin "08:30" toplanamadığı için yanına ayrı "... Dakika"
+      //  sütunu konmuştu; aynı bilgi iki kez yazılıyordu, kaldırıldı.)
+      Normal: sureDeger(r.normalDk),
+      'Fazla Mesai': sureDeger(r.fazlaDk),
+      Toplam: sureDeger(r.dakika),
       // "Kayıt Adedi" + "Devam Eden" ikisi de sayı basıyordu ve günde tek giriş
       // olduğu için sütun baştan aşağı "1 / 1" çıkıyordu — bilgi taşımıyordu.
       // Sayı ekranla aynı ada geçti, durum metne çevrildi.
@@ -222,7 +253,7 @@ export default function MesaiRaporu() {
       // koymak aynı bilgiyi ikinci kez yazmak olurdu.
       Çıkış: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam ediyor',
       Tip: k.tip === 'fazla' ? 'FAZLA MESAİ' : 'Normal',
-      'Süre (sa:dk)': saatBicim(kayitDakika(k, simdi)),
+      Süre: sureDeger(kayitDakika(k, simdi)),
       'Ofise Mesafe (m)': k.giris_mesafe_m ?? '',
       Not: k.not_ ?? '',
     }))
@@ -239,14 +270,15 @@ export default function MesaiRaporu() {
       ['Rapor alındı', new Date().toLocaleString('tr-TR')],
       [],
     ]
-    const sayfaYaz = (satirlar, ad) => {
+    const sayfaYaz = (satirlar, ad, sureBasliklari) => {
       const ws = XLSX.utils.aoa_to_sheet(kunye)
       XLSX.utils.sheet_add_json(ws, satirlar, { origin: -1 })
+      sureBicimle(ws, sureBasliklari)
       XLSX.utils.book_append_sheet(wb, ws, ad)
     }
     const wb = XLSX.utils.book_new()
-    sayfaYaz(ozetSatir, `Özet-${kirilimAd}`)
-    sayfaYaz(detaySatir, 'Detay')
+    sayfaYaz(ozetSatir, `Özet-${kirilimAd}`, ['Normal', 'Fazla Mesai', 'Toplam'])
+    sayfaYaz(detaySatir, 'Detay', ['Süre'])
     // Kırılım dosya adına da girsin — indirilen dosyalar birbirine karışmasın
     XLSX.writeFile(wb, `mesai-raporu-${kirilimAd}-${baslangic}_${bitis}.xlsx`)
     toast?.success?.('Excel indirildi.')
