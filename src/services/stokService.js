@@ -216,6 +216,33 @@ export const stokHareketleriniGetir = () => cached('stokHareketleri:list', async
   return arrayToCamel(data)
 })
 
+// Stok listesi SADECE bakiye toplamak için hareketleri çekiyordu: select('*')
+// ile 3.900 satır × tüm kolonlar = ~600 kB (açıklama metinleri en şişkin kısım).
+// Üstelik her ürün için ayrı ayrı filter() çalıştığından 2.600 ürün × 3.900
+// hareket = milyonlarca karşılaştırma oluyordu.
+// Burada 3 kolon çekilip TEK geçişte toplanıyor: ~77 kB + O(n).
+// NOT: Hareket listesi/raporları tam veriyi kullanmaya devam ediyor.
+export const stokBakiyeHaritasiGetir = () => cached('stokBakiye:map', async () => {
+  const data = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_hareketleri')
+      .select('stok_kodu, hareket_tipi, miktar')
+      .order('id')                 // sırasız .range() sayfa tekrarı/atlaması yapar
+      .range(off, off + size - 1)
+  )
+  const harita = new Map()
+  for (const h of data || []) {
+    const kod = h.stok_kodu
+    if (!kod) continue
+    const m = Number(h.miktar) || 0
+    const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
+      : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
+      : 0
+    harita.set(kod, (harita.get(kod) || 0) + isaret)
+  }
+  return harita
+})
+
 // ──────────────────────────────────────────────────────────────
 // S/N TAKIPLI KALEMLER (stok_kalemleri) — mobile ile senkron
 // ──────────────────────────────────────────────────────────────

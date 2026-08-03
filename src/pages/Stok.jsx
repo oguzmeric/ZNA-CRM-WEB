@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import {
@@ -14,7 +14,7 @@ import { useBildirim } from '../context/BildirimContext'
 import { opsiyonEkle, aktifOpsiyonToplamlari } from '../services/stokOpsiyonService'
 import {
   stokUrunleriniGetir, stokUrunEkle, stokUrunGuncelle, stokUrunSil,
-  stokHareketleriniGetir, stokHareketEkle, gorselYukle,
+  stokBakiyeHaritasiGetir, stokHareketEkle, gorselYukle,
   stokKalemOzetleriniGetir, stokKalemleriToplu,
   tumSeriNumaralariniGetir, modelKalemleriniGetir,
   URUN_TIPLERI, PARA_BIRIMLERI, alisFiyatGorebilir,
@@ -101,7 +101,9 @@ function Stok() {
   const formCardRef = useRef(null)
 
   const [urunler, setUrunler] = useState([])
-  const [hareketler, setHareketler] = useState([])
+  // Hareket listesinin TAMAMI değil, ürün başına toplanmış bakiye tutuluyor.
+  // (Tam liste /stok-hareketleri sayfasında; burada sadece bakiye lazımdı.)
+  const [bakiyeHaritasi, setBakiyeHaritasi] = useState(new Map())
   const [kalemOzetleri, setKalemOzetleri] = useState(new Map())
   const [yukleniyor, setYukleniyor] = useState(true)
   const [form, setForm] = useState(bosForm)
@@ -202,7 +204,7 @@ function Stok() {
   useEffect(() => {
     Promise.all([
       stokUrunleriniGetir(),
-      stokHareketleriniGetir(),
+      stokBakiyeHaritasiGetir(),
       stokKalemOzetleriniGetir(),
       tumSeriNumaralariniGetir(),
       aktifOpsiyonToplamlari(),
@@ -210,9 +212,9 @@ function Stok() {
       ozellikTanimlariGetir(true),  // pasifler dahil — yönetim modalında lazım
       aileleriGetir(),
     ])
-      .then(([urunData, hareketData, kalemOzet, snMap, opsMap, katData, ozData, aileData]) => {
+      .then(([urunData, bakiyeMap, kalemOzet, snMap, opsMap, katData, ozData, aileData]) => {
         setUrunler(urunData || [])
-        setHareketler(hareketData || [])
+        setBakiyeHaritasi(bakiyeMap || new Map())
         setKalemOzetleri(kalemOzet || new Map())
         setGlobalSN(snMap || new Map())
         setOpsiyonToplam(opsMap || new Map())
@@ -224,25 +226,42 @@ function Stok() {
       .finally(() => setYukleniyor(false))
   }, [])
 
+  // stokKodu → ürün. Eskiden stokBakiye içinde urunler.find() vardı: her satır
+  // için 2.600 kayıt taranıyordu (liste + KPI'lar defalarca çağırıyor).
+  const urunHaritasi = useMemo(() => {
+    const m = new Map()
+    for (const u of urunler) m.set(u.stokKodu, u)
+    return m
+  }, [urunler])
+
   const stokBakiye = (stokKodu) => {
     // SN takipli ürün: gerçek stok = SN sayısı (hurda hariç), 0 dahil
     // Ürün seriTakipli ise hareket sayısına DOKUNMA. SN silinince kalem düşer,
     // hareket kalır — o yüzden seriTakipli ürüne hareket bazlı fallback yanlış.
-    const urun = urunler.find(u => u.stokKodu === stokKodu)
+    const urun = urunHaritasi.get(stokKodu)
     if (urun?.seriTakipli) {
       const kalemOzet = kalemOzetleri.get(stokKodu)
       const toplam = Number(kalemOzet?.toplam) || 0
       const hurda = Number(kalemOzet?.hurda) || 0
       return Math.max(0, toplam - hurda)
     }
-    // SN takipsiz: hareket bazlı sayı
-    return hareketler
-      .filter((h) => h.stokKodu === stokKodu)
-      .reduce((toplam, h) => {
-        if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return toplam + Number(h.miktar)
-        if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return toplam - Number(h.miktar)
-        return toplam
-      }, 0)
+    // SN takipsiz: hareketlerden ÖNCEDEN toplanmış bakiye (stokBakiyeHaritasiGetir)
+    return bakiyeHaritasi.get(stokKodu) || 0
+  }
+
+  // Yeni hareket sonrası bakiyeyi yerinde güncelle — tüm listeyi yeniden çekmeye
+  // gerek yok (ekleme anında sayfa donmasın).
+  const bakiyeGuncelle = (stokKodu, hareketTipi, miktar) => {
+    const m = Number(miktar) || 0
+    const isaret = (hareketTipi === 'giris' || hareketTipi === 'transfer_giris') ? m
+      : (hareketTipi === 'cikis' || hareketTipi === 'transfer_cikis') ? -m
+      : 0
+    if (!isaret || !stokKodu) return
+    setBakiyeHaritasi(prev => {
+      const yeni = new Map(prev)
+      yeni.set(stokKodu, (yeni.get(stokKodu) || 0) + isaret)
+      return yeni
+    })
   }
 
   // Opsiyonlar DB'de (mig 137) — localStorage okuma kaldırıldı
@@ -380,7 +399,7 @@ function Stok() {
       return
     }
     const yeniUrunler = [...urunler]
-    const yeniHareketler = [...hareketler]
+    const yeniBakiye = new Map(bakiyeHaritasi)
     for (const satir of gecerliSatirlar) {
       const stokKodu = satir.stokKodu || stokKoduOlustur(yeniUrunler)
       const yeniUrun = await stokUrunEkle({
@@ -402,11 +421,13 @@ function Stok() {
           aciklama: 'Excel ile toplu stok girişi',
           tarih: new Date().toISOString().split('T')[0],
         })
-        if (yeniHareket) yeniHareketler.push(yeniHareket)
+        if (yeniHareket) {
+          yeniBakiye.set(stokKodu, (yeniBakiye.get(stokKodu) || 0) + Number(satir.ilkStok))
+        }
       }
     }
     setUrunler(yeniUrunler)
-    setHareketler(yeniHareketler)
+    setBakiyeHaritasi(yeniBakiye)
     setExcelModal(false)
     setExcelOnizleme(null)
     toast.success(`${gecerliSatirlar.length} ürün aktarıldı.`)
@@ -629,7 +650,7 @@ function Stok() {
               aciklama: 'Stok düzeltmesi',
               tarih: new Date().toISOString().split('T')[0],
             })
-            if (yeniHareket) setHareketler(prev => [...prev, yeniHareket])
+            if (yeniHareket) bakiyeGuncelle(form.stokKodu, fark > 0 ? 'giris' : 'cikis', Math.abs(fark))
           }
         }
         toast.success('Ürün güncellendi.')
@@ -674,7 +695,7 @@ function Stok() {
             aciklama: 'İlk stok girişi',
             tarih: new Date().toISOString().split('T')[0],
           })
-          if (yeniHareket) setHareketler(prev => [...prev, yeniHareket])
+          if (yeniHareket) bakiyeGuncelle(form.stokKodu, 'giris', Number(form.ilkStok))
         }
         toast.success('Ürün kaydedildi.')
       } else {
