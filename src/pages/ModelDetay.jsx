@@ -31,6 +31,7 @@ import {
   EmptyState, Alert, Table, THead, TBody, TR, TH, TD,
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import Sayfalama from '../components/Sayfalama'
 
 import { SkeletonDetay } from '../components/Skeleton'
 const durumTone = {
@@ -91,6 +92,8 @@ function ModelDetay() {
   const [personelListe, setPersonelListe] = useState([])
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
+  const [sayfa, setSayfa] = useState(1)
+  const [sayfaBoyutu, setSayfaBoyutu] = useState(25)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
@@ -171,6 +174,19 @@ function ModelDetay() {
     }
     return liste
   }, [kalemler, filtre, arama])
+
+  // Sayfalama — 100+ seri numaralı modelde tek liste kaydırmak kullanışsızdı
+  const toplamSayfa = Math.max(1, Math.ceil(filtrelenmis.length / sayfaBoyutu))
+  const sayfalanmis = useMemo(
+    () => filtrelenmis.slice((sayfa - 1) * sayfaBoyutu, sayfa * sayfaBoyutu),
+    [filtrelenmis, sayfa, sayfaBoyutu],
+  )
+  // Filtre/arama daralınca eldeki sayfa numarası listenin dışında kalabiliyor
+  // (ör. 4. sayfadayken arama 3 sonuca düşerse ekran boş görünürdü)
+  useEffect(() => { setSayfa(1) }, [filtre, arama, sayfaBoyutu])
+  useEffect(() => {
+    if (sayfa > toplamSayfa) setSayfa(toplamSayfa)
+  }, [sayfa, toplamSayfa])
 
   const musteriDagilimi = useMemo(() => {
     const map = new Map()
@@ -429,7 +445,7 @@ function ModelDetay() {
                   </TR>
                 </THead>
                 <TBody>
-                  {filtrelenmis.map(k => {
+                  {sayfalanmis.map(k => {
                     const d = durumBul(k.durum)
                     const musteri = k.musteriId ? musteriMap.get(k.musteriId) : null
                     const teknisyen = k.teknisyenId ? teknisyenMap.get(k.teknisyenId) : null
@@ -681,6 +697,15 @@ function ModelDetay() {
                 </TBody>
               </Table>
             )}
+            <Sayfalama
+              aktifSayfa={sayfa}
+              toplamSayfa={toplamSayfa}
+              toplam={filtrelenmis.length}
+              sayfaBoyutu={sayfaBoyutu}
+              setSayfa={setSayfa}
+              setSayfaBoyutu={setSayfaBoyutu}
+              secenekler={[25, 50, 100, 250]}
+            />
           </Card>
         </>
       )}
