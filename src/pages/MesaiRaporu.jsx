@@ -174,18 +174,23 @@ export default function MesaiRaporu() {
       'Gün Sayısı': r.gunSayisi,
       'Toplam Süre (sa:dk)': saatBicim(r.dakika),
       'Toplam Dakika': r.dakika,
-      'Kayıt Adedi': r.kayit,
-      'Devam Eden': r.devam,
+      // "Kayıt Adedi" + "Devam Eden" ikisi de sayı basıyordu ve günde tek giriş
+      // olduğu için sütun baştan aşağı "1 / 1" çıkıyordu — bilgi taşımıyordu.
+      // Sayı ekranla aynı ada geçti, durum metne çevrildi.
+      'Mesai Girişi': r.kayit,
+      Durum: r.devam === 0
+        ? 'Tamamlandı'
+        : (r.devam === r.kayit ? 'Devam ediyor (süre anlık)' : `${r.devam}/${r.kayit} devam ediyor`),
     }))
     const detaySatir = kayitlar.map(k => ({
       Tarih: new Date(k.giris_zamani).toLocaleDateString('tr-TR'),
       Personel: k.kullanicilar?.ad || '',
       Ünvan: k.kullanicilar?.unvan || '',
       Giriş: saatGoster(k.giris_zamani),
+      // Çıkış sütunu zaten durumu söylüyor — ayrıca "Süre Durumu" sütunu
+      // koymak aynı bilgiyi ikinci kez yazmak olurdu.
       Çıkış: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam ediyor',
-      // Devam eden satırda da süre yazılır; kesinleşmediği ayrıca belirtilir
       'Süre (sa:dk)': saatBicim(kayitDakika(k, simdi)),
-      'Süre Durumu': k.cikis_zamani ? 'kesin' : 'devam ediyor (anlık)',
       'Ofise Mesafe (m)': k.giris_mesafe_m ?? '',
       Not: k.not_ ?? '',
     }))

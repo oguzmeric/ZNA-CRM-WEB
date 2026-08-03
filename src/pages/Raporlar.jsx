@@ -746,8 +746,8 @@ function MesaiRaporTab() {
     Unvan: k.kullanicilar?.unvan ?? '',
     Giris: saatGoster(k.giris_zamani),
     Cikis: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam',
+    // Cikis sutunu zaten "devam" diyor; ayri bir durum sutunu tekrar olurdu
     Sure: sureGoster(mesaiKayitDakika(k)),
-    SureDurumu: k.cikis_zamani ? 'kesin' : 'devam ediyor (anlik)',
     MesafeM: k.giris_mesafe_m ?? '',
     Not: k.not_ ?? '',
   }))
