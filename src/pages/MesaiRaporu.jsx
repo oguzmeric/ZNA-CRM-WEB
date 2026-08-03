@@ -5,7 +5,11 @@
 // DB tarafı mig 237 ile aynı hizada (İK yetkilileri tüm mesai kayıtlarını okur).
 //
 // Mesai modeli hatırlatma: "Bitir" YOK — 18:30'da pg_cron otomatik kapatır
-// (mig 225). Çıkışı olmayan kayıt "devam ediyor" sayılır, süreye katılmaz.
+// (mig 225). sure_dakika kolonu YALNIZ o kapanışta yazılır; gün içinde null'dur.
+// Eskiden devam eden kayıt süreye HİÇ katılmıyordu ve rapor gün boyu 0:00
+// gösteriyordu (01.08 bildirimi: "10 dk önce QR ile başladılar, hâlâ 0.00").
+// Artık çıkışı olmayan kayıt için "şu ana kadar geçen" süre hesaplanıyor;
+// bu satırlar 'devam ediyor' rozetiyle ayrıca işaretleniyor.
 
 import { useState, useEffect, useMemo } from 'react'
 import { CalendarClock, Download, Users, Clock, CalendarDays } from 'lucide-react'
@@ -14,6 +18,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { Button, Card, Input, Label, Badge, EmptyState, Table, THead, TBody, TR, TH, TD } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import { mesaiKayitDakika as kayitDakika } from '../lib/mesaiSure'
 
 const iso = (d) => d.toISOString().slice(0, 10)
 const bugun = () => iso(new Date())
@@ -81,6 +86,13 @@ export default function MesaiRaporu() {
   const [personeller, setPersoneller] = useState([])
   const [kayitlar, setKayitlar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  // Devam eden mesailerin süresi sayfa açıkken donmasın — dakika başı tazele.
+  const [simdi, setSimdi] = useState(() => Date.now())
+
+  useEffect(() => {
+    const sayac = setInterval(() => setSimdi(Date.now()), 60000)
+    return () => clearInterval(sayac)
+  }, [])
 
   useEffect(() => {
     supabase.from('kullanicilar').select('id, ad, unvan').contains('moduller', ['mesai_takip']).order('ad')
@@ -127,7 +139,7 @@ export default function MesaiRaporu() {
       }
       const r = map.get(anahtarTam)
       r.gun.add(iso(new Date(k.giris_zamani)))
-      r.dakika += Number(k.sure_dakika) || 0
+      r.dakika += kayitDakika(k, simdi)
       r.kayit += 1
       if (!k.cikis_zamani) r.devam += 1
       if (new Date(k.giris_zamani) < new Date(r.ilkGiris)) r.ilkGiris = k.giris_zamani
@@ -136,12 +148,12 @@ export default function MesaiRaporu() {
     return [...map.values()]
       .map(r => ({ ...r, gunSayisi: r.gun.size }))
       .sort((a, b) => (b.anahtar.localeCompare(a.anahtar)) || a.ad.localeCompare(b.ad, 'tr'))
-  }, [kayitlar, kirilim])
+  }, [kayitlar, kirilim, simdi])
 
   const kpi = useMemo(() => {
     const kisiler = new Set(kayitlar.map(k => k.kullanici_id))
     const gunler = new Set(kayitlar.map(k => iso(new Date(k.giris_zamani))))
-    const toplamDk = kayitlar.reduce((t, k) => t + (Number(k.sure_dakika) || 0), 0)
+    const toplamDk = kayitlar.reduce((t, k) => t + kayitDakika(k, simdi), 0)
     const devam = kayitlar.filter(k => !k.cikis_zamani).length
     return {
       kisi: kisiler.size,
@@ -150,7 +162,7 @@ export default function MesaiRaporu() {
       ortalama: gunler.size ? saatBicim(toplamDk / gunler.size) : '0:00',
       devam,
     }
-  }, [kayitlar])
+  }, [kayitlar, simdi])
 
   const excelIndir = () => {
     if (!ozet.length) { toast?.warning?.('Dışa aktarılacak kayıt yok.'); return }
@@ -171,7 +183,9 @@ export default function MesaiRaporu() {
       Ünvan: k.kullanicilar?.unvan || '',
       Giriş: saatGoster(k.giris_zamani),
       Çıkış: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam ediyor',
-      'Süre (sa:dk)': k.sure_dakika != null ? saatBicim(k.sure_dakika) : '',
+      // Devam eden satırda da süre yazılır; kesinleşmediği ayrıca belirtilir
+      'Süre (sa:dk)': saatBicim(kayitDakika(k, simdi)),
+      'Süre Durumu': k.cikis_zamani ? 'kesin' : 'devam ediyor (anlık)',
       'Ofise Mesafe (m)': k.giris_mesafe_m ?? '',
       Not: k.not_ ?? '',
     }))
@@ -303,7 +317,15 @@ export default function MesaiRaporu() {
                   <TD style={{ fontWeight: 600 }}>{r.ad}</TD>
                   <TD style={{ color: 'var(--text-tertiary)' }}>{r.unvan || '—'}</TD>
                   <TD className="tabular-nums">{r.gunSayisi}</TD>
-                  <TD className="tabular-nums" style={{ fontWeight: 700 }}>{saatBicim(r.dakika)}</TD>
+                  <TD className="tabular-nums" style={{ fontWeight: 700 }}>
+                    {saatBicim(r.dakika)}
+                    {r.devam > 0 && (
+                      <span
+                        title="Devam eden mesai var — süre şu ana kadar hesaplandı, 18:30 kapanışında kesinleşir"
+                        style={{ marginLeft: 3, color: '#f59e0b', cursor: 'help' }}
+                      >+</span>
+                    )}
+                  </TD>
                   <TD className="tabular-nums">{r.gunSayisi ? saatBicim(r.dakika / r.gunSayisi) : '—'}</TD>
                   <TD className="tabular-nums">
                     {r.kayit}

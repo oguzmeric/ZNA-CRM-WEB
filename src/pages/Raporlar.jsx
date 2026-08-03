@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Clock, Download, FileSpreadsheet, FileText } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
+import { mesaiKayitDakika } from '../lib/mesaiSure'
 import { SkeletonList } from '../components/Skeleton'
 import SiparisAnalizTab from '../components/SiparisAnalizTab'
 import GorevPerformansTab from '../components/gorev/GorevPerformansTab'
@@ -730,7 +731,7 @@ function MesaiRaporTab() {
   }, [baslangic, bitis, seciliPersonelId])
 
   const sureGoster = dk => {
-    if (dk == null) return 'devam'
+    if (dk == null) return '—'
     const s = String(Math.floor(dk / 60)).padStart(2, '0')
     const m = String(dk % 60).padStart(2, '0')
     return `${s}:${m}`
@@ -745,7 +746,8 @@ function MesaiRaporTab() {
     Unvan: k.kullanicilar?.unvan ?? '',
     Giris: saatGoster(k.giris_zamani),
     Cikis: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam',
-    Sure: sureGoster(k.sure_dakika),
+    Sure: sureGoster(mesaiKayitDakika(k)),
+    SureDurumu: k.cikis_zamani ? 'kesin' : 'devam ediyor (anlik)',
     MesafeM: k.giris_mesafe_m ?? '',
     Not: k.not_ ?? '',
   }))
@@ -1033,7 +1035,13 @@ function MesaiRaporTab() {
                   <td style={{ padding: '10px 8px', color: aktif ? 'var(--success)' : 'var(--text-primary)', fontSize: 13, fontWeight: aktif ? 600 : 400 }}>
                     {aktif ? 'devam' : saatGoster(k.cikis_zamani)}
                   </td>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>{sureGoster(k.sure_dakika)}</td>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>
+                    {sureGoster(mesaiKayitDakika(k))}
+                    {aktif && (
+                      <span title="Mesai devam ediyor — süre şu ana kadar hesaplandı, 18:30 kapanışında kesinleşir"
+                        style={{ marginLeft: 3, color: '#f59e0b', cursor: 'help' }}>+</span>
+                    )}
+                  </td>
                   <td style={{ padding: '10px 8px', color: 'var(--text-tertiary)', fontSize: 12 }}>
                     {k.giris_mesafe_m != null ? `${k.giris_mesafe_m} m` : '—'}
                   </td>
