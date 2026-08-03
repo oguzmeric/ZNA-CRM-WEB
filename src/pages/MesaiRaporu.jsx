@@ -203,8 +203,9 @@ export default function MesaiRaporu() {
         <h2 style={{ margin: 0, font: '700 20px/26px var(--font-sans)', color: 'var(--text-primary)' }}>Mesai Raporu</h2>
       </div>
       <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
-        QR ile mesai başlatan saha ekiplerinin çalışma saatleri. Çıkışı olmayan kayıtlar
-        “devam ediyor” sayılır ve süreye katılmaz (18:30'da otomatik kapanır).
+        QR ile mesai başlatan saha ekiplerinin çalışma saatleri. Devam eden mesailerde
+        süre <strong>şu ana kadar</strong> hesaplanır ve <strong style={{ color: '#f59e0b' }}>+</strong> ile
+        işaretlenir; 18:30'daki otomatik kapanışta kesinleşir.
       </p>
 
       {/* Filtreler */}
