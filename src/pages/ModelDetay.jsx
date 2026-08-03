@@ -337,21 +337,25 @@ function ModelDetay() {
             gap: 12, marginTop: 20,
           }}>
             <KPICard
+              kompakt
               label="Güncel bakiye"
               value={`${bakiye.toFixed(0)} ${urun?.birim || ''}`}
               icon={<Hash size={16} strokeWidth={1.5} />}
             />
             <KPICard
+              kompakt
               label="Min. stok"
               value={urun?.minStok ? `${urun.minStok} ${urun?.birim || ''}` : '—'}
               icon={<AlertTriangle size={16} strokeWidth={1.5} />}
             />
             <KPICard
+              kompakt
               label="Toplam giriş"
               value={`${toplamGiris.toFixed(0)} ${urun?.birim || ''}`}
               icon={<ArrowDown size={16} strokeWidth={1.5} />}
             />
             <KPICard
+              kompakt
               label="Toplam çıkış"
               value={`${toplamCikis.toFixed(0)} ${urun?.birim || ''}`}
               icon={<ArrowUp size={16} strokeWidth={1.5} />}
@@ -736,11 +740,13 @@ function ModelDetay() {
             ) : (
               <Table>
                 <THead>
+                  {/* Açıklama esnek, diğerleri kendi genişliğinde: sabit 280px
+                      verilince tablo kartı aşıyor ve Miktar kolonu kesiliyordu */}
                   <TR>
-                    <TH>Tür</TH>
-                    <TH>Tarih</TH>
-                    <TH>Açıklama</TH>
-                    <TH align="right">Miktar</TH>
+                    <TH style={{ whiteSpace: 'nowrap' }}>Tür</TH>
+                    <TH style={{ whiteSpace: 'nowrap' }}>Tarih</TH>
+                    <TH style={{ width: '100%' }}>Açıklama</TH>
+                    <TH align="right" style={{ whiteSpace: 'nowrap' }}>Miktar</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -756,15 +762,18 @@ function ModelDetay() {
                           </span>
                         </TD>
                         <TD><span className="tabular-nums">{tarihKisa(h.tarih)}</span></TD>
-                        <TD>
-                          <span style={{
-                            display: 'inline-block', maxWidth: 280,
+                        {/* maxWidth:0 + width:100% = kalan alanı kaplayıp taşan
+                            metni kırpan klasik esnek tablo hücresi */}
+                        <TD style={{ maxWidth: 0 }}>
+                          {/* title iç span'de: TD bileşeni title prop'unu geçirmiyor */}
+                          <span title={h.aciklama || ''} style={{
+                            display: 'block',
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}>
                             {h.aciklama || '—'}
                           </span>
                         </TD>
-                        <TD align="right">
+                        <TD align="right" style={{ whiteSpace: 'nowrap' }}>
                           <span className="tabular-nums" style={{
                             font: '600 13px/18px var(--font-sans)',
                             color: bilgi.yon === 'in' ? 'var(--success)' : 'var(--danger)',

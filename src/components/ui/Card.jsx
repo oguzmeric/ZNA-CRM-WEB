@@ -53,14 +53,17 @@ export function CardSubtitle({ children, style }) {
  * KPI Card — Dashboard rakam kartı
  * props: label, value, icon (lucide node), footer
  */
-export function KPICard({ label, value, icon, footer, style }) {
+// kompakt: detay sayfalarında "0 Adet" gibi kısa değerler 28px'te fazla iri
+// duruyordu. Dashboard'ın büyük rakamları varsayılan boyutta kalsın diye
+// davranış prop ile ayrıldı.
+export function KPICard({ label, value, icon, footer, style, kompakt = false }) {
   return (
     <article
       style={{
         background: 'var(--surface-card)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-md)',
-        padding: 20,
+        padding: kompakt ? 14 : 20,
         ...style,
       }}
     >
@@ -70,7 +73,7 @@ export function KPICard({ label, value, icon, footer, style }) {
           justifyContent: 'space-between',
           alignItems: 'center',
           color: 'var(--text-tertiary)',
-          marginBottom: 8,
+          marginBottom: kompakt ? 6 : 8,
         }}
       >
         <span className="t-label">{label}</span>
@@ -78,7 +81,7 @@ export function KPICard({ label, value, icon, footer, style }) {
       </header>
       <div
         style={{
-          font: '600 28px/36px var(--font-sans)',
+          font: kompakt ? '600 19px/26px var(--font-sans)' : '600 28px/36px var(--font-sans)',
           color: 'var(--text-primary)',
           fontVariantNumeric: 'tabular-nums',
         }}
