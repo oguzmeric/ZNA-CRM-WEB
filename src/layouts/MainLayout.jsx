@@ -386,6 +386,7 @@ function MainLayout({ children }) {
   const [tedarikAcik, setTedarikAcik] = useState(
     location.pathname.startsWith('/siparis-onaylari') || location.pathname.startsWith('/siparisler')
   )
+  const [cikisYapiliyor, setCikisYapiliyor] = useState(false)
   const [durumMenuAcik, setDurumMenuAcik] = useState(false)
   const [bildirimPanelAcik, setBildirimPanelAcik] = useState(false)
   const [temaPaneliAcik, setTemaPaneliAcik] = useState(false)
@@ -421,6 +422,11 @@ function MainLayout({ children }) {
   }, [location.pathname, gorevBildirimleri.length, gorusmeBildirimleri.length])
 
   const handleCikis = async () => {
+    // Çift tıklama koruması + anlık geri bildirim: çıkış birkaç yüz ms sürebilir
+    // (sunucuya haber verilir). Eskiden buton hiçbir tepki vermediği için
+    // kullanıcı "tıkladım olmadı" diye üst üste basıyordu.
+    if (cikisYapiliyor) return
+    setCikisYapiliyor(true)
     if (kullanici) {
       if (oncekiSayfa.current && sayfaGirisZamani.current) {
         const sure = Math.round((Date.now() - sayfaGirisZamani.current) / 1000)
@@ -428,8 +434,16 @@ function MainLayout({ children }) {
       }
       logKaydet('kullanici_cikis', { aciklama: 'Sistemden çıkış yapıldı' })
     }
-    await cikisYap()
-    navigate('/login', { replace: true })
+    try {
+      await cikisYap()
+    } catch (e) {
+      console.warn('[handleCikis] cikisYap hata:', e)
+    } finally {
+      // finally: cikisYap beklenmedik bir hata fırlatsa bile kullanıcı ekranda
+      // kilitli kalmasın, login'e mutlaka gitsin.
+      navigate('/login', { replace: true })
+      setCikisYapiliyor(false)
+    }
   }
 
   // 'Yönetim' grubu (Raporlar, Kullanıcılar, Duyurular, Performans, SLA Ayarları)
@@ -968,23 +982,24 @@ function MainLayout({ children }) {
         <div style={{ padding: 8, borderTop: '1px solid var(--border-on-dark)' }}>
           <button
             onClick={handleCikis}
+            disabled={cikisYapiliyor}
             style={{
               width: '100%',
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 12px',
               borderRadius: 'var(--radius-sm)',
-              background: 'transparent',
-              color: 'var(--text-on-dark-muted)',
+              background: cikisYapiliyor ? 'rgba(178,58,58,0.12)' : 'transparent',
+              color: cikisYapiliyor ? '#E88B8B' : 'var(--text-on-dark-muted)',
               border: 'none',
-              cursor: 'pointer',
+              cursor: cikisYapiliyor ? 'progress' : 'pointer',
               font: '400 14px/20px var(--font-sans)',
               transition: 'background 120ms, color 120ms',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(178,58,58,0.12)'; e.currentTarget.style.color = '#E88B8B' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' }}
+            onMouseEnter={e => { if (!cikisYapiliyor) { e.currentTarget.style.background = 'rgba(178,58,58,0.12)'; e.currentTarget.style.color = '#E88B8B' } }}
+            onMouseLeave={e => { if (!cikisYapiliyor) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
           >
             <LogOut size={16} strokeWidth={1.5} />
-            <span>Çıkış Yap</span>
+            <span>{cikisYapiliyor ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}</span>
           </button>
         </div>
       </aside>

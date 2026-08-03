@@ -40,6 +40,24 @@ export function abortStaleInFlight(maxAgeMs = 5000, reason = 'idle-stale') {
   }
 }
 
+/**
+ * Yerel oturum jetonunu KESİN sil.
+ * signOut() ağ yüzünden tamamlanmazsa supabase token'ı storage'da bırakır;
+ * kullanıcı çıkış yaptığını sanır ama sayfa yenilenince geri girmiş olur.
+ * Çıkışın ağa bağımlı olmayan garantisi burasıdır.
+ */
+export function yerelOturumTemizle() {
+  const temizle = (depo) => {
+    try {
+      for (const anahtar of Object.keys(depo)) {
+        if (anahtar.startsWith('sb-') && anahtar.endsWith('-auth-token')) depo.removeItem(anahtar)
+      }
+    } catch {}
+  }
+  temizle(localStorage)
+  temizle(sessionStorage)   // sekme-izole oturum modu buraya yazıyor
+}
+
 // Geriye uyumluluk: tümünü iptal et (sayfa kapanırken vs.)
 export function abortAllInFlight(reason = 'visibility-reset') {
   for (const controller of activeControllers.keys()) {

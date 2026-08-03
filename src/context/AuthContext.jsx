@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
-import { supabase, abortAllInFlight, abortStaleInFlight } from '../lib/supabase'
+import { supabase, abortAllInFlight, abortStaleInFlight, yerelOturumTemizle } from '../lib/supabase'
 import { invalidateAll as cacheInvalidateAll, expireAll as cacheExpireAll } from '../lib/cache'
 import { aktiviteDamgala, aktiviteTemizle } from '../lib/idleAktivite'
 import { aktiviteLogEkle } from '../services/aktiviteService'
@@ -281,10 +281,22 @@ export function AuthProvider({ children }) {
     const isler = []
     if (kullanici) isler.push(kullaniciDurumGuncelle(kullanici.id, 'cevrimdisi'))
     isler.push(cikisYapAuth())
-    const sonuclar = await Promise.allSettled(isler)
-    sonuclar.forEach((s, i) => {
-      if (s.status === 'rejected') console.warn(`[cikisYap] iş ${i} hata:`, s.reason)
+    const hepsi = Promise.allSettled(isler).then((sonuclar) => {
+      sonuclar.forEach((s, i) => {
+        if (s.status === 'rejected') console.warn(`[cikisYap] iş ${i} hata:`, s.reason)
+      })
     })
+
+    // ARAYÜZ AĞI BEKLEMEZ (01.08 şikayeti: "çıkış yap bazen tepki vermiyor").
+    // signOut bir POST'tur; ortak fetch sarmalayıcısında 5sn timeout'a tabi ve
+    // POST olduğu için otomatik tekrar edilmez. Yavaş/kopuk bağlantıda buton o
+    // süre boyunca ölü görünüyordu. Sunucuya haber vermek best-effort: en fazla
+    // 1,5sn tanınır, sonrası arka planda tamamlanır.
+    await Promise.race([hepsi, new Promise((r) => setTimeout(r, 1500))])
+
+    // Ağ tarafı bitmemiş olabilir — yerel jetonu KESİN sil, yoksa kullanıcı
+    // çıktığını sanır ama sayfa yenilenince oturum geri gelir.
+    yerelOturumTemizle()
 
     // Diğer kullanıcılara stale data sızmasın
     cacheInvalidateAll()

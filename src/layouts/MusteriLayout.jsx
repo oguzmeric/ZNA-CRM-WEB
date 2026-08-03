@@ -195,8 +195,15 @@ export default function MusteriLayout({ children }) {
     !izinliTurler || izinliTurler.length === 0 || izinliTurler.includes('teklif')
 
   const handleCikis = async () => {
-    await cikisYap()
-    navigate('/login', { replace: true })
+    // MainLayout ile aynı kural: cikisYap beklenmedik hata verse bile kullanıcı
+    // ekranda kilitli kalmasın, login'e mutlaka gitsin.
+    try {
+      await cikisYap()
+    } catch (e) {
+      console.warn('[handleCikis] cikisYap hata:', e)
+    } finally {
+      navigate('/login', { replace: true })
+    }
   }
 
   const SidebarBody = (
