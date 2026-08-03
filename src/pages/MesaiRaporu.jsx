@@ -203,10 +203,29 @@ export default function MesaiRaporu() {
       'Ofise Mesafe (m)': k.giris_mesafe_m ?? '',
       Not: k.not_ ?? '',
     }))
+    // KÜNYE (01.08): dosya adı aralığı yazıyordu ama kırılımı yazmıyordu.
+    // Aylık aralık + Günlük kırılım seçilince Dönem sütununda tek gün çıkıyor
+    // ve rapor hatalı sanılıyordu. Artık hangi ayarla alındığı sayfanın
+    // başında açıkça yazıyor.
+    const trTarih = (i) => new Date(i).toLocaleDateString('tr-TR')
+    const kunye = [
+      ['MESAİ RAPORU'],
+      ['Tarih aralığı', `${trTarih(baslangic)} — ${trTarih(bitis)}`],
+      ['Kırılım', `${kirilimAd} (Dönem sütunu bu kırılıma göre gruplanır)`],
+      ['Personel', personelId ? (personeller.find(p => String(p.id) === String(personelId))?.ad || '') : 'Tümü'],
+      ['Rapor alındı', new Date().toLocaleString('tr-TR')],
+      [],
+    ]
+    const sayfaYaz = (satirlar, ad) => {
+      const ws = XLSX.utils.aoa_to_sheet(kunye)
+      XLSX.utils.sheet_add_json(ws, satirlar, { origin: -1 })
+      XLSX.utils.book_append_sheet(wb, ws, ad)
+    }
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ozetSatir), `Özet-${kirilimAd}`)
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detaySatir), 'Detay')
-    XLSX.writeFile(wb, `mesai-raporu-${baslangic}_${bitis}.xlsx`)
+    sayfaYaz(ozetSatir, `Özet-${kirilimAd}`)
+    sayfaYaz(detaySatir, 'Detay')
+    // Kırılım dosya adına da girsin — indirilen dosyalar birbirine karışmasın
+    XLSX.writeFile(wb, `mesai-raporu-${kirilimAd}-${baslangic}_${bitis}.xlsx`)
     toast?.success?.('Excel indirildi.')
   }
 
