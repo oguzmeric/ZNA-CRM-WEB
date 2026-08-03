@@ -9,6 +9,18 @@ import {
 import { topluBakimKalemGuncelle } from '../services/topluBakimService'
 import { Button, Input, Textarea, Label } from './ui'
 
+// Adet/marka soran kalemler — mobil GenelForm'daki adetli/markali listeleriyle aynı
+const ADET_ETIKETI = {
+  turnike: 'Turnike adedi',
+  ekran_led: 'Ekran adedi',
+  plaka_tanima: 'Plaka tanıma ünitesi adedi',
+}
+const MARKA_ORNEGI = {
+  ekran_led: 'örn. SAMSUNG',
+  sistem_odasi: 'örn. CANOVATE',
+  santral: 'örn. KAREL',
+}
+
 export default function BakimKalemFormModal({ kalem, onKapat, onKaydedildi }) {
   const kb = kalemBilgi(kalem.kalemTip)
   const cctvMi = kalem.kalemTip === 'cctv'
@@ -160,17 +172,17 @@ export default function BakimKalemFormModal({ kalem, onKapat, onKaydedildi }) {
             </>
           ) : (
             <>
-              {(kalem.kalemTip === 'turnike' || kalem.kalemTip === 'ekran_led') && (
+              {(kalem.kalemTip === 'turnike' || kalem.kalemTip === 'ekran_led' || kalem.kalemTip === 'plaka_tanima') && (
                 <div>
-                  <Label>{kalem.kalemTip === 'turnike' ? 'Turnike adedi' : 'Ekran adedi'}</Label>
+                  <Label>{ADET_ETIKETI[kalem.kalemTip]}</Label>
                   <Input value={String(c.adet ?? '')} onChange={(e) => set('adet', e.target.value.replace(/[^0-9]/g, ''))} placeholder="adet" />
                 </div>
               )}
-              {(kalem.kalemTip === 'ekran_led' || kalem.kalemTip === 'sistem_odasi') && (
+              {(kalem.kalemTip === 'ekran_led' || kalem.kalemTip === 'sistem_odasi' || kalem.kalemTip === 'santral') && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <Label>Marka</Label>
-                    <Input value={c.marka ?? ''} onChange={(e) => set('marka', e.target.value)} placeholder={kalem.kalemTip === 'sistem_odasi' ? 'örn. CANOVATE' : 'örn. SAMSUNG'} />
+                    <Input value={c.marka ?? ''} onChange={(e) => set('marka', e.target.value)} placeholder={MARKA_ORNEGI[kalem.kalemTip]} />
                   </div>
                   {kalem.kalemTip === 'ekran_led' && (
                     <div style={{ width: 120 }}>

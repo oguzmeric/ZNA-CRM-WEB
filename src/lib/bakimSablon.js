@@ -9,6 +9,8 @@ export const BAKIM_KALEMLERI = {
   fiber:        { isim: 'Fiber',            ikon: 'zap',      renk: '#f59e0b' },
   hirsiz_alarm: { isim: 'Hırsız Alarm',     ikon: 'bell',     renk: '#ef4444' },
   sistem_odasi: { isim: 'Sistem Odası',     ikon: 'server',   renk: '#06b6d4' },
+  santral:      { isim: 'Santral',          ikon: 'phone',    renk: '#0ea5e9' },
+  plaka_tanima: { isim: 'Plaka Tanıma',     ikon: 'camera',   renk: '#ec4899' },
 }
 
 export const kalemBilgi = (tip) =>
@@ -225,6 +227,24 @@ export function genelSonucMetni(tip, c) {
       p.push('Yapılan kontrollerde herhangi bir problem tespit edilmemiştir. Fiber altyapısı sorunsuz bir şekilde çalışmaktadır.')
     } else {
       p.push('Yapılan kontrollerde problem tespit edilmiştir. Arızaya ilişkin servis talebiniz oluşturulmuştur. En kısa süre içerisinde arızaya müdahale edilecektir.')
+    }
+  } else if (tip === 'santral') {
+    p.push(`Lokasyonda bulunan ${marka ? marka + ' marka ' : ''}telefon santralinin periyodik bakım kontrolleri gerçekleştirilmiştir.`)
+    if (c.sonucDurum === 'sorunsuz') {
+      p.push('Santral kart ve hat bağlantıları, yedek besleme ünitesi ve dahili numara yönlendirmeleri kontrol edilmiştir. Santral sistemi sorunsuz bir şekilde çalışmaktadır.')
+    } else {
+      p.push('Yapılan kontrollerde santral sisteminde arıza tespit edilmiştir. Arızaya ilişkin servis talebiniz oluşturulmuştur. En kısa süre içerisinde arızaya müdahale edilecektir.')
+    }
+  } else if (tip === 'plaka_tanima') {
+    if (adet > 0) {
+      p.push(`Lokasyonda bulunan ${adet} adet plaka tanıma sisteminin periyodik bakımları gerçekleştirilmiştir.`)
+    } else {
+      p.push('Lokasyonda bulunan plaka tanıma sisteminin periyodik bakımları gerçekleştirilmiştir.')
+    }
+    if (c.sonucDurum === 'sorunsuz') {
+      p.push('Kamera görüş açıları, aydınlatma ve plaka okuma doğruluğu test edilmiş; sistemin sorunsuz çalıştığı tespit edilmiştir.')
+    } else {
+      p.push(`Yapılan kontrollerde ${Number(c.arizaliAdet) || ''} adet ünitede arıza tespit edilmiştir. Arızaya ilişkin servis talebiniz oluşturulmuştur. En kısa süre içerisinde arızaya müdahale edilecektir.`)
     }
   }
 

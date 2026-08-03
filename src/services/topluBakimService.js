@@ -14,6 +14,8 @@ export const BAKIM_KALEMLERI = {
   fiber:        { isim: 'Fiber',            ikon: '🔌', renk: '#f59e0b' },
   hirsiz_alarm: { isim: 'Hırsız Alarm',     ikon: '🚨', renk: '#ef4444' },
   sistem_odasi: { isim: 'Sistem Odası',     ikon: '🗄️', renk: '#06b6d4' },
+  santral:      { isim: 'Santral',          ikon: '☎️', renk: '#0ea5e9' },
+  plaka_tanima: { isim: 'Plaka Tanıma',     ikon: '🚗', renk: '#ec4899' },
 }
 
 export const kalemBilgi = (tip) =>
