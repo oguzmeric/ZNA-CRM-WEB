@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import {
@@ -80,34 +80,65 @@ export default function StokHareketleri() {
   const [detayHareket, setDetayHareket] = useState(null)
   const [acikGruplar, setAcikGruplar] = useState(new Set())  // expand olan grup ID'leri
 
+  // Müşteri listesi (~460 kB) SADECE "Yeni hareket" formundaki müşteri
+  // seçiminde kullanılıyor — sayfa açılışını bekletmesin diye form açılınca
+  // yükleniyor. cached() sayesinde ikinci açılışta ağ isteği yok.
   useEffect(() => {
-    Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), musterileriGetir(), stokKalemOzetleriniGetir()])
-      .then(([u, h, m, ko]) => {
-        setUrunler(u || []); setHareketler(h || []); setMusteriler(m || [])
+    Promise.all([stokUrunleriniGetir(), stokHareketleriniGetir(), stokKalemOzetleriniGetir()])
+      .then(([u, h, ko]) => {
+        setUrunler(u || []); setHareketler(h || [])
         setKalemOzetleri(ko || new Map())
       })
       .catch(err => console.error('[StokHareketleri yükle]', err))
       .finally(() => setYukleniyor(false))
   }, [])
 
+  useEffect(() => {
+    if (!goster || musteriler.length) return
+    musterileriGetir()
+      .then(m => setMusteriler(m || []))
+      .catch(e => console.warn('[StokHareketleri] müşteri listesi:', e?.message))
+  }, [goster, musteriler.length])
+
+  // DİKKAT — hook'lar erken return'DEN ÖNCE olmalı (aşağıdaki `if (yukleniyor)`).
+  // Bu projede daha önce defalarca "hook early return'den sonra" hatası yapıldı
+  // ve sayfa beyaz ekrana düştü.
+  //
+  // Eskiden anaBakiye() her çağrıldığında 3.900 hareketi filter() ile tarıyordu.
+  // Form açılınca "Stok seç" listesi 2.600 ürünün HEPSİ için bunu çağırıyor —
+  // milyonlarca karşılaştırma, açılış donuyordu. Artık tek geçişte toplanıyor.
+  const bakiyeHaritasi = useMemo(() => {
+    const m = new Map()
+    for (const h of hareketler) {
+      const kod = h.stokKodu
+      if (!kod) continue
+      const mik = Number(h.miktar) || 0
+      const isaret = (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') ? mik
+        : (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') ? -mik
+        : 0
+      m.set(kod, (m.get(kod) || 0) + isaret)
+    }
+    return m
+  }, [hareketler])
+
+  const urunHaritasi = useMemo(() => {
+    const m = new Map()
+    for (const u of urunler) m.set(u.stokKodu, u)
+    return m
+  }, [urunler])
+
   if (yukleniyor) return <SkeletonList />
 
-  const secilenUrun = urunler.find(u => u.stokKodu === form.stokKodu)
+  const secilenUrun = urunHaritasi.get(form.stokKodu)
 
   // SN takipli ürünlerde bakiye = kalem sayısı (hurda hariç). Değilse hareket bazlı.
   const anaBakiye = (kod) => {
-    const urun = urunler.find(u => u.stokKodu === kod)
+    const urun = urunHaritasi.get(kod)
     if (urun?.seriTakipli) {
       const ozet = kalemOzetleri.get(kod)
       return Math.max(0, (Number(ozet?.toplam) || 0) - (Number(ozet?.hurda) || 0))
     }
-    return hareketler
-      .filter(h => h.stokKodu === kod)
-      .reduce((t, h) => {
-        if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return t + Number(h.miktar)
-        if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return t - Number(h.miktar)
-        return t
-      }, 0)
+    return bakiyeHaritasi.get(kod) || 0
   }
 
   const formAc = () => {
@@ -119,7 +150,7 @@ export default function StokHareketleri() {
     if (!form.stokKodu || !form.miktar || !form.hareketTipi) {
       toast.error('Stok, tür ve miktar zorunludur.'); return
     }
-    const urun = urunler.find(u => u.stokKodu === form.stokKodu)
+    const urun = urunHaritasi.get(form.stokKodu)
     const musteri = musteriler.find(m => m.id?.toString() === form.musteriId?.toString())
     const personel = kullanicilar.find(k => k.id?.toString() === form.personelId?.toString())
     const aciklamaOtomatik = musteri
@@ -200,7 +231,7 @@ export default function StokHareketleri() {
 
   const h = detayHareket
   const modalTur = h ? turBul(h) : null
-  const modalUrun = h ? urunler.find(u => u.stokKodu === h.stokKodu) : null
+  const modalUrun = h ? urunHaritasi.get(h.stokKodu) : null
   const modalBakiye = h ? anaBakiye(h.stokKodu) : 0
   const modalKritik = modalUrun?.minStok && modalBakiye <= Number(modalUrun.minStok)
 
@@ -382,7 +413,8 @@ export default function StokHareketleri() {
                 {sayfaliGruplar.map(grup => {
                   const ilkHareket = grup.hareketler[0]
                   const tur = turBul(ilkHareket)
-                  const urun = urunler.find(u => u.stokKodu === ilkHareket.stokKodu)
+                  // Map lookup — her satırda 2.600 kayıt taramak yerine
+                  const urun = urunHaritasi.get(ilkHareket.stokKodu)
                   const giris = tur?.gc === 'G'
                   const cokluMu = grup.hareketler.length > 1
                   const acikMi = acikGruplar.has(grup.anahtar)
