@@ -22,7 +22,7 @@ import ServisMalzemePlanCard from '../components/ServisMalzemePlanCard'
 import { kalemKullanimlariGetir } from '../services/servisMalzemeService'
 import { uygunZamanFormat } from '../lib/uygunZamanFormat'
 import {
-  Button, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
+  Button, Input, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
 } from '../components/ui'
 
 const ACIL_TONE = {
@@ -77,6 +77,11 @@ export default function ServisTalepDetay() {
   const [kategoriDuzenle, setKategoriDuzenle] = useState(false)
   const [kategoriTaslak, setKategoriTaslak] = useState([])
   const [kategoriKaydediliyor, setKategoriKaydediliyor] = useState(false)
+  // Başlık (konu) düzenleme — talep açılırken yanlış/eksik yazılan başlık
+  // sonradan düzeltilebilsin; kategori kartıyla aynı desen.
+  const [konuDuzenle, setKonuDuzenle] = useState(false)
+  const [konuTaslak, setKonuTaslak] = useState('')
+  const [konuKaydediliyor, setKonuKaydediliyor] = useState(false)
 
   // Talep detay açıldığında ilgili okunmamış bildirimleri otomatik okundu yap
   // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
@@ -130,6 +135,22 @@ export default function ServisTalepDetay() {
 
   const durumGuncelle = (yeniDurum, aciklama = '') => {
     talepGuncelle(talep.id, { durum: yeniDurum }, kullanici.ad, aciklama)
+  }
+
+  // Başlık değişikliği aktivite geçmişine ESKİ→YENİ olarak düşsün: talep numarası
+  // sabit ama başlık müşteri yazışmalarında kullanılıyor, sessiz değişmemeli.
+  const konuKaydet = async () => {
+    const yeni = konuTaslak.trim()
+    if (!yeni) { toast.error('Başlık boş bırakılamaz.'); return }
+    if (yeni === (talep.konu || '')) { setKonuDuzenle(false); return }
+    setKonuKaydediliyor(true)
+    try {
+      await talepGuncelle(talep.id, { konu: yeni }, kullanici.ad,
+        `Başlık değişti: "${talep.konu || '—'}" → "${yeni}"`)
+      setKonuDuzenle(false)
+    } catch (err) {
+      toast.error('Kaydedilemedi: ' + (err?.message || 'bilinmeyen'))
+    } finally { setKonuKaydediliyor(false) }
   }
 
   const atamayiKaydet = async () => {
@@ -257,7 +278,47 @@ export default function ServisTalepDetay() {
                 {aciliyet && <Badge tone={ACIL_TONE[aciliyet.id]}>{aciliyet.isim}</Badge>}
                 {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
               </div>
-              <h1 className="t-h1">{talep.konu}</h1>
+              {konuDuzenle ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Input'un kendi width:100%'i var — flex içinde taşmasın diye
+                      genişliği saran kutu belirliyor */}
+                  <div style={{ flex: '1 1 260px', maxWidth: 480, minWidth: 220 }}>
+                    <Input
+                      value={konuTaslak}
+                      onChange={(e) => setKonuTaslak(e.target.value)}
+                      placeholder="Servis başlığı"
+                      autoFocus
+                      style={{ height: 38, font: '600 15px/22px var(--font-sans)' }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); konuKaydet() }
+                        if (e.key === 'Escape') setKonuDuzenle(false)
+                      }}
+                    />
+                  </div>
+                  <Button variant="primary" size="sm" iconLeft={<Check size={12} strokeWidth={1.5} />}
+                    disabled={konuKaydediliyor} onClick={konuKaydet}>
+                    {konuKaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+                  </Button>
+                  <Button variant="secondary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />}
+                    onClick={() => setKonuDuzenle(false)}>İptal</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h1 className="t-h1" style={{ margin: 0 }}>{talep.konu}</h1>
+                  <button
+                    onClick={() => { setKonuTaslak(talep.konu || ''); setKonuDuzenle(true) }}
+                    title="Başlığı düzenle"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)', padding: '3px 8px', cursor: 'pointer',
+                      font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <Pencil size={11} strokeWidth={1.5} /> Düzenle
+                  </button>
+                </div>
+              )}
               <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 6 }}>
                 <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{talep.firmaAdi || talep.musteriAd}</span>
                 {talep.firmaAdi && <span style={{ color: 'var(--text-tertiary)' }}> · {talep.musteriAd}</span>}
@@ -846,19 +907,22 @@ export default function ServisTalepDetay() {
                 {[...(talep.durumGecmisi || [])].reverse().map((g, i) => {
                   const d = DURUM_LISTESI.find(x => x.id === g.durum)
                   const atamaTipi = g.tip === 'atama'
+                  const baslikTipi = g.tip === 'baslik'
                   return (
                     <div key={i} style={{ position: 'relative', paddingBottom: i < (talep.durumGecmisi?.length || 1) - 1 ? 16 : 0 }}>
                       <span style={{
                         position: 'absolute', left: -20, top: 2,
                         width: 17, height: 17, borderRadius: '50%',
                         background: 'var(--surface-card)',
-                        border: `2px solid ${atamaTipi ? 'var(--success)' : 'var(--brand-primary)'}`,
+                        border: `2px solid ${atamaTipi ? 'var(--success)' : baslikTipi ? 'var(--text-tertiary)' : 'var(--brand-primary)'}`,
                       }} />
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                           {atamaTipi
                             ? <Badge tone="aktif">👤 Atama</Badge>
-                            : d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
+                            : baslikTipi
+                              ? <Badge tone="lead">✏️ Başlık</Badge>
+                              : d && <Badge tone={DURUM_TONE[d.id]}>{d.isim}</Badge>}
                         </div>
                         {g.aciklama && (
                           <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', margin: '0 0 2px' }}>

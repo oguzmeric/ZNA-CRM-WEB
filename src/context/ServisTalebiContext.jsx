@@ -351,6 +351,10 @@ export function ServisTalebiProvider({ children }) {
     // Atama degisikligi de durumGecmisi'ne loglanir — durum aynen kalsa bile.
     const atananDegisti = 'atananKullaniciId' in guncellenmis
       && (guncellenmis.atananKullaniciId ?? null) !== (mevcutTalep.atananKullaniciId ?? null)
+    // Baslik da loglanir: talep numarasi sabit ama baslik musteri yazismalarinda
+    // kullaniliyor; sessizce degisirse "biz boyle bir sey istemedik" tartismasi cikar.
+    const konuDegisti = 'konu' in guncellenmis
+      && (guncellenmis.konu ?? '') !== (mevcutTalep.konu ?? '')
 
     let yeniGecmis = mevcutTalep.durumGecmisi || []
     if (durumDegisti) {
@@ -368,6 +372,17 @@ export function ServisTalebiProvider({ children }) {
         ...yeniGecmis,
         {
           tip: 'atama',
+          durum: mevcutTalep.durum,
+          tarih: new Date().toISOString(),
+          kullaniciAd: kullaniciAd || 'Sistem',
+          aciklama,
+        },
+      ]
+    } else if (konuDegisti) {
+      yeniGecmis = [
+        ...yeniGecmis,
+        {
+          tip: 'baslik',
           durum: mevcutTalep.durum,
           tarih: new Date().toISOString(),
           kullaniciAd: kullaniciAd || 'Sistem',
