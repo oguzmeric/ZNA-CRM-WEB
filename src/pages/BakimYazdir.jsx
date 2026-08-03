@@ -26,7 +26,10 @@ const SIRKET_BILGI = {
     accent: '#1A1A1A', accentBg: '#F0F0F0',
   },
 }
-import { topluBakimGetir, kalemBilgi, kalemDurumBilgi } from '../services/topluBakimService'
+import {
+  topluBakimGetir, kalemBilgi, kalemDurumBilgi,
+  imzaYokSebepMetni, imzasizTamamlandiMi,
+} from '../services/topluBakimService'
 import { kullanicilariGetir } from '../services/kullaniciService'
 
 const fmtTarih = (t) => t ? new Date(String(t).includes('T') ? t : t + 'T00:00:00').toLocaleDateString('tr-TR') : '—'
@@ -328,16 +331,36 @@ function CevapOzeti({ kalem }) {
 }
 
 function ImzaBloku({ tb, personelAd }) {
+  // mig 254 — müşteri yetkilisi hazır bulunmadıysa imza kutusuna gerekçeli şerh.
+  // Sonradan imza eklenirse (musteriImzaUrl dolarsa) şerh kendiliğinden düşer.
+  const serhli = imzasizTamamlandiMi(tb)
   return (
     <div style={{ display: 'flex', gap: 16, marginTop: 20 }}>
       <div style={imzaKutuStil}>
         <div style={imzaEtiketStil}>MÜŞTERİ YETKİLİSİ</div>
         {tb.musteriImzaUrl
           ? <img src={tb.musteriImzaUrl} alt="Müşteri imzası" style={imzaImgStil} />
-          : <div style={{ height: 90 }} />}
-        <div style={{ fontSize: 11, fontWeight: 700 }}>{tb.musteriYetkiliAd || '—'}</div>
+          : serhli
+            ? (
+              <div style={{
+                height: 90, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                gap: 3, padding: '0 6px',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#b45309', lineHeight: 1.35 }}>
+                  Müşteri yetkilisi hazır bulunmadığından imza alınamamıştır.
+                </div>
+                <div style={{ fontSize: 9.5, color: '#64748b', lineHeight: 1.35 }}>
+                  Gerekçe: {imzaYokSebepMetni(tb.musteriImzaYokSebep)}
+                  {tb.musteriImzaYokNot ? ` — ${tb.musteriImzaYokNot}` : ''}
+                </div>
+              </div>
+            )
+            : <div style={{ height: 90 }} />}
+        <div style={{ fontSize: 11, fontWeight: 700 }}>{tb.musteriYetkiliAd || (serhli ? '—' : '—')}</div>
         <div style={{ fontSize: 10, color: '#64748b' }}>
-          {tb.musteriYetkiliGorev || ''}{tb.musteriImzaTarih ? ` · ${fmtTarihSaat(tb.musteriImzaTarih)}` : ''}
+          {serhli
+            ? (tb.musteriImzaYokTarih ? fmtTarihSaat(tb.musteriImzaYokTarih) : '')
+            : `${tb.musteriYetkiliGorev || ''}${tb.musteriImzaTarih ? ` · ${fmtTarihSaat(tb.musteriImzaTarih)}` : ''}`}
         </div>
       </div>
       <div style={imzaKutuStil}>

@@ -5,6 +5,7 @@ import { Wrench, Plus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   topluBakimlariGetir, tbDurumBilgi, kalemBilgi, kalemDurumBilgi, sahaSorumlusuMu,
+  imzasizTamamlandiMi,
 } from '../services/topluBakimService'
 import { Button, Card, EmptyState, Table, THead, TBody, TR, TH, TD } from '../components/ui'
 import ComboBox from '../components/ComboBox'
@@ -141,12 +142,23 @@ export default function BakimIsleri() {
                     </TD>
                     <TD style={{ whiteSpace: 'nowrap' }}>{tamam}/{(t.kalemler || []).length}{arizaVar ? ' ⚠️' : ''}</TD>
                     <TD>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)',
-                        background: `${d.renk}1a`, color: d.renk, whiteSpace: 'nowrap',
-                      }}>
-                        {d.isim}
-                      </span>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)',
+                          background: `${d.renk}1a`, color: d.renk, whiteSpace: 'nowrap',
+                        }}>
+                          {d.isim}
+                        </span>
+                        {/* mig 254 — müşteri imzası alınamadan tamamlandı; sonradan imza eklenince düşer */}
+                        {imzasizTamamlandiMi(t) && (
+                          <span title="Müşteri imzası alınamadı — sonradan eklenebilir" style={{
+                            fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)',
+                            background: '#f59e0b1a', color: '#b45309', whiteSpace: 'nowrap',
+                          }}>
+                            İmzasız
+                          </span>
+                        )}
+                      </div>
                     </TD>
                   </TR>
                 )

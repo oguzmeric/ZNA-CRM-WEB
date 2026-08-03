@@ -51,6 +51,22 @@ export const KALEM_DURUMLAR = {
 export const kalemDurumBilgi = (d) => KALEM_DURUMLAR[d] ?? { isim: d ?? '—', renk: '#94a3b8' }
 
 // Bakım yapılamama sebepleri (spec madde 16)
+// Müşteri yetkilisi imzalayamadığında gerekçe (mig 254). İmza ATLANMAZ; yerine
+// "kim/ne zaman/neden" kaydı geçer ve raporda şerh olarak basılır.
+export const IMZA_YOK_SEBEPLERI = {
+  yetkili_yok:        'Müşteri yetkilisi lokasyonda bulunmadı',
+  lokasyon_kapali:    'Lokasyon kapalıydı / yetkiliye erişilemedi',
+  yetkili_imzalamadi: 'Yetkili imza atmaktan kaçındı',
+  mesai_disi:         'Bakım mesai saatleri dışında yapıldı',
+  diger:              'Diğer (açıklama zorunlu)',
+}
+export const imzaYokSebepMetni = (kod) => IMZA_YOK_SEBEPLERI[kod] ?? kod ?? ''
+
+// Müşteri imzası alınmadan tamamlandı mı? (rapor şerhi + liste rozeti)
+// Sonradan imza eklenirse gerekçe kaydı tarihçe olarak kalır ama şerh düşer.
+export const imzasizTamamlandiMi = (tb) =>
+  !!tb?.musteriImzaYokSebep && !tb?.musteriImzaTarih && !tb?.musteriImzaUrl
+
 export const YAPILAMADI_SEBEPLERI = [
   'Sisteme erişim sağlanamadı',
   'Müşteri izin vermedi',
@@ -87,6 +103,7 @@ const TB_LISTE_KOLONLARI = `
   id, tb_no, musteri_id, lokasyon_id, lokasyon_adi, lokasyon_adres,
   bakim_donemi, planlanan_tarih, planlanan_saat, teknik_personel_id, ekip_ids,
   durum, oncelik, olusturan_id, olusturma_tarih,
+  musteri_imza_yok_sebep, musteri_imza_tarih,
   musteriler ( firma ),
   toplu_bakim_kalemleri ( id, kalem_tip, durum, ariza_var )
 `

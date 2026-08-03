@@ -10,8 +10,9 @@ import {
   topluBakimGetir, topluBakimGuncelle, topluBakimKalemEkle, topluBakimKalemSil,
   topluBakimSil,
   tbDurumBilgi, kalemBilgi, kalemDurumBilgi, sahaSorumlusuMu, BAKIM_KALEMLERI,
+  IMZA_YOK_SEBEPLERI, imzaYokSebepMetni, imzasizTamamlandiMi,
 } from '../services/topluBakimService'
-import { Button, Card, Badge, Input } from '../components/ui'
+import { Button, Card, Badge, Input, Select } from '../components/ui'
 import BakimKalemFormModal from '../components/BakimKalemFormModal'
 import ImzaPad from '../components/ImzaPad'
 
@@ -30,6 +31,12 @@ export default function BakimDetay() {
   // Web'den yürütme: kalem formu + imza (mobil ile aynı akış, spec akışı korunur)
   const [acikKalem, setAcikKalem] = useState(null)
   const [imzaHedef, setImzaHedef] = useState(null)   // 'musteri' | 'personel'
+  // mig 254 — müşteri yetkilisi yokken gerekçeli tamamlama
+  const [imzaYok, setImzaYok] = useState(false)
+  const [imzaYokSebep, setImzaYokSebep] = useState('')
+  const [imzaYokNot, setImzaYokNot] = useState('')
+  // 'diger' seçilirse açıklama zorunlu — gerekçesiz "diğer" kayda değmez
+  const imzaYokGecerli = !!imzaYokSebep && (imzaYokSebep !== 'diger' || !!imzaYokNot.trim())
 
   const yukle = useCallback(async () => {
     const t = await topluBakimGetir(id)
@@ -260,42 +267,113 @@ export default function BakimDetay() {
             )
           })}
 
-          {/* İmza adımı — web'den de (spec 21-22-26) */}
+          {/* İmza adımı — web'den de (spec 21-22-26).
+              mig 254: müşteri yetkilisi yoksa gerekçe girilerek tamamlanabilir;
+              imza sonradan eklenince şerh düşer, gerekçe tarihçede kalır. */}
           {tb.durum === 'imza_bekleniyor' && (
             <Card style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>✍️ İmza ve Tamamlama</div>
-              {!tb.musteriImzaUrl && (
+              {!tb.musteriImzaUrl && !imzaYok && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   <Input id="tb-yetkili-ad" defaultValue={tb.musteriYetkiliAd || ''} placeholder="Müşteri yetkilisi adı *" />
                   <Input id="tb-yetkili-gorev" defaultValue={tb.musteriYetkiliGorev || ''} placeholder="Görevi" />
                   <Input id="tb-yetkili-tel" defaultValue={tb.musteriYetkiliTel || ''} placeholder="Telefon" />
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Button variant={tb.musteriImzaUrl ? 'secondary' : 'primary'} onClick={() => {
-                  if (!tb.musteriImzaUrl) {
-                    const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
-                    if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
-                  }
-                  setImzaHedef('musteri')
+
+              {/* Yetkili yok → gerekçe paneli */}
+              {!tb.musteriImzaUrl && imzaYok && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
+                  borderRadius: 'var(--radius-md)', background: 'var(--warning-bg, #fffbeb)',
+                  border: '1px solid #fcd34d',
                 }}>
-                  {tb.musteriImzaUrl ? '✓ Müşteri İmzası Alındı' : 'Müşteri İmzası Al'}
-                </Button>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>
+                    Müşteri imzası alınamadı — gerekçe rapora şerh olarak yazılacak
+                  </div>
+                  <Select value={imzaYokSebep} onChange={(e) => setImzaYokSebep(e.target.value)}>
+                    <option value="">Gerekçe seçin *</option>
+                    {Object.entries(IMZA_YOK_SEBEPLERI).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </Select>
+                  <Input
+                    value={imzaYokNot}
+                    onChange={(e) => setImzaYokNot(e.target.value)}
+                    placeholder={imzaYokSebep === 'diger' ? 'Açıklama (zorunlu) *' : 'Ek açıklama (opsiyonel)'}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {!imzaYok && (
+                  <Button variant={tb.musteriImzaUrl ? 'secondary' : 'primary'} onClick={() => {
+                    if (!tb.musteriImzaUrl) {
+                      const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
+                      if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
+                    }
+                    setImzaHedef('musteri')
+                  }}>
+                    {tb.musteriImzaUrl ? '✓ Müşteri İmzası Alındı' : 'Müşteri İmzası Al'}
+                  </Button>
+                )}
+                {!tb.musteriImzaUrl && (
+                  <Button variant="secondary" onClick={() => { setImzaYok(!imzaYok); setImzaYokSebep(''); setImzaYokNot('') }}>
+                    {imzaYok ? '← İmza alacağım' : 'Müşteri yetkilisi yok'}
+                  </Button>
+                )}
                 <Button variant={tb.personelImzaUrl ? 'secondary' : 'primary'} onClick={() => setImzaHedef('personel')}>
                   {tb.personelImzaUrl ? '✓ Personel İmzası Alındı' : 'Personel İmzası Al'}
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={!tb.musteriImzaUrl || !tb.personelImzaUrl}
+                  disabled={!tb.personelImzaUrl || (!tb.musteriImzaUrl && !imzaYokGecerli)}
                   style={{ marginLeft: 'auto', background: '#16a34a' }}
                   onClick={async () => {
-                    const g = await topluBakimGuncelle(tb.id, { durum: 'tamamlandi' })
-                    if (g) { toast?.success?.(`${tb.tbNo} tamamlandı 🎉`); yukle() }
+                    // Personel imzası HER durumda şart — işi yapanın beyanı olmadan tutanak olmaz
+                    if (!tb.personelImzaUrl) { toast?.error?.('Teknik personel imzası zorunludur.'); return }
+                    const patch = { durum: 'tamamlandi' }
+                    if (!tb.musteriImzaUrl) {
+                      patch.musteriImzaYokSebep = imzaYokSebep
+                      patch.musteriImzaYokNot = imzaYokNot.trim() || null
+                    }
+                    const g = await topluBakimGuncelle(tb.id, patch)
+                    if (g) {
+                      toast?.success?.(tb.musteriImzaUrl
+                        ? `${tb.tbNo} tamamlandı 🎉`
+                        : `${tb.tbNo} imzasız tamamlandı — gerekçe rapora işlendi`)
+                      setImzaYok(false); yukle()
+                    }
                   }}
                 >
-                  Toplu Bakımı Tamamla
+                  {tb.musteriImzaUrl ? 'Toplu Bakımı Tamamla' : 'İmzasız Tamamla'}
                 </Button>
               </div>
+            </Card>
+          )}
+
+          {/* Tamamlandı ama müşteri imzası eksik → sonradan imza eklenebilir */}
+          {tb.durum === 'tamamlandi' && imzasizTamamlandiMi(tb) && (
+            <Card style={{
+              padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+              flexWrap: 'wrap', borderLeft: '3px solid #f59e0b',
+            }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309' }}>Müşteri imzası alınmadı</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                  {imzaYokSebepMetni(tb.musteriImzaYokSebep)}
+                  {tb.musteriImzaYokNot ? ` — ${tb.musteriImzaYokNot}` : ''}
+                  {tb.musteriImzaYokTarih ? ` (${new Date(tb.musteriImzaYokTarih).toLocaleString('tr-TR')})` : ''}
+                </div>
+              </div>
+              <Input id="tb-yetkili-ad" defaultValue={tb.musteriYetkiliAd || ''} placeholder="Yetkili adı *" style={{ maxWidth: 200 }} />
+              <Button variant="primary" onClick={() => {
+                const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
+                if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
+                setImzaHedef('musteri')
+              }}>
+                Müşteri İmzasını Sonradan Ekle
+              </Button>
             </Card>
           )}
 
