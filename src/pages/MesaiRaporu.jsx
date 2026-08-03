@@ -155,11 +155,20 @@ export default function MesaiRaporu() {
     const gunler = new Set(kayitlar.map(k => iso(new Date(k.giris_zamani))))
     const toplamDk = kayitlar.reduce((t, k) => t + kayitDakika(k, simdi), 0)
     const devam = kayitlar.filter(k => !k.cikis_zamani).length
+    // KİŞİ-GÜN: (personel × tarih) benzersiz çift sayısı. Ortalamanın doğru
+    // paydası budur. Eskiden toplam süre TAKVİM GÜNÜNE bölünüyordu; 9 kişinin
+    // toplamı 5 güne bölününce "günlük ortalama 12:14" çıkıyor ve tek kişi
+    // günde 12 saat çalışmış gibi okunuyordu (01.08 bildirimi).
+    const kisiGun = new Set(
+      kayitlar.map(k => `${k.kullanici_id}__${iso(new Date(k.giris_zamani))}`)
+    ).size
     return {
       kisi: kisiler.size,
       gun: gunler.size,
-      saat: saatBicim(toplamDk),
-      ortalama: gunler.size ? saatBicim(toplamDk / gunler.size) : '0:00',
+      kisiGun,
+      // Toplam süre KPI'ı KALDIRILDI: farklı kişilerin sürelerini toplamak
+      // yönetsel bir anlam taşımıyordu (kullanıcı geri bildirimi 01.08).
+      kisiBasiGunluk: kisiGun ? saatBicim(toplamDk / kisiGun) : '0:00',
       devam,
     }
   }, [kayitlar, simdi])
@@ -266,11 +275,13 @@ export default function MesaiRaporu() {
         {[
           { ikon: <Users size={15} />, etiket: 'PERSONEL', deger: kpi.kisi },
           { ikon: <CalendarDays size={15} />, etiket: 'ÇALIŞILAN GÜN', deger: kpi.gun },
-          { ikon: <Clock size={15} />, etiket: 'TOPLAM SÜRE', deger: kpi.saat },
-          { ikon: <Clock size={15} />, etiket: 'GÜNLÜK ORT.', deger: kpi.ortalama },
+          {
+            ikon: <Clock size={15} />, etiket: 'KİŞİ BAŞI GÜNLÜK', deger: kpi.kisiBasiGunluk,
+            ipucu: `Bir personelin ortalama günlük mesaisi (${kpi.kisiGun} kişi-gün üzerinden). Devam eden mesailer anlık süreyle girer, gün ilerledikçe yükselir.`,
+          },
           { ikon: <CalendarClock size={15} />, etiket: 'DEVAM EDEN', deger: kpi.devam },
         ].map(k => (
-          <Card key={k.etiket} style={{ padding: '12px 14px' }}>
+          <Card key={k.etiket} style={{ padding: '12px 14px' }} title={k.ipucu}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', marginBottom: 4 }}>
               {k.ikon}
               <span style={{ font: '600 11px/14px var(--font-sans)', letterSpacing: 0.3 }}>{k.etiket}</span>
