@@ -930,7 +930,9 @@ export default function ServisTalepDetay() {
                           </p>
                         )}
                         <p className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          {g.kullaniciAd} · {tarihFormat(g.tarih)}
+                          {/* Eski mobil kayıtları `kullanici` alanına yazıyordu —
+                              isimsiz görünmesinler diye ikisi de okunuyor */}
+                          {g.kullaniciAd || g.kullanici || '—'} · {tarihFormat(g.tarih)}
                         </p>
                       </div>
                     </div>
