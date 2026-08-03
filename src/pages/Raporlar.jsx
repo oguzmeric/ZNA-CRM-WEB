@@ -722,7 +722,7 @@ function MesaiRaporTab() {
   useEffect(() => {
     setYukleniyor(true)
     let q = supabase.from('mesai_kayitlari')
-      .select('id, kullanici_id, giris_zamani, cikis_zamani, sure_dakika, giris_mesafe_m, not_, kullanicilar(ad, unvan)')
+      .select('id, kullanici_id, giris_zamani, cikis_zamani, sure_dakika, giris_mesafe_m, not_, tip, kullanicilar(ad, unvan)')
       .gte('giris_zamani', baslangic + 'T00:00:00')
       .lte('giris_zamani', bitis + 'T23:59:59')
       .order('giris_zamani', { ascending: false })

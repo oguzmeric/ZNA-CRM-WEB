@@ -229,7 +229,7 @@ const menuItems = [
   { id: 'ik_yonetim', isim: 'İK Yönetimi', Icon: Wallet, yol: '/ik-yonetim', modul: null, grup: 'yonetim', sadeceIK: true },
   // Mesai Raporu — saha ekiplerinin QR mesai saatleri (günlük/haftalık/aylık).
   // İK yetkilileri (Ali/Oğuz/Abdullah) + Ferdi; App.jsx MesaiRaporGuard ile paralel.
-  { id: 'mesai_raporu', isim: 'Mesai Raporu', Icon: Timer, yol: '/mesai-raporu', modul: null, grup: 'yonetim', sadeceMesaiRapor: true },
+  { id: 'mesai_raporu', isim: 'Çalışma Saatleri', Icon: Timer, yol: '/mesai-raporu', modul: null, grup: 'yonetim', sadeceMesaiRapor: true },
   // Kişisel özlük alanı — Dokümanlarım'ın yanında (kullanıcı kararı: GÜNLÜK'te değil)
   // Kişisel sayfa: HERKES kendi izin/bordrosunu görür → grup 'operasyon', modul null.
   // İK yetkilisinde (Abdullah + admin) 'yonetim' grubuna, İK Yönetimi'nin yanına taşınır
@@ -293,7 +293,7 @@ const sayfaIsimleri = {
   '/gunluk-ozet': 'Günlük Özet',
   '/izin-bordro': 'İzin & Bordro',
   '/ik-yonetim': 'İK Yönetimi',
-  '/mesai-raporu': 'Mesai Raporu',
+  '/mesai-raporu': 'Çalışma Saatleri',
   '/sozlesmeler': 'Sözleşmeler',
   '/sozlesme-arsivi': 'Sözleşme Arşivi',
   '/trassir-lisanslar': 'Trassir Lisanslar',

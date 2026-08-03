@@ -17,6 +17,12 @@ const CORS = {
 const KILIT_BASLANGIC_DK = 18 * 60 + 30   // 18:30
 const KILIT_BITIS_DK     = 19 * 60        // 19:00
 
+// FAZLA MESAİ (mig 252): 19:00 ve sonrasında başlatılan çalışma ayrı ücretlendirilir.
+// Tip SUNUCUDA belirlenir — istemciden gelen değere güvenilmez, aksi halde
+// normal mesai fazla gösterilip fazladan ödeme doğabilirdi.
+const FAZLA_MESAI_BASLANGIC_DK = 19 * 60  // 19:00
+const mesaiTipi = (dk: number) => (dk >= FAZLA_MESAI_BASLANGIC_DK ? 'fazla' : 'normal')
+
 function istanbulDakika(d = new Date()): number {
   const bicim = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Istanbul',
@@ -107,14 +113,19 @@ Deno.serve(async (req) => {
     }
 
     const notMetni = (mesafe !== null && mesafe > tolerans) ? `Ofis dışı: ${mesafe}m` : null
+    // `suAn` kilit kontrolünde hesaplandı — aynı anı kullan ki 18:59'da başlayan
+    // istek araya giren saniyelerle 'fazla' olarak etiketlenmesin.
+    const tip = mesaiTipi(suAn)
     const { data: yeni, error } = await svc.from('mesai_kayitlari').insert({
       kullanici_id: kul.id,
       giris_lat: lat, giris_lng: lng, giris_mesafe_m: mesafe,
       not_: notMetni,
+      tip,
     }).select('id').single()
     if (error) return jsonYanit({ ok: false, hata: error.message }, 500)
 
-    return jsonYanit({ ok: true, mesai_id: yeni.id, mesafe_m: mesafe })
+    // İstemci tipe göre "Bitir" butonunu açar (fazla mesai elle bitirilir)
+    return jsonYanit({ ok: true, mesai_id: yeni.id, mesafe_m: mesafe, tip })
   } catch (e) {
     return jsonYanit({ ok: false, hata: String((e as any)?.message ?? e) }, 500)
   }

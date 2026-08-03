@@ -1,5 +1,11 @@
-// Mesai Raporu (İK Yönetimi altı) — QR ile mesai başlatan saha ekiplerinin
+// Çalışma Saatleri (İK Yönetimi altı) — QR ile mesai başlatan saha ekiplerinin
 // çalışma saatleri: GÜNLÜK / HAFTALIK / AYLIK kırılım + Excel dışa aktarma.
+// Menü adı 01.08'de "Mesai Raporu"ndan değişti: halk dilinde "mesai" fazla
+// çalışmayı anlatıyor, oysa bu sayfa normal + fazla çalışmanın ikisini de tutar.
+//
+// FAZLA MESAİ (mig 252): 19:00 sonrası başlatılan kayıt tip='fazla' işaretlenir,
+// 18:30 cron'u ona dokunmaz, personel elle bitirir (yedek: 02:00 cron).
+// Raporda normal ve fazla süre AYRI sütun — ayrı ücretlendirildiği için.
 //
 // Erişim: Abdullah (İK modülü) + Ali + Oğuz + Ferdi — mesaiRaporuGorebilirMi.
 // DB tarafı mig 237 ile aynı hizada (İK yetkilileri tüm mesai kayıtlarını okur).
@@ -12,7 +18,7 @@
 // bu satırlar 'devam ediyor' rozetiyle ayrıca işaretleniyor.
 
 import { useState, useEffect, useMemo } from 'react'
-import { CalendarClock, Download, Users, Clock, CalendarDays } from 'lucide-react'
+import { CalendarClock, Download, Users, Clock, CalendarDays, Moon } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
@@ -102,7 +108,7 @@ export default function MesaiRaporu() {
   useEffect(() => {
     setYukleniyor(true)
     let q = supabase.from('mesai_kayitlari')
-      .select('id, kullanici_id, giris_zamani, cikis_zamani, sure_dakika, giris_mesafe_m, not_, kullanicilar(ad, unvan)')
+      .select('id, kullanici_id, giris_zamani, cikis_zamani, sure_dakika, giris_mesafe_m, not_, tip, kullanicilar(ad, unvan)')
       .gte('giris_zamani', `${baslangic}T00:00:00`)
       .lte('giris_zamani', `${bitis}T23:59:59`)
       .order('giris_zamani', { ascending: false })
@@ -133,13 +139,17 @@ export default function MesaiRaporu() {
           anahtar, etiket, kisiId,
           ad: k.kullanicilar?.ad || `#${kisiId}`,
           unvan: k.kullanicilar?.unvan || '',
-          gun: new Set(), dakika: 0, kayit: 0, devam: 0,
+          gun: new Set(), dakika: 0, normalDk: 0, fazlaDk: 0, fazlaKayit: 0,
+          kayit: 0, devam: 0,
           ilkGiris: k.giris_zamani, sonCikis: k.cikis_zamani,
         })
       }
       const r = map.get(anahtarTam)
+      const dk = kayitDakika(k, simdi)
       r.gun.add(iso(new Date(k.giris_zamani)))
-      r.dakika += kayitDakika(k, simdi)
+      r.dakika += dk
+      // Fazla mesai (mig 252) AYRI toplanır — puantajda farklı ücretlendirilir
+      if (k.tip === 'fazla') { r.fazlaDk += dk; r.fazlaKayit += 1 } else { r.normalDk += dk }
       r.kayit += 1
       if (!k.cikis_zamani) r.devam += 1
       if (new Date(k.giris_zamani) < new Date(r.ilkGiris)) r.ilkGiris = k.giris_zamani
@@ -162,10 +172,17 @@ export default function MesaiRaporu() {
     const kisiGun = new Set(
       kayitlar.map(k => `${k.kullanici_id}__${iso(new Date(k.giris_zamani))}`)
     ).size
+    // Fazla mesai TOPLAMI anlamlıdır (kişilerin normal süresini toplamanın
+    // aksine): ödenecek ek ücretin karşılığı doğrudan bu rakamdır.
+    const fazlaKayitlar = kayitlar.filter(k => k.tip === 'fazla')
+    const fazlaDk = fazlaKayitlar.reduce((t, k) => t + kayitDakika(k, simdi), 0)
     return {
       kisi: kisiler.size,
       gun: gunler.size,
       kisiGun,
+      fazlaSaat: saatBicim(fazlaDk),
+      fazlaKayit: fazlaKayitlar.length,
+      fazlaKisi: new Set(fazlaKayitlar.map(k => k.kullanici_id)).size,
       // Toplam süre KPI'ı KALDIRILDI: farklı kişilerin sürelerini toplamak
       // yönetsel bir anlam taşımıyordu (kullanıcı geri bildirimi 01.08).
       kisiBasiGunluk: kisiGun ? saatBicim(toplamDk / kisiGun) : '0:00',
@@ -181,6 +198,11 @@ export default function MesaiRaporu() {
       Personel: r.ad,
       Ünvan: r.unvan,
       'Gün Sayısı': r.gunSayisi,
+      // Puantaj için üç sütun ayrı: normal ve fazla mesai farklı ücretlendirilir
+      'Normal (sa:dk)': saatBicim(r.normalDk),
+      'Normal Dakika': r.normalDk,
+      'Fazla Mesai (sa:dk)': r.fazlaDk > 0 ? saatBicim(r.fazlaDk) : '',
+      'Fazla Mesai Dakika': r.fazlaDk,
       'Toplam Süre (sa:dk)': saatBicim(r.dakika),
       'Toplam Dakika': r.dakika,
       // "Kayıt Adedi" + "Devam Eden" ikisi de sayı basıyordu ve günde tek giriş
@@ -199,6 +221,7 @@ export default function MesaiRaporu() {
       // Çıkış sütunu zaten durumu söylüyor — ayrıca "Süre Durumu" sütunu
       // koymak aynı bilgiyi ikinci kez yazmak olurdu.
       Çıkış: k.cikis_zamani ? saatGoster(k.cikis_zamani) : 'devam ediyor',
+      Tip: k.tip === 'fazla' ? 'FAZLA MESAİ' : 'Normal',
       'Süre (sa:dk)': saatBicim(kayitDakika(k, simdi)),
       'Ofise Mesafe (m)': k.giris_mesafe_m ?? '',
       Not: k.not_ ?? '',
@@ -233,7 +256,7 @@ export default function MesaiRaporu() {
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <CalendarClock size={22} strokeWidth={1.8} style={{ color: 'var(--brand-primary)' }} />
-        <h2 style={{ margin: 0, font: '700 20px/26px var(--font-sans)', color: 'var(--text-primary)' }}>Mesai Raporu</h2>
+        <h2 style={{ margin: 0, font: '700 20px/26px var(--font-sans)', color: 'var(--text-primary)' }}>Çalışma Saatleri</h2>
       </div>
       <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
         QR ile mesai başlatan saha ekiplerinin çalışma saatleri. Devam eden mesailerde
@@ -298,6 +321,11 @@ export default function MesaiRaporu() {
             ikon: <Clock size={15} />, etiket: 'KİŞİ BAŞI GÜNLÜK', deger: kpi.kisiBasiGunluk,
             ipucu: `Bir personelin ortalama günlük mesaisi (${kpi.kisiGun} kişi-gün üzerinden). Devam eden mesailer anlık süreyle girer, gün ilerledikçe yükselir.`,
           },
+          {
+            ikon: <Moon size={15} />, etiket: 'FAZLA MESAİ', deger: kpi.fazlaSaat,
+            ipucu: `19:00'dan sonra başlatılan çalışma — ${kpi.fazlaKisi} personel, ${kpi.fazlaKayit} kayıt. Ayrı ücretlendirilir.`,
+            vurgu: kpi.fazlaKayit > 0 ? '#f59e0b' : undefined,
+          },
           { ikon: <CalendarClock size={15} />, etiket: 'DEVAM EDEN', deger: kpi.devam },
         ].map(k => (
           <Card key={k.etiket} style={{ padding: '12px 14px' }} title={k.ipucu}>
@@ -305,7 +333,7 @@ export default function MesaiRaporu() {
               {k.ikon}
               <span style={{ font: '600 11px/14px var(--font-sans)', letterSpacing: 0.3 }}>{k.etiket}</span>
             </div>
-            <div className="tabular-nums" style={{ font: '700 20px/26px var(--font-sans)', color: 'var(--text-primary)' }}>
+            <div className="tabular-nums" style={{ font: '700 20px/26px var(--font-sans)', color: k.vurgu || 'var(--text-primary)' }}>
               {k.deger}
             </div>
           </Card>
@@ -341,7 +369,9 @@ export default function MesaiRaporu() {
                 <TH>Personel</TH>
                 <TH>Ünvan</TH>
                 <TH>Gün</TH>
-                <TH>Toplam Süre</TH>
+                <TH title="19:00 öncesi başlayan normal çalışma">Normal</TH>
+                <TH title="19:00 sonrası başlayan, ayrı ücretlendirilen çalışma">Fazla Mesai</TH>
+                <TH>Toplam</TH>
                 <TH>Günlük Ort.</TH>
                 {/* "Kayıt" tek başına neyi saydığını söylemiyordu */}
                 <TH title="O dönemde kaç kez mesai başlatıldı (QR okutuldu)">Mesai Girişi</TH>
@@ -354,6 +384,10 @@ export default function MesaiRaporu() {
                   <TD style={{ fontWeight: 600 }}>{r.ad}</TD>
                   <TD style={{ color: 'var(--text-tertiary)' }}>{r.unvan || '—'}</TD>
                   <TD className="tabular-nums">{r.gunSayisi}</TD>
+                  <TD className="tabular-nums">{r.normalDk > 0 ? saatBicim(r.normalDk) : '—'}</TD>
+                  <TD className="tabular-nums" style={{ fontWeight: r.fazlaDk > 0 ? 700 : 400, color: r.fazlaDk > 0 ? '#f59e0b' : 'var(--text-tertiary)' }}>
+                    {r.fazlaDk > 0 ? saatBicim(r.fazlaDk) : '—'}
+                  </TD>
                   <TD className="tabular-nums" style={{ fontWeight: 700 }}>
                     {saatBicim(r.dakika)}
                     {r.devam > 0 && (
