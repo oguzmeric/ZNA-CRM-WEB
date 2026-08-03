@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   CalendarCheck, Upload, FolderOpen, CheckCircle2, XCircle,
-  Download, Trash2, FileText, Clock, Users, Printer,
+  Download, Trash2, FileText, Clock, Users, Printer, Banknote,
 } from 'lucide-react'
 import { izinFormuYazdir } from '../lib/izinFormu'
 import { useAuth } from '../context/AuthContext'
@@ -15,6 +15,8 @@ import {
   IZIN_TURLERI, IZIN_DURUM, izinDurumBilgi,
   izinTalepleriGetir, izinKarar, izinSil,
   bordrolariGetir, bordroYukle, bordroIndirUrl, bordroSil,
+  avansTalepleriGetir, avansKarar, avansOdendiIsaretle, avansTaksitIsaretle,
+  avansSil, tutarBicim,
 } from '../services/ikService'
 import { useConfirm } from '../context/ConfirmContext'
 import {
@@ -22,6 +24,7 @@ import {
   Table, THead, TBody, TR, TH, TD,
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import AvansOnaylari, { AvansKararModal, AvansOdemeModal } from '../components/AvansPanel'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -41,9 +44,11 @@ const durumBadge = (durum) => {
 
 const SEKMELER = [
   { id: 'izin',      label: 'İzin Onayları',    ikon: CalendarCheck },
+  { id: 'avans',     label: 'Avans Onayları',   ikon: Banknote },
   { id: 'yukle',     label: 'Bordro Yükle',     ikon: Upload },
   { id: 'bordrolar', label: 'Yüklü Bordrolar',  ikon: FolderOpen },
 ]
+
 
 export default function IKYonetim() {
   const { kullanici } = useAuth()
@@ -55,6 +60,11 @@ export default function IKYonetim() {
   const [izinler, setIzinler] = useState([])
   const [bordrolar, setBordrolar] = useState([])
   const [personeller, setPersoneller] = useState([])
+  const [avanslar, setAvanslar] = useState([])
+  // Avans: karar modalı + ödeme modalı + işlem kilidi (çift tıklama koruması)
+  const [avansKararModal, setAvansKararModal] = useState(null)  // { avans, durum }
+  const [odemeModal, setOdemeModal] = useState(null)            // avans
+  const [avansMesgul, setAvansMesgul] = useState(null)          // işlemdeki taksit/avans id
 
   // Sekme 1 — izin onayları
   const [durumFiltre, setDurumFiltre] = useState('')
@@ -66,9 +76,12 @@ export default function IKYonetim() {
   const yukle = async () => {
     setYukleniyor(true)
     try {
-      const [iz, bo] = await Promise.all([izinTalepleriGetir(), bordrolariGetir()])
+      const [iz, bo, av] = await Promise.all([
+        izinTalepleriGetir(), bordrolariGetir(), avansTalepleriGetir(),
+      ])
       setIzinler(iz || [])
       setBordrolar(bo || [])
+      setAvanslar(av || [])
     } catch (e) {
       toast.error(e?.message || 'Veriler yüklenemedi.')
     } finally { setYukleniyor(false) }
@@ -86,6 +99,57 @@ export default function IKYonetim() {
       await izinSil(t.id)
       toast.success('Talep silindi.')
       setIzinler(prev => prev.filter(x => x.id !== t.id))
+    } catch (e) {
+      toast.error('Silinemedi: ' + (e?.message || 'hata'))
+    }
+  }
+
+  // ── Avans işlemleri ───────────────────────────────────────────────────
+  const avansKararVer = async ({ avans, durum, kararNotu }) => {
+    setAvansMesgul(avans.id)
+    try {
+      await avansKarar(avans.id, { durum, onaylayanId: kullanici?.id, kararNotu })
+      toast.success(durum === 'onaylandi' ? 'Avans onaylandı.' : 'Avans reddedildi.')
+      setAvansKararModal(null)
+      await yukle()
+    } catch (e) {
+      toast.error(e?.message || 'İşlem tamamlanamadı.')
+    } finally { setAvansMesgul(null) }
+  }
+
+  const odemeIsaretle = async (avans, ilkKesintiDonemi) => {
+    setAvansMesgul(avans.id)
+    try {
+      await avansOdendiIsaretle(avans.id, { odeyenId: kullanici?.id, ilkKesintiDonemi })
+      toast.success('Ödeme işaretlendi — taksit planı oluşturuldu.')
+      setOdemeModal(null)
+      await yukle()
+    } catch (e) {
+      toast.error(e?.message || 'Ödeme işaretlenemedi.')
+    } finally { setAvansMesgul(null) }
+  }
+
+  const taksitDegistir = async (taksit, kesildi) => {
+    setAvansMesgul(taksit.id)
+    try {
+      await avansTaksitIsaretle(taksit.id, { kesildi, kesenId: kullanici?.id })
+      await yukle()
+    } catch (e) {
+      toast.error(e?.message || 'Taksit güncellenemedi.')
+    } finally { setAvansMesgul(null) }
+  }
+
+  const avansKaydiSil = async (a) => {
+    const onay = await confirm({
+      baslik: 'Avans Talebini Sil',
+      mesaj: `${a.kullaniciAd || 'Personel'} — ${tutarBicim(a.tutar)} avans kaydı KALICI olarak silinecek (taksitleriyle birlikte). Emin misin?`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await avansSil(a.id)
+      toast.success('Avans kaydı silindi.')
+      setAvanslar(prev => prev.filter(x => x.id !== a.id))
     } catch (e) {
       toast.error('Silinemedi: ' + (e?.message || 'hata'))
     }
@@ -233,6 +297,17 @@ export default function IKYonetim() {
             />
           )}
 
+          {sekme === 'avans' && (
+            <AvansOnaylari
+              avanslar={avanslar}
+              mesgul={avansMesgul}
+              onKarar={(avans, durum) => setAvansKararModal({ avans, durum })}
+              onOde={(avans) => setOdemeModal(avans)}
+              onTaksit={taksitDegistir}
+              onSil={avansKaydiSil}
+            />
+          )}
+
           {sekme === 'yukle' && (
             <BordroYukleForm
               personeller={personeller}
@@ -263,6 +338,25 @@ export default function IKYonetim() {
           onaylayanId={kullanici?.id}
           onKapat={() => setKararModal(null)}
           onKaydedildi={async () => { setKararModal(null); await yukle() }}
+        />
+      )}
+
+      {avansKararModal && (
+        <AvansKararModal
+          avans={avansKararModal.avans}
+          durum={avansKararModal.durum}
+          mesgul={avansMesgul === avansKararModal.avans.id}
+          onKapat={() => setAvansKararModal(null)}
+          onOnay={(kararNotu) => avansKararVer({ ...avansKararModal, kararNotu })}
+        />
+      )}
+
+      {odemeModal && (
+        <AvansOdemeModal
+          avans={odemeModal}
+          mesgul={avansMesgul === odemeModal.id}
+          onKapat={() => setOdemeModal(null)}
+          onOnay={(ilkDonem) => odemeIsaretle(odemeModal, ilkDonem)}
         />
       )}
     </div>

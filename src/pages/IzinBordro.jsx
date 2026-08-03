@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   CalendarDays, FileText, Plus, Download, XCircle, Wallet, Printer,
+  Banknote, CheckCircle2, Clock,
 } from 'lucide-react'
 import { izinFormuYazdir } from '../lib/izinFormu'
 import { useAuth } from '../context/AuthContext'
@@ -14,6 +15,8 @@ import {
   IZIN_TURLERI, IZIN_DURUM, izinDurumBilgi, isGunuHesapla,
   bordrolariGetir, bordroIndirUrl,
   izinTalepleriGetir, izinTalepEkle, izinIptal,
+  avansTalepleriGetir, avansTalepEkle, avansIptal, avansDurumBilgi,
+  TAKSIT_SECENEKLERI, tutarBicim, donemBicim,
 } from '../services/ikService'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Modal,
@@ -35,6 +38,7 @@ const turIsim = (id) => IZIN_TURLERI.find(t => t.id === id)?.isim || id
 
 const SEKMELER = [
   { id: 'izin', label: 'İzin Taleplerim', ikon: CalendarDays },
+  { id: 'avans', label: 'Avans Taleplerim', ikon: Banknote },
   { id: 'bordro', label: 'Bordrolarım', ikon: Wallet },
 ]
 
@@ -44,9 +48,12 @@ export default function IzinBordro() {
   const [sekme, setSekme] = useState('izin')
   const [talepler, setTalepler] = useState([])
   const [bordrolar, setBordrolar] = useState([])
+  const [avanslar, setAvanslar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [talepModal, setTalepModal] = useState(false)
+  const [avansModal, setAvansModal] = useState(false)
   const [iptalEdilen, setIptalEdilen] = useState(null)   // iptal isteği gönderilen talep id
+  const [avansIptalEdilen, setAvansIptalEdilen] = useState(null)
 
   const kimId = kullanici?.id
 
@@ -54,13 +61,15 @@ export default function IzinBordro() {
     if (!kimId) return
     setYukleniyor(true)
     try {
-      const [t, b] = await Promise.all([
+      const [t, b, a] = await Promise.all([
         izinTalepleriGetir({ kullaniciId: kimId }),
         // bordrolariGetir imzası POZİSYONEL (kullaniciId) — obje verme (NaN eq → boş liste)
         bordrolariGetir(kimId),
+        avansTalepleriGetir({ kullaniciId: kimId }),
       ])
       setTalepler(t)
       setBordrolar(b)
+      setAvanslar(a)
     } catch (e) {
       toast.error(e?.message || 'Kayıtlar yüklenemedi.')
     } finally {
@@ -75,6 +84,15 @@ export default function IzinBordro() {
     () => talepler.filter(t => t.durum === 'bekliyor').length,
     [talepler],
   )
+  const avansBekleyenSayi = useMemo(
+    () => avanslar.filter(a => a.durum === 'bekliyor').length,
+    [avanslar],
+  )
+  // Ödenmiş ama taksitleri bitmemiş avansların toplam kalan borcu
+  const toplamKalanBorc = useMemo(
+    () => avanslar.reduce((s, a) => s + (a.kalanBorc || 0), 0),
+    [avanslar],
+  )
 
   const iptalEt = async (talep) => {
     if (!confirm(`${turIsim(talep.tur)} talebin (${fmtTarih(talep.baslangic)} – ${fmtTarih(talep.bitis)}) iptal edilsin mi?`)) return
@@ -87,6 +105,20 @@ export default function IzinBordro() {
       toast.error(e?.message || 'İptal edilemedi.')
     } finally {
       setIptalEdilen(null)
+    }
+  }
+
+  const avansIptalEt = async (a) => {
+    if (!confirm(`${tutarBicim(a.tutar)} tutarındaki avans talebin iptal edilsin mi?`)) return
+    setAvansIptalEdilen(a.id)
+    try {
+      await avansIptal(a.id)
+      toast.success('Avans talebi iptal edildi.')
+      await yukle()
+    } catch (e) {
+      toast.error(e?.message || 'İptal edilemedi.')
+    } finally {
+      setAvansIptalEdilen(null)
     }
   }
 
@@ -106,12 +138,17 @@ export default function IzinBordro() {
         <div>
           <h1 className="t-h1" style={{ margin: 0 }}>İzin &amp; Bordro</h1>
           <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 4 }}>
-            İzin taleplerini buradan oluştur ve takip et; onaylı bordrolarını indir.
+            İzin ve avans taleplerini buradan oluştur ve takip et; onaylı bordrolarını indir.
           </p>
         </div>
         {sekme === 'izin' && (
           <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => setTalepModal(true)}>
             Yeni İzin Talebi
+          </Button>
+        )}
+        {sekme === 'avans' && (
+          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => setAvansModal(true)}>
+            Yeni Avans Talebi
           </Button>
         )}
       </div>
@@ -134,14 +171,14 @@ export default function IzinBordro() {
                 border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
               }}>
               <Icon size={14} /> {s.label}
-              {s.id === 'izin' && bekleyenSayi > 0 && (
+              {((s.id === 'izin' && bekleyenSayi > 0) || (s.id === 'avans' && avansBekleyenSayi > 0)) && (
                 <span style={{
                   minWidth: 18, height: 18, borderRadius: 999, padding: '0 5px',
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   background: aktif ? 'rgba(255,255,255,0.25)' : 'var(--brand-primary)',
                   color: '#fff', fontSize: 10.5, fontWeight: 700,
                 }}>
-                  {bekleyenSayi}
+                  {s.id === 'izin' ? bekleyenSayi : avansBekleyenSayi}
                 </span>
               )}
             </button>
@@ -228,6 +265,131 @@ export default function IzinBordro() {
             })}
           </div>
         )
+      ) : sekme === 'avans' ? (
+        // ── Avans Taleplerim ────────────────────────────────────────────
+        <>
+          {toplamKalanBorc > 0 && (
+            <Card style={{
+              padding: '12px 16px', marginBottom: 12,
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              borderLeft: '3px solid var(--brand-primary)',
+            }}>
+              <Banknote size={18} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
+              <span className="t-body-strong">Kalan avans borcun: {tutarBicim(toplamKalanBorc)}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                (maaşından kesilecek taksitlerin toplamı)
+              </span>
+            </Card>
+          )}
+          {avanslar.length === 0 ? (
+            <EmptyState
+              icon={<Banknote size={40} strokeWidth={1.5} />}
+              title="Henüz avans talebin yok"
+              description={'"Yeni Avans Talebi" ile tutarı ve kaç taksitte kesileceğini seçerek talep oluşturabilirsin.'}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {avanslar.map(a => {
+                const durum = avansDurumBilgi(a.durum)
+                return (
+                  <Card key={a.id} style={{ padding: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
+                        <div style={{
+                          width: 42, height: 42, borderRadius: 8, background: 'var(--surface-sunken)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                          <Banknote size={20} style={{ color: 'var(--brand-primary)' }} strokeWidth={1.5} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="t-body-strong">{tutarBicim(a.tutar)}</span>
+                            <Badge tone={BADGE_TONE[durum.tone] || durum.tone}>{durum.isim}</Badge>
+                            {a.odemeTarihi && <Badge tone="basarili">Ödendi</Badge>}
+                          </div>
+                          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
+                            {a.taksitSayisi} taksit
+                            {a.taksitler.length > 0 && (
+                              <span style={{ color: 'var(--text-tertiary)' }}>
+                                {' · '}{a.kesilenTaksit}/{a.taksitler.length} kesildi
+                              </span>
+                            )}
+                          </div>
+                          {a.gerekce && (
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{a.gerekce}</div>
+                          )}
+                          {a.kararNotu && (
+                            <div style={{
+                              marginTop: 6, padding: '6px 10px', borderRadius: 8,
+                              background: 'var(--surface-sunken)', fontSize: 12,
+                              color: a.durum === 'reddedildi' ? 'var(--danger)' : 'var(--text-secondary)',
+                            }}>
+                              <strong>Karar notu:</strong> {a.kararNotu}
+                            </div>
+                          )}
+                          {/* Onaylandı ama para henüz verilmedi — personel bunu bilmeli */}
+                          {a.durum === 'onaylandi' && !a.odemeTarihi && (
+                            <div style={{
+                              marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 5,
+                              fontSize: 12, color: '#b45309',
+                            }}>
+                              <Clock size={12} strokeWidth={1.5} /> Onaylandı — ödeme bekleniyor
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          Talep: {fmtTarihSaat(a.olusturmaTarih)}
+                          {a.odemeTarihi && <> · Ödeme: {fmtTarihSaat(a.odemeTarihi)}</>}
+                        </span>
+                        {a.durum === 'bekliyor' && (
+                          <Button size="sm" variant="secondary"
+                            iconLeft={<XCircle size={12} />}
+                            onClick={() => avansIptalEt(a)}
+                            disabled={avansIptalEdilen === a.id}
+                            style={{ color: 'var(--danger)' }}>
+                            {avansIptalEdilen === a.id ? 'İptal ediliyor…' : 'İptal Et'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Taksit planı — ödeme işaretlenince oluşur */}
+                    {a.taksitler.length > 0 && (
+                      <div style={{ marginTop: 12, borderTop: '1px solid var(--border-default)', paddingTop: 10 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {a.taksitler.map(t => {
+                            const kesildi = !!t.kesintiTarihi
+                            return (
+                              <span key={t.id} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                                fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+                                background: kesildi ? 'rgba(34,197,94,0.12)' : 'var(--surface-sunken)',
+                                color: kesildi ? '#15803d' : 'var(--text-secondary)',
+                                border: `1px solid ${kesildi ? 'rgba(34,197,94,0.35)' : 'var(--border-default)'}`,
+                              }}>
+                                {kesildi ? <CheckCircle2 size={11} strokeWidth={2} /> : <Clock size={11} strokeWidth={1.5} />}
+                                {donemBicim(t.donem)} · {tutarBicim(t.tutar)}
+                              </span>
+                            )
+                          })}
+                        </div>
+                        {a.kalanBorc > 0 && (
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+                            Kalan borç: <strong>{tutarBicim(a.kalanBorc)}</strong>
+                            {a.sonrakiTaksit && <> · Sıradaki kesinti: {donemBicim(a.sonrakiTaksit.donem)}</>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </>
       ) : (
         // ── Bordrolarım ─────────────────────────────────────────────────
         bordrolar.length === 0 ? (
@@ -275,6 +437,14 @@ export default function IzinBordro() {
           kullaniciId={kimId}
           onKapat={() => setTalepModal(false)}
           onKaydet={async () => { setTalepModal(false); await yukle() }}
+        />
+      )}
+
+      {avansModal && (
+        <YeniAvansTalepModal
+          kullaniciId={kimId}
+          onKapat={() => setAvansModal(false)}
+          onKaydet={async () => { setAvansModal(false); await yukle() }}
         />
       )}
     </div>
@@ -371,6 +541,88 @@ function YeniIzinTalepModal({ kullaniciId, onKapat, onKaydet }) {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <Button variant="secondary" onClick={onKapat} disabled={kaydediliyor}>Vazgeç</Button>
           <Button variant="primary" onClick={kaydet} disabled={kaydediliyor}>
+            {kaydediliyor ? 'Kaydediliyor…' : 'Talebi Gönder'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Yeni Avans Talebi ──────────────────────────────────────────────────────
+function YeniAvansTalepModal({ kullaniciId, onKapat, onKaydet }) {
+  const { toast } = useToast()
+  const [tutar, setTutar] = useState('')
+  const [taksit, setTaksit] = useState(1)
+  const [gerekce, setGerekce] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  // Kullanıcı "9.000" ya da "9000,50" yazabilir — ikisini de sayıya çevir
+  const sayi = Number(String(tutar).replace(/\./g, '').replace(',', '.'))
+  const gecerli = Number.isFinite(sayi) && sayi > 0
+  const taksitTutar = gecerli ? sayi / taksit : 0
+
+  const kaydet = async () => {
+    if (!gecerli) { toast.error('Geçerli bir avans tutarı girin.'); return }
+    setKaydediliyor(true)
+    try {
+      await avansTalepEkle({ kullaniciId, tutar, taksitSayisi: taksit, gerekce })
+      toast.success('Avans talebin oluşturuldu — onay bekliyor.')
+      onKaydet()
+    } catch (e) {
+      toast.error(e?.message || 'Talep oluşturulamadı.')
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onKapat} title="Yeni Avans Talebi" width={520}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <Label required>Avans Tutarı (₺)</Label>
+          <Input
+            value={tutar}
+            onChange={e => setTutar(e.target.value.replace(/[^0-9.,]/g, ''))}
+            placeholder="Örn: 9000"
+            inputMode="decimal"
+            autoFocus
+          />
+        </div>
+
+        <div>
+          <Label required>Kaç taksitte kesilsin?</Label>
+          <CustomSelect value={String(taksit)} onChange={e => setTaksit(Number(e.target.value))}>
+            {TAKSIT_SECENEKLERI.map(n => (
+              <option key={n} value={n}>{n} taksit</option>
+            ))}
+          </CustomSelect>
+        </div>
+
+        {/* Talep göndermeden önce aylık kesintiyi göster — sürpriz olmasın */}
+        {gecerli && (
+          <div style={{
+            padding: '10px 12px', borderRadius: 8, background: 'var(--surface-sunken)',
+            fontSize: 13, color: 'var(--text-secondary)',
+          }}>
+            Maaşından <strong style={{ color: 'var(--text-primary)' }}>
+              {taksit} ay boyunca ayda {tutarBicim(taksitTutar)}
+            </strong> kesilir.
+            <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 3 }}>
+              Kesintiler avans ödendikten sonraki ay başlar. Küsurat son taksite eklenir.
+            </div>
+          </div>
+        )}
+
+        <div>
+          <Label>Gerekçe (opsiyonel)</Label>
+          <Textarea rows={3} value={gerekce} onChange={e => setGerekce(e.target.value)}
+            placeholder="Örn: Ev taşınma masrafı…" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+          <Button variant="secondary" onClick={onKapat} disabled={kaydediliyor}>Vazgeç</Button>
+          <Button variant="primary" onClick={kaydet} disabled={kaydediliyor || !gecerli}>
             {kaydediliyor ? 'Kaydediliyor…' : 'Talebi Gönder'}
           </Button>
         </div>

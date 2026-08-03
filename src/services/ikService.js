@@ -312,3 +312,173 @@ export async function izinIptal(id) {
   if (!data) throw new Error('Talep iptal edilemedi — yalnız bekleyen talepler iptal edilebilir.')
   return toCamel(data)
 }
+
+// ---------- Maaş Avansı (mig 255) ----------
+//
+// Akış: talep (bekliyor) → İK kararı → ÖDEME işareti → taksit planı otomatik
+// üretilir → her ay taksit "kesildi" işaretlenir.
+// İzinden farkı: bildirimler İSTEMCİDEN DEĞİL, DB trigger'ından (tr_avans_bildir)
+// gönderilir — nereden yazılırsa yazılsın (web/mobil/ileride cron) atlanamaz.
+
+export const AVANS_DURUM = {
+  bekliyor:   { isim: 'Bekliyor',   tone: 'beklemede' },
+  onaylandi:  { isim: 'Onaylandı',  tone: 'basarili' },
+  reddedildi: { isim: 'Reddedildi', tone: 'kayip' },
+  iptal:      { isim: 'İptal',      tone: 'neutral' },
+}
+export const avansDurumBilgi = (id) =>
+  AVANS_DURUM[id] || { isim: id || '—', tone: 'neutral' }
+
+export const TAKSIT_SECENEKLERI = [1, 2, 3, 4, 5, 6, 9, 12]
+
+export const tutarBicim = (t) =>
+  (Number(t) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺'
+
+export const donemBicim = (d) => {
+  if (!d) return '—'
+  const t = new Date(String(d).length <= 10 ? d + 'T00:00:00' : d)
+  return t.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })
+}
+
+/** Avans talepleri + taksitleri. RLS süzer: personel kendini, İK herkesi görür. */
+export async function avansTalepleriGetir({ kullaniciId = null, durum = null } = {}) {
+  let q = supabase
+    .from('avans_talepleri')
+    .select(`
+      id, kullanici_id, tutar, taksit_sayisi, gerekce, durum,
+      onaylayan_id, onay_tarihi, karar_notu,
+      odeme_tarihi, odeyen_id, ilk_kesinti_donemi, olusturma_tarih,
+      avans_taksitleri ( id, sira, donem, tutar, kesinti_tarihi, kesen_id )
+    `)
+    .order('olusturma_tarih', { ascending: false })
+  if (kullaniciId) q = q.eq('kullanici_id', Number(kullaniciId))
+  if (durum) q = q.eq('durum', durum)
+  const { data, error } = await q
+  if (error) { console.error('[avansTalepleriGetir]', error.message); return [] }
+
+  const adMap = await kullaniciAdMap(
+    (data || []).flatMap(r => [r.kullanici_id, r.onaylayan_id, r.odeyen_id])
+  )
+  // toCamel shallow join dersi: iç içe diziyi elle düzleştir + sırala
+  return (data || []).map(r => {
+    const taksitler = arrayToCamel(r.avans_taksitleri || []).sort((a, b) => a.sira - b.sira)
+    const kesilen = taksitler.filter(t => t.kesintiTarihi)
+    const kesilenTutar = kesilen.reduce((s, t) => s + Number(t.tutar || 0), 0)
+    return {
+      ...toCamel(r),
+      taksitler,
+      kullaniciAd: adMap.get(Number(r.kullanici_id)) || null,
+      onaylayanAd: r.onaylayan_id ? (adMap.get(Number(r.onaylayan_id)) || null) : null,
+      odeyenAd: r.odeyen_id ? (adMap.get(Number(r.odeyen_id)) || null) : null,
+      kesilenTaksit: kesilen.length,
+      kesilenTutar,
+      // Kalan borç: ödenmemiş avansta 0 değil — plan henüz yok, borç da doğmadı
+      kalanBorc: r.odeme_tarihi ? Number(r.tutar || 0) - kesilenTutar : 0,
+      sonrakiTaksit: taksitler.find(t => !t.kesintiTarihi) || null,
+    }
+  })
+}
+
+/** Yeni avans talebi. payload: { kullaniciId, tutar, taksitSayisi, gerekce } */
+export async function avansTalepEkle({ kullaniciId, tutar, taksitSayisi, gerekce }) {
+  if (!kullaniciId) throw new Error('Oturum bulunamadı.')
+  const t = Number(String(tutar).replace(/\./g, '').replace(',', '.'))
+  if (!Number.isFinite(t) || t <= 0) throw new Error('Geçerli bir avans tutarı girin.')
+  const taksit = Number(taksitSayisi) || 1
+  if (taksit < 1 || taksit > 12) throw new Error('Taksit sayısı 1–12 arasında olmalı.')
+
+  const { data, error } = await supabase
+    .from('avans_talepleri')
+    .insert({
+      kullanici_id: Number(kullaniciId),
+      tutar: t,
+      taksit_sayisi: taksit,
+      gerekce: gerekce?.trim() || null,
+      durum: 'bekliyor',
+    })
+    .select('id, tutar, taksit_sayisi, durum, olusturma_tarih')
+    .single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+/** İK kararı: onayla / reddet (bildirim DB trigger'ından gider). */
+export async function avansKarar(id, karar) {
+  if (id && typeof id === 'object') { karar = id; id = karar.id }
+  const { durum, onaylayanId, kararNotu } = karar || {}
+  if (!id) throw new Error('Talep id zorunlu.')
+  if (!['onaylandi', 'reddedildi'].includes(durum)) {
+    throw new Error("Geçersiz karar — 'onaylandi' veya 'reddedildi' olmalı.")
+  }
+  const { data, error } = await supabase
+    .from('avans_talepleri')
+    .update({
+      durum,
+      onaylayan_id: onaylayanId ? Number(onaylayanId) : null,
+      onay_tarihi: new Date().toISOString(),
+      karar_notu: kararNotu?.trim() || null,
+    })
+    .eq('id', id)
+    .select('id, durum, tutar, taksit_sayisi')
+    .single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+/** Ödeme işareti — taksit planını DB trigger'ı (tr_avans_taksit_plani) üretir.
+ *  ilkKesintiDonemi boş bırakılırsa ödeme ayının ERTESİ ayı kabul edilir. */
+export async function avansOdendiIsaretle(id, { odeyenId, ilkKesintiDonemi } = {}) {
+  if (!id) throw new Error('Talep id zorunlu.')
+  const { data, error } = await supabase
+    .from('avans_talepleri')
+    .update({
+      odeme_tarihi: new Date().toISOString(),
+      odeyen_id: odeyenId ? Number(odeyenId) : null,
+      ilk_kesinti_donemi: ilkKesintiDonemi || null,
+    })
+    .eq('id', id)
+    .eq('durum', 'onaylandi')          // onaylanmamış avans ödenemez
+    .is('odeme_tarihi', null)          // ikinci kez ödeme işareti konmasın
+    .select('id, odeme_tarihi, ilk_kesinti_donemi')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('Ödeme işaretlenemedi — talep onaylı değil ya da zaten ödenmiş.')
+  return toCamel(data)
+}
+
+/** Taksit kesintisi işaretle / geri al. */
+export async function avansTaksitIsaretle(taksitId, { kesildi, kesenId } = {}) {
+  if (!taksitId) throw new Error('Taksit id zorunlu.')
+  const { data, error } = await supabase
+    .from('avans_taksitleri')
+    .update({
+      kesinti_tarihi: kesildi ? new Date().toISOString() : null,
+      kesen_id: kesildi && kesenId ? Number(kesenId) : null,
+    })
+    .eq('id', taksitId)
+    .select('id, kesinti_tarihi')
+    .single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+/** Personel kendi bekleyen talebini iptal eder (RLS de aynı kuralı uygular). */
+export async function avansIptal(id) {
+  const { data, error } = await supabase
+    .from('avans_talepleri')
+    .update({ durum: 'iptal' })
+    .eq('id', id)
+    .eq('durum', 'bekliyor')
+    .select('id, durum')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('Talep iptal edilemedi — yalnız bekleyen talepler iptal edilebilir.')
+  return toCamel(data)
+}
+
+/** İK: kalıcı sil (yanlış/test kayıtları) — taksitler CASCADE gider. */
+export async function avansSil(id) {
+  const { error } = await supabase.from('avans_talepleri').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
