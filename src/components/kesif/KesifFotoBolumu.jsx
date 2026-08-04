@@ -98,7 +98,16 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
       if (!yanit.ok) throw new Error('Dosya indirilemedi (' + yanit.status + ')')
       const kaynak = await yanit.blob()
       const { default: heic2any } = await import('heic2any')
-      const cikti = await heic2any({ blob: kaynak, toType: 'image/jpeg', quality: 0.85 })
+      // heic2any işi blob-worker'da yapar; worker engellenirse (CSP) hata
+      // fırlatmak yerine SONSUZA DEK askıda kalıyor — 04.08'de buton
+      // "Çevriliyor…"da takılı kaldı. Yarış: 90 sn'de sonuç yoksa net hata.
+      const cikti = await Promise.race([
+        heic2any({ blob: kaynak, toType: 'image/jpeg', quality: 0.85 }),
+        new Promise((_, red) => setTimeout(
+          () => red(new Error('Dönüşüm 90 saniyede tamamlanamadı — sayfayı yenileyip tekrar deneyin')),
+          90000,
+        )),
+      ])
       const jpeg = Array.isArray(cikti) ? cikti[0] : cikti
       await kesifFotoIcerikDegistir(f.dosyaYolu, jpeg)
       // Aynı yol ama YENİ imza → tarayıcı önbelleği devre dışı, taze içerik iner
