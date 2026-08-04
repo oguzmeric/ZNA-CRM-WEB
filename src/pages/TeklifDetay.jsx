@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Trash2, Printer, FileText, Bell, RefreshCw,
   CheckCircle2, XCircle, Receipt, Inbox, Send, StickyNote, Save, Calculator,
   GripVertical, Percent, Copy, History, LayoutTemplate, Eye, FileSignature, Clock,
-  ShoppingCart,
+  ShoppingCart, ClipboardPaste,
 } from 'lucide-react'
 // Not: ↑↓ butonlar drag+drop lehine kaldırıldı (satirTasi fonksiyonu artık kullanılmıyor).
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -42,6 +42,7 @@ import {
 import { stokUrunleriniGetir } from '../services/stokService'
 import AkilliUrunSecici from '../components/AkilliUrunSecici'
 import HizliStokEkleModal from '../components/HizliStokEkleModal'
+import TopluSatirModal from '../components/TopluSatirModal'
 import HizliMusteriEkleModal from '../components/HizliMusteriEkleModal'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonDetay } from '../components/Skeleton'
@@ -201,6 +202,7 @@ function TeklifDetay() {
   const [topluIskonto, setTopluIskonto] = useState(null) // null | { deger: string }
   // Teklif şablonları modal + liste (lazy — modal ilk açılınca çekilir)
   const [sablonModalAcik, setSablonModalAcik] = useState(false)
+  const [topluSatirAcik, setTopluSatirAcik] = useState(false)   // Excel'den toplu satır
   const [sablonlar, setSablonlar] = useState(null) // null = henüz yüklenmedi
   const [sablonAd, setSablonAd] = useState('')
   // "Müşteri açtı mı?" rozeti — paylaşım linki açılma istatistiği
@@ -571,6 +573,18 @@ function TeklifDetay() {
 
   const satirEkle = () => {
     setForm({ ...form, satirlar: [...form.satirlar, { ...bosUrun, id: crypto.randomUUID() }] })
+  }
+
+  // Excel'den toplu satır: kopyala-yapıştır ile gelen kalemleri listeye ekler.
+  // Boş (hiç doldurulmamış) satırlar varsa onları atarız — kullanıcı önce
+  // "Satır Ekle"ye basıp sonra toplu yapıştırırsa altta boş satır kalmasın.
+  const topluSatirEkle = (yeniSatirlar) => {
+    setForm(f => {
+      const dolular = f.satirlar.filter(s => (s.stokKodu || '').trim() || (s.stokAdi || '').trim())
+      return { ...f, satirlar: [...dolular, ...yeniSatirlar] }
+    })
+    setTopluSatirAcik(false)
+    toast.success(`${yeniSatirlar.length} satır eklendi.`)
   }
 
   const satirSil = (index) => {
@@ -1802,6 +1816,16 @@ function TeklifDetay() {
                 Toplu İskonto
               </Button>
             )}
+            {/* Excel'den kopyala-yapıştır ile toplu satır — uzun ürün
+                listelerini tek tek girmek yerine panodan aktarma */}
+            <Button
+              variant="secondary"
+              iconLeft={<ClipboardPaste size={14} strokeWidth={1.5} />}
+              onClick={() => setTopluSatirAcik(true)}
+              title="Excel'den ürün kodu + miktar yapıştırarak toplu satır ekle"
+            >
+              Toplu Ekle
+            </Button>
             <Button variant="secondary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={satirEkle}>
               Satır ekle
             </Button>
@@ -2561,6 +2585,14 @@ function TeklifDetay() {
           </div>
         )
       })()}
+
+      {/* Excel'den toplu satır ekleme */}
+      <TopluSatirModal
+        acik={topluSatirAcik}
+        onKapat={() => setTopluSatirAcik(false)}
+        stokUrunler={stokUrunler}
+        onEkle={topluSatirEkle}
+      />
 
       {/* Teklif şablonları modalı — listele/uygula/sil + mevcut satırları kaydet */}
       <Modal
