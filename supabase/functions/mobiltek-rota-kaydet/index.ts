@@ -133,6 +133,14 @@ Deno.serve(async (req) => {
         const hiz = Number(loc.speed ?? v.gpsSpeed ?? 0) || 0
         const enlem = Number(loc.latitude ?? v.lat)
         const boylam = Number(loc.longitude ?? v.lng)
+        // Odometre = aracın gerçek km sayacı. Günlük mesafeyi seyrek GPS
+        // noktalarından hesaplamak tahmindir; odometre farkı ölçümdür (mig 262).
+        // ⚠️ Mobiltek bu değeri araca/cihaza göre FARKLI alanda döndürüyor —
+        // arac-km-sync fn'indeki kmBul() ile aynı aday listesi kullanılır,
+        // yoksa çoğu araçta boş kalır (ilk denemede hepsi null geldi).
+        const odo = [v.odometer, loc.odometer, v.totalDistance, loc.totalDistance, v.km, loc.km]
+          .map(Number)
+          .find(n => Number.isFinite(n) && n > 0) ?? NaN
         return {
           arac_id: Number(v.id),
           plaka: v.label ?? String(v.id),
@@ -142,6 +150,7 @@ Deno.serve(async (req) => {
           adres: loc.address ?? null,
           il: loc.city ?? null,
           ilce: loc.district ?? null,
+          odometre: Number.isFinite(odo) && odo > 0 ? Math.round(odo) : null,
           olcum_zamani: netTarih(loc.logdatetime) ?? simdi,
         }
       })
@@ -188,6 +197,7 @@ Deno.serve(async (req) => {
           enlem: a.enlem, boylam: a.boylam,
           hiz: a.hiz, yon: a.yon, kontak: a.kontak,
           adres: a.adres, il: a.il, ilce: a.ilce,
+          odometre: a.odometre,
           olcum_zamani: a.olcum_zamani,
         })
       }
@@ -235,6 +245,7 @@ Deno.serve(async (req) => {
         arac_id: a.arac_id, plaka: a.plaka,
         son_enlem: a.enlem, son_boylam: a.boylam,
         son_olcum: a.olcum_zamani,
+        son_odometre: a.odometre,
         son_yazim: izYaz ? simdi : (onceki?.son_yazim ?? null),
         guncelleme: simdi,
       })

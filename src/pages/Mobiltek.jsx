@@ -7,7 +7,7 @@ import { Card, Button, Badge, EmptyState, Select } from '../components/ui'
 import { araclariGetir, kameralariGetir, yakinlikTara, aktifYakinliklarGetir } from '../services/mobiltekService'
 import {
   izleriGetir, parklariGetir, rotaOzeti, gunAraligi,
-  kayitliAraclariGetir, sureMetni,
+  kayitliAraclariGetir, sureMetni, yolaOturt,
 } from '../services/rotaService'
 import MobiltekHarita from '../components/MobiltekHarita'
 import RotaHarita from '../components/RotaHarita'
@@ -80,6 +80,8 @@ export default function Mobiltek() {
   const [rotaParklar, setRotaParklar] = useState([])
   const [rotaYukleniyor, setRotaYukleniyor] = useState(false)
   const [kayitliAraclar, setKayitliAraclar] = useState([])
+  const [yolHatlari, setYolHatlari] = useState(null)   // yola oturtulmuş güzergâh
+  const [yolAraniyor, setYolAraniyor] = useState(false)
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -121,6 +123,7 @@ export default function Mobiltek() {
     if (gorunum !== 'rota' || !rotaArac) { return }
     let iptal = false
     setRotaYukleniyor(true)
+    setYolHatlari(null)
     const { baslangic, bitis } = gunAraligi(rotaGun)
     Promise.all([
       izleriGetir(rotaArac, baslangic, bitis),
@@ -130,6 +133,15 @@ export default function Mobiltek() {
         if (iptal) return
         setRotaIzler(iz)
         setRotaParklar(park)
+        // Noktaları yol ağına oturt — çizgi sokaklara otursun. Ayrı ve
+        // sonradan: dış servis yavaş/erişilemez olsa bile harita hemen
+        // görünür, yol gelince üstüne biner.
+        if (iz.length > 1) {
+          setYolAraniyor(true)
+          yolaOturt(iz)
+            .then(h => { if (!iptal) setYolHatlari(h) })
+            .finally(() => { if (!iptal) setYolAraniyor(false) })
+        }
       })
       .catch(() => { if (!iptal) { setRotaIzler([]); setRotaParklar([]) } })
       .finally(() => { if (!iptal) setRotaYukleniyor(false) })
@@ -520,7 +532,36 @@ export default function Mobiltek() {
             </Card>
 
             <Card padding={0} style={{ position: 'relative', minHeight: 480, overflow: 'hidden', padding: 0 }}>
-              <RotaHarita izler={rotaIzler} parklar={rotaParklar} yukleniyor={rotaYukleniyor} />
+              <RotaHarita
+                izler={rotaIzler}
+                parklar={rotaParklar}
+                yukleniyor={rotaYukleniyor}
+                yolHatlari={yolHatlari}
+              />
+              {/* Ölçüm/tahmin ayrımı — kullanıcı çizgiye bakarken neyin
+                  ölçülmüş neyin hesaplanmış olduğunu bilmeli */}
+              {(yolHatlari || yolAraniyor) && (
+                <div style={{
+                  position: 'absolute', left: 12, bottom: 12, zIndex: 500,
+                  background: 'rgba(255,255,255,0.94)', borderRadius: 8,
+                  border: '1px solid var(--border-default)', padding: '7px 10px',
+                  font: '400 11px/15px var(--font-sans)', color: 'var(--text-secondary)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,.1)', maxWidth: 260,
+                }}>
+                  {yolAraniyor ? 'Güzergâh yollara oturtuluyor…' : (
+                    <>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 14, height: 3, background: '#2563eb', borderRadius: 2 }} />
+                        güzergâh <b>tahmini</b>
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 10 }}>
+                        <span style={{ width: 7, height: 7, background: '#1d4ed8', border: '1.5px solid #fff', borderRadius: '50%' }} />
+                        ölçülen nokta
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </Card>
           </div>
         </div>

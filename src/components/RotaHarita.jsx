@@ -2,8 +2,8 @@
 // Çizgi = gidilen yol, P işaretleri = park duraklamaları, yeşil/kırmızı
 // damla = günün ilk ve son noktası.
 
-import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { useEffect, Fragment } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -62,12 +62,16 @@ function RotayaSigdir({ noktalar }) {
   return null
 }
 
-export default function RotaHarita({ izler = [], parklar = [], yukleniyor }) {
+export default function RotaHarita({ izler = [], parklar = [], yukleniyor, yolHatlari = null }) {
   const noktalar = izler
     .filter(i => i.enlem && i.boylam)
     .map(i => [Number(i.enlem), Number(i.boylam)])
 
   const varsayilanMerkez = [41.0082, 28.9784]   // İstanbul
+
+  // Yola oturtulmuş güzergâh varsa asıl çizgi odur; ham noktalar arası düz
+  // hat yalnız SOLUK REFERANS olarak kalır (gerçek ölçüm noktaları görünsün).
+  const yolVar = Array.isArray(yolHatlari) && yolHatlari.length > 0
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%', minHeight: 460 }}>
@@ -83,14 +87,48 @@ export default function RotaHarita({ izler = [], parklar = [], yukleniyor }) {
       />
       <RotayaSigdir noktalar={noktalar} />
 
-      {/* Rota çizgisi — altta kalın açık bir gölge, üstte ince koyu hat:
-          harita üstünde okunaklı kalması için */}
+      {/* Rota çizgisi.
+          Yola oturtma başarılıysa: sokaklara oturan hat ana çizgi olur,
+          ham GPS noktaları arası düz bağlantı soluk kesikli çizgiye iner.
+          Başarısızsa (yol servisi erişilemiyor): eski davranış, düz hat. */}
       {noktalar.length > 1 && (
-        <>
-          <Polyline positions={noktalar} pathOptions={{ color: '#fff', weight: 7, opacity: 0.9 }} />
-          <Polyline positions={noktalar} pathOptions={{ color: '#2563eb', weight: 3.5, opacity: 0.95 }} />
-        </>
+        yolVar ? (
+          <Polyline
+            positions={noktalar}
+            pathOptions={{ color: '#94a3b8', weight: 1.5, opacity: 0.5, dashArray: '4 6' }}
+          />
+        ) : (
+          <>
+            <Polyline positions={noktalar} pathOptions={{ color: '#fff', weight: 7, opacity: 0.9 }} />
+            <Polyline positions={noktalar} pathOptions={{ color: '#2563eb', weight: 3.5, opacity: 0.95 }} />
+          </>
+        )
       )}
+
+      {/* Yola oturtulmuş güzergâh */}
+      {yolVar && yolHatlari.map((hat, i) => (
+        <Fragment key={`yol-${i}`}>
+          <Polyline positions={hat} pathOptions={{ color: '#fff', weight: 8, opacity: 0.9 }} />
+          <Polyline positions={hat} pathOptions={{ color: '#2563eb', weight: 4, opacity: 0.95 }} />
+        </Fragment>
+      ))}
+
+      {/* Gerçek ölçüm noktaları — tahmin ile ölçümü ayırt edebilmek için */}
+      {yolVar && noktalar.map((n, i) => (
+        <CircleMarker
+          key={`n-${i}`}
+          center={n}
+          radius={3.5}
+          pathOptions={{ color: '#fff', weight: 1.5, fillColor: '#1d4ed8', fillOpacity: 1 }}
+        >
+          <Popup>
+            <div style={{ fontFamily: 'system-ui', fontSize: 12 }}>
+              <b>{saat(izler[i]?.olcum_zamani)}</b> · {Math.round(Number(izler[i]?.hiz || 0))} km/s
+              <div style={{ color: '#888', marginTop: 3 }}>ölçülen konum</div>
+            </div>
+          </Popup>
+        </CircleMarker>
+      ))}
 
       {/* Park işaretleri */}
       {parklar.map(p => {

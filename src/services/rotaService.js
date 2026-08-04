@@ -114,6 +114,76 @@ export const kayitliAraclariGetir = async () => {
   return data ?? []
 }
 
+// ── YOLA OTURTMA (rota tahmini) ────────────────────────────────────────
+// SORUN: Mobiltek'ten 1-2 dakikada bir yalnız "son konum" alabiliyoruz, oysa
+// cihaz 10 saniyeye kadar sık nokta üretiyor. Aradaki noktalar bize hiç
+// gelmediği için iki nokta kuş uçuşu düz çizgiyle birleşiyor ve "hangi
+// yoldan gitti" görünmüyor (kullanıcı şikayeti, 04.08).
+//
+// ÇÖZÜM: elimizdeki noktaları OSRM sürüş ağına verip aradaki güzergâhı
+// doldurmak. Çizgi artık sokaklara oturur.
+//
+// ⚠️ BU BİR TAHMİNDİR, ölçüm değil. İki nokta arasında araç başka bir
+// yoldan gitmiş olabilir; OSRM en makul sürüş rotasını verir. Arayüzde
+// bu ayrım kullanıcıya açıkça söylenir. Kesin çözüm Mobiltek'in
+// location-logs ucunun yetkisidir (mig 261).
+const OSRM = 'https://router.project-osrm.org/route/v1/driving/'
+const OSRM_MAX_NOKTA = 90      // demo sunucu sınırı ~100; pay bırakıldı
+const ATLAMA_ESIK_KM = 8       // bundan uzak sıçramada tahmin güvenilmez
+
+export const yolaOturt = async (izler = []) => {
+  const noktalar = izler
+    .filter(i => i.enlem && i.boylam)
+    .map(i => [Number(i.boylam), Number(i.enlem)])   // OSRM: lon,lat
+  if (noktalar.length < 2) return null
+
+  // Çok nokta varsa eşit aralıkla seyrelt — şekil korunur, URL şişmez
+  let kullanilacak = noktalar
+  if (noktalar.length > OSRM_MAX_NOKTA) {
+    const adim = Math.ceil(noktalar.length / OSRM_MAX_NOKTA)
+    kullanilacak = noktalar.filter((_, i) => i % adim === 0)
+    if (kullanilacak[kullanilacak.length - 1] !== noktalar[noktalar.length - 1]) {
+      kullanilacak.push(noktalar[noktalar.length - 1])
+    }
+  }
+
+  // Uzak sıçramalar (araç kapsama dışı kalmış, arada saatler var) tahmini
+  // saçmalatır — böyle segmentlerde rotayı bölüp parça parça isteriz.
+  const parcalar = []
+  let mevcut = [kullanilacak[0]]
+  for (let i = 1; i < kullanilacak.length; i++) {
+    const [o1, e1] = kullanilacak[i - 1]
+    const [o2, e2] = kullanilacak[i]
+    if (mesafeM(e1, o1, e2, o2) / 1000 > ATLAMA_ESIK_KM) {
+      if (mevcut.length > 1) parcalar.push(mevcut)
+      mevcut = [kullanilacak[i]]
+    } else {
+      mevcut.push(kullanilacak[i])
+    }
+  }
+  if (mevcut.length > 1) parcalar.push(mevcut)
+  if (!parcalar.length) return null
+
+  try {
+    const hatlar = await Promise.all(parcalar.map(async (p) => {
+      const yol = p.map(([lon, lat]) => `${lon.toFixed(5)},${lat.toFixed(5)}`).join(';')
+      const r = await fetch(`${OSRM}${yol}?overview=full&geometries=geojson`)
+      if (!r.ok) return null
+      const j = await r.json()
+      const koord = j?.routes?.[0]?.geometry?.coordinates
+      if (!Array.isArray(koord) || koord.length < 2) return null
+      return koord.map(([lon, lat]) => [lat, lon])   // Leaflet: lat,lng
+    }))
+    const gecerli = hatlar.filter(Boolean)
+    return gecerli.length ? gecerli : null
+  } catch (e) {
+    // Yol servisi erişilemezse harita düz çizgiye düşer — özellik kaybolur,
+    // sayfa çalışmaya devam eder.
+    console.warn('[rota] yola oturtma başarısız:', e?.message)
+    return null
+  }
+}
+
 export const sureMetni = (dk) => {
   if (!dk || dk < 1) return '—'
   const s = Math.floor(dk / 60), d = Math.round(dk % 60)
