@@ -10,6 +10,7 @@ import {
 import {
   kesifFotoYukle, kesifFotoGuncelle, kesifFotoSil, kesifFotolariGetir,
   kesifFotoUrlleri, kesifFotoCizimKaydet, kesifFotoCizimSil,
+  kesifFotoIcerikDegistir, kesifFotoUrl,
   KESIF_FOTO_ETIKETLERI, kesifFotoEtiketBilgi, KESIF_FOTO_MAX_MB,
 } from '../../services/kesifService'
 import { useToast } from '../../context/ToastContext'
@@ -81,6 +82,37 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
   const [cizimKaydediliyor, setCizimKaydediliyor] = useState(false)
   const [buyuk, setBuyuk] = useState(null)              // { foto, cizimliGoster } — lightbox
   const [metaKaydediliyor, setMetaKaydediliyor] = useState(false)
+  const [onarilanlar, setOnarilanlar] = useState(new Set())  // HEIC→JPEG çevrimi süren foto id'leri
+
+  // HEIC onarımı: dosyayı indir → tarayıcıda JPEG'e çevir (heic2any, tembel
+  // yüklenir — ana pakete girmez) → AYNI yola geri yaz → taze imzalı URL ile
+  // kartı yenile. Teknisyene "yeniden yükle" düşmez; tek tık yeter.
+  const fotoOnar = async (f, e) => {
+    e.stopPropagation()   // kart tıklaması lightbox açıyor — buton onu tetiklemesin
+    if (onarilanlar.has(f.id)) return
+    setOnarilanlar(prev => new Set(prev).add(f.id))
+    try {
+      const eskiUrl = fotoUrlMap.get(f.dosyaYolu)
+      if (!eskiUrl) throw new Error('Dosya bağlantısı bulunamadı')
+      const yanit = await fetch(eskiUrl)
+      if (!yanit.ok) throw new Error('Dosya indirilemedi (' + yanit.status + ')')
+      const kaynak = await yanit.blob()
+      const { default: heic2any } = await import('heic2any')
+      const cikti = await heic2any({ blob: kaynak, toType: 'image/jpeg', quality: 0.85 })
+      const jpeg = Array.isArray(cikti) ? cikti[0] : cikti
+      await kesifFotoIcerikDegistir(f.dosyaYolu, jpeg)
+      // Aynı yol ama YENİ imza → tarayıcı önbelleği devre dışı, taze içerik iner
+      const yeniUrl = await kesifFotoUrl(f.dosyaYolu)
+      setFotoUrlMap(prev => new Map(prev).set(f.dosyaYolu, yeniUrl))
+      toast.success('Fotoğraf JPEG\'e çevrildi ve düzeltildi.')
+    } catch (err) {
+      // heic2any HEIC olmayan dosyada "ERR_USER" benzeri hata verir — dosya
+      // başka sebepten açılmıyordur; kullanıcıya dürüstçe söyle.
+      toast.error('Çevrilemedi: ' + (err?.message || 'dosya HEIC olmayabilir'))
+    } finally {
+      setOnarilanlar(prev => { const s = new Set(prev); s.delete(f.id); return s })
+    }
+  }
 
   const duzenleyebilir = (f) =>
     kullanici?.rol === 'admin' || !f.olusturanId || String(f.olusturanId) === String(kullanici?.id)
@@ -278,21 +310,28 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
                     <>
                       {/* onError: eski mobil sürümle yüklenen HEIC fotolar tarayıcıda
                           decode edilemez (04.08 keşif 51 vakası) — boş kutu yerine
-                          neden görünmediğini ve çözümü söyle. */}
-                      <img src={url} alt={f.baslik || f.aciklama || 'keşif foto'}
+                          nedeni + tek tıkla onarım göster. key={url}: onarım yeni
+                          imzalı URL üretince element sıfırdan kurulur, elle
+                          değiştirilen display'ler temizlenir. */}
+                      <img key={url} src={url} alt={f.baslik || f.aciklama || 'keşif foto'}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                           const yedek = e.currentTarget.nextElementSibling
                           if (yedek) yedek.style.display = 'grid'
                         }} />
-                      <div style={{
+                      <div key={'yedek-' + url} style={{
                         display: 'none', placeItems: 'center', height: '100%',
                         padding: 10, textAlign: 'center', color: 'var(--text-tertiary)',
-                        font: '500 11px/15px var(--font-sans)', gap: 6,
+                        font: '500 11px/15px var(--font-sans)', gap: 4, alignContent: 'center',
                       }}>
                         <ImageOff size={18} strokeWidth={1.5} style={{ margin: '0 auto' }} />
-                        Tarayıcı bu fotoğrafın formatını (HEIC) açamıyor — mobil uygulamadan yeniden yüklenirse düzelir.
+                        <span>Tarayıcı bu formatı (HEIC) açamıyor.</span>
+                        <Button size="sm" variant="secondary"
+                          disabled={onarilanlar.has(f.id)}
+                          onClick={(e) => fotoOnar(f, e)}>
+                          {onarilanlar.has(f.id) ? 'Çevriliyor…' : "JPEG'e çevir ve düzelt"}
+                        </Button>
                       </div>
                     </>
                   ) : (

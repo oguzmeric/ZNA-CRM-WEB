@@ -467,6 +467,14 @@ export const kesifKrokiSil = async (kroki) => {
   if (kroki.gorselYolu) await supabase.storage.from(FOTO_BUCKET).remove([kroki.gorselYolu]).catch(() => {})
 }
 
+// HEIC onarımı (04.08): tarayıcıda JPEG'e çevrilen içerik AYNI yola geri
+// yazılır — yol zaten .jpg uzantılı, DB kaydına dokunmak gerekmez.
+export const kesifFotoIcerikDegistir = async (dosyaYolu, jpegBlob) => {
+  const { error } = await supabase.storage.from(FOTO_BUCKET)
+    .upload(dosyaYolu, jpegBlob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' })
+  if (error) throw error
+}
+
 // Signed URL — private bucket
 export const kesifFotoUrl = async (dosyaYolu, saniye = 3600) => {
   const { data, error } = await supabase.storage.from(FOTO_BUCKET).createSignedUrl(dosyaYolu, saniye)
