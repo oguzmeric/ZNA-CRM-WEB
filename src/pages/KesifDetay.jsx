@@ -352,11 +352,12 @@ export default function KesifDetay() {
   th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
   th { background: #eef3f8; color: #334155; font-weight: 700; }
   .sag { text-align: right; white-space: nowrap; }
-  /* Görseller — her blok TEK PARÇA basılır, sayfa geçişinde bölünmez */
-  .fgrid { margin-top: 2px; }
-  .foto { display: inline-block; width: 49%; vertical-align: top; margin: 0 0 10px; border: 1px solid #d5dde6; border-radius: 7px; overflow: hidden;
+  /* Görseller — her blok TEK PARÇA basılır, sayfa geçişinde bölünmez.
+     04.08: inline-block'tan grid'e geçildi — kart boyları farklıyken (uzun
+     açıklamalı foto) hizalar kayıyor, sayfada düzensiz boşluklar kalıyordu. */
+  .fgrid { margin-top: 2px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .foto { border: 1px solid #d5dde6; border-radius: 7px; overflow: hidden;
           break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
-  .foto:nth-child(odd) { margin-right: 1.4%; }
   .foto img { width: 100%; max-height: 220px; object-fit: contain; background: #f6f8fb; display: block; }
   .fmeta { padding: 7px 9px; font-size: 10.5px; display: grid; gap: 2px; }
   .fmeta strong { font-size: 11.5px; }
@@ -371,23 +372,18 @@ export default function KesifDetay() {
   .imza > div { flex: 1; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 11px; color: #64748b; text-align: center; }
   .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9.5px; color: #94a3b8; text-align: center; line-height: 1.5; }
   .foot b { color: #014486; }
-  .sheet { width: 100%; border-collapse: collapse; }
-  .sheet > thead > tr > td, .sheet > tbody > tr > td, .sheet > tfoot > tr > td { padding: 0; border: none; vertical-align: top; }
-  .top-space { height: 0; }
   @media print {
     /* @page margin:0 → tarayıcının otomatik ekini (URL / tarih / sayfa no) kaldırır */
     @page { margin: 0; }
-    body { padding: 0; }
+    /* 04.08: thead/tfoot'lu tablo düzeni KALDIRILDI — Chrome'da içerik sayfa
+       sınırına denk gelince fazladan boş sayfa + üst üste footer basıyordu
+       (KSF-2026-000040 şikayeti). Kenar boşlukları body padding'inden, footer
+       fixed ile HER sayfanın altına; alt padding içerikle çakışmayı önler. */
+    body { padding: 12mm 12mm 24mm; }
     h2 { break-after: avoid; }
-    /* Antetli kağıt: kenar boşlukları tablo yapısından gelir; üst boşluk (thead) ve footer (tfoot) HER sayfada tekrarlar */
-    .sheet > tbody > tr > td { padding: 0 12mm; }
-    .top-space { height: 12mm; }
-    .foot { margin-top: 0; padding: 4mm 12mm 6mm; background: #fff; }
+    .foot { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; padding: 3mm 12mm 5mm; background: #fff; border-top: 1px solid #e2e8f0; }
   }
 </style></head><body>
-<table class="sheet">
-<thead><tr><td><div class="top-space"></div></td></tr></thead>
-<tbody><tr><td>
 <div class="antet">
   <img src="${logo}" alt="ZNA" onerror="this.style.display='none'">
   <div class="marka"><b>ZNA TEKNOLOJİ</b><span>SAHA KEŞİF RAPORU</span></div>
@@ -417,11 +413,7 @@ ${fotoBlok ? `<h2>FOTOĞRAFLAR (${yazFotolar.length})</h2><div class="fgrid">${f
   <div>Keşfi Yapan${kesif.kesfiYapan ? `<br><b style="color:#1a2332">${esc(kesif.kesfiYapan)}</b>` : ''}</div>
   <div>Müşteri Yetkilisi${kesif.musteriYetkilisi ? `<br><b style="color:#1a2332">${esc(kesif.musteriYetkilisi)}</b>` : ''}</div>
 </div>
-</td></tr></tbody>
-<tfoot><tr><td>
 <div class="foot"><b>ZNA TEKNOLOJİ BİLİŞİM HİZ. SAN. VE TİC. LTD. ŞTİ.</b> · znateknoloji.com<br>Bu rapor ZNA Teknoloji CRM sistemi üzerinden ${esc(new Date().toLocaleString('tr-TR'))} tarihinde oluşturulmuştur.</div>
-</td></tr></tfoot>
-</table>
 ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.print(), 700)</scr` + 'ipt>' : ''}
 </body></html>`
     return html
