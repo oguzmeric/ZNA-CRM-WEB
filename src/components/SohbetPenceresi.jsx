@@ -52,9 +52,15 @@ export default function SohbetPenceresi() {
     sohbetler, konusmaGetir, grupMesajlari, mesajGonder,
     mesajlariOku, grubuOku, aktifKonusmaAyarla,
     okunmamisSay, grupOkunmamisSay, efektifDurum,
+    taslakBildir,
   } = useChat()
 
   const [metin, setMetin] = useState('')
+
+  // Yazı kutusunda metin varken ChatContext'e bildir: gelen mesaj pencereyi
+  // BAŞKA kişiye çevirip yazılanı yanlış alıcıya göndermesin (04.08 otomatik
+  // pencere açma özelliğinin veri kaybı koruması).
+  useEffect(() => { taslakBildir?.(metin.trim().length > 0) }, [metin, taslakBildir])
   const [arama, setArama] = useState('')
   const sonRef = useRef(null)
 

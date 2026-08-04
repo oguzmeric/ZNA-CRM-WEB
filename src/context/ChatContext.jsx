@@ -96,6 +96,31 @@ export function ChatProvider({ children }) {
   const pencereKucult = useCallback((deger = true) => setPencereKucuk(!!deger), [])
   const pencereHedefSec = useCallback((hedef) => setPencereHedef(hedef), [])
 
+  // ---- Otomatik pencere açma (04.08 isteği: "mesaj atınca karşıda pencere açılsın")
+  // Pencere durumu REF olarak da tutulur: realtime geri çağrısı kurulduğu andaki
+  // state'i kapatır (closure), bayat değerle karar verirdi.
+  const pencereAcikRef = useRef(false)
+  const pencereHedefRef = useRef(null)
+  useEffect(() => { pencereAcikRef.current = pencereAcik }, [pencereAcik])
+  useEffect(() => { pencereHedefRef.current = pencereHedef }, [pencereHedef])
+
+  // SohbetPenceresi yazı kutusunda metin varken bildirir. VERİ KAYBI KORUMASI:
+  // kullanıcı A'ya mesaj yazarken B'den mesaj gelirse pencereyi B'ye çevirmek,
+  // yazılan metnin YANLIŞ KİŞİYE gitmesine yol açardı (metin kutusu hedefe
+  // bağlı değil, tek state). Taslak varken hedef değiştirilmez.
+  const taslakVarRef = useRef(false)
+  const taslakBildir = useCallback((v) => { taslakVarRef.current = !!v }, [])
+
+  const pencereOtomatikAc = useCallback((hedef) => {
+    const mevcut = pencereHedefRef.current
+    const ayni = mevcut && mevcut.tip === hedef.tip && String(mevcut.id) === String(hedef.id)
+    // Aynı kişiyle zaten açık: küçültülmüşse öne getir, hedefe dokunma
+    if (pencereAcikRef.current && ayni) { setPencereKucuk(false); return }
+    // Açık ve BAŞKA hedefte + yazılmış taslak var → dokunma (toast zaten çıkıyor)
+    if (pencereAcikRef.current && taslakVarRef.current) return
+    pencereAc(hedef)
+  }, [pencereAc])
+
   const sohbetleriYenile = useCallback(async () => {
     if (!kullanici?.id) { setSohbetler([]); return [] }
     const d = await sohbetleriGetir()
@@ -118,13 +143,17 @@ export function ChatProvider({ children }) {
   )
   const grupIdAnahtar = grupIdler.join(',')
 
-  const yeniMesajGeldi = useCallback((yeni, anahtar, baslik) => {
+  const yeniMesajGeldi = useCallback((yeni, anahtar, baslik, otomatikHedef = null) => {
     setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
     if (yeni.gondericiId === kullanici?.id) return          // kendi mesajım
     if (aktifKonusmaRef.current === anahtar) return          // zaten bakıyorum
     bildirimSesiCal()
     toast?.info?.(`${baslik}: ${onizlemeMetni(yeni.icerik)}`)
-  }, [kullanici?.id, toast])
+    // Birebir mesajda sohbet penceresi kendiliğinden açılır (04.08 isteği).
+    // Grupta AÇILMAZ: grup trafiği yoğun, her mesajda pencere zıplaması işi
+    // böler — grupta bildirim + okunmamış rozeti yeterli.
+    if (otomatikHedef) pencereOtomatikAc(otomatikHedef)
+  }, [kullanici?.id, toast, pencereOtomatikAc])
 
   // Realtime — birebir: bana gelen mesajlar
   useEffect(() => {
@@ -137,7 +166,8 @@ export function ChatProvider({ children }) {
         (payload) => {
           const yeni = toCamel(payload.new)
           const gonderen = kullanicilar?.find((k) => k.id === yeni.gondericiId)
-          yeniMesajGeldi(yeni, `k:${yeni.gondericiId}`, gonderen?.ad || 'Yeni mesaj')
+          yeniMesajGeldi(yeni, `k:${yeni.gondericiId}`, gonderen?.ad || 'Yeni mesaj',
+            { tip: 'kisi', id: yeni.gondericiId })
         }
       )
       .on(
@@ -449,6 +479,7 @@ export function ChatProvider({ children }) {
       pencereKapat,
       pencereKucult,
       pencereHedefSec,
+      taslakBildir,
     }}>
       {children}
     </ChatContext.Provider>
