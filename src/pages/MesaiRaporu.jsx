@@ -223,11 +223,17 @@ export default function MesaiRaporu() {
   const excelIndir = () => {
     if (!ozet.length) { toast?.warning?.('Dışa aktarılacak kayıt yok.'); return }
     const kirilimAd = KIRILIMLAR.find(k => k.id === kirilim)?.ad || ''
+    // Web tablosuyla aynı mantık: günlük kırılımda o günün giriş/çıkış saati,
+    // haftalık-aylıkta dönemin ilk girişi / son çıkışı (başlık da öyle söyler).
+    const girisBaslik = kirilim === 'gunluk' ? 'Giriş' : 'İlk Giriş'
+    const cikisBaslik = kirilim === 'gunluk' ? 'Çıkış' : 'Son Çıkış'
     const ozetSatir = ozet.map(r => ({
       Dönem: r.etiket,
       Personel: r.ad,
       Ünvan: r.unvan,
       'Gün Sayısı': r.gunSayisi,
+      [girisBaslik]: saatGoster(r.ilkGiris),
+      [cikisBaslik]: r.sonCikis ? saatGoster(r.sonCikis) : 'devam ediyor',
       // Normal ve fazla mesai farklı ücretlendirildiği için ayrı sütun.
       // Değerler GERÇEK SÜRE (Excel gün kesri) — sayfa yazılırken [h]:mm
       // biçimi veriliyor: "08:30" görünür ve SUM/ortalama çalışır.
@@ -401,6 +407,14 @@ export default function MesaiRaporu() {
                 <TH>Personel</TH>
                 <TH>Ünvan</TH>
                 <TH>Gün</TH>
+                {/* Günlük kırılımda o günün giriş/çıkışı; haftalık-aylıkta tek
+                    saat olamayacağı için dönemin ilk girişi / son çıkışı. */}
+                <TH title={kirilim === 'gunluk' ? 'Mesainin başlatıldığı saat (QR)' : 'Dönemdeki ilk mesai başlangıcı'}>
+                  {kirilim === 'gunluk' ? 'Giriş' : 'İlk Giriş'}
+                </TH>
+                <TH title={kirilim === 'gunluk' ? 'Mesainin kapandığı saat (18:30 otomatik kapanış dahil)' : 'Dönemdeki son mesai kapanışı'}>
+                  {kirilim === 'gunluk' ? 'Çıkış' : 'Son Çıkış'}
+                </TH>
                 <TH title="19:00 öncesi başlayan normal çalışma">Normal</TH>
                 <TH title="19:00 sonrası başlayan, ayrı ücretlendirilen çalışma">Fazla Mesai</TH>
                 <TH>Toplam</TH>
@@ -416,6 +430,12 @@ export default function MesaiRaporu() {
                   <TD style={{ fontWeight: 600 }}>{r.ad}</TD>
                   <TD style={{ color: 'var(--text-tertiary)' }}>{r.unvan || '—'}</TD>
                   <TD className="tabular-nums">{r.gunSayisi}</TD>
+                  <TD className="tabular-nums">{saatGoster(r.ilkGiris)}</TD>
+                  <TD className="tabular-nums">
+                    {r.sonCikis ? saatGoster(r.sonCikis) : (
+                      <span style={{ color: '#f59e0b' }} title="Mesai hâlâ açık — 18:30'da otomatik kapanır">açık</span>
+                    )}
+                  </TD>
                   <TD className="tabular-nums">{r.normalDk > 0 ? saatBicim(r.normalDk) : '—'}</TD>
                   <TD className="tabular-nums" style={{ fontWeight: r.fazlaDk > 0 ? 700 : 400, color: r.fazlaDk > 0 ? '#f59e0b' : 'var(--text-tertiary)' }}>
                     {r.fazlaDk > 0 ? saatBicim(r.fazlaDk) : '—'}
