@@ -592,6 +592,64 @@ export const stokKalemleriToplu = async (kalemler) => {
 }
 
 
+// ── Çıkış öncesi bakiye kontrolü ("Uyar ama izin ver" — 04.08 kararı) ──────
+// Negatif stok vakası (mig 256) sonrası: çıkış bakiyeyi aşarsa kullanıcıya
+// "Stokta X var, Y düşüyorsunuz" onayı gösterilir; onaylarsa işlem GEÇER
+// (sahada mal fiziken çıkmış olabilir, kaydı engellemek gerçeği gizler).
+// Bu fonksiyon yalnız TESPİT eder; onay diyaloğu çağıran ekranındır.
+//
+// kalemler: [{ stokKodu, miktar }] — aynı koddan birden çok satır TOPLANIR
+// (aynı faturada iki satır aynı ürünse ikisinin toplamı bakiyeyle kıyaslanır).
+// Dönüş: [{ stokKodu, bakiye, istenen }] — yalnız bakiyeyi aşanlar; boş = sorun yok.
+export const stokCikisKontrol = async (kalemler) => {
+  const istenenler = new Map() // stokKodu → toplam istenen çıkış
+  for (const k of kalemler || []) {
+    const kod = String(k?.stokKodu || '').trim()
+    const m = Number(k?.miktar) || 0
+    if (!kod || m <= 0) continue
+    istenenler.set(kod, (istenenler.get(kod) || 0) + m)
+  }
+  if (!istenenler.size) return []
+
+  // Yalnız ilgili ürünlerin hareketleri, 3 kolon — bakiye burada taze sayılır
+  // (ekrandaki harita bayat olabilir; karar anında gerçek değer şart).
+  const { data, error } = await supabase
+    .from('stok_hareketleri')
+    .select('stok_kodu, hareket_tipi, miktar')
+    .in('stok_kodu', [...istenenler.keys()])
+  if (error) {
+    // Kontrol yapılamıyorsa akışı KİLİTLEME — uyarı özelliği kayıt özelliğini
+    // bozamaz. Sessiz de kalma: konsola düşür, boş dön (uyarısız devam).
+    console.warn('stokCikisKontrol: bakiye okunamadı, uyarısız devam:', error.message)
+    return []
+  }
+
+  const bakiyeler = new Map()
+  for (const h of data || []) {
+    const m = Number(h.miktar) || 0
+    const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
+      : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
+      : 0
+    bakiyeler.set(h.stok_kodu, (bakiyeler.get(h.stok_kodu) || 0) + isaret)
+  }
+
+  const yetersizler = []
+  for (const [kod, istenen] of istenenler) {
+    const bakiye = bakiyeler.get(kod) || 0
+    if (istenen > bakiye) yetersizler.push({ stokKodu: kod, bakiye, istenen })
+  }
+  return yetersizler
+}
+
+// Yetersiz listesi → onay diyaloğu metni (tüm ekranlarda aynı dil)
+export const stokYetersizMesaji = (yetersizler, adBul) => {
+  const satirlar = yetersizler.map((y) => {
+    const ad = adBul?.(y.stokKodu)
+    return `• ${y.stokKodu}${ad ? ` (${ad})` : ''}: stokta ${y.bakiye} var, ${y.istenen} düşülüyor`
+  })
+  return `Stok yetersiz:\n${satirlar.join('\n')}\n\nDevam ederseniz stok eksiye düşecek. Yine de kaydedilsin mi?`
+}
+
 export const stokHareketEkle = async (hareket) => {
   const { id, olusturmaTarih, ...rest } = hareket
   const { data, error } = await supabase.from('stok_hareketleri').insert(toSnake(rest)).select().single()

@@ -7,9 +7,13 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
-import { stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle, stokKalemOzetleriniGetir } from '../services/stokService'
+import {
+  stokUrunleriniGetir, stokHareketleriniGetir, stokHareketEkle, stokKalemOzetleriniGetir,
+  stokCikisKontrol, stokYetersizMesaji,
+} from '../services/stokService'
 import { trContains } from '../lib/trSearch'
 import { musterileriGetir } from '../services/musteriService'
 import {
@@ -61,6 +65,7 @@ export default function StokHareketleri() {
   const { kullanici, kullanicilar } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { confirm } = useConfirm()   // hook — aşağıdaki erken return'den ÖNCE kalmalı
 
   const [hareketler, setHareketler] = useState([])
   const [urunler, setUrunler] = useState([])
@@ -151,6 +156,21 @@ export default function StokHareketleri() {
       toast.error('Stok, tür ve miktar zorunludur.'); return
     }
     const urun = urunHaritasi.get(form.stokKodu)
+
+    // "Uyar ama izin ver" (04.08): çıkış bakiyeyi aşıyorsa taze bakiyeyle
+    // onay sorulur — ekrandaki harita bayat olabilir, karar anında DB'den sayılır.
+    if (form.hareketTipi === 'cikis' || form.hareketTipi === 'transfer_cikis') {
+      const yetersizler = await stokCikisKontrol([{ stokKodu: form.stokKodu, miktar: Number(form.miktar) }])
+      if (yetersizler.length) {
+        const onay = await confirm({
+          baslik: 'Stok Yetersiz',
+          mesaj: stokYetersizMesaji(yetersizler, (kod) => urunHaritasi.get(kod)?.stokAdi),
+          onayMetin: 'Yine de Kaydet', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+        })
+        if (!onay) return
+      }
+    }
+
     const musteri = musteriler.find(m => m.id?.toString() === form.musteriId?.toString())
     const personel = kullanicilar.find(k => k.id?.toString() === form.personelId?.toString())
     const aciklamaOtomatik = musteri

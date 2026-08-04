@@ -11,7 +11,7 @@ import {
 } from '../services/satisService'
 import { musterileriGetir, musteriGetir } from '../services/musteriService'
 import { faturaYetkisi, faturaDosyaYukle, faturaDosyaUrl } from '../services/faturaTalepService'
-import { stokUrunleriniGetir } from '../services/stokService'
+import { stokUrunleriniGetir, stokCikisKontrol, stokYetersizMesaji } from '../services/stokService'
 import { useConfirm } from '../context/ConfirmContext'
 import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
@@ -271,6 +271,19 @@ function SatisDetay() {
   }
 
   const handleGonderildiIsaretle = async () => {
+    // "Uyar ama izin ver" (04.08): fatura stok düşümü bakiyeyi aşacaksa
+    // kaydetmeden ÖNCE onay sorulur. Kontrol taze DB bakiyesiyle yapılır.
+    const yetersizler = await stokCikisKontrol(form.satirlar)
+    if (yetersizler.length) {
+      const onay = await confirm({
+        baslik: 'Stok Yetersiz',
+        mesaj: stokYetersizMesaji(yetersizler,
+          (kod) => form.satirlar.find((s) => s.stokKodu === kod)?.urunAdi),
+        onayMetin: 'Yine de Düş', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+      })
+      if (!onay) return
+    }
+
     const payload = { ...form, ...toplamlar, durum: 'gonderildi' }
     setKaydediliyor(true)
     try {
