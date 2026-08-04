@@ -84,40 +84,53 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
   const [metaKaydediliyor, setMetaKaydediliyor] = useState(false)
   const [onarilanlar, setOnarilanlar] = useState(new Set())  // HEIC→JPEG çevrimi süren foto id'leri
 
-  // HEIC onarımı: dosyayı indir → tarayıcıda JPEG'e çevir (heic2any, tembel
-  // yüklenir — ana pakete girmez) → AYNI yola geri yaz → taze imzalı URL ile
-  // kartı yenile. Teknisyene "yeniden yükle" düşmez; tek tık yeter.
+  // Dosyanın GERÇEK türü (ilk baytlardan) — hata teşhisinde mesaja eklenir.
+  // 04.08: heic2any "format not supported" verdi ama neyi desteklemediğini
+  // söylemedi; artık her hata dosya imzasıyla birlikte raporlanır.
+  const dosyaImzasi = async (blob) => {
+    try {
+      const b = new Uint8Array(await blob.slice(0, 24).arrayBuffer())
+      if (b[0] === 0xFF && b[1] === 0xD8) return 'jpeg'
+      if (b[0] === 0x89 && b[1] === 0x50) return 'png'
+      const oku = (i, n) => String.fromCharCode(...b.slice(i, i + n))
+      if (oku(4, 4) === 'ftyp') return 'ftyp:' + oku(8, 4).trim()
+      return 'hex:' + [...b.slice(0, 8)].map(x => x.toString(16).padStart(2, '0')).join('')
+    } catch { return '?' }
+  }
+
+  // HEIC onarımı: dosyayı indir → tarayıcıda JPEG'e çevir (heic-to: güncel
+  // libheif — heic2any'nin 2021 çözücüsü yeni iPhone HEIC'lerini tanımıyordu,
+  // "ERR_LIBHEIF format not supported") → AYNI yola geri yaz → taze imzalı
+  // URL ile kartı yenile. Kütüphane tembel yüklenir, ana pakete girmez.
   const fotoOnar = async (f, e) => {
     e.stopPropagation()   // kart tıklaması lightbox açıyor — buton onu tetiklemesin
     if (onarilanlar.has(f.id)) return
     setOnarilanlar(prev => new Set(prev).add(f.id))
+    let kaynak = null
     try {
       const eskiUrl = fotoUrlMap.get(f.dosyaYolu)
       if (!eskiUrl) throw new Error('Dosya bağlantısı bulunamadı')
       const yanit = await fetch(eskiUrl)
       if (!yanit.ok) throw new Error('Dosya indirilemedi (' + yanit.status + ')')
-      const kaynak = await yanit.blob()
-      const { default: heic2any } = await import('heic2any')
-      // heic2any işi blob-worker'da yapar; worker engellenirse (CSP) hata
-      // fırlatmak yerine SONSUZA DEK askıda kalıyor — 04.08'de buton
-      // "Çevriliyor…"da takılı kaldı. Yarış: 90 sn'de sonuç yoksa net hata.
-      const cikti = await Promise.race([
-        heic2any({ blob: kaynak, toType: 'image/jpeg', quality: 0.85 }),
+      kaynak = await yanit.blob()
+      const { heicTo } = await import('heic-to')
+      // Worker engellenirse (CSP vb.) kütüphane askıda kalabilir — 90 sn'de
+      // sonuç yoksa net hata (04.08 "sonsuz Çevriliyor…" dersi).
+      const jpeg = await Promise.race([
+        heicTo({ blob: kaynak, type: 'image/jpeg', quality: 0.85 }),
         new Promise((_, red) => setTimeout(
           () => red(new Error('Dönüşüm 90 saniyede tamamlanamadı — sayfayı yenileyip tekrar deneyin')),
           90000,
         )),
       ])
-      const jpeg = Array.isArray(cikti) ? cikti[0] : cikti
       await kesifFotoIcerikDegistir(f.dosyaYolu, jpeg)
       // Aynı yol ama YENİ imza → tarayıcı önbelleği devre dışı, taze içerik iner
       const yeniUrl = await kesifFotoUrl(f.dosyaYolu)
       setFotoUrlMap(prev => new Map(prev).set(f.dosyaYolu, yeniUrl))
       toast.success('Fotoğraf JPEG\'e çevrildi ve düzeltildi.')
     } catch (err) {
-      // heic2any HEIC olmayan dosyada "ERR_USER" benzeri hata verir — dosya
-      // başka sebepten açılmıyordur; kullanıcıya dürüstçe söyle.
-      toast.error('Çevrilemedi: ' + (err?.message || 'dosya HEIC olmayabilir'))
+      const imza = kaynak ? await dosyaImzasi(kaynak) : '?'
+      toast.error('Çevrilemedi: ' + (err?.message || 'bilinmeyen hata') + ' — dosya türü: ' + imza)
     } finally {
       setOnarilanlar(prev => { const s = new Set(prev); s.delete(f.id); return s })
     }
