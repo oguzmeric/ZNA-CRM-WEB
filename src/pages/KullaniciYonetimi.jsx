@@ -623,6 +623,37 @@ function AktiviteLoglariBolumu({ filtreliLoglar, isPending, saniyeFormat, LOG_TI
   )
 }
 
+// ─── Silme hatasını insan diline çevir ────────────────────────────────────
+// kullanicilar.id'ye 88 yabancı anahtar bağlı; bir kısmı RESTRICT/NO ACTION.
+// Yani mesai/zimmet/bordro gibi tablolarda kaydı olan personel veritabanı
+// tarafından KASITLI olarak silinemez (geçmiş kaydı korunsun diye). Postgres
+// bunu ham İngilizce mesajla söyler; kullanıcıya anlaşılır Türkçe gösteriyoruz.
+const FK_TABLO_TR = {
+  demirbas_zimmet:      'zimmetli demirbaş',
+  mesai_kayitlari:      'mesai',
+  bordrolar:            'bordro',
+  izin_talepleri:       'izin talebi',
+  avans_talepleri:      'avans talebi',
+  avans_taksitleri:     'avans taksiti',
+  arac_foto_kayitlari:  'araç fotoğraf',
+  cihaz_kayitlari:      'cihaz kurulum',
+  kamera_izleme_log:    'kamera izleme',
+  destek_talepleri:     'destek talebi',
+  servis_formu_arsivi:  'servis formu arşivi',
+  servis_talepleri:     'servis talebi değerlendirme',
+  toplu_bakimlar:       'toplu bakım',
+}
+
+const silmeHatasiniCevir = (mesaj = '') => {
+  if (!/foreign key constraint/i.test(mesaj)) return mesaj
+  // Postgres mesajında iki kez `on table "..."` geçer; SONUNCUSU referans eden
+  // (yani silmeyi engelleyen) tablodur.
+  const eslesmeler = [...mesaj.matchAll(/on table "([^"]+)"/g)]
+  const tablo = eslesmeler.length ? eslesmeler[eslesmeler.length - 1][1] : ''
+  const insanca = FK_TABLO_TR[tablo] || tablo.replace(/_/g, ' ')
+  return `bu kullanıcıya ait ${insanca} kayıtları var. Sistem, geçmiş kayıtlar kaybolmasın diye silmeye izin vermiyor.`
+}
+
 export default function KullaniciYonetimi() {
   const { kullanicilar, kullaniciEkle, kullaniciSil, kullaniciGuncelle } = useAuth()
   const { toast } = useToast()
@@ -828,6 +859,26 @@ export default function KullaniciYonetimi() {
       setKaydediliyor(false)
     }
     setForm(bos); setGoster(false)
+  }
+
+  // Silme akışı. ESKİDEN: buton doğrudan onSil(k.id) çağırıyordu — onay YOKTU
+  // ve hata da yakalanmıyordu. RPC hata fırlattığında (yetki ya da ilişkili
+  // kayıt) hiçbir catch olmadığı için istek sessizce düşüyor, ekranda hiçbir
+  // şey olmuyordu → kullanıcı "sil butonu çalışmıyor" diye bildirdi.
+  const silmeIsle = async (id) => {
+    const k = kullanicilar.find((x) => x.id === id)
+    const onay = await confirm({
+      baslik: 'Kullanıcıyı Sil',
+      mesaj: `${k?.ad || 'Bu kullanıcı'} kalıcı olarak silinecek ve giriş yetkisi kaldırılacak. Devam edilsin mi?`,
+      onayMetin: 'Sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await kullaniciSil(id)
+      toast.success(`${k?.ad || 'Kullanıcı'} silindi.`)
+    } catch (e) {
+      toast.error('Silinemedi: ' + silmeHatasiniCevir(e?.message || 'bilinmeyen hata'))
+    }
   }
 
   const duzenleBasla = (k) => {
@@ -1323,7 +1374,7 @@ export default function KullaniciYonetimi() {
             aramaMetni={aramaMetni}
             setAramaMetni={setAramaMetni}
             onDuzenle={duzenleBasla}
-            onSil={kullaniciSil}
+            onSil={silmeIsle}
           />
         </>
       )}
