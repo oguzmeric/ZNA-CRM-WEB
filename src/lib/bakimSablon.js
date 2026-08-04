@@ -172,6 +172,10 @@ export function cctvSonucMetni(c) {
     p.push('Yapılan bakım kontrollerinde herhangi bir arızalı kameraya rastlanmamıştır.')
   }
 
+  // Serbest tespit notu (04.08 teknisyen isteği: "HDD arızalı ama not yazacak
+  // yer yok"). Genel şablonda zaten vardı; CCTV'de eksikti.
+  if ((c.aciklama || '').trim()) p.push((c.aciklama || '').trim())
+
   return p.join(' ')
 }
 

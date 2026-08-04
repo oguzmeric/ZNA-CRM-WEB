@@ -169,6 +169,15 @@ export default function BakimKalemFormModal({ kalem, onKapat, onKaydedildi }) {
                   <Input value={String(c.arizaliKamera ?? '')} onChange={(e) => set('arizaliKamera', e.target.value.replace(/[^0-9]/g, ''))} placeholder="Arızalı" />
                 </div>
               </div>
+
+              {/* Serbest not — 04.08 teknisyen isteği: HDD arızası gibi tespitler,
+                  ekstra yapılan işler, müşteriye özel durumlar buraya yazılır ve
+                  sonuç metnine işlenir. Genel şablonda vardı, CCTV'de eksikti. */}
+              <div>
+                <Label>4) Ek açıklama (sonuç metnine eklenir)</Label>
+                <Textarea rows={2} value={c.aciklama ?? ''} onChange={(e) => set('aciklama', e.target.value)}
+                  placeholder="Örn. 2 nolu kayıt cihazının hard diski arızalı, değişim önerildi…" />
+              </div>
             </>
           ) : (
             <>
