@@ -152,9 +152,15 @@ function Login() {
 
           <div className="footer-row">
             <div className="copyright">© {new Date().getFullYear()} ZNA Teknoloji</div>
-            <a href="https://znateknoloji.com" target="_blank" rel="noopener noreferrer" className="footer-link">
-              znateknoloji.com
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Kullanıcı sözleşmesi giriş öncesi de okunabilmeli (mig 264/265) */}
+              <a href="/kullanici-sozlesmesi" className="footer-link">
+                Kullanıcı Sözleşmesi
+              </a>
+              <a href="https://znateknoloji.com" target="_blank" rel="noopener noreferrer" className="footer-link">
+                znateknoloji.com
+              </a>
+            </div>
           </div>
         </div>
 

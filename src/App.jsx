@@ -22,6 +22,8 @@ import SifremiUnuttum from './pages/SifremiUnuttum'
 import Dashboard from './pages/Dashboard'
 import PaylasimBelge from './pages/PaylasimBelge'
 import DavetKabul from './pages/DavetKabul'
+import KullaniciSozlesmesi from './pages/KullaniciSozlesmesi'
+import SozlesmeKapisi from './components/SozlesmeKapisi'
 import MainLayout from './layouts/MainLayout'
 import MusteriLayout from './layouts/MusteriLayout'
 
@@ -302,6 +304,19 @@ function App() {
     )
   }
 
+  // Kullanıcı sözleşmesi — auth gate'in ÖNÜNDE, herkese açık (mig 264/265).
+  // Login sayfasından tıklanabilir olması gerekiyor: giriş yapmamış kişi de
+  // neyi kabul edeceğini önceden okuyabilmeli.
+  if (location.pathname === '/kullanici-sozlesmesi') {
+    return (
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Yükleniyor…</div>}>
+        <Routes>
+          <Route path="/kullanici-sozlesmesi" element={<KullaniciSozlesmesi />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+
   // B2B portal davet linki — auth gate'in ONUNDE, herkese acik.
   // Admin gonderdigi davet maili uzerinden musteri sifre belirleyip hesap aktive eder.
   if (location.pathname.startsWith('/davet/')) {
@@ -404,6 +419,10 @@ function App() {
 
   return (
     <>
+    {/* Zorunlu sözleşme onayı (mig 264/265): onaylamamış PERSONEL uygulamayı
+        göremez, tam ekran onay penceresine düşer. Kapsam kapısı sunucuda —
+        müşteri portalı ve bayi kullanıcıları etkilenmez. */}
+    <SozlesmeKapisi>
     <MainLayout>
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
@@ -493,6 +512,7 @@ function App() {
         </Routes>
       </Suspense>
     </MainLayout>
+    </SozlesmeKapisi>
     <KomutPaleti acik={komutPaletiAcik} onClose={() => setKomutPaletiAcik(false)} />
     <IdleUyariModal />
     </>
