@@ -299,7 +299,8 @@ export default function MesaiRaporu() {
       <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
         QR ile mesai başlatan saha ekiplerinin çalışma saatleri. Devam eden mesailerde
         süre <strong>şu ana kadar</strong> hesaplanır ve <strong style={{ color: '#f59e0b' }}>+</strong> ile
-        işaretlenir; 18:30'daki otomatik kapanışta kesinleşir.
+        işaretlenir; 18:30'daki otomatik kapanışta bitiş <strong>18:00</strong> olarak yazılır
+        (18:00–18:30 arası fazla mesai karar tamponudur, süreye sayılmaz).
       </p>
 
       {/* Filtreler */}
@@ -412,7 +413,7 @@ export default function MesaiRaporu() {
                 <TH title={kirilim === 'gunluk' ? 'Mesainin başlatıldığı saat (QR)' : 'Dönemdeki ilk mesai başlangıcı'}>
                   {kirilim === 'gunluk' ? 'Giriş' : 'İlk Giriş'}
                 </TH>
-                <TH title={kirilim === 'gunluk' ? 'Mesainin kapandığı saat (18:30 otomatik kapanış dahil)' : 'Dönemdeki son mesai kapanışı'}>
+                <TH title={kirilim === 'gunluk' ? 'Mesainin bitiş saati (otomatik kapanışta 18:00 yazılır)' : 'Dönemdeki son mesai bitişi'}>
                   {kirilim === 'gunluk' ? 'Çıkış' : 'Son Çıkış'}
                 </TH>
                 <TH title="19:00 öncesi başlayan normal çalışma">Normal</TH>
