@@ -2,11 +2,31 @@
 // Kredensiyeller yoksa proxy mock döndürür; UI aynı, "MOCK" rozeti gösterilir.
 
 import { useEffect, useState } from 'react'
-import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff } from 'lucide-react'
-import { Card, Button, Badge, EmptyState } from '../components/ui'
+import { Truck, MapPin, Gauge, Video, RefreshCw, Zap, ZapOff, Route, Clock } from 'lucide-react'
+import { Card, Button, Badge, EmptyState, Select } from '../components/ui'
 import { araclariGetir, kameralariGetir, yakinlikTara, aktifYakinliklarGetir } from '../services/mobiltekService'
+import {
+  izleriGetir, parklariGetir, rotaOzeti, gunAraligi,
+  kayitliAraclariGetir, sureMetni,
+} from '../services/rotaService'
 import MobiltekHarita from '../components/MobiltekHarita'
+import RotaHarita from '../components/RotaHarita'
 import CanliKameraModal from '../components/CanliKameraModal'
+
+// Bugünün tarihi — yerel saatle (toISOString UTC'ye kaydırır, gece yarısı
+// civarı yanlış güne düşer)
+const bugunYMD = () => {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+const gunKaydir = (ymd, fark) => {
+  const [y, a, g] = ymd.split('-').map(Number)
+  const d = new Date(y, a - 1, g + fark)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 
 const kucukTarih = (iso) => {
   if (!iso) return '—'
@@ -51,7 +71,15 @@ export default function Mobiltek() {
   const [hata, setHata] = useState(null)
   const [yakinliklar, setYakinliklar] = useState([])
   const [yakinlikPanel, setYakinlikPanel] = useState(false)
-  const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste'
+  const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste' | 'rota'
+
+  // ── Rota geçmişi (mig 261) ──
+  const [rotaArac, setRotaArac] = useState('')
+  const [rotaGun, setRotaGun] = useState(bugunYMD())
+  const [rotaIzler, setRotaIzler] = useState([])
+  const [rotaParklar, setRotaParklar] = useState([])
+  const [rotaYukleniyor, setRotaYukleniyor] = useState(false)
+  const [kayitliAraclar, setKayitliAraclar] = useState([])
 
   const yukle = async () => {
     setYukleniyor(true)
@@ -79,6 +107,55 @@ export default function Mobiltek() {
     const t = setInterval(yukle, 60_000)
     return () => clearInterval(t)
   }, [])
+
+  // Rota sekmesi açılınca kayıt tutulan araçları çek. Canlı Mobiltek listesi
+  // ile birleştirilir: bugün API'de görünmeyen ama geçmişte kaydı olan araç da
+  // seçilebilmeli.
+  useEffect(() => {
+    if (gorunum !== 'rota' || kayitliAraclar.length) return
+    kayitliAraclariGetir().then(setKayitliAraclar).catch(() => {})
+  }, [gorunum])
+
+  // Araç veya gün değişince rotayı getir
+  useEffect(() => {
+    if (gorunum !== 'rota' || !rotaArac) { return }
+    let iptal = false
+    setRotaYukleniyor(true)
+    const { baslangic, bitis } = gunAraligi(rotaGun)
+    Promise.all([
+      izleriGetir(rotaArac, baslangic, bitis),
+      parklariGetir(rotaArac, baslangic, bitis),
+    ])
+      .then(([iz, park]) => {
+        if (iptal) return
+        setRotaIzler(iz)
+        setRotaParklar(park)
+      })
+      .catch(() => { if (!iptal) { setRotaIzler([]); setRotaParklar([]) } })
+      .finally(() => { if (!iptal) setRotaYukleniyor(false) })
+    return () => { iptal = true }
+  }, [gorunum, rotaArac, rotaGun])
+
+  // Rota sekmesinde araç seçili değilse ilk aracı otomatik seç
+  useEffect(() => {
+    if (gorunum !== 'rota' || rotaArac) return
+    const ilk = araclar[0]?.id ?? kayitliAraclar[0]?.arac_id
+    if (ilk) setRotaArac(String(ilk))
+  }, [gorunum, araclar, kayitliAraclar, rotaArac])
+
+  // Rota araç seçeneği listesi — canlı + kayıtlı, plaka bazında tekil
+  const rotaAracSecenekleri = (() => {
+    // Not: bu dosyada lucide'nin `Map` ikonu import EDİLMİYOR (yalnız MapPin),
+    // dolayısıyla global Map gölgelenmiyor — düz `new Map()` güvenli.
+    const harita = new Map()
+    for (const a of araclar) harita.set(String(a.id), a.plateNo || `#${a.id}`)
+    for (const k of kayitliAraclar) {
+      if (!harita.has(String(k.arac_id))) harita.set(String(k.arac_id), k.plaka || `#${k.arac_id}`)
+    }
+    return [...harita.entries()].map(([id, plaka]) => ({ id, plaka }))
+  })()
+
+  const ozet = rotaOzeti(rotaIzler, rotaParklar)
 
   const aracSec = async (a) => {
     setSeciliArac(a)
@@ -108,6 +185,7 @@ export default function Mobiltek() {
             {[
               { id: 'harita', label: 'Harita', ikon: <MapPin size={13} strokeWidth={1.75} /> },
               { id: 'liste', label: 'Liste', ikon: <Truck size={13} strokeWidth={1.75} /> },
+              { id: 'rota', label: 'Rota Geçmişi', ikon: <Route size={13} strokeWidth={1.75} /> },
             ].map(t => (
               <button
                 key={t.id}
@@ -306,6 +384,146 @@ export default function Mobiltek() {
             </table>
           </div>
         </Card>
+      )}
+
+      {/* ROTA GEÇMİŞİ — araç + gün seçimi, harita üstünde iz ve P işaretleri */}
+      {gorunum === 'rota' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Seçim çubuğu */}
+          <Card style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 220 }}>
+              <Select
+                value={rotaArac}
+                onChange={(e) => setRotaArac(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="">Araç seçin…</option>
+                {rotaAracSecenekleri.map(a => (
+                  <option key={a.id} value={a.id}>{a.plaka}</option>
+                ))}
+              </Select>
+            </div>
+
+            <input
+              type="date"
+              value={rotaGun}
+              max={bugunYMD()}
+              onChange={(e) => setRotaGun(e.target.value)}
+              lang="tr"
+              style={{
+                padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-default)',
+                font: '400 13px/18px var(--font-sans)',
+                color: 'var(--text-primary)', background: 'var(--surface-default)',
+              }}
+            />
+
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <Button variant="secondary" size="sm" onClick={() => setRotaGun(gunKaydir(rotaGun, -1))}>
+                ‹ Önceki
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setRotaGun(bugunYMD())}>
+                Bugün
+              </Button>
+              <Button
+                variant="secondary" size="sm"
+                disabled={rotaGun >= bugunYMD()}
+                onClick={() => setRotaGun(gunKaydir(rotaGun, 1))}
+              >
+                Sonraki ›
+              </Button>
+            </div>
+
+            {rotaYukleniyor && (
+              <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                yükleniyor…
+              </span>
+            )}
+          </Card>
+
+          {/* Gün özeti */}
+          {rotaArac && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+              {[
+                { etiket: 'Yol', deger: ozet.mesafeKm >= 1 ? `${ozet.mesafeKm.toFixed(1)} km` : ozet.nokta ? '<1 km' : '—', renk: '#2563eb' },
+                { etiket: 'Hareket süresi', deger: sureMetni(ozet.hareketDk), renk: '#10b981' },
+                { etiket: 'Park', deger: ozet.parkSayisi || '—', renk: '#7c3aed' },
+                { etiket: 'Park süresi', deger: sureMetni(ozet.parkDk), renk: '#64748b' },
+                { etiket: 'En yüksek hız', deger: ozet.maxHiz ? `${Math.round(ozet.maxHiz)} km/s` : '—', renk: '#f59e0b' },
+              ].map(k => (
+                <Card key={k.etiket} style={{ padding: 12, textAlign: 'center' }}>
+                  <div style={{ font: '700 19px/24px var(--font-sans)', color: k.renk }}>{k.deger}</div>
+                  <div style={{ font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    {k.etiket}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Park listesi + harita */}
+          <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, minHeight: 480 }}>
+            <Card padding={0} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{
+                padding: '10px 14px', borderBottom: '1px solid var(--border-default)',
+                background: 'var(--surface-sunken)',
+                font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <Clock size={13} strokeWidth={1.75} /> Duraklamalar ({rotaParklar.length})
+              </div>
+
+              {rotaParklar.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  {rotaArac ? 'Bu gün için park kaydı yok.' : 'Önce araç seçin.'}
+                </div>
+              ) : (
+                <div style={{ overflowY: 'auto' }}>
+                  {rotaParklar.map((p, i) => {
+                    const acik = !p.bitis
+                    return (
+                      <div key={p.id} style={{
+                        display: 'flex', gap: 10, padding: '11px 14px',
+                        borderBottom: i < rotaParklar.length - 1 ? '1px solid var(--border-default)' : 'none',
+                      }}>
+                        <div style={{
+                          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                          background: acik ? '#7c3aed' : '#475569', color: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          font: '700 12px/1 var(--font-sans)',
+                        }}>P</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ font: '600 12px/16px var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}>
+                            {new Date(p.baslangic).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                            {' → '}
+                            {p.bitis
+                              ? new Date(p.bitis).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                              : <span style={{ color: '#7c3aed' }}>devam</span>}
+                          </div>
+                          <div style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 1 }}>
+                            {acik ? 'hâlâ burada' : sureMetni(p.sure_dk)}
+                          </div>
+                          {p.adres && (
+                            <div style={{
+                              font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)',
+                              marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {p.adres}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
+
+            <Card padding={0} style={{ position: 'relative', minHeight: 480, overflow: 'hidden', padding: 0 }}>
+              <RotaHarita izler={rotaIzler} parklar={rotaParklar} yukleniyor={rotaYukleniyor} />
+            </Card>
+          </div>
+        </div>
       )}
 
       {/* HARİTA GÖRÜNÜMÜ (split — sol araç listesi + sağ harita) */}
