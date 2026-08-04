@@ -82,6 +82,8 @@ export default function ServisTalepDetay() {
   const [konuDuzenle, setKonuDuzenle] = useState(false)
   const [konuTaslak, setKonuTaslak] = useState('')
   const [konuKaydediliyor, setKonuKaydediliyor] = useState(false)
+  // Ek önizleme (resim büyütme) — { url, ad }
+  const [ekOnizleme, setEkOnizleme] = useState(null)
 
   // Talep detay açıldığında ilgili okunmamış bildirimleri otomatik okundu yap
   // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
@@ -716,50 +718,88 @@ export default function ServisTalepDetay() {
                   />
                 </label>
               </div>
-              {(talep.dosyalar || []).map(d => (
-                <div key={d.path} style={{
+              {/* ⚠️ İKİ EK ŞEMASI birlikte yaşıyor (04.08):
+                    web   → { name, type, size, path, url, uploaderAd }
+                    mobil → { ad, tip, ekleyen, eklenme, url }
+                  Eski kod yalnız web alanlarını okuduğu için mobilden yüklenen
+                  ekler ADSIZ görünüyordu (5 ek, hepsi boş satır). Aşağıdaki
+                  ekOku() ikisini de anlar; yeni bir şema çıkarsa tek yer. */}
+              {(talep.dosyalar || []).map((d, i) => {
+                const ekOku = {
+                  ad: d.name || d.ad || 'Dosya',
+                  url: d.url || null,
+                  boyut: d.size ?? null,
+                  ekleyen: d.uploaderAd || d.ekleyen || '',
+                  resimMi:
+                    String(d.type || '').startsWith('image/') ||
+                    d.tip === 'image' ||
+                    /\.(jpe?g|png|gif|webp|heic|heif)(\?|$)/i.test(String(d.url || '')),
+                }
+                return (
+                <div key={d.path || d.url || i} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 12px', marginBottom: 6,
                   border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-sm)',
                   background: 'var(--surface-card)',
                 }}>
-                  {d.type?.startsWith('image/')
-                    ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
-                    : <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+                  {/* Resimlerde küçük önizleme — "görüp açabilelim" isteği:
+                      neyin ek olduğu adından değil, görüntüsünden anlaşılsın */}
+                  {ekOku.resimMi && ekOku.url ? (
+                    <img
+                      src={ekOku.url}
+                      alt={ekOku.ad}
+                      onClick={() => setEkOnizleme({ url: ekOku.url, ad: ekOku.ad })}
+                      style={{
+                        width: 40, height: 40, objectFit: 'cover', flexShrink: 0,
+                        borderRadius: 6, border: '1px solid var(--border-default)',
+                        cursor: 'zoom-in',
+                      }}
+                    />
+                  ) : (
+                    <FileText size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.name}>
-                      {d.name}
+                    <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ekOku.ad}>
+                      {ekOku.ad}
                     </div>
                     <div className="t-caption">
-                      {d.size ? `${(d.size / 1024).toFixed(0)} KB` : ''}
-                      {d.uploaderAd && ` · ${d.uploaderAd}`}
+                      {ekOku.boyut ? `${(ekOku.boyut / 1024).toFixed(0)} KB` : ''}
+                      {ekOku.ekleyen && `${ekOku.boyut ? ' · ' : ''}${ekOku.ekleyen}`}
                     </div>
                   </div>
                   <button
                     type="button"
+                    title={ekOku.resimMi ? 'Büyüt' : 'Aç'}
                     onClick={async () => {
+                      // Resimse büyüt; değilse yeni sekmede aç.
+                      if (ekOku.resimMi && ekOku.url) { setEkOnizleme({ url: ekOku.url, ad: ekOku.ad }); return }
                       try {
-                        const url = await dosyaLinkiAl(d.path)
-                        window.open(url, '_blank')
+                        // Mobil kayıtta path yok — public url doğrudan açılır
+                        const url = d.path ? await dosyaLinkiAl(d.path) : ekOku.url
+                        if (url) window.open(url, '_blank')
                       } catch {}
                     }}
                     style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
-                    <Download size={12} strokeWidth={1.5} />
+                    {ekOku.resimMi
+                      ? <ImageIcon size={12} strokeWidth={1.5} />
+                      : <Download size={12} strokeWidth={1.5} />}
                   </button>
                   <button
                     type="button"
+                    title="Sil"
                     onClick={async () => {
-                      if (!confirm('Dosya silinsin mi?')) return
-                      try { await dosyaSil(talep.id, d.path) } catch {}
+                      if (!confirm(`"${ekOku.ad}" silinsin mi?`)) return
+                      try { await dosyaSil(talep.id, d) } catch {}
                     }}
                     style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
                     <Trash2 size={12} strokeWidth={1.5} />
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </Card>
 
@@ -1177,6 +1217,56 @@ export default function ServisTalepDetay() {
         baslangicGsm={talep.telefon || ''}
         belgeBaslik={`${talep.talepNo || '#' + talep.id} — ${talep.konu || ''}`}
       />
+
+      {/* Ek önizleme — resim ekleri tam boy görülebilsin ("görüp açabilmemiz
+          gerekli" isteği). Boş alana veya Esc'e basınca kapanır. */}
+      {ekOnizleme && (
+        <div
+          onClick={() => setEkOnizleme(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24, cursor: 'zoom-out',
+          }}
+        >
+          <div style={{ position: 'absolute', top: 16, left: 20, right: 60, color: '#fff', font: '500 13px/18px var(--font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {ekOnizleme.ad}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setEkOnizleme(null) }}
+            style={{
+              position: 'absolute', top: 12, right: 16,
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              border: 'none', borderRadius: 8, padding: '6px 12px',
+              cursor: 'pointer', font: '500 13px/18px var(--font-sans)',
+            }}
+          >
+            × Kapat
+          </button>
+          <img
+            src={ekOnizleme.url}
+            alt={ekOnizleme.ad}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '86vh', objectFit: 'contain', borderRadius: 8, cursor: 'default' }}
+          />
+          <a
+            href={ekOnizleme.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute', bottom: 18,
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              padding: '7px 14px', borderRadius: 8, textDecoration: 'none',
+              font: '500 13px/18px var(--font-sans)',
+            }}
+          >
+            Yeni sekmede aç
+          </a>
+        </div>
+      )}
     </div>
   )
 }

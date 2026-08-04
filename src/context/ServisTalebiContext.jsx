@@ -464,13 +464,32 @@ export function ServisTalebiProvider({ children }) {
     return data.signedUrl
   }
 
-  const dosyaSil = async (talepId, path) => {
-    const { error } = await supabase.storage
-      .from('servis-talep-dosyalari')
-      .remove([path])
-    if (error) throw error
+  // ⚠️ İKİ FARKLI EK ŞEMASI (04.08 tespiti):
+  //   web   → { name, type, size, path, url, uploaderAd }  bucket: servis-talep-dosyalari
+  //   mobil → { ad, tip, ekleyen, eklenme, url }            bucket: urun-gorselleri
+  // Mobil kaydında `path` YOK; eski kod path'e göre siliyordu, dolayısıyla
+  // mobilden yüklenen ek ne görünüyor ne silinebiliyordu. Artık bucket ve yol
+  // gerekirse URL'den çözülür, eşleştirme de url/path'in olanıyla yapılır.
+  const ekYolCoz = (dosya) => {
+    if (dosya?.path) return { bucket: 'servis-talep-dosyalari', yol: dosya.path }
+    const m = String(dosya?.url || '')
+      .match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?|$)/)
+    return m ? { bucket: m[1], yol: decodeURIComponent(m[2]) } : null
+  }
+
+  const dosyaSil = async (talepId, dosya) => {
+    // Geriye uyum: eski çağrılar düz path string'i geçiyordu
+    const hedef = typeof dosya === 'string' ? { path: dosya } : dosya
+    const coz = ekYolCoz(hedef)
+    if (coz) {
+      const { error } = await supabase.storage.from(coz.bucket).remove([coz.yol])
+      // Depodaki dosya zaten yoksa kaydı yine de listeden düşürelim —
+      // aksi hâlde silinemeyen hayalet satır ekranda kalır.
+      if (error) console.warn('[servis ek sil] depo:', error.message)
+    }
     const mevcut = talepler.find(t => t.id === talepId)
-    const kalanlar = (mevcut?.dosyalar || []).filter(d => d.path !== path)
+    const ayniMi = (d) => (hedef.path && d.path === hedef.path) || (hedef.url && d.url === hedef.url)
+    const kalanlar = (mevcut?.dosyalar || []).filter(d => !ayniMi(d))
     const kayitli = await servisTalepGuncelle(talepId, { dosyalar: kalanlar })
     if (kayitli) setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...kayitli } : t))
   }
