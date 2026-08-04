@@ -23,17 +23,23 @@ const RETRY_TIMEOUT_MS = 8000
 // Aktif fetch'leri başlangıç timestamp'i ile takip et.
 // abortStaleInFlight ile sadece eski (>= eşik) olanları iptal ediyoruz —
 // yeni başlayan fetch'leri öldürmüyoruz.
-const activeControllers = new Map() // controller -> startedAt
+// `korumali` işareti: edge function çağrıları bu süpürmelerden muaftır
+// (aşağıda gerekçesi yazılı).
+const activeControllers = new Map() // controller -> { startedAt, korumali }
 
 /**
  * Belirli süreden eski hanging request'leri iptal et.
  * Default 5sn — tıklamayı tetikleyen yeni fetch'leri (taze) bırakır,
  * idle dönüşünde askıda kalanları (eski) atar.
+ *
+ * ⚠️ Korumalı (edge function) istekler ATLANIR: bunlar 5sn'i normalde aşar,
+ * "askıda kalmış" değildir. Kendi 30sn'lik bütçeleri var.
  */
 export function abortStaleInFlight(maxAgeMs = 5000, reason = 'idle-stale') {
   const now = Date.now()
-  for (const [controller, startedAt] of activeControllers) {
-    if (now - startedAt >= maxAgeMs) {
+  for (const [controller, kayit] of activeControllers) {
+    if (kayit.korumali) continue
+    if (now - kayit.startedAt >= maxAgeMs) {
       try { controller.abort(new DOMException(reason, 'AbortError')) } catch {}
       activeControllers.delete(controller)
     }
@@ -58,12 +64,20 @@ export function yerelOturumTemizle() {
   temizle(sessionStorage)   // sekme-izole oturum modu buraya yazıyor
 }
 
-// Geriye uyumluluk: tümünü iptal et (sayfa kapanırken vs.)
-export function abortAllInFlight(reason = 'visibility-reset') {
-  for (const controller of activeControllers.keys()) {
+/**
+ * Tümünü iptal et (sayfa kapanırken, idle kurtarmada vs.).
+ *
+ * `korumaliDahil` VARSAYILAN OLARAK false: idle/focus kurtarmaları takılmış
+ * tablo sorgularını temizlemek içindir, çalışmakta olan edge function
+ * çağrısını öldürmemelidir. Çıkışta (logout) true geçilir — orada amaç
+ * gerçekten her şeyi kesmek, yanıtların yeni kullanıcıya sızmasını önlemek.
+ */
+export function abortAllInFlight(reason = 'visibility-reset', korumaliDahil = false) {
+  for (const [controller, kayit] of activeControllers) {
+    if (!korumaliDahil && kayit.korumali) continue
     try { controller.abort(new DOMException(reason, 'AbortError')) } catch {}
+    activeControllers.delete(controller)
   }
-  activeControllers.clear()
 }
 
 // Storage upload/download path'leri büyük dosyalar için 8sn'i kolayca aşar.
@@ -93,9 +107,9 @@ const isFunctionsRequest = (input) => {
 }
 
 // Tek deneme — verilen süre içinde bitmezse TimeoutError ile abort
-const zamanAsimliDeneme = (input, init, ms) => {
+const zamanAsimliDeneme = (input, init, ms, korumali = false) => {
   const controller = new AbortController()
-  activeControllers.set(controller, Date.now())
+  activeControllers.set(controller, { startedAt: Date.now(), korumali })
 
   const timer = setTimeout(() => {
     try {
@@ -165,8 +179,16 @@ const fetchWithTimeout = (input, init = {}) => {
   // Edge function çağrıları geniş bütçeyle (30sn) — tekrar denenmez:
   // çoğu fonksiyon yan etkili (mail/SMS gönderimi, kayıt yazımı) ve POST'un
   // tekrarı mükerrer iş üretir.
+  //
+  // ⭐ korumali=true — asıl mesele buydu: sekmeye dönüşte çalışan
+  // abortStaleInFlight(5000) ve abortAllInFlight, 5sn'i aşan İSTEĞİ askıda
+  // kalmış sayıp kesiyordu. Mobiltek proxy'si gerçek oturumla ölçüldüğünde
+  // 3,7 sn sürüyor (HTTP 200, 8 araç) — yani sunucu sağlamken istek
+  // tarayıcıda öldürülüyor, kullanıcı "araçları göremiyorum" diyordu.
+  // Bu süpürmeler takılmış TABLO SORGULARI için; edge çağrısının uzun
+  // sürmesi normaldir ve kendi bütçesi zaten var.
   if (isFunctionsRequest(input)) {
-    return zamanAsimliDeneme(input, init, FONKSIYON_TIMEOUT_MS)
+    return zamanAsimliDeneme(input, init, FONKSIYON_TIMEOUT_MS, true)
   }
 
   const method = (init.method || 'GET').toUpperCase()

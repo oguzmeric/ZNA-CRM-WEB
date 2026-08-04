@@ -274,7 +274,9 @@ export function AuthProvider({ children }) {
   const cikisYap = async () => {
     // Devam eden fetch'leri hemen iptal et — logout sonrası response'ların
     // cache'e veya context state'lerine sızıp yeni kullanıcıya görünmesini önler.
-    abortAllInFlight('logout')
+    // true = korumalı (edge function) istekler DAHİL: çıkışta amaç her şeyi
+    // kesmek, yanıtların yeni kullanıcının ekranına sızmasını önlemek.
+    abortAllInFlight('logout', true)
 
     // Durum güncelleme + signOut paralel — sıralı await 2x8sn block edebilirdi.
     // Her ikisi de best-effort; allSettled hata fırlatmaz.
