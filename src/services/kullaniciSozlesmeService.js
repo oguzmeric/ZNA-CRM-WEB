@@ -16,7 +16,7 @@ import { supabase } from '../lib/supabase'
 export const aktifSozlesmeGetir = async () => {
   const { data, error } = await supabase
     .from('sozlesme_metinleri')
-    .select('id, versiyon, baslik, icerik, yururluk_tarihi')
+    .select('id, versiyon, baslik, icerik, yururluk_tarihi, metin_ozeti')
     .eq('aktif', true)
     .maybeSingle()
   if (error) { console.warn('[kullanici-sozlesme] metin:', error.message); return null }
@@ -55,13 +55,24 @@ export const sozlesmeOnayla = async (versiyon) => {
 export const onayDurumlariniGetir = async () => {
   const [kullanicilarSonuc, onaylarSonuc, sozlesme] = await Promise.all([
     supabase.from('kullanicilar').select('id, ad, rol, tip, durum').eq('tip', 'zna'),
-    supabase.from('sozlesme_onaylari').select('kullanici_id, versiyon, onay_tarihi, kaynak'),
+    // Kanıt alanları da çekilir: ihtilafta "kim, neyi, nereden onayladı"
+    // sorusunun cevabı bunlar. metin_ozeti = onay anındaki metnin SHA-256'sı.
+    supabase.from('sozlesme_onaylari')
+      .select('kullanici_id, versiyon, onay_tarihi, kaynak, cihaz, ip, metin_ozeti'),
     aktifSozlesmeGetir(),
   ])
   const onayHarita = new Map((onaylarSonuc.data ?? []).map(o => [Number(o.kullanici_id), o]))
-  return (kullanicilarSonuc.data ?? []).map(k => ({
-    ...k,
-    onay: onayHarita.get(Number(k.id)) ?? null,
-    guncelVersiyon: sozlesme?.versiyon ?? null,
-  }))
+  return (kullanicilarSonuc.data ?? []).map(k => {
+    const onay = onayHarita.get(Number(k.id)) ?? null
+    return {
+      ...k,
+      onay,
+      guncelVersiyon: sozlesme?.versiyon ?? null,
+      // Onay anındaki metin, bugün yürürlükte olanla aynı mı? Farklıysa
+      // metin değişmiş demektir — imzanın neyi kapsadığı ayrıca incelenmeli.
+      ozetGecerli: onay?.metin_ozeti && sozlesme?.metin_ozeti
+        ? onay.metin_ozeti === sozlesme.metin_ozeti
+        : null,
+    }
+  })
 }
