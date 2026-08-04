@@ -64,7 +64,14 @@ export default function BakimDetay() {
   }
 
   const kalemSil = async (k) => {
-    if (!window.confirm(`${kalemBilgi(k.kalemTip).isim} kalemi silinsin mi?`)) return
+    // TB-2026-00032 dersi (04.08): doldurulmuş kalem tek tıkla silindi, sonuç
+    // metni + cevaplar gitti (servis talebindeki kopyadan elle kurtarıldı).
+    // Sonuçlanmış kalemde sert uyarı + "silme, düzenle" yönlendirmesi.
+    const dolu = ['tamamlandi', 'ariza_tespit'].includes(k.durum) || k.sonucMetni
+    const mesaj = dolu
+      ? `DİKKAT: ${kalemBilgi(k.kalemTip).isim} kalemi DOLDURULMUŞ (sonuç metni ve cevaplar var). Silerseniz bu içerik GERİ GETİRİLEMEZ. Yanlış bir bilgi varsa silmek yerine karta tıklayıp düzenleyebilirsiniz.\n\nYine de kalıcı olarak silinsin mi?`
+      : `${kalemBilgi(k.kalemTip).isim} kalemi silinsin mi?`
+    if (!window.confirm(mesaj)) return
     const s = await topluBakimKalemSil(k)
     if (s?.hata) toast?.error?.(s.hata)
     else { toast?.success?.('Kalem silindi.'); yukle() }
@@ -219,7 +226,10 @@ export default function BakimDetay() {
           {tb.kalemler.map((k) => {
             const kb = kalemBilgi(k.kalemTip)
             const kd = kalemDurumBilgi(k.durum)
-            const formAcilabilir = ['bakim_basladi', 'devam_ediyor', 'eksik_bakim', 'imza_bekleniyor'].includes(tb.durum)
+            {/* 04.08: 'tamamlandi' + 'yonetici_kontrolunde' eklendi — form açma
+                kapısı BURASI (kart tıklaması); ilk düzeltmede yalnız sil butonunun
+                koşulu değişmişti, kullanıcı "bitmiş bakımı düzenleyemiyorum" dedi. */}
+            const formAcilabilir = ['bakim_basladi', 'devam_ediyor', 'eksik_bakim', 'imza_bekleniyor', 'tamamlandi', 'yonetici_kontrolunde'].includes(tb.durum)
             return (
               <Card
                 key={k.id}
