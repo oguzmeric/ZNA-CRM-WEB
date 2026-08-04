@@ -275,8 +275,26 @@ export default function KesifFotoBolumu({ kesifId, fotolar, setFotolar, fotoUrlM
                 <div style={{ position: 'relative', aspectRatio: '4/3', cursor: 'pointer' }}
                   onClick={() => setBuyuk({ foto: f, cizimliGoster: !!f.cizimYolu })}>
                   {url ? (
-                    <img src={url} alt={f.baslik || f.aciklama || 'keşif foto'}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <>
+                      {/* onError: eski mobil sürümle yüklenen HEIC fotolar tarayıcıda
+                          decode edilemez (04.08 keşif 51 vakası) — boş kutu yerine
+                          neden görünmediğini ve çözümü söyle. */}
+                      <img src={url} alt={f.baslik || f.aciklama || 'keşif foto'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const yedek = e.currentTarget.nextElementSibling
+                          if (yedek) yedek.style.display = 'grid'
+                        }} />
+                      <div style={{
+                        display: 'none', placeItems: 'center', height: '100%',
+                        padding: 10, textAlign: 'center', color: 'var(--text-tertiary)',
+                        font: '500 11px/15px var(--font-sans)', gap: 6,
+                      }}>
+                        <ImageOff size={18} strokeWidth={1.5} style={{ margin: '0 auto' }} />
+                        Tarayıcı bu fotoğrafın formatını (HEIC) açamıyor — mobil uygulamadan yeniden yüklenirse düzelir.
+                      </div>
+                    </>
                   ) : (
                     <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
                       <ImageOff size={18} strokeWidth={1.5} />
