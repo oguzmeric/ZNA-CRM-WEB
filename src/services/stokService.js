@@ -129,15 +129,30 @@ export const stokUrunSil = async (id) => {
   invalidatePrefix('stok')
 }
 
+const GORSEL_UZANTILAR = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']
+
 export const gorselYukle = async (file, stokKodu) => {
-  const ext = file.name.split('.').pop()
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `${stokKodu}.${ext}`
   const { error } = await supabase.storage
     .from('urun-gorselleri')
     .upload(path, file, { upsert: true, contentType: file.type })
   if (error) return null
+
+  // Uzantı değiştiyse (png→jpg gibi) eski dosya bucket'ta çöp kalmasın.
+  // Yüklemeden SONRA siliyoruz — önce silseydik yükleme patladığında ürün
+  // görselsiz kalırdı. remove() olmayan dosyada hata fırlatmaz.
+  const digerleri = GORSEL_UZANTILAR.filter((u) => u !== ext).map((u) => `${stokKodu}.${u}`)
+  try { await supabase.storage.from('urun-gorselleri').remove(digerleri) } catch {}
+
   const { data } = supabase.storage.from('urun-gorselleri').getPublicUrl(path)
-  return data.publicUrl
+  // SÜRÜM DAMGASI ŞART: dosya hep aynı yola yazıldığı için publicUrl her
+  // yüklemede birebir aynı string. Tarayıcı ve Supabase CDN'i aynı URL'i
+  // görünce görseli 1 saat önbellekten servis ediyordu → "yeni resmi yükledim
+  // ama hâlâ eskisi görünüyor" şikayeti. ?v= her yüklemede URL'i değiştirir,
+  // önbellek ıskalar, taze görsel iner. Eski sürümler için ayrıca temizlik
+  // gerekmez; sorgu parametresi dosya yolunu etkilemez.
+  return `${data.publicUrl}?v=${Date.now()}`
 }
 
 export const gorselSil = async (stokKodu, ext) => {
