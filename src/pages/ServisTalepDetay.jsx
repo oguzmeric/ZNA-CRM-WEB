@@ -87,6 +87,23 @@ export default function ServisTalepDetay() {
   // (sidebar rozetini düşürür — kullanıcı talebi "görmüş" sayılır)
   useEffect(() => {
     if (id) talepBildirimleriniOku(id).catch(e => console.warn('[talep bildirim oku]', e?.message))
+    // Merkezi "Kullanılan Malzemeler" ekranından gelindiyse (#kullanilan-malzemeler)
+    // doğrudan o karta in ve kısa süre vurgula. Sayfada iki malzeme kartı var
+    // (Kullanılan / Kullanılacak) — hangisinin kastedildiği belli olsun.
+    if (window.location.hash === '#kullanilan-malzemeler') {
+      const kaydir = () => {
+        const el = document.getElementById('kullanilan-malzemeler')
+        if (!el) return
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.style.transition = 'box-shadow 300ms'
+        el.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.45)'
+        el.style.borderRadius = '12px'
+        setTimeout(() => { el.style.boxShadow = 'none' }, 2200)
+      }
+      // Kart verisi geldikten sonra konumlansın (yükseklik değişiyor)
+      const t = setTimeout(kaydir, 700)
+      return () => clearTimeout(t)
+    }
   }, [id, talepBildirimleriniOku])
 
   // Bağlı görev varsa yorumlarını çek (read-only gösterim için)
@@ -537,8 +554,13 @@ export default function ServisTalepDetay() {
               teknisyen malzemeyi işi YAPARKEN ekler. Eskiden bu kart ve form
               bilgileri yalnız durum='tamamlandi' iken açılıyordu — iş sırasında
               malzeme girilemiyordu (2026-07-15 şikayeti). */}
-          <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo}
-            musteriId={talep.musteriId} musteriAd={talep.firmaAdi || talep.musteriAd} />
+          {/* id: merkezi "Kullanılan Malzemeler" ekranından gelen bağlantı
+              (#kullanilan-malzemeler) doğrudan bu karta insin — kullanıcı iki
+              malzeme kartı arasında hangisinin kastedildiğini aramasın. */}
+          <div id="kullanilan-malzemeler">
+            <ServisMalzemeleriCard servisId={talep.id} servisKodu={talep.talepNo}
+              musteriId={talep.musteriId} musteriAd={talep.firmaAdi || talep.musteriAd} />
+          </div>
 
           {/* Kullanılacak Malzemeler (İÇ NOT) — teknisyen sahaya çıkmadan
               önce hazırlanacak liste. Serbest metin yerine STOK KALEMİ seçilir

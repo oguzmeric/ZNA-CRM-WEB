@@ -76,7 +76,11 @@ function DurumRozet({ h }) {
 function KaynakRozet({ h, navigate }) {
   const m = KAYNAK_META[h.kaynak] || { isim: h.kaynak, renk: '#64748b' }
   const hedef = h.kaynak === 'siparis' && h.siparisId ? `/siparisler/${h.siparisId}`
-    : h.kaynak === 'servis' && h.servisId ? `/servis-talepleri/${h.servisId}` : null
+    // #kullanilan-malzemeler: servis detayında İKİ malzeme kartı var
+    // (Kullanılan / Kullanılacak). Bu listedeki kalemler yalnız KULLANILAN
+    // olanlardan doğar (mig 263), o yüzden doğrudan o karta indiriyoruz.
+    : h.kaynak === 'servis' && h.servisId
+      ? `/servis-talepleri/${h.servisId}#kullanilan-malzemeler` : null
   const etiket = `${m.isim}${h.kaynakNo ? ` · ${h.kaynakNo}` : ''}`
   return (
     <span
