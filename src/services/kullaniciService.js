@@ -3,7 +3,7 @@ import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
 
 // Liste kolonları — 21 kullanıcı listesinde imza (~150KB base64) taşımak saçma.
 // Servis Formu / mobil profil ihtiyacı için ayrıca session'a özgü kolon seti var.
-const KULLANICI_KOLONLARI = 'id, ad, kullanici_adi, tip, moduller, durum, izinli_turler, firma_adi, unvan, foto_url, rol, email, musteri_id, cep_telefon, siparis_onay_yetkilisi, siparis_onay_ust_yetkili, teklif_onay_yetkilisi, teklif_onay_ust_yetkili, fatura_yetkilisi, montaj_sorumlusu, demirbas_yetkilisi, saha_sorumlusu, hesap_silindi, onay_durum, onay_tarihi, onaylayan_id, red_nedeni, email_dogrulandi, zeyna_kalan_soru, zeyna_toplam_soru, created_at, silinebilir, auth_id'
+const KULLANICI_KOLONLARI = 'id, ad, kullanici_adi, tip, moduller, durum, izinli_turler, firma_adi, unvan, foto_url, rol, email, musteri_id, cep_telefon, siparis_onay_yetkilisi, siparis_onay_ust_yetkili, teklif_onay_yetkilisi, teklif_onay_ust_yetkili, fatura_yetkilisi, montaj_sorumlusu, demirbas_yetkilisi, saha_sorumlusu, hesap_silindi, onay_durum, onay_tarihi, onaylayan_id, red_nedeni, email_dogrulandi, zeyna_kalan_soru, zeyna_toplam_soru, created_at, silinebilir, auth_id, askida, aski_sebebi'
 
 // Session'daki kullanıcının tam bilgisi — imza dahil (Profil ekranı için gerekli).
 // Liste'de değil, sadece login/session-restore çağrılarında kullanılır.
@@ -88,6 +88,21 @@ export const kullaniciGirisKontrol = async (kullaniciAdi, sifre) => {
   const profil = {
     onay_durum: profilCamel.onayDurum,
     red_nedeni: profilCamel.redNedeni,
+  }
+
+  // Askı kapısı (mig 259). DB tarafında is_staff() zaten kapalı — buradaki
+  // kontrol yalnız NET MESAJ için (yoksa "boş ekran"la karşılaşırdı).
+  // self_select policy'si auth_id bazlı olduğundan askıdaki kişi kendi
+  // profilini okuyabiliyor; mesaj güvenle gösterilebiliyor.
+  if (profilCamel.askida) {
+    await supabase.auth.signOut()
+    const e = new Error(
+      'Hesabınız askıya alınmıştır.'
+      + (profilCamel.askiSebebi ? ' Sebep: ' + profilCamel.askiSebebi : '')
+      + ' Yöneticinizle görüşün.'
+    )
+    e.kod = 'ASKIDA'
+    throw e
   }
 
   if (profil.onay_durum === 'beklemede') {
@@ -246,6 +261,19 @@ export const kullaniciSil = async (id) => {
     console.error('kullaniciSil hata:', error.message)
     throw new Error(error.message)
   }
+}
+
+// === Hesap askısı (mig 259) — SECURITY DEFINER rpc'ler; RLS + koruma
+// trigger'ı elle UPDATE'i kapattığı için tek yol bunlar. Admin hesabı
+// askıya ALINAMAZ (rpc reddeder), askı yalnız yönetici tarafından yönetilir.
+export const kullaniciAskiyaAl = async (id, sebep) => {
+  const { error } = await supabase.rpc('kullanici_askiya_al', { p_id: id, p_sebep: sebep || null })
+  if (error) throw new Error(error.message)
+}
+
+export const kullaniciAskidanCikar = async (id) => {
+  const { error } = await supabase.rpc('kullanici_askidan_cikar', { p_id: id })
+  if (error) throw new Error(error.message)
 }
 
 export const kullaniciDurumGuncelle = async (id, durum) => {

@@ -92,6 +92,52 @@ const zamanAsimliDeneme = (input, init, ms) => {
   })
 }
 
+// === Veri erişim sayacı — GÖZETİM FAZI (mig 259, 03-04.08 kararları) =======
+// Amaç: kim, hangi tablodan, kaç satır çekiyor — günlük özet DB'ye yazılır,
+// eşik aşımında yönetime bildirim düşer (bu fazda KİLİT YOK). PostgREST
+// okumaları salt-okunur transaction'da çalıştığı için log RLS'ten YAZILAMAZ;
+// tek yol bu istemci sayacı + VOLATILE rpc. Sayaç best-effort: uygulamayı
+// asla yavaşlatamaz/bozamaz — satır sayısı Content-Range BAŞLIĞINDAN okunur
+// (gövdeye dokunulmaz), gönderim 30 sn'de bir tek RPC'dir.
+let veriSayac = { istek: 0, satir: 0, enBuyuk: 0, tablolar: {} }
+
+const veriErisimSay = (input, res) => {
+  try {
+    const url = typeof input === 'string' ? input : (input?.url || '')
+    const i = url.indexOf('/rest/v1/')
+    if (i < 0 || !res?.ok) return
+    const yol = url.slice(i + 9)
+    // Kendi log RPC'miz sayılmaz (kendini besleyen döngü olmasın)
+    if (yol.startsWith('rpc/veri_erisim_kaydet')) return
+    const tablo = yol.split(/[?/]/)[0] || 'bilinmiyor'
+    // PostgREST her listede "0-24/*" biçiminde Content-Range döndürür
+    const cr = res.headers?.get?.('content-range')
+    let satir = 0
+    if (cr) {
+      const m = cr.match(/^(\d+)-(\d+)/)
+      if (m) satir = Number(m[2]) - Number(m[1]) + 1
+    }
+    veriSayac.istek += 1
+    veriSayac.satir += satir
+    if (satir > veriSayac.enBuyuk) veriSayac.enBuyuk = satir
+    veriSayac.tablolar[tablo] = (veriSayac.tablolar[tablo] || 0) + satir
+  } catch {}
+}
+
+const veriSayacFlush = async () => {
+  const s = veriSayac
+  if (!s.istek) return
+  veriSayac = { istek: 0, satir: 0, enBuyuk: 0, tablolar: {} }
+  try {
+    // Oturum yoksa gönderme — RPC zaten uid'siz sessiz döner ama boşuna istek atma
+    const { data } = await supabase.auth.getSession()
+    if (!data?.session) return
+    await supabase.rpc('veri_erisim_kaydet', {
+      p_istek: s.istek, p_satir: s.satir, p_en_buyuk: s.enBuyuk, p_tablolar: s.tablolar,
+    })
+  } catch {} // log altyapısı uygulamayı asla bozamaz
+}
+
 const fetchWithTimeout = (input, init = {}) => {
   // Çağıran kendi signal'ını geçiriyorsa ona dokunma
   if (init.signal) return fetch(input, init)
@@ -112,7 +158,7 @@ const fetchWithTimeout = (input, init = {}) => {
       return zamanAsimliDeneme(input, init, RETRY_TIMEOUT_MS)
     }
     throw err
-  })
+  }).then((res) => { veriErisimSay(input, res); return res })
 }
 
 // lock: false → Web Locks API devre dışı
@@ -128,3 +174,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     fetch: fetchWithTimeout,
   },
 })
+
+// Sayaç dökümü: 30 sn'de bir + sekme arka plana geçerken (kapanışta veri
+// kaybolmasın). globalThis bayrağı: dev HMR'de modül yeniden yüklenince
+// ikinci bir zamanlayıcı kurulmasın.
+if (typeof window !== 'undefined' && !globalThis.__veriSayacKuruldu) {
+  globalThis.__veriSayacKuruldu = true
+  setInterval(veriSayacFlush, 30000)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') veriSayacFlush()
+  })
+}

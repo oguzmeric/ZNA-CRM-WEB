@@ -332,6 +332,13 @@ export function AuthProvider({ children }) {
     setKullanicilar((prev) => prev.filter((k) => k.id !== id))
   }
 
+  // Liste DB'den tazelenir — RPC ile yapılan değişikliklerden (askıya alma
+  // gibi) sonra state'in gerçek veriyle eşitlenmesi için.
+  const kullanicilarYenile = async () => {
+    try { setKullanicilar(await kullanicilariGetir()) }
+    catch (e) { console.warn('[auth] kullanicilarYenile hata:', e) }
+  }
+
   const kullaniciGuncelle = async (id, guncellenmis) => {
     const k = await dbKullaniciGuncelle(id, guncellenmis)
     if (k) {
@@ -347,7 +354,7 @@ export function AuthProvider({ children }) {
       value={{
         kullanici, kullanicilar, durumlar, oturumYuklendi,
         girisYap, cikisYap, durumGuncelle,
-        kullaniciEkle, kullaniciSil, kullaniciGuncelle,
+        kullaniciEkle, kullaniciSil, kullaniciGuncelle, kullanicilarYenile,
       }}
     >
       {children}

@@ -1,13 +1,13 @@
 import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import {
   Plus, Pencil, Trash2, Shield, User, Check, AlertTriangle, Settings,
-  LogIn, LogOut, FileText, Clock, CheckCircle2,
+  LogIn, LogOut, FileText, Clock, CheckCircle2, PauseCircle, PlayCircle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
 import { musterileriGetir } from '../services/musteriService'
-import { kullaniciSifreSifirla, onayBekleyenleriGetir, kullaniciOnayla, kullaniciReddet } from '../services/kullaniciService'
+import { kullaniciSifreSifirla, onayBekleyenleriGetir, kullaniciOnayla, kullaniciReddet, kullaniciAskiyaAl, kullaniciAskidanCikar } from '../services/kullaniciService'
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -74,7 +74,7 @@ function sonGirisCevir(tarih) {
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER, aramaMetni, setAramaMetni, onDuzenle, onSil }) {
+function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER, aramaMetni, setAramaMetni, onDuzenle, onSil, onAski }) {
   const [yetkiAcik, setYetkiAcik] = useState({})
   const ozetMap = useMemo(() => {
     const m = new Map()
@@ -139,6 +139,11 @@ function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER
         <div style={{ minWidth: 0, flex: '0 0 240px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</span>
+            {k.askida && (
+              <Badge tone="kayip" title={k.askiSebebi || 'Hesap askıda — giriş ve veri erişimi kapalı'}>
+                Askıda
+              </Badge>
+            )}
             {k.rol === 'admin' && <Badge tone="kayip">Admin</Badge>}
             {k.siparisOnayUstYetkili && <Badge tone="beklemede">Üst Onaycı</Badge>}
             {k.siparisOnayYetkilisi && !k.siparisOnayUstYetkili && <Badge tone="brand">Onaycı</Badge>}
@@ -206,6 +211,26 @@ function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER
           >
             <Pencil size={14} strokeWidth={1.5} />
           </button>
+          {/* Askı: admin hesaplarında yok (RPC de reddeder — karar: yönetici
+              kilitlenmez). Veri çekme korumasının elle müdahale kapısı. */}
+          {k.rol !== 'admin' && (
+            <button
+              aria-label={k.askida ? 'Askıdan çıkar' : 'Askıya al'}
+              title={k.askida ? 'Askıdan çıkar — giriş ve veri erişimi yeniden açılır' : 'Askıya al — giriş ve TÜM veri erişimi kapanır'}
+              onClick={() => onAski(k)}
+              style={{
+                width: 32, height: 32,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                color: k.askida ? 'var(--warning)' : 'var(--text-secondary)', cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--warning-soft, rgba(245,158,11,0.12))'; e.currentTarget.style.color = 'var(--warning)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = k.askida ? 'var(--warning)' : 'var(--text-secondary)' }}
+            >
+              {k.askida ? <PlayCircle size={14} strokeWidth={1.5} /> : <PauseCircle size={14} strokeWidth={1.5} />}
+            </button>
+          )}
           {k.silinebilir && (
             <button
               aria-label="Sil"
@@ -655,7 +680,7 @@ const silmeHatasiniCevir = (mesaj = '') => {
 }
 
 export default function KullaniciYonetimi() {
-  const { kullanicilar, kullaniciEkle, kullaniciSil, kullaniciGuncelle } = useAuth()
+  const { kullanicilar, kullaniciEkle, kullaniciSil, kullaniciGuncelle, kullanicilarYenile } = useAuth()
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const [form, setForm] = useState(bos)
@@ -865,6 +890,37 @@ export default function KullaniciYonetimi() {
   // ve hata da yakalanmıyordu. RPC hata fırlattığında (yetki ya da ilişkili
   // kayıt) hiçbir catch olmadığı için istek sessizce düşüyor, ekranda hiçbir
   // şey olmuyordu → kullanıcı "sil butonu çalışmıyor" diye bildirdi.
+  // Askıya al / askıdan çıkar — "Uyar ve elle müdahale" fazının kapısı
+  // (veri çekme koruması, mig 259). Kilit is_staff()'ta: askıdaki hesap ne
+  // uygulamadan ne API'den TEK SATIR okuyabilir; RPC admin hesabını reddeder.
+  const askiIsle = async (k) => {
+    if (k.askida) {
+      const onay = await confirm({
+        baslik: 'Askıdan Çıkar',
+        mesaj: `${k.ad} yeniden giriş yapabilecek ve veri erişimi açılacak. Devam edilsin mi?`,
+        onayMetin: 'Askıdan Çıkar', iptalMetin: 'Vazgeç',
+      })
+      if (!onay) return
+      try {
+        await kullaniciAskidanCikar(k.id)
+        toast.success(`${k.ad} askıdan çıkarıldı.`)
+        kullanicilarYenile()
+      } catch (e) { toast.error('Askı kaldırılamadı: ' + (e?.message || 'bilinmeyen hata')) }
+      return
+    }
+    const onay = await confirm({
+      baslik: 'Hesabı Askıya Al',
+      mesaj: `${k.ad} askıya alınacak: girişi kapanır, açık oturumu dahil TÜM veri erişimi anında kesilir. Geçmiş kayıtlarına dokunulmaz. Devam edilsin mi?`,
+      onayMetin: 'Askıya Al', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    try {
+      await kullaniciAskiyaAl(k.id, 'Yönetici tarafından askıya alındı')
+      toast.success(`${k.ad} askıya alındı.`)
+      kullanicilarYenile()
+    } catch (e) { toast.error('Askıya alınamadı: ' + (e?.message || 'bilinmeyen hata')) }
+  }
+
   const silmeIsle = async (id) => {
     const k = kullanicilar.find((x) => x.id === id)
     const onay = await confirm({
@@ -1375,6 +1431,7 @@ export default function KullaniciYonetimi() {
             setAramaMetni={setAramaMetni}
             onDuzenle={duzenleBasla}
             onSil={silmeIsle}
+            onAski={askiIsle}
           />
         </>
       )}
