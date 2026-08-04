@@ -238,7 +238,10 @@ export default function BakimDetay() {
                     </span>
                     {k.arizaVar && <Badge tone="danger" style={{ fontSize: 10 }}>⚠️ ARIZA</Badge>}
                   </div>
-                  {sahaMi && k.durum !== 'tamamlandi' && tb.durum !== 'iptal' && (
+                  {/* 04.08: "tamamlandı" artık kilit DEĞİL — yanlış girilen sonuç
+                      webden düzeltilebilmeli (kullanıcı isteği). Yalnız iptal ve
+                      müşteriye gönderilmiş bakım düzenlenemez (raporla çelişir). */}
+                  {sahaMi && !['iptal', 'musteriye_gonderildi'].includes(tb.durum) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); kalemSil(k) }}
                       title="Kalemi sil (tamamlanmış kalem silinemez)"
@@ -378,7 +381,9 @@ export default function BakimDetay() {
           )}
 
           {/* Kalem ekleme — spec 15: yalnız saha sorumlusu; teknik personele otomatik yansır */}
-          {sahaMi && tb.durum !== 'iptal' && tb.durum !== 'tamamlandi' && eklenebilirKalemler.length > 0 && (
+          {/* Kalem ekleme de tamamlanan bakımda serbest — TB-2026-00032 vakası:
+              bakım 0 kalemle tamamlanmıştı ve sonradan kalem EKLENEMİYORDU. */}
+          {sahaMi && !['iptal', 'musteriye_gonderildi'].includes(tb.durum) && eklenebilirKalemler.length > 0 && (
             <Card style={{ padding: '12px 16px' }}>
               {!kalemEkleAcik ? (
                 <Button variant="secondary" onClick={() => setKalemEkleAcik(true)}>
