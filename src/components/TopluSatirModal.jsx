@@ -6,32 +6,57 @@
 // ⭐ Stokta OLMAYAN kod da eklenir (kullanıcı kararı: "Stoğumuzda bu
 // ürünlerden olmak zorunda değil"). Eşleşende ad/fiyat/KDV stoktan gelir,
 // eşleşmeyende kod satıra yazılır ve fiyat elle girilir.
+//
+// ⚠️ Yapıştırılan kod çoğunlukla ÜRETİCİ MODEL KODUDUR ve ZNA stokunda bu
+// alan `stokAdi`dir (`stokKodu` = "STK00505" iç sayaç). Eşleştirme bu yüzden
+// çok kanallıdır — bkz. topluSatirAyristir.js.
 
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { ClipboardPaste, Check, AlertCircle, X, Package, PackageX } from 'lucide-react'
+import { ClipboardPaste, Check, AlertCircle, X, Package, PackageX, HelpCircle } from 'lucide-react'
 import { Modal, Button, Badge, CodeBadge } from './ui'
-import { yapistirmaAyristir, stoklaEslestir } from '../lib/topluSatirAyristir'
+import { yapistirmaAyristir, stoklaEslestir, ESLESME_KAYNAKLARI } from '../lib/topluSatirAyristir'
 
 export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkle }) {
   const [metin, setMetin] = useState('')
+  // Belirsiz satırlarda elle seçilen ürün. Seçimler HANGİ METNE ait olduğuyla
+  // birlikte tutulur: metin değişince satır indeksleri kayar, eski seçim yanlış
+  // satıra oturur. Effect'le sıfırlamak yerine render'da türetiliyor.
+  const [secimDurumu, setSecimDurumu] = useState({ metin: '', harita: {} })
   const alanRef = useRef(null)
+
+  const secimler = useMemo(
+    () => (secimDurumu.metin === metin ? secimDurumu.harita : {}),
+    [secimDurumu, metin],
+  )
+  const secimYap = (i, stokKodu) => setSecimDurumu({ metin, harita: { ...secimler, [i]: stokKodu } })
 
   // Modal açılınca yapıştırma alanına odaklan — kullanıcı doğrudan Ctrl+V yapsın
   useEffect(() => {
-    if (acik) {
-      setMetin('')
-      const t = setTimeout(() => alanRef.current?.focus(), 120)
-      return () => clearTimeout(t)
-    }
+    if (!acik) return undefined
+    const t = setTimeout(() => alanRef.current?.focus(), 120)
+    return () => clearTimeout(t)
   }, [acik])
 
-  const satirlar = useMemo(
+  // Temizlik kapanışta yapılır (açılışta setState = gereksiz cascade render)
+  const kapat = () => { setMetin(''); setSecimDurumu({ metin: '', harita: {} }); onKapat() }
+
+  const hamSatirlar = useMemo(
     () => stoklaEslestir(yapistirmaAyristir(metin), stokUrunler),
     [metin, stokUrunler],
   )
 
+  // Elle seçim, otomatik eşleşmenin yerine geçer
+  const satirlar = useMemo(() => hamSatirlar.map((s, i) => {
+    const secilenKod = secimler[i]
+    if (!secilenKod) return s
+    const urun = s.adaylar?.find(a => a.stokKodu === secilenKod)
+    if (!urun) return s
+    return { ...s, urun, eslesti: true, belirsiz: false, eslesmeKaynagi: 'secim', cozulmusAd: urun.stokAdi }
+  }), [hamSatirlar, secimler])
+
   const eslesen = satirlar.filter(s => s.eslesti).length
-  const yeni = satirlar.length - eslesen
+  const belirsiz = satirlar.filter(s => s.belirsiz).length
+  const yeni = satirlar.length - eslesen - belirsiz
 
   const ekle = () => {
     if (satirlar.length === 0) return
@@ -51,10 +76,11 @@ export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkl
     }))
     onEkle(yeniSatirlar)
     setMetin('')
+    setSecimDurumu({ metin: '', harita: {} })
   }
 
   return (
-    <Modal open={acik} onClose={onKapat} title="Excel'den Toplu Satır Ekle" width={780}>
+    <Modal open={acik} onClose={kapat} title="Excel'den Toplu Satır Ekle" width={780}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 8,
@@ -65,8 +91,9 @@ export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkl
           <ClipboardPaste size={15} strokeWidth={1.75} style={{ color: 'var(--brand-primary)', flexShrink: 0, marginTop: 1 }} />
           <div>
             Excel'de <b>ürün kodu ve miktar</b> sütunlarını seçip kopyalayın, aşağıya yapıştırın.
-            Başlık satırı otomatik atlanır. Stokta olmayan kodlar da eklenir — fiyatlarını
-            sonra satır üzerinde girersiniz.
+            Ürün tanımı, fiyatı ve KDV'si stoktan otomatik gelir — kod, ürün adı, üretici model
+            kodu veya barkod üzerinden aranır. Başlık satırı atlanır; stokta olmayan kodlar da
+            eklenir, fiyatlarını sonra satır üzerinde girersiniz.
           </div>
         </div>
 
@@ -96,8 +123,13 @@ export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkl
                   <Package size={13} strokeWidth={1.75} /> {eslesen} ürün stokta bulundu
                 </span>
               )}
-              {yeni > 0 && (
+              {belirsiz > 0 && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 12px/16px var(--font-sans)', color: '#b45309' }}>
+                  <HelpCircle size={13} strokeWidth={1.75} /> {belirsiz} satırda birden çok ürün eşleşti — seçin
+                </span>
+              )}
+              {yeni > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
                   <PackageX size={13} strokeWidth={1.75} /> {yeni} kod stokta yok — yine de eklenecek
                 </span>
               )}
@@ -125,20 +157,55 @@ export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkl
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-default)' }}>
                       <td style={{ padding: '7px 10px' }}><CodeBadge>{s.kod}</CodeBadge></td>
                       <td style={{ padding: '7px 10px', color: s.eslesti ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                        {s.cozulmusAd}
+                        {s.belirsiz ? (
+                          /* Aynı koda birden çok kart uyuyor — otomatik seçmek yanlış
+                             ürünü teklife koyar; kararı kullanıcı verir. */
+                          <select
+                            value={secimler[i] || ''}
+                            onChange={(e) => secimYap(i, e.target.value)}
+                            style={{
+                              width: '100%', padding: '4px 6px', borderRadius: 6,
+                              border: '1px solid #f59e0b', background: 'var(--surface-default)',
+                              color: 'var(--text-primary)', font: '400 12px/16px var(--font-sans)',
+                            }}
+                          >
+                            <option value="">{s.adaylar.length} ürün eşleşti — seçin…</option>
+                            {s.adaylar.map(a => (
+                              <option key={a.stokKodu} value={a.stokKodu}>
+                                {a.stokKodu} — {a.stokAdi}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <>
+                            {s.cozulmusAd}
+                            {s.eslesti && (
+                              <span style={{
+                                marginLeft: 6, padding: '1px 5px', borderRadius: 4,
+                                background: 'var(--surface-sunken)', color: 'var(--text-tertiary)',
+                                font: '500 10px/14px var(--font-sans)', whiteSpace: 'nowrap',
+                              }}>
+                                {ESLESME_KAYNAKLARI[s.eslesmeKaynagi] || 'eşleşti'}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </td>
                       <td style={{ padding: '7px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {s.miktar}
                       </td>
                       <td style={{ padding: '7px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
-                        {s.eslesti
-                          ? Number(s.urun?.birimFiyat ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+                        {/* Stokta fiyatsız kart çok (2599'un 1595'i) — 0,00 yerine tire */}
+                        {s.eslesti && Number(s.urun?.birimFiyat) > 0
+                          ? Number(s.urun.birimFiyat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
                           : '—'}
                       </td>
                       <td style={{ padding: '7px 10px', textAlign: 'right' }}>
                         {s.eslesti
                           ? <Check size={14} strokeWidth={2} style={{ color: '#10b981' }} />
-                          : <AlertCircle size={14} strokeWidth={1.75} style={{ color: '#f59e0b' }} />}
+                          : s.belirsiz
+                            ? <HelpCircle size={14} strokeWidth={2} style={{ color: '#f59e0b' }} />
+                            : <AlertCircle size={14} strokeWidth={1.75} style={{ color: 'var(--text-tertiary)' }} />}
                       </td>
                     </tr>
                   ))}
@@ -158,8 +225,13 @@ export default function TopluSatirModal({ acik, onKapat, stokUrunler = [], onEkl
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 2 }}>
-          <Button variant="secondary" iconLeft={<X size={14} strokeWidth={1.5} />} onClick={onKapat}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          {belirsiz > 0 && (
+            <span style={{ marginRight: 'auto', font: '400 12px/16px var(--font-sans)', color: '#b45309' }}>
+              Seçilmeyen {belirsiz} satır, ürün bağlanmadan yalnız kodla eklenir.
+            </span>
+          )}
+          <Button variant="secondary" iconLeft={<X size={14} strokeWidth={1.5} />} onClick={kapat}>
             Vazgeç
           </Button>
           <Button variant="primary" disabled={satirlar.length === 0} onClick={ekle}>

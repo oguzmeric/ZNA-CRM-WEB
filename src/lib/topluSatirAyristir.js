@@ -131,23 +131,113 @@ export const yapistirmaAyristir = (metin) => {
   return sonuc
 }
 
+// ─── Eşleştirme ──────────────────────────────────────────────────────────────
+//
+// ⚠️ ZNA stokunda `stokKodu` iç sayaçtır ("STK00505"); kullanıcının Excel'den
+// yapıştırdığı ÜRETİCİ MODEL KODU ise çoğunlukla `stokAdi` alanında durur
+// ("VTH2622GW-W", "DS-2CE76D0T-ITPFS"). 2599 üründen 2574'ü STK önekli, barkodu
+// dolu olan 1, tedarikçi ürün kodu dolu olan 0. Bu yüzden yalnız stokKodu'na
+// bakan eşleştirme pratikte HİÇ tutmaz — birden çok kanal denenir.
+
+/** Birebir karşılaştırma: yalnız kırp + TR küçük harf (ayraçlar KORUNUR). */
+const duzNormalize = (ham) => String(ham ?? '').trim().toLocaleLowerCase('tr')
+
+/**
+ * Gevşek karşılaştırma: ayraçlar ve boşluklar da atılır.
+ * ⚠️ Tek başına kullanılmaz — "VTH2621GW-P" ile "VTH2621G-WP" aynı anahtara
+ * düşer ve bunlar FARKLI ürünlerdir. Önce birebir eşleşme denenir.
+ */
+const kodNormalize = (ham) => String(ham ?? '')
+  .toLocaleLowerCase('tr')
+  .replace(/[\s\-_./\\]/g, '')
+
+/** Model kodu görünümlü jeton mu? (hem harf hem rakam, 4+ karakter) */
+const modelJetonuMu = (n) => n.length >= 4 && /[0-9]/.test(n) && /[a-zçğıöşü]/.test(n)
+
+/** Ürün adını jetonlara böler ("Hikvision DS-KD9203-E6 Terminal" → …) */
+const adJetonlari = (ad) => String(ad ?? '')
+  .split(/[\s,;()[\]{}/|]+/)
+  .map(kodNormalize)
+  .filter(modelJetonuMu)
+
+const anahtarEkle = (harita, anahtar, urun) => {
+  if (!anahtar) return
+  const mevcut = harita.get(anahtar)
+  if (!mevcut) harita.set(anahtar, [urun])
+  else if (!mevcut.includes(urun)) mevcut.push(urun)
+}
+
+/** Eşleşme kanalları — sırayla denenir, ilk dolu sonuç kazanır. */
+export const ESLESME_KAYNAKLARI = {
+  kod: 'Stok kodu',
+  ad: 'Ürün adı',
+  barkod: 'Barkod / tedarikçi kodu',
+  adIci: 'Ad içinde geçiyor',
+  secim: 'Elle seçildi',
+}
+
 /**
  * Ayrıştırılan satırları stok listesiyle eşleştirir.
- * Eşleşme: stok kodu, boşluk/büyük-küçük duyarsız.
  * Eşleşmeyen satır ELENMEZ — kod ve miktarıyla eklenir (kullanıcı kararı).
+ *
+ * Dönen her satırda:
+ *   urun            eşleşen stok kartı (yoksa null)
+ *   eslesti         tek aday bulundu mu
+ *   belirsiz        birden çok aday var — otomatik seçilmez, kullanıcı seçer
+ *   adaylar         belirsizken seçilebilecek ürünler
+ *   eslesmeKaynagi  hangi kanal tuttu (ESLESME_KAYNAKLARI anahtarı)
  */
 export const stoklaEslestir = (satirlar, stokUrunler = []) => {
-  const harita = new Map()
+  // "duz" = birebir (ayraçlı), "gevsek" = ayraçsız
+  const kodDuz = new Map(); const kodGevsek = new Map()
+  const adDuz = new Map(); const adGevsek = new Map()
+  const barkodDuz = new Map(); const barkodGevsek = new Map()
+  const jetonHarita = new Map()
+
   for (const u of stokUrunler) {
-    const k = String(u.stokKodu || '').trim().toLocaleLowerCase('tr')
-    if (k) harita.set(k, u)
+    anahtarEkle(kodDuz, duzNormalize(u.stokKodu), u)
+    anahtarEkle(kodGevsek, kodNormalize(u.stokKodu), u)
+    anahtarEkle(adDuz, duzNormalize(u.stokAdi), u)
+    anahtarEkle(adGevsek, kodNormalize(u.stokAdi), u)
+    for (const alan of [u.barkod, u.tedarikciUrunKodu]) {
+      anahtarEkle(barkodDuz, duzNormalize(alan), u)
+      anahtarEkle(barkodGevsek, kodNormalize(alan), u)
+    }
+    for (const j of adJetonlari(u.stokAdi)) anahtarEkle(jetonHarita, j, u)
   }
+
   return satirlar.map(s => {
-    const urun = harita.get(String(s.kod).trim().toLocaleLowerCase('tr')) || null
+    const kodD = duzNormalize(s.kod); const kodN = kodNormalize(s.kod)
+    const adD = duzNormalize(s.ad); const adN = kodNormalize(s.ad)
+
+    // Sıra önemli: birebir eşleşmeler önce, gevşek sonra, "ad içinde" en sonda.
+    const denemeler = [
+      ['kod', kodDuz.get(kodD)],
+      ['ad', adDuz.get(kodD)],
+      ['barkod', barkodDuz.get(kodD)],
+      // Excel'de ayrı bir ad sütunu varsa o da kimlik olabilir
+      ['ad', adD && adD !== kodD ? adDuz.get(adD) : undefined],
+      ['kod', kodGevsek.get(kodN)],
+      ['ad', adGevsek.get(kodN)],
+      ['barkod', barkodGevsek.get(kodN)],
+      ['ad', adN && adN !== kodN ? adGevsek.get(adN) : undefined],
+      ['adIci', modelJetonuMu(kodN) ? jetonHarita.get(kodN) : undefined],
+    ]
+
+    let adaylar = []
+    let kaynak = null
+    for (const [ad, bulunan] of denemeler) {
+      if (bulunan?.length) { adaylar = bulunan; kaynak = ad; break }
+    }
+
+    const urun = adaylar.length === 1 ? adaylar[0] : null
     return {
       ...s,
       urun,
       eslesti: !!urun,
+      belirsiz: adaylar.length > 1,
+      adaylar,
+      eslesmeKaynagi: urun ? kaynak : null,
       // Ad önceliği: stoktaki resmî ad > yapıştırılan ad > kod
       cozulmusAd: urun?.stokAdi || s.ad || s.kod,
     }
