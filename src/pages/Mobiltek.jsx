@@ -48,6 +48,7 @@ export default function Mobiltek() {
   }
 
   const [sonGuncelleme, setSonGuncelleme] = useState(null)
+  const [hata, setHata] = useState(null)
   const [yakinliklar, setYakinliklar] = useState([])
   const [yakinlikPanel, setYakinlikPanel] = useState(false)
   const [gorunum, setGorunum] = useState('harita')  // 'harita' | 'liste'
@@ -55,11 +56,16 @@ export default function Mobiltek() {
   const yukle = async () => {
     setYukleniyor(true)
     const r = await araclariGetir()
-    if (r) {
+    if (r?.veri) {
       const ham = r.veri?.vehicles || []
       setAraclar(ham.map(normalizeArac))
       setMock(r.mock)
       setSonGuncelleme(new Date())
+      setHata(null)
+    } else {
+      // Sessiz başarısızlık olmasın: eskiden istek düştüğünde ekran boş
+      // kalıyor, kullanıcı sebebini göremiyordu (04.08 "araçları göremiyorum").
+      setHata(r?.hata || 'Araç listesi alınamadı.')
     }
     setYukleniyor(false)
     // Yakınlık tara (sessiz) + aktif listeyi çek
@@ -124,6 +130,27 @@ export default function Mobiltek() {
           </Button>
         </div>
       </div>
+
+      {/* Bağlantı hatası — boş ekranla baş başa bırakma */}
+      {hata && (
+        <Card style={{
+          marginBottom: 12, padding: '12px 16px',
+          background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.3)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ font: '600 13px/18px var(--font-sans)', color: '#dc2626' }}>
+              Araç bilgileri yüklenemedi
+            </div>
+            <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 2 }}>
+              {hata}
+            </div>
+          </div>
+          <Button variant="secondary" size="sm" iconLeft={<RefreshCw size={13} strokeWidth={1.5} />} onClick={yukle}>
+            Tekrar dene
+          </Button>
+        </Card>
+      )}
 
       {/* Özet stat kartları */}
       {araclar.length > 0 && (

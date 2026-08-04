@@ -75,6 +75,23 @@ const isStorageRequest = (input) => {
   } catch { return false }
 }
 
+// Edge function çağrıları 5sn'lik tablo-sorgusu bütçesine SIĞMAZ: fonksiyon
+// dış bir API'yi (Mobiltek, NetGSM, Resend, Groq…) beklerken sürenin çoğu
+// orada geçer + soğuk başlangıç eklenir.
+// 04.08 canlı vaka: /mobiltek sayfası araçları göstermiyordu. Proxy logunda
+// Mobiltek çağrısı 3,4-3,8 sn ölçülmüş; soğuk başlangıçla 5 sn aşılıyor,
+// istemci isteği kesiyor, edge fn log satırını yazamadan ölüyor (bu yüzden
+// logda hiç iz yoktu). functions.invoke POST olduğu için otomatik tekrar da
+// devreye girmiyordu → sessizce boş liste.
+// Bu istekler ayrı ve geniş bir bütçeye alınır; yine de sonsuz asılı kalmaz.
+const FONKSIYON_TIMEOUT_MS = 30000
+const isFunctionsRequest = (input) => {
+  try {
+    const url = typeof input === 'string' ? input : (input?.url || '')
+    return url.includes('/functions/v1/')
+  } catch { return false }
+}
+
 // Tek deneme — verilen süre içinde bitmezse TimeoutError ile abort
 const zamanAsimliDeneme = (input, init, ms) => {
   const controller = new AbortController()
@@ -144,6 +161,13 @@ const fetchWithTimeout = (input, init = {}) => {
 
   // Storage istekleri timeout'tan muaf — büyük dosya transferi için
   if (isStorageRequest(input)) return fetch(input, init)
+
+  // Edge function çağrıları geniş bütçeyle (30sn) — tekrar denenmez:
+  // çoğu fonksiyon yan etkili (mail/SMS gönderimi, kayıt yazımı) ve POST'un
+  // tekrarı mükerrer iş üretir.
+  if (isFunctionsRequest(input)) {
+    return zamanAsimliDeneme(input, init, FONKSIYON_TIMEOUT_MS)
+  }
 
   const method = (init.method || 'GET').toUpperCase()
   const ilk = zamanAsimliDeneme(input, init, DEFAULT_TIMEOUT_MS)

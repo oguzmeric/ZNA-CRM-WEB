@@ -3,21 +3,35 @@
 import { supabase } from '../lib/supabase'
 
 const cagir = async (yol, params = {}) => {
+  const r = await cagirDetayli(yol, params)
+  return r.hata ? null : r
+}
+
+// Hata sebebini de döndüren sürüm. Araç listesi gibi "boş görünürse kullanıcı
+// neyin yanlış gittiğini anlayamıyor" durumlarda kullanılır.
+// 04.08: /mobiltek sayfası sessizce boş kalıyordu — istek 5sn timeout'una
+// takılıyor, cagir() null dönüyor, ekranda hiçbir uyarı çıkmıyordu.
+const cagirDetayli = async (yol, params = {}) => {
   const { data, error } = await supabase.functions.invoke('mobiltek-proxy', {
     body: { yol, params },
   })
   if (error) {
     console.error('[mobiltek]', yol, error.message)
-    return null
+    const zamanAsimi = /timeout|abort/i.test(error.message || '')
+    return {
+      hata: zamanAsimi
+        ? 'Mobiltek yanıt vermedi (zaman aşımı). Tekrar deneyin.'
+        : `Bağlantı hatası: ${error.message}`,
+    }
   }
   if (!data?.ok) {
     console.warn('[mobiltek]', yol, data?.hata)
-    return null
+    return { hata: data?.hata || 'Mobiltek isteği başarısız' }
   }
   return { veri: data.veri, mock: !!data.mock }
 }
 
-export const araclariGetir       = () => cagir('vehicles')
+export const araclariGetir       = () => cagirDetayli('vehicles')
 export const yakinlikTara        = async () => {
   const { data, error } = await supabase.functions.invoke('arac-yakinlik-tara')
   if (error) { console.warn('[yakinlik]', error.message); return null }
