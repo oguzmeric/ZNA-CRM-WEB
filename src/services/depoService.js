@@ -460,12 +460,20 @@ export async function teknisyenAylikRapor(kullaniciId, ay /* YYYY-MM */) {
     .from('kullanicilar').select('ad').eq('id', kullaniciId).maybeSingle()
   const ad = String(kul?.ad || '').trim()
   if (!ad) return { hareketler: [], ozet: { toplam: 0, cikis: 0, giris: 0, ariza: 0 } }
+  // Açıklamalara YAZILDIĞI ANDAKİ ad gömülü; kişinin adı sonradan düzeltilirse
+  // (04.08 vakası: "Mahmut Sari" → "Mahmut Sarı") güncel adla birebir arama
+  // eski satırların TAMAMINI kaçırır — Postgres ilike ı↔i eşleştirmez.
+  // Çözüm: I-ailesi harfleri tek karakter jokerine (_) çevrilir; desen her iki
+  // yazımı da yakalar. Önce gerçek joker karakterleri etkisizleştirilir.
+  const adDeseni = ad
+    .replace(/[\\%_]/g, (k) => `\\${k}`)
+    .replace(/[ıiİI]/g, '_')
   // stok_hareketleri.aciklama'da adı geçen tüm hareketler
   // (hareket yapan yönetim olsa da, teknisyene ait audit satırları burada)
   const { data, error } = await supabase
     .from('stok_hareketleri')
     .select('*')
-    .ilike('aciklama', `%${ad}%`)
+    .ilike('aciklama', `%${adDeseni}%`)
     .gte('tarih', bas)
     .lt('tarih', bit)
     .order('tarih', { ascending: false })

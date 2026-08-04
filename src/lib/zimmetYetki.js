@@ -8,7 +8,7 @@
 // Yönetim: Ali Uğur Aktepe (1), Oğuz Meriç (2), Ferdi Kalkan (33)
 export const YONETIM_IDLER = [1, 2, 33]
 
-// Depo sorumluları: Salih Çakmaklı (34), Mahmut Sari (45).
+// Depo sorumluları: Salih Çakmaklı (34), Mahmut Sarı (45).
 // Demirbaş/envanter işlerler ama KENDİLERİ DE zimmet alabilir (yönetim değiller).
 // NOT: Artık asıl kaynak DB'deki `kullanicilar.demirbas_yetkilisi` bayrağı (mig 226).
 // Bu liste yalnızca geriye dönük emniyet — bayrak client'a ulaşmazsa panel kapanmasın.
