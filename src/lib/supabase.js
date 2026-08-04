@@ -106,6 +106,42 @@ const isFunctionsRequest = (input) => {
   } catch { return false }
 }
 
+// ⚠️ EDGE FONKSİYONLARINA ÖZEL BAŞLIK GÖNDERİLEMEZ — CORS TUZAĞI
+// Tarayıcı, standart dışı bir başlık taşıyan cross-origin POST'tan önce
+// OPTIONS ön kontrolü yapar. Sunucu o başlığı Access-Control-Allow-Headers
+// listesinde saymazsa isteği HİÇ GÖNDERMEZ.
+// 04.08 canlı vaka: veri koruması için eklenen 'x-zna-istemci' imzası
+// (global.headers) tüm /functions/v1/ çağrılarını kırdı — 32 edge
+// fonksiyonunun hiçbiri bu başlığı listesinde saymıyor. Belirti: "Failed to
+// send a request to the Edge Function", sunucu tarafı tamamen sağlamken
+// (gerçek oturumla curl → HTTP 200) ve loglarda hiç iz yokken.
+// İmzanın işi zaten PostgREST tarafında (script tespiti); fonksiyon
+// çağrılarında hiçbir karşılığı yok, bu yüzden burada ayıklanıyor.
+const OZEL_BASLIKLAR = ['x-zna-istemci']
+
+const baslikAyikla = (init) => {
+  try {
+    const h = init?.headers
+    if (!h) return init
+    if (typeof Headers !== 'undefined' && h instanceof Headers) {
+      const yeni = new Headers(h)
+      for (const ad of OZEL_BASLIKLAR) yeni.delete(ad)
+      return { ...init, headers: yeni }
+    }
+    if (Array.isArray(h)) {
+      return {
+        ...init,
+        headers: h.filter(([k]) => !OZEL_BASLIKLAR.includes(String(k).toLowerCase())),
+      }
+    }
+    const yeni = { ...h }
+    for (const k of Object.keys(yeni)) {
+      if (OZEL_BASLIKLAR.includes(k.toLowerCase())) delete yeni[k]
+    }
+    return { ...init, headers: yeni }
+  } catch { return init }
+}
+
 // Tek deneme — verilen süre içinde bitmezse TimeoutError ile abort
 const zamanAsimliDeneme = (input, init, ms, korumali = false) => {
   const controller = new AbortController()
@@ -188,7 +224,7 @@ const fetchWithTimeout = (input, init = {}) => {
   // Bu süpürmeler takılmış TABLO SORGULARI için; edge çağrısının uzun
   // sürmesi normaldir ve kendi bütçesi zaten var.
   if (isFunctionsRequest(input)) {
-    return zamanAsimliDeneme(input, init, FONKSIYON_TIMEOUT_MS, true)
+    return zamanAsimliDeneme(input, baslikAyikla(init), FONKSIYON_TIMEOUT_MS, true)
   }
 
   const method = (init.method || 'GET').toUpperCase()
