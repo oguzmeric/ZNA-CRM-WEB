@@ -23,6 +23,7 @@ import Dashboard from './pages/Dashboard'
 import PaylasimBelge from './pages/PaylasimBelge'
 import DavetKabul from './pages/DavetKabul'
 import KullaniciSozlesmesi from './pages/KullaniciSozlesmesi'
+import SozlesmeOnaylari from './pages/SozlesmeOnaylari'
 import SozlesmeKapisi from './components/SozlesmeKapisi'
 import MainLayout from './layouts/MainLayout'
 import MusteriLayout from './layouts/MusteriLayout'
@@ -430,6 +431,8 @@ function App() {
           <Route path="/gorevler" element={<Gorevler />} />
           <Route path="/gorevler/:id" element={<GorevDetay />} />
           <Route path="/kullanici-yonetimi" element={<YonetimGuard><KullaniciYonetimi /></YonetimGuard>} />
+          {/* Sözleşme onay takibi — kim onayladı/onaylamadı (mig 264/266) */}
+          <Route path="/sozlesme-onaylari" element={<YonetimGuard><SozlesmeOnaylari /></YonetimGuard>} />
           <Route path="/duyurular" element={<OguzGuard><Duyurular /></OguzGuard>} />
           <Route path="/musteriler" element={<Musteriler />} />
           <Route path="/musteriler/:id" element={<MusteriDetay />} />

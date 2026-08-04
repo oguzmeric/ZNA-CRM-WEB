@@ -18,7 +18,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
-  Landmark, Archive,
+  Landmark, Archive, ShieldCheck,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -240,6 +240,7 @@ const menuItems = [
   // kullanıcı personel eklemeyi burada bulamadığı için adı netleştirildi (27.07).
   // İK bloğunun (İK Yönetimi > Mesai Raporu > İzin & Bordro) hemen ardında.
   { id: 'kullanici_yonetimi', isim: 'Personel Yönetimi', Icon: UserCog, yol: '/kullanici-yonetimi', modul: 'kullanici_yonetimi', grup: 'yonetim' },
+  { id: 'sozlesme_onaylari', isim: 'Sözleşme Onayları', Icon: ShieldCheck, yol: '/sozlesme-onaylari', sadeceYonetim: true, grup: 'yonetim' },
   { id: 'duyurular', isim: 'Duyurular', Icon: Megaphone, yol: '/duyurular', modul: 'kullanici_yonetimi', grup: 'yonetim', sadeceOguz: true },
   { id: 'performans', isim: 'Performans', Icon: Activity, yol: '/performans', modul: 'kullanici_yonetimi', grup: 'yonetim' },
   { id: 'sla_ayarlari', isim: 'SLA Ayarları', Icon: Timer, yol: '/sla-ayarlari', modul: 'kullanici_yonetimi', grup: 'yonetim' },
@@ -456,6 +457,8 @@ function MainLayout({ children }) {
   // Admin tüm modülleri görür (moduller listesi ne olursa olsun) — hariç 'yonetim' grubu.
   const gorunenMenuRaw = menuItems.filter((m) => {
     if (m.sadeceOguz) return oguzMu
+    // Sözleşme Onayları: App.jsx YonetimGuard ile AYNI kural (Ali/Oğuz/Ferdi)
+    if (m.sadeceYonetim) return /\b(oğuz|oguz|ali|ferdi)\b/i.test(_adLc)
     // İK Yönetimi: Abdullah (ik_yonetim modülü) + admin — grup 'yonetim' kuralından ÖNCE
     if (m.sadeceIK) return ikGorebilirMi(kullanici)
     // Mesai Raporu: İK yetkilileri + Ferdi — 'yonetim' grup kuralından ÖNCE
