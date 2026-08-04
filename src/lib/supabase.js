@@ -172,6 +172,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: fetchWithTimeout,
+    // UYGULAMA İMZASI (04.08) — script/otomasyon tespitinin temeli.
+    // PostgREST bu başlığı `request.headers` GUC'una koyuyor; RLS içinden
+    // okunabildiği CANLIDA doğrulandı. İkinci fazda kritik tablolara
+    // "imzasız istek veri alamaz" kapısı bu başlıkla kurulacak — jetonu
+    // kopyalayıp curl/Python ile çeken bir script bu başlığı bilmez.
+    // ŞU AN SADECE GÖNDERİLİYOR, hiçbir yerde ZORUNLU DEĞİL: tüm cihazlar
+    // güncellenmeden kapı açılırsa eski sürümler veri göremez hale gelir.
+    headers: { 'x-zna-istemci': 'web' },
   },
 })
 
