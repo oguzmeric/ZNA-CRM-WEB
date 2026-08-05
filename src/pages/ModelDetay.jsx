@@ -176,6 +176,23 @@ function ModelDetay() {
     return liste
   }, [kalemler, filtre, arama])
 
+  // Boş kolonlar tabloyu gereksiz genişletip yatay kaydırmaya zorluyordu
+  // (eylem sütunu ekranın dışında kalıyordu). Kolon yalnız gerçekten ayırt
+  // edici veri varsa gösterilir. Karar tüm filtrelenmiş küme üzerinden verilir
+  // — yoksa sayfa değiştikçe kolonlar açılıp kapanırdı.
+  const kolonVar = useMemo(() => {
+    const markaModeller = new Set(
+      filtrelenmis.map(k => `${k.marka || ''}|${k.model || ''}`).filter(s => s !== '|'),
+    )
+    return {
+      // Sayfa zaten TEK modelin detayı: tüm kalemler aynı marka/modelse
+      // her satırda tekrar etmesi bilgi vermiyor, üstelik başlıkta yazıyor.
+      markaModel: markaModeller.size > 1,
+      barkod: filtrelenmis.some(k => k.barkod),
+      tarih: filtrelenmis.some(k => k.durum === 'sahada' && k.takilmaTarihi),
+    }
+  }, [filtrelenmis])
+
   // Sayfalama — 100+ seri numaralı modelde tek liste kaydırmak kullanışsızdı
   const toplamSayfa = Math.max(1, Math.ceil(filtrelenmis.length / sayfaBoyutu))
   const sayfalanmis = useMemo(
@@ -478,9 +495,9 @@ function ModelDetay() {
                     <TH>S/N</TH>
                     <TH>Durum</TH>
                     <TH>Teknisyen / Müşteri</TH>
-                    <TH>Marka / Model</TH>
-                    <TH>Barkod</TH>
-                    <TH>Tarih</TH>
+                    {kolonVar.markaModel && <TH>Marka / Model</TH>}
+                    {kolonVar.barkod && <TH>Barkod</TH>}
+                    {kolonVar.tarih && <TH>Tarih</TH>}
                     <TH style={{ textAlign: 'right' }}>Eylem</TH>
                   </TR>
                 </THead>
@@ -523,23 +540,29 @@ function ModelDetay() {
                             </button>
                           ) : '—'}
                         </TD>
-                        <TD>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {k.marka && <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{k.marka}</span>}
-                            {k.model && <span className="t-caption">{k.model}</span>}
-                            {!k.marka && !k.model && '—'}
-                          </div>
-                        </TD>
-                        <TD>
-                          {k.barkod ? <span className="t-mono">{k.barkod}</span> : '—'}
-                        </TD>
-                        <TD>
-                          {k.durum === 'sahada' && k.takilmaTarihi ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)' }}>
-                              <Calendar size={12} strokeWidth={1.5} /> {tarihFmt(k.takilmaTarihi)}
-                            </span>
-                          ) : '—'}
-                        </TD>
+                        {kolonVar.markaModel && (
+                          <TD>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              {k.marka && <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{k.marka}</span>}
+                              {k.model && <span className="t-caption">{k.model}</span>}
+                              {!k.marka && !k.model && '—'}
+                            </div>
+                          </TD>
+                        )}
+                        {kolonVar.barkod && (
+                          <TD>
+                            {k.barkod ? <span className="t-mono">{k.barkod}</span> : '—'}
+                          </TD>
+                        )}
+                        {kolonVar.tarih && (
+                          <TD>
+                            {k.durum === 'sahada' && k.takilmaTarihi ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)' }}>
+                                <Calendar size={12} strokeWidth={1.5} /> {tarihFmt(k.takilmaTarihi)}
+                              </span>
+                            ) : '—'}
+                          </TD>
+                        )}
                         {/* nowrap: eylem butonları dar ekranda alt alta kayıp
                             satırı şişiriyordu; tablo artık yatay kaydırılabilir */}
                         <TD style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
