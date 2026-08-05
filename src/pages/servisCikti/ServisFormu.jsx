@@ -208,16 +208,20 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
          doldurur. Eskiden .sf-sayfa 210mm sabit + kendi 10mm yan padding'i
          vardı, üstüne @page 6mm boşluk bırakıyordu → her sayfada taşma,
          sağ kenar kırpılıyordu. */
-      /* Alt boşluk antet için ayrıldı (12mm antet + nefes payı) */
-      @page { size: A4; margin: 10mm 9mm 20mm; }
+      /* Alt boşluk antet için ayrıldı */
+      @page { size: A4; margin: 10mm 9mm 16mm; }
       .sf-sarmal { height: auto !important; overflow: visible !important; }
 
-      /* ANTET — her sayfanın altında. Negatif bottom ile @page'in ALT MARGIN
-         bölgesine oturuyor; böylece içerik akışıyla çakışmıyor. */
+      /* ANTET — her sayfanın altında (fotoğraf sayfası dahil).
+         ⚠️ bottom NEGATİF OLMAMALI: Chrome sayfa kutusunun dışına taşan fixed
+         içeriği kırpıyor, antet hiç basılmıyordu. bottom:0 ile sayfa alanının
+         en altına oturuyor; .sf-sayfa'nın alt dolgusu içeriğin üstüne
+         binmesini engelliyor. */
       .sf-antet {
         position: fixed;
-        left: 0; right: 0; bottom: -16mm;
+        left: 0; right: 0; bottom: 0;
         margin: 0 !important;
+        background: #fff !important;
         border-top: 1px solid #808080 !important;
         padding-top: 3px !important;
       }
@@ -229,7 +233,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
            zorla tam boya şişirip imza bloğunu tek başına 2. sayfaya itiyordu —
            sayfanın %80'i boş kalıyordu. */
         min-height: 0 !important;
-        padding: 0 !important;
+        padding: 0 0 13mm 0 !important;   /* antet payı */
         margin: 0 !important;
         box-sizing: border-box !important;
       }
