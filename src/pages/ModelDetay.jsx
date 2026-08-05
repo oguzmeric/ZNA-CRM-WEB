@@ -540,7 +540,9 @@ function ModelDetay() {
                             </span>
                           ) : '—'}
                         </TD>
-                        <TD style={{ textAlign: 'right' }}>
+                        {/* nowrap: eylem butonları dar ekranda alt alta kayıp
+                            satırı şişiriyordu; tablo artık yatay kaydırılabilir */}
+                        <TD style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                             {!k.silindi && k.durum === 'depoda' && (
                               <>

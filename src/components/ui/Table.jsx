@@ -5,7 +5,11 @@ export function Table({ children, style }) {
         background: 'var(--surface-card)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
+        // ⚠️ Eskiden `overflow: hidden` idi (yuvarlak köşeler için). Geniş
+        // tablolarda son kolon kaydırılamadan KESİLİYORDU — S/N listesinde
+        // eylem butonları yarım görünüyordu. auto: dar tabloda hiçbir fark yok
+        // (çubuk çıkmaz), taşanda yatay kaydırma gelir. Köşeler yine kırpılır.
+        overflowX: 'auto',
         ...style,
       }}
     >
