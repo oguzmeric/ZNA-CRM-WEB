@@ -160,6 +160,11 @@ export default function MesaiRaporu() {
   // Kişi × dönem kırılımı
   const ozet = useMemo(() => {
     const map = new Map()
+    // Gün içi dakika (ortalama giriş/çıkış saati için)
+    const gunIciDk = (isoZaman) => {
+      const d = new Date(isoZaman)
+      return d.getHours() * 60 + d.getMinutes()
+    }
     for (const k of kayitlar) {
       const { anahtar, etiket } = donemBilgi(k.giris_zamani, kirilim)
       const kisiId = k.kullanici_id
@@ -172,6 +177,7 @@ export default function MesaiRaporu() {
           gun: new Set(), dakika: 0, normalDk: 0, fazlaDk: 0, fazlaKayit: 0,
           kayit: 0, devam: 0,
           ilkGiris: k.giris_zamani, sonCikis: null, sonCikisFazla: null,
+          girisDkT: 0, girisN: 0, cikisDkT: 0, cikisN: 0,
         })
       }
       const r = map.get(anahtarTam)
@@ -191,9 +197,19 @@ export default function MesaiRaporu() {
         const hedef = k.tip === 'fazla' ? 'sonCikisFazla' : 'sonCikis'
         if (!r[hedef] || new Date(k.cikis_zamani) > new Date(r[hedef])) r[hedef] = k.cikis_zamani
       }
+      // Haftalık/aylık için ortalama giriş-çıkış saati — yalnız NORMAL kayıtlar:
+      // 19:01'de başlayan fazla mesai ortalama girişi akşama çekerdi.
+      if (k.tip !== 'fazla') {
+        r.girisDkT += gunIciDk(k.giris_zamani); r.girisN += 1
+        if (k.cikis_zamani) { r.cikisDkT += gunIciDk(k.cikis_zamani); r.cikisN += 1 }
+      }
     }
     return [...map.values()]
-      .map(r => ({ ...r, gunSayisi: r.gun.size, sonCikis: r.sonCikis ?? r.sonCikisFazla }))
+      .map(r => ({
+        ...r, gunSayisi: r.gun.size, sonCikis: r.sonCikis ?? r.sonCikisFazla,
+        ortGirisDk: r.girisN ? Math.round(r.girisDkT / r.girisN) : null,
+        ortCikisDk: r.cikisN ? Math.round(r.cikisDkT / r.cikisN) : null,
+      }))
       .sort((a, b) => (b.anahtar.localeCompare(a.anahtar)) || a.ad.localeCompare(b.ad, 'tr'))
   }, [kayitlar, kirilim, simdi])
 
@@ -227,20 +243,28 @@ export default function MesaiRaporu() {
     }
   }, [kayitlar, simdi])
 
+  // Gün içi dakikayı "08:24" biçiminde göster (ortalama giriş/çıkış)
+  const ortSaat = (dk) => dk == null ? '—'
+    : `${String(Math.floor(dk / 60)).padStart(2, '0')}:${String(dk % 60).padStart(2, '0')}`
+
   const excelIndir = () => {
     if (!ozet.length) { toast?.warning?.('Dışa aktarılacak kayıt yok.'); return }
     const kirilimAd = KIRILIMLAR.find(k => k.id === kirilim)?.ad || ''
     // Web tablosuyla aynı mantık: günlük kırılımda o günün giriş/çıkış saati,
-    // haftalık-aylıkta dönemin ilk girişi / son çıkışı (başlık da öyle söyler).
-    const girisBaslik = kirilim === 'gunluk' ? 'Giriş' : 'İlk Giriş'
-    const cikisBaslik = kirilim === 'gunluk' ? 'Çıkış' : 'Son Çıkış'
+    // haftalık-aylıkta ORTALAMA giriş/çıkış saati. (Eskiden dönemin ilk girişi /
+    // son çıkışı gösteriliyordu — ayın rastgele bir günündeki tek saat değeri
+    // bilgi taşımıyordu; ortalama, mesai disiplinini gösterir.)
+    const girisBaslik = kirilim === 'gunluk' ? 'Giriş' : 'Ort. Giriş'
+    const cikisBaslik = kirilim === 'gunluk' ? 'Çıkış' : 'Ort. Çıkış'
     const ozetSatir = ozet.map(r => ({
       Dönem: r.etiket,
       Personel: r.ad,
       Ünvan: r.unvan,
       'Gün Sayısı': r.gunSayisi,
-      [girisBaslik]: saatGoster(r.ilkGiris),
-      [cikisBaslik]: r.sonCikis ? saatGoster(r.sonCikis) : 'devam ediyor',
+      [girisBaslik]: kirilim === 'gunluk' ? saatGoster(r.ilkGiris) : ortSaat(r.ortGirisDk),
+      [cikisBaslik]: kirilim === 'gunluk'
+        ? (r.sonCikis ? saatGoster(r.sonCikis) : 'devam ediyor')
+        : ortSaat(r.ortCikisDk),
       // Normal ve fazla mesai farklı ücretlendirildiği için ayrı sütun.
       // Değerler GERÇEK SÜRE (Excel gün kesri) — sayfa yazılırken [h]:mm
       // biçimi veriliyor: "08:30" görünür ve SUM/ortalama çalışır.
@@ -416,12 +440,13 @@ export default function MesaiRaporu() {
                 <TH>Ünvan</TH>
                 <TH>Gün</TH>
                 {/* Günlük kırılımda o günün giriş/çıkışı; haftalık-aylıkta tek
-                    saat olamayacağı için dönemin ilk girişi / son çıkışı. */}
-                <TH title={kirilim === 'gunluk' ? 'Mesainin başlatıldığı saat (QR)' : 'Dönemdeki ilk mesai başlangıcı'}>
-                  {kirilim === 'gunluk' ? 'Giriş' : 'İlk Giriş'}
+                    saat olamayacağı için ORTALAMA giriş/çıkış saati — mesaiye
+                    başlama disiplinini ve erken çıkma eğilimini gösterir. */}
+                <TH title={kirilim === 'gunluk' ? 'Mesainin başlatıldığı saat (QR)' : 'Dönemdeki normal mesai başlangıçlarının ortalama saati'}>
+                  {kirilim === 'gunluk' ? 'Giriş' : 'Ort. Giriş'}
                 </TH>
-                <TH title={kirilim === 'gunluk' ? 'Mesainin bitiş saati (otomatik kapanışta 18:00 yazılır)' : 'Dönemdeki son mesai bitişi'}>
-                  {kirilim === 'gunluk' ? 'Çıkış' : 'Son Çıkış'}
+                <TH title={kirilim === 'gunluk' ? 'Mesainin bitiş saati (otomatik kapanışta 18:00 yazılır)' : 'Dönemdeki normal mesai bitişlerinin ortalama saati'}>
+                  {kirilim === 'gunluk' ? 'Çıkış' : 'Ort. Çıkış'}
                 </TH>
                 <TH title="19:00 öncesi başlayan normal çalışma">Normal</TH>
                 <TH title="19:00 sonrası başlayan, ayrı ücretlendirilen çalışma">Fazla Mesai</TH>
@@ -438,9 +463,12 @@ export default function MesaiRaporu() {
                   <TD style={{ fontWeight: 600 }}>{r.ad}</TD>
                   <TD style={{ color: 'var(--text-tertiary)' }}>{r.unvan || '—'}</TD>
                   <TD className="tabular-nums">{r.gunSayisi}</TD>
-                  <TD className="tabular-nums">{saatGoster(r.ilkGiris)}</TD>
                   <TD className="tabular-nums">
-                    {r.sonCikis ? saatGoster(r.sonCikis) : (
+                    {kirilim === 'gunluk' ? saatGoster(r.ilkGiris) : ortSaat(r.ortGirisDk)}
+                  </TD>
+                  <TD className="tabular-nums">
+                    {kirilim !== 'gunluk' ? ortSaat(r.ortCikisDk)
+                      : r.sonCikis ? saatGoster(r.sonCikis) : (
                       <span style={{ color: '#f59e0b' }} title="Mesai hâlâ açık — 18:30'da otomatik kapanır">açık</span>
                     )}
                   </TD>
