@@ -215,20 +215,25 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
       @page { size: A4; margin: 0; }
       .sf-sarmal { height: auto !important; overflow: visible !important; }
 
-      /* ANTET — her sayfanın altında (fotoğraf sayfası dahil).
-         ⚠️ bottom NEGATİF OLMAMALI: Chrome sayfa kutusunun dışına taşan fixed
-         içeriği kırpıyor, antet hiç basılmıyordu. bottom:0 ile sayfa alanının
-         en altına oturuyor; .sf-sayfa'nın alt dolgusu içeriğin üstüne
-         binmesini engelliyor. */
-      /* ANTET — her sayfanın altında. tfoot'u sayfa sonunda tekrarlamak
-         tarayıcının kendi davranışı; position:fixed ile denendi, Chrome
-         yazdırmada HİÇ basmadı (kullanıcı çıktısında antet yoktu). */
+      /* ANTET — her sayfanın EN DİBİNDE (son sayfa ve fotoğraf sayfası dahil).
+         İki parçalı desen:
+         1) tfoot dolgusu: tarayıcı tablo altbilgisini her sayfa sonunda
+            tekrarlar → her sayfada antet KADAR boşluk ayrılır, içerik binmez.
+         2) gerçek antet position:fixed bottom:0 → Chrome yazdırmada fixed'i
+            her sayfada tekrarlar ve HEP sayfanın dibine basar. tfoot tek
+            başına son sayfada dibe inmiyordu (içerik bitince hemen altında
+            kalıyordu). ⚠️ bottom NEGATİF OLMAMALI — sayfa kutusu dışına taşan
+            fixed kırpılıyor, antet hiç basılmıyor (ilk denemenin sebebi).
+            Playwright page.pdf ile 2 sayfalık testte doğrulandı. */
       .sf-antet-grup { display: table-footer-group; }
+      .sf-antet-dolgu { height: 16mm; }
       .sf-antet {
+        position: fixed !important;
+        bottom: 0 !important; left: 0 !important; right: 0 !important;
         margin: 0 !important;
         background: #fff !important;
         border-top: 1px solid #808080 !important;
-        padding-top: 3px !important;
+        padding: 4px 9mm 6mm !important;
       }
       .sf-sayfa {
         transform: none !important;
@@ -239,8 +244,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
            sayfanın %80'i boş kalıyordu. */
         min-height: 0 !important;
         /* Kenar boşluğu artık @page'ten değil buradan (yukarıdaki margin:0
-           notu). Alt dolgu antet payını da kapsıyor. */
-        padding: 10mm 9mm 18mm !important;
+           notu). Alt boşluğu tfoot dolgusu (.sf-antet-dolgu) veriyor. */
+        padding: 10mm 9mm 0 !important;
         margin: 0 !important;
         box-sizing: border-box !important;
       }
@@ -280,20 +285,10 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
         <table className="sf-cerceve" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
           <tfoot className="sf-antet-grup">
             <tr><td style={{ border: 'none', padding: 0 }}>
-            {/* ─── ANTET (dipnot) ───
-                tfoot içinde: tarayıcı tablo altbilgisini HER SAYFANIN sonunda
-                tekrarlar (fotoğraf sayfası dahil) — antetli kağıt etkisi. */}
-            <div
-              className="sf-antet"
-              style={{
-                marginTop: 8, paddingTop: 4, borderTop: `1px solid ${BORDER}`,
-                fontSize: 7.5, color: ACCENT, textAlign: 'center', lineHeight: 1.45,
-                background: '#fff',
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
-              <div>{cfg.adres} · {cfg.iletisim}</div>
-            </div>
+            {/* Yazdırmada her sayfanın sonunda YER AYIRAN görünmez dolgu —
+                gerçek antet aşağıdaki .sf-antet, print'te position:fixed ile
+                bu boşluğun üstüne basılır. Ekranda yüksekliği 0. */}
+            <div className="sf-antet-dolgu" />
             </td></tr>
           </tfoot>
           <tbody>
@@ -587,6 +582,20 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             </td></tr>
           </tbody>
         </table>
+        {/* ─── ANTET (dipnot) ─── ekranda önizlemenin sonunda normal akışta;
+            yazdırmada .sf-antet print CSS'i ile HER sayfanın en dibine
+            sabitlenir (son sayfa dahil). */}
+        <div
+          className="sf-antet"
+          style={{
+            marginTop: 8, paddingTop: 5, borderTop: `1px solid ${BORDER}`,
+            fontSize: 8.5, color: ACCENT, textAlign: 'center', lineHeight: 1.5,
+            background: '#fff',
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
+          <div>{cfg.adres} · {cfg.iletisim}</div>
+        </div>
       </div>
       </div>
     </>
