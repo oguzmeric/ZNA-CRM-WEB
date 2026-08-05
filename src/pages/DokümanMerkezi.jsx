@@ -22,7 +22,8 @@ import { useConfirm } from '../context/ConfirmContext'
 import { supabase } from '../lib/supabase'
 import {
   kategorileriGetir, dokumanlariGetir, dokumanEkle, dokumanSil,
-  dokumanIndirmeUrl, dokumanDosyayiIndir, MAX_BOYUT_MB, MAX_BOYUT,
+  dokumanIndirmeUrl, dokumanDosyayiIndir, tarayicidaAcilabilir,
+  MAX_BOYUT_MB, MAX_BOYUT,
 } from '../services/kisiDokumanService'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -324,9 +325,11 @@ export default function DokümanMerkezi() {
                     <UserIcon size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />
                     {kullaniciMap.get(String(d.kullaniciId)) || '—'} · {fmtTarih(d.olusturmaTarih)}
                   </span>
-                  <IkonButon title={d.tip === 'link' ? 'Linki aç' : 'Görüntüle'} onClick={() => ac(d)}>
-                    <Eye size={13} strokeWidth={1.7} />
-                  </IkonButon>
+                  {tarayicidaAcilabilir(d) && (
+                    <IkonButon title={d.tip === 'link' ? 'Linki aç' : 'Görüntüle'} onClick={() => ac(d)}>
+                      <Eye size={13} strokeWidth={1.7} />
+                    </IkonButon>
+                  )}
                   {d.tip === 'dosya' && (
                     <IkonButon title="İndir" onClick={() => indir(d)}>
                       <Download size={13} strokeWidth={1.7} />
@@ -367,9 +370,11 @@ export default function DokümanMerkezi() {
                   {d.tip === 'dosya' && d.dosyaBoyut ? ` · ${boyutFormat(d.dosyaBoyut)}` : ''}
                 </span>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  <IkonButon title={d.tip === 'link' ? 'Linki aç' : 'Görüntüle'} onClick={() => ac(d)}>
-                    <Eye size={13} strokeWidth={1.7} />
-                  </IkonButon>
+                  {tarayicidaAcilabilir(d) && (
+                    <IkonButon title={d.tip === 'link' ? 'Linki aç' : 'Görüntüle'} onClick={() => ac(d)}>
+                      <Eye size={13} strokeWidth={1.7} />
+                    </IkonButon>
+                  )}
                   {d.tip === 'dosya' && (
                     <IkonButon title="İndir" onClick={() => indir(d)}>
                       <Download size={13} strokeWidth={1.7} />

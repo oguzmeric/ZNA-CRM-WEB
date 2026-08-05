@@ -161,6 +161,18 @@ export async function dokumanSil(id) {
 }
 
 // Signed URL — dosyayı web'de aç veya indir
+// Tarayıcının SEKMEDE gösterebildiği tipler. Diğerlerinde (zip, docx, xlsx...)
+// "Görüntüle" kaçınılmaz İNDİRİR — tarayıcı bu formatları render edemez, URL
+// inline açılsa bile dosya iner ("görüntüleye tıkladım, indirdi" şikayeti,
+// 05.08: son yüklenenler ZIP'ti). UI bu tiplerde göz ikonunu göstermez.
+export const tarayicidaAcilabilir = (d) => {
+  if (d?.tip === 'link') return true
+  const mime = (d?.dosyaTip || '').toLowerCase()
+  if (mime.startsWith('image/') || mime === 'application/pdf' || mime.startsWith('text/')) return true
+  const ad = (d?.dosyaAd || d?.dosyaYolu || '').toLowerCase()
+  return /\.(pdf|png|jpe?g|webp|gif|svg|txt)$/.test(ad)
+}
+
 export async function dokumanIndirmeUrl(dosya_yolu, saniye = 300) {
   const { data, error } = await supabase.storage.from(BUCKET)
     .createSignedUrl(dosya_yolu, saniye, { download: false })

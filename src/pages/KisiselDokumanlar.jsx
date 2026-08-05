@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase'
 import {
   kategorileriGetir, kategoriEkle, kategoriSil, kategoriYenidenAdlandir,
   dokumanlariGetir, dokumanEkle, dokumanGuncelle, dokumanSil,
-  dokumanIndirmeUrl, dokumanDosyayiIndir,
+  dokumanIndirmeUrl, dokumanDosyayiIndir, tarayicidaAcilabilir,
   MAX_BOYUT_MB, MAX_BOYUT,
 } from '../services/kisiDokumanService'
 import {
@@ -774,7 +774,11 @@ function DokumanKarti({ dokuman: d, kategoriIsim, kullanicilar, kimId, onSil, on
 
       {/* flexWrap: dar kartlarda 4 buton tek satıra sığmayıp kartın dışına taşıyordu */}
       <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--border-default)', paddingTop: 8, flexWrap: 'wrap' }}>
-        <Button size="sm" variant="secondary" iconLeft={<Eye size={12} />} onClick={onAc}>Aç</Button>
+        {/* zip/docx gibi tarayıcının gösteremediği tiplerde "Aç" da indirir —
+            yanıltmasın diye yalnız görüntülenebilir tiplerde gösteriliyor */}
+        {tarayicidaAcilabilir(d) && (
+          <Button size="sm" variant="secondary" iconLeft={<Eye size={12} />} onClick={onAc}>Aç</Button>
+        )}
         <Button size="sm" variant="secondary" iconLeft={<Download size={12} />} onClick={onIndir}>İndir</Button>
         {sahibiBenim && (
           <>
