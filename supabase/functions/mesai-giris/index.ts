@@ -50,16 +50,22 @@ Deno.serve(async (req) => {
     }
 
     const { qr_payload, lat, lng, zorla } = await req.json()
-    if (!qr_payload) return jsonYanit({ ok: false, hata: 'qr_eksik' }, 400)
+    // FAZLA MESAİ (19:00+) QR'SIZ BAŞLAR: personel akşam BAŞKA lokasyonda
+    // çalışmaya devam edebiliyor, ofisteki QR'a erişemez. Pencere SUNUCU
+    // saatiyle belirlenir — 19:00 öncesi QR'sız istek yine reddedilir.
+    const fazlaPencere = suAn >= FAZLA_MESAI_BASLANGIC_DK
+    if (!qr_payload && !fazlaPencere) return jsonYanit({ ok: false, hata: 'qr_eksik' }, 400)
     if (typeof lat !== 'number' || typeof lng !== 'number') {
       return jsonYanit({ ok: false, hata: 'konum_yok' }, 400)
     }
 
-    const secret = Deno.env.get('MESAI_QR_SECRET') ?? ''
-    if (!secret) return jsonYanit({ ok: false, hata: 'secret_yok' }, 500)
+    if (qr_payload) {
+      const secret = Deno.env.get('MESAI_QR_SECRET') ?? ''
+      if (!secret) return jsonYanit({ ok: false, hata: 'secret_yok' }, 500)
 
-    const dogrulama = await payloadDogrula(qr_payload, secret)
-    if (!dogrulama.ok) return jsonYanit({ ok: false, hata: 'gecersiz_qr' }, 400)
+      const dogrulama = await payloadDogrula(qr_payload, secret)
+      if (!dogrulama.ok) return jsonYanit({ ok: false, hata: 'gecersiz_qr' }, 400)
+    }
 
     const svc = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -89,8 +95,9 @@ Deno.serve(async (req) => {
     const tolerans = ofis?.tolerans_metre ?? 150
     const sertLimit = ofis?.sert_limit_metre ?? 400
 
-    // Sert eşik — mesai kesinlikle açılmaz
-    if (mesafe !== null && mesafe > sertLimit) {
+    // Sert eşik — mesai kesinlikle açılmaz. Fazla mesaide UYGULANMAZ:
+    // akşam çalışması zaten ofis dışında olabilir, mesafe yalnız kayda yazılır.
+    if (!fazlaPencere && mesafe !== null && mesafe > sertLimit) {
       return jsonYanit({ ok: false, hata: 'cok_uzak', mesafe_m: mesafe, sert_limit: sertLimit })
     }
 
@@ -108,11 +115,13 @@ Deno.serve(async (req) => {
       }).eq('id', acik.id)
     }
 
-    if (mesafe !== null && mesafe > tolerans && !zorla) {
+    if (!fazlaPencere && mesafe !== null && mesafe > tolerans && !zorla) {
       return jsonYanit({ ok: false, uyari: 'ofis_disi', mesafe_m: mesafe })
     }
 
-    const notMetni = (mesafe !== null && mesafe > tolerans) ? `Ofis dışı: ${mesafe}m` : null
+    const notMetni = fazlaPencere
+      ? (mesafe !== null && mesafe > tolerans ? `Fazla mesai · ofis dışı: ${mesafe}m` : null)
+      : (mesafe !== null && mesafe > tolerans ? `Ofis dışı: ${mesafe}m` : null)
     // `suAn` kilit kontrolünde hesaplandı — aynı anı kullan ki 18:59'da başlayan
     // istek araya giren saniyelerle 'fazla' olarak etiketlenmesin.
     const tip = mesaiTipi(suAn)
