@@ -319,11 +319,21 @@ export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async
 // Belirli stok_kodu için S/N'li tüm kalemleri getir
 // Tüm SN'lerin haritası — { seri_no.toLowerCase(): stok_kodu }
 // Cross-product duplicate kontrolü için. Cache'li: SN eklemede invalidate ediliyor.
-export const tumSeriNumaralariniGetir = () => cached('tumSN:list', async () => {
+// Çakışma kontrolü haritası: seri_no/barkod → stok_kodu.
+// ⚠️ İKİ ŞART VAR, ikisi de atlanmıştı:
+//  1) `silindi = false` — tablo SOFT delete kullanıyor. Filtresiz sorgu silinmiş
+//     S/N'leri de sayıyor, kullanıcı sildiği seriyi yeniden giremiyordu
+//     ("başka bir ürüne kayıtlı"). DB tarafı zaten doğru: unique index'ler
+//     `WHERE silindi = false` ile kısmi, yani silinen seri tekrar eklenebilir.
+//  2) Cache anahtarı `stok` ile başlamalı — snSil/snGeriGetir sonundaki
+//     invalidatePrefix('stok') aksi hâlde bu haritayı temizlemiyor ve silme
+//     sonrası 5 dk boyunca bayat harita servis ediliyordu.
+export const tumSeriNumaralariniGetir = () => cached('stokSN:list', async () => {
   const data = await pagedFetch((off, size) =>
     supabase
       .from('stok_kalemleri')
       .select('seri_no, stok_kodu, barkod')
+      .eq('silindi', false)
       .not('seri_no', 'is', null)
       .order('id')           // sırasız .range() sayfaları tekrarlanabilir/atlanabilir
       .range(off, off + size - 1)
