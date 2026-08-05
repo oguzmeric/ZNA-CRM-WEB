@@ -6,7 +6,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import Sayfalama from '../components/Sayfalama'
-import { musterileriGetir } from '../services/musteriService'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
 } from '../components/ui'
@@ -27,21 +26,15 @@ const DURUM_TONE = {
 }
 
 export default function ServisTalepleri() {
-  const { kullanici, kullanicilar } = useAuth()
+  const { kullanici } = useAuth()
   const { talepler, talepSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
-  const [musteriler, setMusteriler] = useState([])
-
-  useEffect(() => {
-    musterileriGetir().then(setMusteriler).catch(e => console.warn('[ServisTalepleri] musteri yukleme:', e))
-  }, [])
-
-  // musteriId -> yetkili (temsilci) personel adi
-  const yetkiliAdGetir = (musteriId) => {
-    if (!musteriId) return null
-    const m = musteriler.find(x => x.id === musteriId)
-    if (!m?.temsilciKullaniciId) return null
-    const k = kullanicilar?.find(u => u.id === m.temsilciKullaniciId)
-    return k?.ad || null
+  // Talebi OLUŞTURAN kişi — ayrı kolonu yok, durum geçmişinin ilk kaydından
+  // okunur. ⚠️ Anahtar adı web/mobil'de farklı yazılmış: web `kullaniciAd`,
+  // mobil `kullanici` — ikisine de bakılmalı, yoksa mobil kayıtlar boş görünür.
+  const olusturanAdGetir = (talep) => {
+    const ilk = Array.isArray(talep.durumGecmisi) ? talep.durumGecmisi[0] : null
+    return ilk?.kullaniciAd || ilk?.kullanici
+      || (talep.kaynak === 'musteri' ? 'Müşteri (portal)' : null)
   }
   const [silOnayId, setSilOnayId] = useState(null)
   const navigate = useNavigate()
@@ -236,7 +229,7 @@ export default function ServisTalepleri() {
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
                 <thead>
                   <tr>
-                    {['Talep No', 'Konu / Müşteri', 'Tür', 'Aciliyet', 'Durum', 'Atanan Personel', 'Yetkili Personel', 'Tarih', ''].map((h, i, arr) => (
+                    {['Talep No', 'Konu / Müşteri', 'Tür', 'Aciliyet', 'Durum', 'Atanan Personel', 'Oluşturan', 'Tarih', ''].map((h, i, arr) => (
                       <th key={i} style={{
                         background: 'var(--surface-sunken)',
                         padding: '10px 14px',
@@ -300,12 +293,12 @@ export default function ServisTalepleri() {
                           </td>
                           <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                             {(() => {
-                              const yetkili = yetkiliAdGetir(talep.musteriId)
-                              if (!yetkili) return <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                              const olusturan = olusturanAdGetir(talep)
+                              if (!olusturan) return <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
                               return (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  <Avatar name={yetkili} size="xs" />
-                                  <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{yetkili}</span>
+                                  <Avatar name={olusturan} size="xs" />
+                                  <span style={{ font: '500 12.5px/16px var(--font-sans)', color: 'var(--text-primary)' }}>{olusturan}</span>
                                 </span>
                               )
                             })()}
