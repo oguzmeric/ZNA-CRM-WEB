@@ -564,7 +564,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
         {/* ─── SERVİS FOTOĞRAFLARI (varsa, ayrı sayfa) ─── */}
         {fotolar.length > 0 && (
           <div style={{ pageBreakBefore: 'always', paddingTop: '4mm' }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: ACCENT, marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${ACCENT}` }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: ACCENT, marginBottom: 20, paddingBottom: 6, borderBottom: `2px solid ${ACCENT}` }}>
               📷 SERVİS FOTOĞRAFLARI
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
