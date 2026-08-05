@@ -19,7 +19,7 @@ const A4_PX = 794
 const SIRKET_BILGI = {
   zna: {
     bannerSrc: znaBanner,
-    bannerYukseklik: 90,
+    bannerYukseklik: 58,
     showText: false,           // ZNA banner zaten "SERVIS RAPORU" yazisi iceriyor
     firmaAdi: 'ZNA TEKNOLOJİ BİLİŞİM HİZMETLERİ SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
     adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
@@ -29,7 +29,7 @@ const SIRKET_BILGI = {
   },
   anadolunet: {
     bannerSrc: anadolunetLogo,
-    bannerYukseklik: 80,
+    bannerYukseklik: 52,
     showText: true,            // Anadolunet logosunda 'SERVIS RAPORU' yok — yazi ekle
     firmaAdi: 'ANADOLUNET DİJİTAL YAPI A.Ş.',
     adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
@@ -120,8 +120,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     background: '#fff',
     color: '#000',
     fontFamily: '"Microsoft Sans Serif", Arial, sans-serif',
-    fontSize: 9,
-    lineHeight: 1.35,
+    fontSize: 8.4,
+    lineHeight: 1.22,
   }
 
   // Dikey yoğunluk: imza bloğu ilk sayfaya sığsın diye boşluklar kısıldı
@@ -151,8 +151,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     background: ACCENT_BG,
     color: ACCENT,
     fontWeight: 800,
-    fontSize: 10,
-    padding: '4px 8px',
+    fontSize: 9,
+    padding: '3px 6px',
     textAlign: 'left',
     letterSpacing: 0.3,
   }
@@ -481,7 +481,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           <tbody>
             <tr><td style={sectionHeader}>SERVİS KOŞULLARI</td></tr>
             <tr>
-              <td style={{ ...valueStyle, fontSize: 8, lineHeight: 1.4, color: '#333' }}>
+              <td style={{ ...valueStyle, fontSize: 7.2, lineHeight: 1.25, color: '#333' }}>
                 - Garanti dışı arıza müdahalelerinde, sistemin çalışır durumda teslim edilmesinden sonra gerçekleşen arızaların giderilmesi ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen değiştirilmesi tespit edilmiş ve kurum yetkilisi tarafından imzalanarak onaylanmış parçaların değiştirilmemesinden kaynaklanan her türlü arızalara müdahale ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen bilgiler doğrultusunda yapılan tüm işlemler müşteri onayı imzasını takiben geçerlilik kazanır.
