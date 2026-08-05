@@ -111,6 +111,7 @@ function ModelDetay() {
   const [depolar, setDepolar] = useState([])
   const [depoModal, setDepoModal] = useState(null)        // kalem — depo atama modalı
   const [tumUrunler, setTumUrunler] = useState([])        // kardeş modeller için
+  const [aileGenis, setAileGenis] = useState(false)       // kardeş model şeridi: tümünü göster
   const [aileler, setAileler] = useState([])
 
   useEffect(() => {
@@ -369,36 +370,71 @@ function ModelDetay() {
           </Alert>
         )}
 
-        {/* Ürün ailesi — aynı serinin diğer modelleri (Faz 4, mig 153) */}
+        {/* Ürün ailesi — aynı serinin diğer modelleri (Faz 4, mig 153)
+            ⚠️ Bazı aileler çok kalabalık (SARF MALZEMELER 42, SANTRAL 33,
+            KABLO KANALI 32, 2MP KAMERALAR 32). Tamamı basılınca şerit sayfayı
+            eziyordu — varsayılan ilk 8, gerisi istenirse açılıyor. */}
         {urun?.aileId && (() => {
           const aile = aileler.find(a => a.id === urun.aileId)
           const kardesler = tumUrunler.filter(u => u.aileId === urun.aileId && u.stokKodu !== stokKodu)
           if (kardesler.length === 0) return null
+          const GORUNEN = 8
+          const gosterilecek = aileGenis ? kardesler : kardesler.slice(0, GORUNEN)
+          const kalan = kardesler.length - gosterilecek.length
           return (
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-              <div style={{ font: '600 10px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
-                {aile?.ad || 'Ürün ailesi'} — aynı seriden modeller
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+                <span style={{ font: '600 10px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  {aile?.ad || 'Ürün ailesi'}
+                </span>
+                <span className="t-caption tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
+                  {kardesler.length} model
+                </span>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {kardesler.map(u => (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {gosterilecek.map(u => (
                   <button
                     key={u.id}
                     type="button"
-                    title={u.stokAdi}
-                    onClick={() => u.seriTakipli
-                      ? navigate(`/stok/model/${encodeURIComponent(u.stokKodu)}`)
-                      : navigate('/stok')}
+                    title={`${u.stokKodu} — ${u.stokAdi}`}
+                    // Artık koşulsuz model detayına: ModelDetay S/N takipsiz ürünü
+                    // de tam gösteriyor. Eskiden takipsiz kardeş "/stok" listesine
+                    // atıyordu ve kullanıcı aradığı ürünü kaybediyordu.
+                    // Şeridi burada kapatıyoruz: rota değişse de bileşen aynı
+                    // kaldığı için yeni ürün yine kısa listeyle açılsın (effect
+                    // ile yapmak set-state-in-effect uyarısı üretiyordu).
+                    onClick={() => {
+                      setAileGenis(false)
+                      navigate(`/stok/model/${encodeURIComponent(u.stokKodu)}`)
+                    }}
                     style={{
-                      padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '5px 10px', borderRadius: 'var(--radius-sm)',
                       font: '500 12px/16px var(--font-sans)',
-                      background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
-                      border: '1px solid var(--brand-primary)', cursor: 'pointer',
-                      maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      background: 'var(--surface-sunken)', color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-default)', cursor: 'pointer',
+                      maxWidth: 260, overflow: 'hidden', whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'var(--brand-primary)'
+                      e.currentTarget.style.color = 'var(--brand-primary)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--border-default)'
+                      e.currentTarget.style.color = 'var(--text-secondary)'
                     }}
                   >
-                    {u.stokKodu} — {u.stokAdi}
+                    <span className="tabular-nums" style={{ color: 'var(--text-tertiary)', fontSize: 11, flexShrink: 0 }}>
+                      {u.stokKodu}
+                    </span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.stokAdi}</span>
                   </button>
                 ))}
+                {(kalan > 0 || aileGenis) && (
+                  <Button variant="tertiary" size="sm" onClick={() => setAileGenis(v => !v)}>
+                    {kalan > 0 ? `+${kalan} model daha` : 'Daha az göster'}
+                  </Button>
+                )}
               </div>
             </div>
           )
