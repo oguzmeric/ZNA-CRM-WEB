@@ -200,10 +200,31 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     @media print {
       body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none !important; }
-      @page { size: A4; margin: 6mm; }
-      /* Telefon icin uygulanan kucultme YAZDIRMADA olmaz — A4 birebir kalir */
+
+      /* Kenar boşluğunu YALNIZ @page verir; sayfa kutusu bu alanı birebir
+         doldurur. Eskiden .sf-sayfa 210mm sabit + kendi 10mm yan padding'i
+         vardı, üstüne @page 6mm boşluk bırakıyordu → her sayfada taşma,
+         sağ kenar kırpılıyordu. */
+      @page { size: A4; margin: 10mm 9mm; }
       .sf-sarmal { height: auto !important; overflow: visible !important; }
-      .sf-sayfa  { transform: none !important; width: 210mm !important; }
+      .sf-sayfa {
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        /* ⚠️ min-height 297mm EKRAN için (A4 önizlemesi). Yazdırmada ilk sayfayı
+           zorla tam boya şişirip imza bloğunu tek başına 2. sayfaya itiyordu —
+           sayfanın %80'i boş kalıyordu. */
+        min-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+      }
+
+      /* Satır ve imza bloğu ortadan bölünmesin. Tablonun tamamına avoid
+         vermiyoruz: uzun açıklama tablosu sığmayınca koca boşluk bırakırdı. */
+      tr { break-inside: avoid; page-break-inside: avoid; }
+      .sf-imza { break-inside: avoid; page-break-inside: avoid; }
+      img { break-inside: avoid; page-break-inside: avoid; }
     }
     @media screen {
       body { background: #e9eef5; }
@@ -452,7 +473,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
         </table>
 
         {/* ─── İMZA ALANLARI ─── */}
-        <table style={tabloStyle}>
+        <table className="sf-imza" style={tabloStyle}>
           <thead>
             <tr>
               <th style={sectionHeader}>MÜŞTERİ YETKİLİSİ</th>
