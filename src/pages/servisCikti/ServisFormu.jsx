@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef } from 'react'
 import znaBanner from '../../assets/servis-formu/zna-banner.png'
 import anadolunetLogo from '../../assets/servis-formu/anadolunet-logo.jpeg'
+import { kucukGorsel } from '../../lib/gorselUrl'
 
 // A4 genisligi CSS px cinsinden (210mm @96dpi). Telefonda olcegi bundan hesaplariz.
 const A4_PX = 794
@@ -123,16 +124,18 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     lineHeight: 1.35,
   }
 
+  // Dikey yoğunluk: imza bloğu ilk sayfaya sığsın diye boşluklar kısıldı
+  // (eskiden taşıp tek başına 2. sayfada, üstte kalıyordu).
   const tabloStyle = {
     width: '100%',
     borderCollapse: 'collapse',
     border: `1px dashed ${BORDER}`,
-    marginBottom: 6,
+    marginBottom: 4,
   }
 
   const cellStyle = {
     border: `1px dashed ${BORDER}`,
-    padding: '3px 6px',
+    padding: '2px 5px',
     verticalAlign: 'top',
   }
 
@@ -205,8 +208,19 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
          doldurur. Eskiden .sf-sayfa 210mm sabit + kendi 10mm yan padding'i
          vardı, üstüne @page 6mm boşluk bırakıyordu → her sayfada taşma,
          sağ kenar kırpılıyordu. */
-      @page { size: A4; margin: 10mm 9mm; }
+      /* Alt boşluk antet için ayrıldı (12mm antet + nefes payı) */
+      @page { size: A4; margin: 10mm 9mm 20mm; }
       .sf-sarmal { height: auto !important; overflow: visible !important; }
+
+      /* ANTET — her sayfanın altında. Negatif bottom ile @page'in ALT MARGIN
+         bölgesine oturuyor; böylece içerik akışıyla çakışmıyor. */
+      .sf-antet {
+        position: fixed;
+        left: 0; right: 0; bottom: -16mm;
+        margin: 0 !important;
+        border-top: 1px solid #808080 !important;
+        padding-top: 3px !important;
+      }
       .sf-sayfa {
         transform: none !important;
         width: auto !important;
@@ -487,8 +501,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
                 <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
                 <div style={{ fontSize: 8, color: '#666' }}>{talep.teslimAlanAd || talep.ilgiliKisi || 'Kurum/Kuruluş Yetkilisi'}</div>
                 {talep.musteriImza
-                  ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 90, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
-                  : <div style={{ height: 64 }} />}
+                  ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 56, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
+                  : <div style={{ height: 34 }} />}
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
                   ONAY / İMZA
                 </div>
@@ -496,7 +510,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
               <td style={{ ...cellStyle, width: '33.3%', verticalAlign: 'top' }}>
                 <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
                 <div style={{ fontSize: 8, color: '#666' }}>Kurum/Kuruluş Yetkilisi</div>
-                <div style={{ height: 50 }} />
+                <div style={{ height: 34 }} />
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
                   TEKNİK İNCELEME
                 </div>
@@ -505,8 +519,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
                 <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>{cfg.firmaAdi.split(' SANAYİ')[0]}</div>
                 <div style={{ fontSize: 8, color: '#666' }}>{talep.teknisyen || '—'}</div>
                 {talep.personelImza
-                  ? <img src={talep.personelImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 90, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
-                  : <div style={{ height: 50 }} />}
+                  ? <img src={talep.personelImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 56, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
+                  : <div style={{ height: 34 }} />}
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
                   TEKNİK İNCELEME / İMZA
                 </div>
@@ -515,11 +529,19 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           </tbody>
         </table>
 
-        {/* ─── FOOTER ─── */}
-        <div style={{ marginTop: 8, fontSize: 8, color: ACCENT, textAlign: 'center', lineHeight: 1.5 }}>
+        {/* ─── ANTET (dipnot) ───
+            Yazdırmada position:fixed ile HER SAYFANIN altına düşer (fotoğraf
+            sayfası dahil) — antetli kağıt gibi. Ekranda normal akışta kalır. */}
+        <div
+          className="sf-antet"
+          style={{
+            marginTop: 8, paddingTop: 4, borderTop: `1px solid ${BORDER}`,
+            fontSize: 7.5, color: ACCENT, textAlign: 'center', lineHeight: 1.45,
+            background: '#fff',
+          }}
+        >
           <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
-          <div>{cfg.adres}</div>
-          <div>{cfg.iletisim}</div>
+          <div>{cfg.adres} · {cfg.iletisim}</div>
         </div>
 
         {/* ─── SERVİS FOTOĞRAFLARI (varsa, ayrı sayfa) ─── */}
@@ -531,7 +553,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {fotolar.map((f, i) => (
                 <div key={i} style={{ border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden', pageBreakInside: 'avoid' }}>
-                  <img src={f.url} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: '#f1f5f9' }} />
+                  {/* Saha fotoğrafları telefondan olduğu gibi geliyor (3-6 MB).
+                      Küçültülmüş sürüm çekiliyor: 8 fotoluk talepte 25 MB → ~2,4 MB */}
+                  <img src={kucukGorsel(f.url)} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: '#f1f5f9' }} />
                   {f.ad && <div style={{ fontSize: 8, color: '#64748b', padding: '3px 6px', borderTop: '1px solid #e2e8f0' }}>{f.ad}</div>}
                 </div>
               ))}
