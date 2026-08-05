@@ -584,8 +584,8 @@ export default function ServisRaporlari() {
               <thead>
                 <tr>
                   {[
-                    ['Fiş No', 86], ['Takip', 74], ['Müşteri Adı', null], ['Lokasyon', '14%'],
-                    ['Arıza', '13%'], ['Sis.No', 60], ['Teknisyen', 104], ['Gid. Tarih', 88], ['Sonuç', '19%'],
+                    ['Fiş No', 126], ['Takip', 78], ['Müşteri Adı', null], ['Lokasyon', '14%'],
+                    ['Arıza', '13%'], ['Teknisyen', 126], ['Gid. Tarih', 96], ['Sonuç', '19%'],
                   ].map(([h, w], i) => (
                     <th key={i} style={{
                       width: w ?? undefined,
@@ -638,9 +638,8 @@ export default function ServisRaporlari() {
                     <td style={hucre} title={r.arizaKodu || undefined}>
                       {r.arizaKodu || '—'}
                     </td>
-                    <td style={hucre}>
-                      {r.sisNo || '—'}
-                    </td>
+                    {/* Sis.No kolonu kaldırıldı — kayıtlarda neredeyse hep boştu,
+                        değeri detay modalında duruyor */}
                     <td style={hucre} title={r.teknisyen || undefined}>
                       {r.teknisyen}
                     </td>
