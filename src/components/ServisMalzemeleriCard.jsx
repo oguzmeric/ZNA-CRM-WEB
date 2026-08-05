@@ -13,7 +13,7 @@ import { Button, Card, Badge, Input, CodeBadge, Modal, Label } from './ui'
 import CustomSelect from './CustomSelect'
 import CokluSelect from './CokluSelect'
 import AkilliUrunSecici from './AkilliUrunSecici'
-import { stokUrunleriniGetir } from '../services/stokService'
+import { stokUrunleriniGetir, stokCikisKontrol, stokYetersizMesaji } from '../services/stokService'
 import {
   servisMalzemeleriGetir, servisMalzemeEkle, servisMalzemeSil, FATURALANDIRMA_SECENEK,
   servisMalzemeGuncelle, servisMalzemeKullanildiYap, teknisyendekiKalemler,
@@ -116,6 +116,19 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
         await yenile()
         toast.success(`${eklendi} cihaz teknisyen deposundan düşüldü${atlandi ? ` — ${atlandi} zaten vardı` : ''}.`)
       } else {
+        // S/N takipsiz satır doğrudan "kullanıldı" yazılır ve stoktan düşer —
+        // bakiye yetmiyorsa önce uyar (stoğu olmayan ürünün çıkışı sessiz kalmasın)
+        if (seciliUrun.stokKodu) {
+          const yetersizler = await stokCikisKontrol([{ stokKodu: seciliUrun.stokKodu, miktar: Number(miktar) || 0 }])
+          if (yetersizler.length) {
+            const onay = await confirm({
+              baslik: 'Stok Yetersiz',
+              mesaj: stokYetersizMesaji(yetersizler, () => seciliUrun.stokAdi || seciliUrun.urunAdi),
+              onayMetin: 'Yine de Düş', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+            })
+            if (!onay) return   // finally zaten mesgul'ü serbest bırakıyor
+          }
+        }
         await servisMalzemeEkle({
           servisId, servisKodu, urun: seciliUrun, miktar,
           birimFiyat: Number(birimFiyat) || 0,

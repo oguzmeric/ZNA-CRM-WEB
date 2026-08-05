@@ -19,7 +19,7 @@ import {
   servisMalzemeleriGetir, servisMalzemeEkle, servisMalzemeSil,
   servisMalzemeKullanildiYap, teknisyendekiKalemler,
 } from '../services/servisMalzemeService'
-import { stokUrunleriniGetir } from '../services/stokService'
+import { stokUrunleriniGetir, stokCikisKontrol, stokYetersizMesaji } from '../services/stokService'
 import AkilliUrunSecici from './AkilliUrunSecici'
 import { Card, CardTitle, Button, Input, Badge, CodeBadge, Textarea } from './ui'
 
@@ -169,6 +169,11 @@ export default function ServisMalzemePlanCard({
   // Kısayol: planlanan satırı "kullanıldı"ya çevirir — ASIL kayıt yeri
   // "Kullanılan Malzemeler" kartıdır, bu yalnız hızlı geçiş.
   const kullandim = async (m) => {
+    // ⚠️ Çift tıklama kilidi: bu buton eskiden disabled değildi ve setMesgul
+    // kullanmıyordu — hızlı iki tıklama AYNI SANİYEDE iki çıkış hareketi
+    // yazıyordu. Geri alma tek giriş yazdığı için stok kalıcı olarak eksiye
+    // düşüyordu (STK00607 / TLP-2026-0031 vakası).
+    if (mesgul) return
     let kalem = null
     if (m.stokKodu) {
       const urun = urunler.find(u => u.stokKodu === m.stokKodu)
@@ -179,14 +184,29 @@ export default function ServisMalzemePlanCard({
           return
         }
         kalem = kalemler[0]
+      } else {
+        // S/N takipsiz: miktar stoktan düşecek. Bakiye yetmiyorsa "uyar ama
+        // izin ver" — stoğu olmayan ürünün çıkışı görünmez kalmasın.
+        const yetersizler = await stokCikisKontrol([{ stokKodu: m.stokKodu, miktar: Number(m.miktar) || 0 }])
+        if (yetersizler.length) {
+          const onay = await confirm({
+            baslik: 'Stok Yetersiz',
+            mesaj: stokYetersizMesaji(yetersizler, () => m.urunAdi),
+            onayMetin: 'Yine de Düş', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+          })
+          if (!onay) return
+        }
       }
     }
+    setMesgul(true)
     try {
       await servisMalzemeKullanildiYap(m, { kalem, servisKodu })
       await yenile()
       toast.success(kalem ? `${kalem.seriNo} düşüldü — müşteri formuna eklendi.` : 'Kullanıldı olarak işaretlendi.')
     } catch (e) {
       toast.error(e?.message || 'İşaretlenemedi.')
+    } finally {
+      setMesgul(false)
     }
   }
 
@@ -280,6 +300,7 @@ export default function ServisMalzemePlanCard({
               {/* Taslakta "Kullandım" yok: iş henüz açılmadı, stoktan düşülecek bir şey de yok */}
               {!taslakMod && (
                 <Button variant="secondary" size="sm" onClick={() => kullandim(m)}
+                  disabled={mesgul}
                   iconLeft={<Check size={12} strokeWidth={2} />}>
                   Kullandım
                 </Button>
