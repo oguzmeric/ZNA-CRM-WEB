@@ -208,8 +208,11 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
          doldurur. Eskiden .sf-sayfa 210mm sabit + kendi 10mm yan padding'i
          vardı, üstüne @page 6mm boşluk bırakıyordu → her sayfada taşma,
          sağ kenar kırpılıyordu. */
-      /* Alt boşluk antet için ayrıldı */
-      @page { size: A4; margin: 10mm 9mm 16mm; }
+      /* ⚠️ margin: 0 — Chrome'un kendi üstbilgi/altbilgisini (tarih, sayfa
+         başlığı, SAYFA ALTINDAKİ UZUN URL) bastıracak yer bırakmaz; müşteriye
+         giden belgede bunlar istenmiyor. Kenar boşluğunu .sf-sayfa'nın kendi
+         dolgusu veriyor. */
+      @page { size: A4; margin: 0; }
       .sf-sarmal { height: auto !important; overflow: visible !important; }
 
       /* ANTET — her sayfanın altında (fotoğraf sayfası dahil).
@@ -219,7 +222,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
          binmesini engelliyor. */
       .sf-antet {
         position: fixed;
-        left: 0; right: 0; bottom: 0;
+        left: 9mm; right: 9mm; bottom: 6mm;
         margin: 0 !important;
         background: #fff !important;
         border-top: 1px solid #808080 !important;
@@ -233,7 +236,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
            zorla tam boya şişirip imza bloğunu tek başına 2. sayfaya itiyordu —
            sayfanın %80'i boş kalıyordu. */
         min-height: 0 !important;
-        padding: 0 0 13mm 0 !important;   /* antet payı */
+        /* Kenar boşluğu artık @page'ten değil buradan (yukarıdaki margin:0
+           notu). Alt dolgu antet payını da kapsıyor. */
+        padding: 10mm 9mm 18mm !important;
         margin: 0 !important;
         box-sizing: border-box !important;
       }
@@ -481,7 +486,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           <tbody>
             <tr><td style={sectionHeader}>SERVİS KOŞULLARI</td></tr>
             <tr>
-              <td style={{ ...valueStyle, fontSize: 7.2, lineHeight: 1.25, color: '#333' }}>
+              <td style={{ ...valueStyle, fontSize: 7.6, lineHeight: 1.5, color: '#333', padding: '5px 6px' }}>
                 - Garanti dışı arıza müdahalelerinde, sistemin çalışır durumda teslim edilmesinden sonra gerçekleşen arızaların giderilmesi ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen değiştirilmesi tespit edilmiş ve kurum yetkilisi tarafından imzalanarak onaylanmış parçaların değiştirilmemesinden kaynaklanan her türlü arızalara müdahale ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen bilgiler doğrultusunda yapılan tüm işlemler müşteri onayı imzasını takiben geçerlilik kazanır.

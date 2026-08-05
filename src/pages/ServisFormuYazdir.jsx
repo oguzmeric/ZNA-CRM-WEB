@@ -37,6 +37,17 @@ export default function ServisFormuYazdir() {
     return () => { iptal = true }
   }, [id])
 
+  // Sayfa başlığı: PDF kaydederken ÖNERİLEN DOSYA ADI buradan geliyor.
+  // Eskiden "crm.app" oluyordu — müşteriye giden belgede anlamsız.
+  useEffect(() => {
+    if (!talep) return
+    const onceki = document.title
+    const no = talep.talepNo || talep.id || ''
+    const firma = (talep.firmaAdi || talep.musteriAd || '').trim()
+    document.title = ['ZNA-ERP', 'Servis Raporu', no, firma].filter(Boolean).join(' - ')
+    return () => { document.title = onceki }
+  }, [talep])
+
   // Sirket degisince URL'i guncelle (refresh sonrasi secim korunsun)
   const sirketDegistir = (sirket) => {
     setSeciliSirket(sirket)
