@@ -349,17 +349,22 @@ export default function ServisTalepDetay() {
           {/* Sağ üst aksiyonlar — durum geçişleri sağdaki DURUM panelinden yapılır,
               burada sadece "Sil" gibi nadir/yıkıcı aksiyonlar kalır */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, position: 'relative' }}>
-            {talep.durum === 'tamamlandi' && (
-              <Button
-                variant="secondary"
-                size="md"
-                iconLeft={<Printer size={14} strokeWidth={1.5} />}
-                onClick={() => setSirketSecimAcik(v => !v)}
-              >
-                Form Çıktısı
-              </Button>
-            )}
-            {sirketSecimAcik && talep.durum === 'tamamlandi' && (
+            {/* Form çıktısı HER DURUMDA alınabilir — salt okuma.
+                ⚠️ Eskiden yalnız durum==='tamamlandi' iken görünüyordu (682437d,
+                15.06). İki sorun: (1) talep "Onaylandı (Kapalı)"ya geçince buton
+                kayboluyordu — iş bitmiş, belge lazım ama alınamıyor; (2) teknisyen
+                sahaya çıkmadan boş/ara formu yazdıramıyordu.
+                Müşteriye Gönder ve Fatura butonları bilinçli olarak hâlâ
+                tamamlanma şartına bağlı — onlar dışarıya iş yapıyor. */}
+            <Button
+              variant="secondary"
+              size="md"
+              iconLeft={<Printer size={14} strokeWidth={1.5} />}
+              onClick={() => setSirketSecimAcik(v => !v)}
+            >
+              Form Çıktısı
+            </Button>
+            {sirketSecimAcik && (
               <div style={{
                 position: 'absolute', top: '100%', right: 0, marginTop: 6,
                 background: '#fff', border: '1px solid var(--border-default)',
