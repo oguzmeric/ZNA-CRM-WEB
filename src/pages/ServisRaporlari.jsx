@@ -577,11 +577,18 @@ export default function ServisRaporlari() {
           </div>
         ) : (
           <div style={{ overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
+            {/* table-layout: fixed — kolonlar aşağıdaki genişliklere sabitlenir,
+                uzun metin ellipsis'le kısalır; nowrap hücreler tabloyu ekrandan
+                taşırıp yatay scroll çıkarıyordu */}
+            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <thead>
                 <tr>
-                  {['Fiş No', 'Takip', 'Müşteri Adı', 'Lokasyon', 'Arıza', 'Sis.No', 'Teknisyen', 'Gid. Tarih', 'Sonuç'].map((h, i) => (
+                  {[
+                    ['Fiş No', 86], ['Takip', 74], ['Müşteri Adı', null], ['Lokasyon', '14%'],
+                    ['Arıza', '13%'], ['Sis.No', 60], ['Teknisyen', 104], ['Gid. Tarih', 88], ['Sonuç', '19%'],
+                  ].map(([h, w], i) => (
                     <th key={i} style={{
+                      width: w ?? undefined,
                       background: 'var(--surface-sunken)',
                       padding: '10px 12px',
                       textAlign: 'left',
@@ -591,6 +598,8 @@ export default function ServisRaporlari() {
                       letterSpacing: '0.04em',
                       borderBottom: '1px solid var(--border-default)',
                       whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       position: 'sticky',
                       top: 0,
                       zIndex: 1,
@@ -601,41 +610,49 @@ export default function ServisRaporlari() {
                 </tr>
               </thead>
               <tbody>
-                {gorunen.map(r => (
+                {gorunen.map(r => {
+                  // Ortak hücre stili — fixed layout'ta taşan metin ellipsis'le kısalır
+                  const hucre = {
+                    padding: '10px 12px', font: '400 13px/18px var(--font-sans)',
+                    color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }
+                  return (
                   <tr key={r.i} style={{ transition: 'background 120ms', cursor: 'pointer' }}
                     onClick={() => setSeciliRapor(r)}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={{ ...hucre, color: undefined }}>
                       <CodeBadge>{r.fisNo}</CodeBadge>
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={{ ...hucre, color: undefined }}>
                       {r.takipKodu && <Badge tone={takipTone(r.takipKodu)}>{r.takipKodu}</Badge>}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-default)' }}>
+                    <td style={{ ...hucre, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }} title={r.firmaAdi}>
                       {r.firmaAdi}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)' }}>
+                    <td style={hucre} title={r.lokasyon || undefined}>
                       {r.lokasyon || '—'}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={hucre} title={r.arizaKodu || undefined}>
                       {r.arizaKodu || '—'}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={hucre}>
                       {r.sisNo || '—'}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={hucre} title={r.teknisyen || undefined}>
                       {r.teknisyen}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={hucre}>
                       {formatTarih(r.gidTarih)}
                     </td>
-                    <td style={{ padding: '10px 12px', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', maxWidth: 320, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.sonuc}>
+                    <td style={hucre} title={r.sonuc}>
                       {r.sonuc || '—'}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
