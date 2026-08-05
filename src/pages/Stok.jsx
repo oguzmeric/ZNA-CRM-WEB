@@ -1851,8 +1851,14 @@ function Stok() {
                 return (
                   <TR
                     key={u.id}
-                    onClick={seriTakipli ? () => navigate(`/stok/model/${encodeURIComponent(u.stokKodu)}`) : undefined}
-                    style={seriTakipli ? { cursor: 'pointer' } : undefined}
+                    // Satır tıklaması eskiden YALNIZ S/N takipli ürünlerde açıktı;
+                    // kullanıcı hangi satırın tıklanabilir olduğunu kestiremiyordu.
+                    // ModelDetay takipsiz ürünü de tam gösteriyor (bakiye/min stok/
+                    // giriş-çıkış KPI'ları + son hareketler), o yüzden ayrım kalktı.
+                    // Aksiyon butonları e.stopPropagation() ile korunuyor.
+                    onClick={() => navigate(`/stok/model/${encodeURIComponent(u.stokKodu)}`)}
+                    style={{ cursor: 'pointer' }}
+                    title="Ürün detayını aç"
                   >
                     <TD>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
