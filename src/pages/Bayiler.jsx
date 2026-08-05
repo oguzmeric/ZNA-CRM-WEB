@@ -9,6 +9,7 @@ import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { firmalariGetir, firmaEkle, firmaGuncelle, firmaSil as dbFirmaSil } from '../services/firmaService'
+import { sonrakiSiraNo } from '../lib/kodUret'
 import { kullanicilariGetir } from '../services/kullaniciService'
 import { BAYI_STATULERI, BAYI_TURLERI, bayiStatu } from '../services/bayiService'
 import { trContains } from '../lib/trSearch'
@@ -64,7 +65,8 @@ function Bayiler() {
       .catch(err => console.error('[Bayiler personel]', err))
   }, [])
 
-  const firmaKoduOlustur = (mevcut) => `BAYI-${String(mevcut.length + 1).padStart(4, '0')}`
+  // adet+1 değil max+1 — silinen bayi verilmiş kodu yeniden üretiyordu (bkz. kodUret)
+  const firmaKoduOlustur = (mevcut) => `BAYI-${String(sonrakiSiraNo(mevcut.map(f => f.kod), 'BAYI-')).padStart(4, '0')}`
 
   const alan = (k, v) => setForm(f => ({ ...f, [k]: v }))
 

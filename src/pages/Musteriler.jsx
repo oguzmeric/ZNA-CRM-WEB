@@ -9,6 +9,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { musterileriGetir, musteriEkle, musteriGuncelle, musteriSil as dbMusteriSil } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
+import { sonrakiSiraNo } from '../lib/kodUret'
 import CustomSelect from '../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -38,8 +39,9 @@ const bosForm = {
 function firmaKoduOlustur(firmaAdi, mevcutMusteriler, mevcutKod = '') {
   const temiz = firmaAdi.toUpperCase().replace(/[^A-ZÇĞİÖŞÜ]/g, '')
   const prefix = temiz.substring(0, 3).padEnd(3, 'X')
-  const ayniPrefix = mevcutMusteriler.filter(m => m.kod?.startsWith(prefix) && m.kod !== mevcutKod)
-  const sayi = ayniPrefix.length + 1
+  // adet+1 değil max+1 — silinen kayıt sayacı geriletip verilmiş kodu
+  // yeniden üretiyordu, kod unique olduğu için kayıt patlıyordu (bkz. kodUret)
+  const sayi = sonrakiSiraNo(mevcutMusteriler.map(m => m.kod), prefix, mevcutKod)
   return `${prefix}-${String(sayi).padStart(4, '0')}`
 }
 

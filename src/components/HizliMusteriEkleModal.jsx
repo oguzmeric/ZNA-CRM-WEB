@@ -15,13 +15,14 @@
 import { useState, useEffect } from 'react'
 import { Button, Modal, Input, Label } from './ui'
 import { musteriEkle, musterileriGetir } from '../services/musteriService'
+import { sonrakiSiraNo } from '../lib/kodUret'
 
 // Musteriler.jsx ile ayni kod uretme mantigi — firma adindan 3 harfli prefix + sira
 function firmaKoduOlustur(firmaAdi, mevcutMusteriler) {
   const temiz = (firmaAdi || '').toUpperCase().replace(/[^A-ZÇĞİÖŞÜ]/g, '')
   const prefix = temiz.substring(0, 3).padEnd(3, 'X')
-  const ayniPrefix = (mevcutMusteriler || []).filter(m => m.kod?.startsWith(prefix))
-  const sayi = ayniPrefix.length + 1
+  // adet+1 değil max+1 — silinen kayıt verilmiş kodu yeniden üretiyordu (bkz. kodUret)
+  const sayi = sonrakiSiraNo((mevcutMusteriler || []).map(m => m.kod), prefix)
   return `${prefix}-${String(sayi).padStart(4, '0')}`
 }
 
