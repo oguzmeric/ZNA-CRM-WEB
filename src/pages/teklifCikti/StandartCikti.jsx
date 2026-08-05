@@ -28,6 +28,9 @@ export default function StandartCikti({ teklif, pacal = false }) {
           @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
           .no-print { display: none !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Çok sayfalı teklifte satır ortadan kesilmesin, başlık her sayfada tekrarlasın */
+          tr, .bedel-serit { break-inside: avoid; page-break-inside: avoid; }
+          thead { display: table-header-group; }
         }
         .page { max-width: 860px; margin: 0 auto; padding: 32px; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -91,47 +94,47 @@ export default function StandartCikti({ teklif, pacal = false }) {
           {pacal ? 'Fiyatlandırma' : 'Ürün / Hizmet Satırları'}
         </p>
         {pacal ? (
-          /* PAÇAL — tek tablo, PROJE BEDELİ başlığı hizalı */
-          <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-            <colgroup>
-              <col style={{ width: '4%' }} />
-              <col style={{ width: '16%' }} />
-              <col />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '22%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Marka</th>
-                <th>Açıklama</th>
-                <th style={{ textAlign: 'right' }}>Ad./Mt.</th>
-                <th style={{ textAlign: 'center', background: '#0176D3', color: '#fff', fontSize: 10, letterSpacing: '0.06em' }}>PROJE BEDELİ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(teklif.satirlar || []).map((s, i) => (
-                <tr key={i}>
-                  <td style={{ color: '#94a3b8' }}>{i + 1}</td>
-                  <td>{s.marka || '—'}</td>
-                  <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
-                  <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
-                  {i === 0 && (
-                    <td
-                      rowSpan={(teklif.satirlar || []).length}
-                      style={{
-                        background: '#0176D3', color: '#fff',
-                        textAlign: 'center', verticalAlign: 'middle',
-                        fontSize: 22, fontWeight: 800,
-                      }}
-                    >
-                      {paraSembol}{fmt(araToplam)}
-                    </td>
-                  )}
+          /* PAÇAL — kalem listesi + altında tek parça PROJE BEDELİ şeridi.
+             ⚠️ Bedel eskiden rowSpan'li bir hücreydi; çok satırlı teklifte hem
+             sayfa kesmesinde bölünüyor hem html2canvas'ta her satıra yeniden
+             çizilip mavi bloklara dönüşüyordu. Tablodan çıkarıldı. */
+          <>
+            <table style={{ marginBottom: 0, border: '1px solid #e2e8f0', borderTopLeftRadius: 8, borderTopRightRadius: 8, overflow: 'hidden' }}>
+              <colgroup>
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '20%' }} />
+                <col />
+                <col style={{ width: '16%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Marka</th>
+                  <th>Açıklama</th>
+                  <th style={{ textAlign: 'right' }}>Ad./Mt.</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(teklif.satirlar || []).map((s, i) => (
+                  <tr key={i}>
+                    <td style={{ color: '#94a3b8' }}>{i + 1}</td>
+                    <td>{s.marka || '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                    <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="bedel-serit" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 16, background: '#0176D3', color: '#fff',
+              padding: '14px 20px', marginBottom: 20,
+              borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>PROJE BEDELİ</span>
+              <span style={{ fontSize: 22, fontWeight: 800 }}>{paraSembol}{fmt(araToplam)}</span>
+            </div>
+          </>
         ) : (
           /* DETAYLI — mevcut hâli */
           <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>

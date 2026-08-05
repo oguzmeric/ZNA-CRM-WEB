@@ -127,26 +127,63 @@ export default function TeklifYazdir() {
         windowWidth: A4_W,
       })
 
-      const imgW = 210               // mm (A4 width)
-      const imgH = (canvas.height * imgW) / canvas.width
-      const pageH = 297              // mm (A4 height)
+      const SAYFA_MM = 297           // A4 yüksekliği
+      const GENISLIK_MM = 210        // A4 genişliği
+      const KENAR_MM = 10            // sayfa üstü/altı nefes payı
+      const mmPerPx = GENISLIK_MM / A4_W
+      const sayfaPx = Math.floor((SAYFA_MM - KENAR_MM * 2) / mmPerPx)
+      const olcek = canvas.width / A4_W   // html2canvas scale'i (klon genişliğine göre)
+      const toplamPx = Math.round(canvas.height / olcek)
+
+      // ⚠️ Eskiden canvas sayfa yüksekliğinden KÖR kesiliyordu; kesme noktası
+      // satırın ortasına denk gelince metin ikiye bölünüyordu. Artık kesme,
+      // bir satırın/bloğun bittiği yerden yapılır.
+      const kokUst = klon.getBoundingClientRect().top
+      const kesmeNoktalari = [...new Set(
+        Array.from(klon.querySelectorAll('.teklif-sayfa, tr, .bedel-serit, .page > *'))
+          .map(el => {
+            const r = el.getBoundingClientRect()
+            return r.height > 0 ? Math.round(r.bottom - kokUst) : null
+          })
+          .filter(v => v != null),
+      )].sort((a, b) => a - b)
+
+      const dilimler = []
+      let bas = 0
+      while (bas < toplamPx - 1) {
+        let son = bas + sayfaPx
+        if (son >= toplamPx) {
+          son = toplamPx
+        } else {
+          // Sayfanın en az üçte birini dolduran en son satır sınırında kes
+          const adaylar = kesmeNoktalari.filter(n => n > bas + sayfaPx * 0.35 && n <= son)
+          if (adaylar.length) son = adaylar[adaylar.length - 1]
+        }
+        if (son <= bas) son = Math.min(bas + sayfaPx, toplamPx)  // sonsuz döngü kilidi
+        dilimler.push([bas, son])
+        bas = son
+      }
 
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
-      const imgData = canvas.toDataURL('image/jpeg', 0.95)
-
-      if (imgH <= pageH) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH)
-      } else {
-        // Multi-page split — img'i sayfa sayfa kaydirip ekle
-        let kalan = imgH
-        let pos = 0
-        while (kalan > 0) {
-          pdf.addImage(imgData, 'JPEG', 0, pos === 0 ? 0 : -(pos), imgW, imgH)
-          kalan -= pageH
-          pos += pageH
-          if (kalan > 0) pdf.addPage()
-        }
-      }
+      dilimler.forEach(([ust, alt], i) => {
+        if (i > 0) pdf.addPage()
+        const yukseklikPx = Math.round((alt - ust) * olcek)
+        const dilim = document.createElement('canvas')
+        dilim.width = canvas.width
+        dilim.height = yukseklikPx
+        const ctx = dilim.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, dilim.width, dilim.height)
+        ctx.drawImage(
+          canvas,
+          0, Math.round(ust * olcek), canvas.width, yukseklikPx,
+          0, 0, canvas.width, yukseklikPx,
+        )
+        pdf.addImage(
+          dilim.toDataURL('image/jpeg', 0.95), 'JPEG',
+          0, KENAR_MM, GENISLIK_MM, (alt - ust) * mmPerPx,
+        )
+      })
 
       const blob = pdf.output('blob')
       const dosyaAd = onaysiz
@@ -308,7 +345,10 @@ export default function TeklifYazdir() {
 
       {/* Filigran + kimlik damgası ciktiRef İÇİNDE: ekranda, tarayıcı yazdırmasında
           ve html2canvas PDF indirmede aynı şekilde görünür (fixed olsaydı klonda kaybolurdu). */}
-      <div ref={ciktiRef} style={{ position: 'relative' }}>
+      {/* translate="no": index.html'deki notranslate meta'sı otomatik çeviriyi
+          kapatıyor ama kullanıcı sağ tık → "Çevir" derse tutarlar/başlıklar
+          bozulabiliyor — belge gövdesi ayrıca işaretli. */}
+      <div ref={ciktiRef} translate="no" className="notranslate" style={{ position: 'relative' }}>
         <Cikti teklif={teklif} pacal={pacal} />
         {onaysiz && <TaslakFiligran />}
         {/* İzlenebilirlik damgası: dışarıda görülen çıktının kaynağı belli olsun (mig 158 loguyla eş) */}
