@@ -171,7 +171,7 @@ export default function MesaiRaporu() {
           unvan: k.kullanicilar?.unvan || '',
           gun: new Set(), dakika: 0, normalDk: 0, fazlaDk: 0, fazlaKayit: 0,
           kayit: 0, devam: 0,
-          ilkGiris: k.giris_zamani, sonCikis: k.cikis_zamani,
+          ilkGiris: k.giris_zamani, sonCikis: null, sonCikisFazla: null,
         })
       }
       const r = map.get(anahtarTam)
@@ -183,10 +183,17 @@ export default function MesaiRaporu() {
       r.kayit += 1
       if (!k.cikis_zamani) r.devam += 1
       if (new Date(k.giris_zamani) < new Date(r.ilkGiris)) r.ilkGiris = k.giris_zamani
-      if (k.cikis_zamani && (!r.sonCikis || new Date(k.cikis_zamani) > new Date(r.sonCikis))) r.sonCikis = k.cikis_zamani
+      // "Çıkış" = NORMAL mesainin kapanışı. Fazla mesai çıkışı AYRI tutulur ve
+      // yalnız hiç normal kayıt yoksa gösterilir — yoksa 19:04'te biten 3 dk'lık
+      // fazla mesai, herkes 18:00 iken kişinin Çıkış'ını 19:04 gösteriyordu
+      // (05.08 Mahmut Sarı); fazla mesai zaten kendi kolonunda raporlanıyor.
+      if (k.cikis_zamani) {
+        const hedef = k.tip === 'fazla' ? 'sonCikisFazla' : 'sonCikis'
+        if (!r[hedef] || new Date(k.cikis_zamani) > new Date(r[hedef])) r[hedef] = k.cikis_zamani
+      }
     }
     return [...map.values()]
-      .map(r => ({ ...r, gunSayisi: r.gun.size }))
+      .map(r => ({ ...r, gunSayisi: r.gun.size, sonCikis: r.sonCikis ?? r.sonCikisFazla }))
       .sort((a, b) => (b.anahtar.localeCompare(a.anahtar)) || a.ad.localeCompare(b.ad, 'tr'))
   }, [kayitlar, kirilim, simdi])
 
