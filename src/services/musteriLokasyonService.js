@@ -11,6 +11,19 @@ export const musteriLokasyonlariniGetir = async (musteriId) => {
   return arrayToCamel(data) ?? []
 }
 
+// Lokasyon ID'sinden adı çözer. Görüşme/görev gibi kayıtlar lokasyonu ID ile
+// tutuyor; servis talebi ve keşif ise METİN ile (bkz. aşağıdaki not). Dönüşüm
+// yapan her yer bu köprüden geçmeli — yoksa lokasyon sessizce kaybolur.
+export const lokasyonAdiGetir = async (lokasyonId) => {
+  if (!lokasyonId) return ''
+  const { data } = await supabase
+    .from('musteri_lokasyonlari')
+    .select('ad')
+    .eq('id', lokasyonId)
+    .maybeSingle()
+  return data?.ad || ''
+}
+
 export const musteriLokasyonEkle = async (lokasyon) => {
   const { id, olusturmaTarih, ...rest } = lokasyon
   const { data, error } = await supabase

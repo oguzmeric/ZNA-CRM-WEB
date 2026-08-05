@@ -21,7 +21,7 @@ import { parseMentions, segmentMetin } from '../lib/mention'
 import { EkSecici, EkListesi } from '../components/EkAlani'
 import { ekleriYukle } from '../lib/ekDosya'
 import { gorevleriGetir, gorevEkle } from '../services/gorevService'
-import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
+import { musteriLokasyonlariniGetir, lokasyonAdiGetir } from '../services/musteriLokasyonService'
 import { musterileriGetir } from '../services/musteriService'
 import { gorusmeninOnSiparisleri, onSiparisSiparisNolari, ON_SIPARIS_DURUMLARI } from '../services/onSiparisService'
 import { kesifEkle } from '../services/kesifService'
@@ -418,6 +418,13 @@ function GorusmeDetay() {
                 })
                 if (!onay) return
                 try {
+                  // Görüşme lokasyonu ID ile, servis talebi METİN ile tutuluyor —
+                  // köprü kurulmazsa lokasyon dönüşümde kayboluyordu. Liste zaten
+                  // yüklüyse ondan oku, değilse tek kaydı çek.
+                  const lokasyonMetni = gorusme.lokasyonId
+                    ? (gorusmeLokasyonlari.find(l => String(l.id) === String(gorusme.lokasyonId))?.ad
+                       || await lokasyonAdiGetir(gorusme.lokasyonId))
+                    : ''
                   const talep = await servisTalepEkle({
                     talepNo: null,
                     musteriId: gorusme.musteriId || null,
@@ -426,7 +433,7 @@ function GorusmeDetay() {
                     anaTur: 'talep',
                     altKategori: '',
                     konu: gorusme.konu || `${gorusme.firmaAdi || 'Müşteri'} servis talebi`,
-                    lokasyon: '',
+                    lokasyon: lokasyonMetni,
                     aciklama: [
                       gorusme.notlar ? `Görüşme açıklaması: ${gorusme.notlar}` : null,
                       gorusme.gorusmeSonucu ? `Görüşme sonucu: ${gorusme.gorusmeSonucu}` : null,
