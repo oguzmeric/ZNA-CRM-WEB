@@ -220,9 +220,11 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
          içeriği kırpıyor, antet hiç basılmıyordu. bottom:0 ile sayfa alanının
          en altına oturuyor; .sf-sayfa'nın alt dolgusu içeriğin üstüne
          binmesini engelliyor. */
+      /* ANTET — her sayfanın altında. tfoot'u sayfa sonunda tekrarlamak
+         tarayıcının kendi davranışı; position:fixed ile denendi, Chrome
+         yazdırmada HİÇ basmadı (kullanıcı çıktısında antet yoktu). */
+      .sf-antet-grup { display: table-footer-group; }
       .sf-antet {
-        position: fixed;
-        left: 9mm; right: 9mm; bottom: 6mm;
         margin: 0 !important;
         background: #fff !important;
         border-top: 1px solid #808080 !important;
@@ -271,6 +273,31 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           ? { ...sayfaStyle, margin: 0, transform: `scale(${olcek})`, transformOrigin: 'top left' }
           : sayfaStyle}
       >
+        {/* ⚠️ ANTET her sayfada: tfoot + display:table-footer-group.
+            Önce position:fixed denendi — Chrome yazdırmada BASMIYORDU (kullanıcı
+            çıktısında antet hiç görünmedi). Tarayıcının tablo altbilgisini her
+            sayfada tekrarlama davranışı bu iş için güvenilir tek yöntem. */}
+        <table className="sf-cerceve" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+          <tfoot className="sf-antet-grup">
+            <tr><td style={{ border: 'none', padding: 0 }}>
+            {/* ─── ANTET (dipnot) ───
+                tfoot içinde: tarayıcı tablo altbilgisini HER SAYFANIN sonunda
+                tekrarlar (fotoğraf sayfası dahil) — antetli kağıt etkisi. */}
+            <div
+              className="sf-antet"
+              style={{
+                marginTop: 8, paddingTop: 4, borderTop: `1px solid ${BORDER}`,
+                fontSize: 7.5, color: ACCENT, textAlign: 'center', lineHeight: 1.45,
+                background: '#fff',
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
+              <div>{cfg.adres} · {cfg.iletisim}</div>
+            </div>
+            </td></tr>
+          </tfoot>
+          <tbody>
+            <tr><td style={{ border: 'none', padding: 0 }}>
         {/* ─── BANNER ─── */}
         <div style={{ marginBottom: 8, textAlign: 'center' }}>
           <img
@@ -538,20 +565,6 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           </tbody>
         </table>
 
-        {/* ─── ANTET (dipnot) ───
-            Yazdırmada position:fixed ile HER SAYFANIN altına düşer (fotoğraf
-            sayfası dahil) — antetli kağıt gibi. Ekranda normal akışta kalır. */}
-        <div
-          className="sf-antet"
-          style={{
-            marginTop: 8, paddingTop: 4, borderTop: `1px solid ${BORDER}`,
-            fontSize: 7.5, color: ACCENT, textAlign: 'center', lineHeight: 1.45,
-            background: '#fff',
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>{cfg.firmaAdi}</div>
-          <div>{cfg.adres} · {cfg.iletisim}</div>
-        </div>
 
         {/* ─── SERVİS FOTOĞRAFLARI (varsa, ayrı sayfa) ─── */}
         {fotolar.length > 0 && (
@@ -571,6 +584,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             </div>
           </div>
         )}
+            </td></tr>
+          </tbody>
+        </table>
       </div>
       </div>
     </>
