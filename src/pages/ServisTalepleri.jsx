@@ -5,6 +5,7 @@ import { trContains } from '../lib/trSearch'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
+import Sayfalama from '../components/Sayfalama'
 import { musterileriGetir } from '../services/musteriService'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
@@ -54,6 +55,10 @@ export default function ServisTalepleri() {
   // musteri talepleri gozukmesin — onlar kendi 'Musteri Talepleri' menusunde)
   const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'personel')
   const [gorunum, setGorunum] = useState('liste')
+  // Sayfalama — yalnız liste görünümünde. Kanban'da kayıtlar zaten durum
+  // sütunlarına dağıldığı için tek sütun nadiren uzuyor.
+  const [sayfa, setSayfa] = useState(1)
+  const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
 
   // URL param degisirse state'i de guncelle (sidebar'dan navigate edince)
   useEffect(() => {
@@ -83,6 +88,20 @@ export default function ServisTalepleri() {
     if (at !== bt) return bt - at
     return (b.id || 0) - (a.id || 0)
   })
+
+  // Filtre/arama değişince ilk sayfaya dön. React'in "render sırasında state
+  // düzelt" deseni — useEffect ile yapmak react-hooks/set-state-in-effect
+  // uyarısı üretiyordu.
+  const filtreAnahtari = `${aramaMetni}|${durumFiltre}|${turFiltre}|${aciliyetFiltre}|${kaynakFiltre}|${sayfaBoyutu}`
+  const [oncekiFiltre, setOncekiFiltre] = useState(filtreAnahtari)
+  if (oncekiFiltre !== filtreAnahtari) {
+    setOncekiFiltre(filtreAnahtari)
+    setSayfa(1)
+  }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtrelenmis.length / sayfaBoyutu))
+  const aktifSayfa = Math.min(sayfa, toplamSayfa)
+  const sayfalanmis = filtrelenmis.slice((aktifSayfa - 1) * sayfaBoyutu, aktifSayfa * sayfaBoyutu)
 
   const ist = {
     toplam: talepler.length,
@@ -233,7 +252,7 @@ export default function ServisTalepleri() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtrelenmis.map(talep => {
+                  {sayfalanmis.map(talep => {
                     const anaTur = ANA_TURLER.find(t => t.id === talep.anaTur)
                     const durum = DURUM_LISTESI.find(d => d.id === talep.durum)
                     const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
@@ -340,6 +359,14 @@ export default function ServisTalepleri() {
                 </tbody>
               </table>
             </div>
+            <Sayfalama
+              aktifSayfa={aktifSayfa}
+              toplamSayfa={toplamSayfa}
+              toplam={filtrelenmis.length}
+              sayfaBoyutu={sayfaBoyutu}
+              setSayfa={setSayfa}
+              setSayfaBoyutu={setSayfaBoyutu}
+            />
           </Card>
         )
       )}
