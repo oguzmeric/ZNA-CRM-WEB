@@ -9,7 +9,7 @@ const baseInputStyle = {
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-sm)',
   fontFamily: 'var(--font-sans)',
-  fontSize: 14,
+  fontSize: 13,
   color: 'var(--text-primary)',
   outline: 'none',
   transition: 'border-color 120ms, box-shadow 120ms',

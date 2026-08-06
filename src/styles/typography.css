@@ -2,31 +2,34 @@
    Kurumsal tipografi utility'leri. Inter fontu zaten tokens.css üzerinden aktif.
 */
 
+/* Yoğunluk ayarı (06.08): kurumsal ERP hissi için ölçek 1-2px kısıldı —
+   zoom denemesi yerleşimi bozduğu için boyutlar TOKEN seviyesinde iner.
+   12px altına inilmez (okunabilirlik tabanı). */
 .t-display {
-  font: 600 28px/36px var(--font-sans);
+  font: 600 24px/32px var(--font-sans);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .t-h1 {
-  font: 600 20px/28px var(--font-sans);
+  font: 600 18px/26px var(--font-sans);
   color: var(--text-primary);
   margin: 0;
 }
 
 .t-h2 {
-  font: 600 16px/24px var(--font-sans);
+  font: 600 15px/22px var(--font-sans);
   color: var(--text-primary);
   margin: 0;
 }
 
 .t-body {
-  font: 400 14px/20px var(--font-sans);
+  font: 400 13px/19px var(--font-sans);
   color: var(--text-primary);
 }
 
 .t-body-strong {
-  font: 500 14px/20px var(--font-sans);
+  font: 500 13px/19px var(--font-sans);
   color: var(--text-primary);
 }
 

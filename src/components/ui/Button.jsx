@@ -24,8 +24,8 @@ const VARIANT = {
 }
 
 const SIZE = {
-  sm: { height: 32, padding: '0 12px', fontSize: 13 },
-  md: { height: 36, padding: '0 16px', fontSize: 14 },
+  sm: { height: 32, padding: '0 12px', fontSize: 12.5 },
+  md: { height: 36, padding: '0 16px', fontSize: 13 },
   lg: { height: 40, padding: '0 20px', fontSize: 14 },
 }
 

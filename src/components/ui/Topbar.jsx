@@ -16,7 +16,7 @@ export function Topbar({ title, children, style }) {
       }}
     >
       {typeof title === 'string' ? (
-        <h1 style={{ font: '600 20px/28px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
+        <h1 style={{ font: '600 17px/24px var(--font-sans)', color: 'var(--text-primary)', margin: 0 }}>
           {title}
         </h1>
       ) : (
