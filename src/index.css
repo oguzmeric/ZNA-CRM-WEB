@@ -28,16 +28,9 @@
 
 body {
   background: var(--surface-bg);
-  /* Kurumsal yoğunluk (06.08): %100 tarayıcı zoom'unda arayüz %90 ölçek —
-     ERP'lerdeki sıkı bilgi yoğunluğu. Stiller inline px olduğundan tek tek
-     küçültmek yerine kök ölçek. Yazdırma etkilenmez (aşağıdaki print kuralı). */
-  zoom: 0.9;
-}
-
-@media print {
-  /* Belge çıktıları (servis formu, teklif, sözleşme) A4 ölçülerine hassas —
-     ekran yoğunluk ölçeği baskıya TAŞMAZ */
-  body { zoom: 1; }
+  /* NOT (06.08): zoom: 0.9 ile global yoğunluk DENENDİ ve GERİ ALINDI —
+     sidebar/100vw yerleşim hesaplarını bozup sayfayı "kesik" gösterdi.
+     Yoğunluk isteği typography token'ları üzerinden ele alınacak. */
 }
 
 /* ── Scrollbar ─────────────────────────────────────────── */
