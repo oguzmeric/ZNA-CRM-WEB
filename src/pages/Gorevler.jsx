@@ -1129,7 +1129,8 @@ function Gorevler() {
 
       {/* KPI şeridi (madde 34) — tıklayınca ilgili sekmeye geçer */}
       {!goster && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        {/* Tek-ekran yoğunluğu (06.08): KPI şeridi kompakt — liste alanı büyüsün */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
           {[
             { l: 'Bana Atanan Açık', v: kpiBanaAcik, renk: 'var(--info)', sekme: 'bana', chip: 'acik' },
             { l: 'Bugün Bitecek', v: sekmeSayilari.bugun, renk: 'var(--warning)', sekme: 'bugun', chip: 'hepsi' },
@@ -1138,14 +1139,14 @@ function Gorevler() {
           ].map(k => (
             <Card
               key={k.l}
-              padding={12}
+              padding={8}
               onClick={() => kpiTikla(k.sekme, k.chip)}
-              style={{ flex: '1 1 160px', borderLeft: `3px solid ${k.renk}`, cursor: 'pointer' }}
+              style={{ flex: '1 1 160px', borderLeft: `3px solid ${k.renk}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              <div className="t-caption">{k.l}</div>
-              <div className="tabular-nums" style={{ font: '700 18px/24px var(--font-sans)', color: 'var(--text-primary)', marginTop: 2 }}>
+              <span className="tabular-nums" style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)' }}>
                 {k.v}
-              </div>
+              </span>
+              <span className="t-caption">{k.l}</span>
             </Card>
           ))}
         </div>
@@ -1745,7 +1746,7 @@ function Gorevler() {
 
         const thStyle = {
           textAlign: 'left',
-          padding: '10px 8px',
+          padding: '7px 8px',
           font: '600 11px/14px var(--font-sans)',
           color: 'var(--text-secondary)',
           textTransform: 'uppercase',
@@ -1756,8 +1757,9 @@ function Gorevler() {
           position: 'sticky', top: 0, zIndex: 1,
         }
         const tdStyle = {
-          padding: '10px 8px',
-          font: '400 13px/18px var(--font-sans)',
+          // GRID yoğunluğu (06.08): satırlar sıkı — tek ekranda daha çok görev
+          padding: '5px 8px',
+          font: '400 12px/17px var(--font-sans)',
           color: 'var(--text-primary)',
           borderBottom: '1px solid var(--border-default)',
           verticalAlign: 'middle',
@@ -1765,7 +1767,7 @@ function Gorevler() {
         }
         const colFilterInput = {
           width: '100%',
-          padding: '6px 8px',
+          padding: '4px 8px',
           font: '400 12px/16px var(--font-sans)',
           color: 'var(--text-primary)',
           background: 'var(--surface-card)',
@@ -1932,7 +1934,7 @@ function Gorevler() {
             </div>
 
             {/* Tablo */}
-            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
+            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
