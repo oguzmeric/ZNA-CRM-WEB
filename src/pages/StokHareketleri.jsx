@@ -55,6 +55,13 @@ const tarihSaat = (iso) => {
   return `${gun}.${ay}.${d.getFullYear()} ${ss}:${dk}`
 }
 
+const saatKisa = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const bosForm = {
   stokKodu: '', hareketTipi: 'giris', miktar: '',
   aciklama: '', tarih: new Date().toISOString().split('T')[0],
@@ -212,20 +219,38 @@ export default function StokHareketleri() {
     .filter(h => filtre === 'hepsi' || turBul(h).id === filtre)
     .filter(h => trContains(`${h.stokKodu || ''} ${h.stokAdi || ''} ${h.aciklama || ''}`, arama))
 
-  // Aynı dakika + stok_kodu + hareket_tipi olan satırları grupla
-  // Böylece toplu SN eklemede 20 satır yerine 1 grup + expand görürüz
+  // İŞLEM (zincir) gruplaması — kurumsal ERP deseni: aynı işin parçaları TEK
+  // belge satırı gibi okunur, kalemler expand'de. Aynı ürün + tür hareketleri,
+  // aralarında 15 dakikadan uzun boşluk yoksa tek grupta toplanır.
+  // (Eskisi sabit "aynı dakika" penceresiydi: tek tek yapılan 79 kalemlik
+  // transfer dakika sınırlarında 5 ayrı satıra bölünüp listeyi şişiriyordu.)
+  const ZINCIR_BOSLUK_MS = 15 * 60 * 1000
   const grupla = (harekets) => {
-    const gruplar = new Map()
-    for (const h of harekets) {
-      const zaman = h.olusturmaTarih || h.createdAt || h.tarih || ''
-      const dakika = String(zaman).slice(0, 16)  // 'YYYY-MM-DD HH:mm'
-      const anahtar = `${dakika}|${h.stokKodu}|${h.hareketTipi}`
-      if (!gruplar.has(anahtar)) gruplar.set(anahtar, { anahtar, hareketler: [], toplamMiktar: 0 })
-      const g = gruplar.get(anahtar)
-      g.hareketler.push(h)
-      g.toplamMiktar += Number(h.miktar) || 0
+    const zamanMs = (h) => new Date(h.olusturmaTarih || h.createdAt || h.tarih || 0).getTime()
+    // Zincir ardışıklığı zaman bazlı — kronolojik gez, sonda en yeni üste al
+    const sirali = [...harekets].sort((a, b) => zamanMs(a) - zamanMs(b))
+    const acikZincirler = new Map()
+    const gruplar = []
+    for (const h of sirali) {
+      const zincirAnahtar = `${h.stokKodu}|${h.hareketTipi}`
+      const t = zamanMs(h)
+      const zincir = acikZincirler.get(zincirAnahtar)
+      if (zincir && t - zincir.sonZamanMs <= ZINCIR_BOSLUK_MS) {
+        zincir.hareketler.push(h)
+        zincir.toplamMiktar += Number(h.miktar) || 0
+        zincir.sonZamanMs = t
+      } else {
+        const yeni = {
+          anahtar: `${zincirAnahtar}|${h.id ?? t}`,
+          hareketler: [h],
+          toplamMiktar: Number(h.miktar) || 0,
+          sonZamanMs: t,
+        }
+        acikZincirler.set(zincirAnahtar, yeni)
+        gruplar.push(yeni)
+      }
     }
-    return Array.from(gruplar.values())
+    return gruplar.sort((a, b) => b.sonZamanMs - a.sonZamanMs)
   }
   const gruplananlar = grupla(gorunenHareketler)
 
@@ -437,6 +462,9 @@ export default function StokHareketleri() {
               <tbody>
                 {sayfaliGruplar.map(grup => {
                   const ilkHareket = grup.hareketler[0]
+                  const sonHareket = grup.hareketler[grup.hareketler.length - 1]
+                  const bitisSaati = saatKisa(sonHareket.olusturmaTarih || sonHareket.createdAt || sonHareket.tarih)
+                  const baslangicSaati = saatKisa(ilkHareket.olusturmaTarih || ilkHareket.createdAt || ilkHareket.tarih)
                   const tur = turBul(ilkHareket)
                   // Map lookup — her satırda 2.600 kayıt taramak yerine
                   const urun = urunHaritasi.get(ilkHareket.stokKodu)
@@ -464,6 +492,7 @@ export default function StokHareketleri() {
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             {cokluMu && (acikMi ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />)}
                             {tarihSaat(ilkHareket.tarih)}
+                            {cokluMu && bitisSaati && bitisSaati !== baslangicSaati && ` – ${bitisSaati}`}
                           </span>
                         </td>
                         <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
