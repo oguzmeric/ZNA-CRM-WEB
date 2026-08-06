@@ -87,13 +87,24 @@ Deno.serve(async (req) => {
       return jsonYanit({ ok: false, hata: 'modul_yok' }, 403)
     }
 
-    const { data: ofis } = await svc
-      .from('ofis_konumu').select('lat, lng, tolerans_metre, sert_limit_metre').limit(1).single()
-    const mesafe = (ofis?.lat && ofis?.lng)
-      ? haversineMetre(Number(ofis.lat), Number(ofis.lng), lat, lng)
-      : null
-    const tolerans = ofis?.tolerans_metre ?? 150
-    const sertLimit = ofis?.sert_limit_metre ?? 400
+    // ÇOKLU OFİS (05.08: 2. adres eklendi) — kullanıcıya EN YAKIN ofise göre
+    // kontrol edilir. TEK QR her ofiste geçerlidir: payload'daki ofisId yalnız
+    // HMAC imza doğrulamasına girer, mesafe seçimi konuma göre yapılır — böylece
+    // aynı çıktı iki lokasyona da asılabilir, ofis başına ayrı QR yönetilmez.
+    const { data: ofisler } = await svc
+      .from('ofis_konumu').select('lat, lng, tolerans_metre, sert_limit_metre')
+    let mesafe: number | null = null
+    let tolerans = 150
+    let sertLimit = 400
+    for (const o of ofisler ?? []) {
+      if (!o?.lat || !o?.lng) continue
+      const m = haversineMetre(Number(o.lat), Number(o.lng), lat, lng)
+      if (mesafe === null || m < mesafe) {
+        mesafe = m
+        tolerans = o.tolerans_metre ?? 150
+        sertLimit = o.sert_limit_metre ?? 400
+      }
+    }
 
     // Sert eşik — mesai kesinlikle açılmaz. Fazla mesaide UYGULANMAZ:
     // akşam çalışması zaten ofis dışında olabilir, mesafe yalnız kayda yazılır.
