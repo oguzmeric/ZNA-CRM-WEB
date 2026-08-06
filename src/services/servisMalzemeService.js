@@ -173,7 +173,17 @@ export const servisMalzemeSil = async (malzeme, servisKodu) => {
  */
 export const servisMalzemeGuncelle = async (id, { miktar, birimFiyat, notlar, faturalandirma }) => {
   const alanlar = {}
-  if (miktar !== undefined) alanlar.miktar = Number(miktar) || 0
+  if (miktar !== undefined) {
+    // S/N'li satırda adet HER ZAMAN 1 — elle 91 yazılınca satır "91 kullanıldı"
+    // derken zimmetten yalnız 1 kalem düşmüştü (06.08 TLP-2026-0062 vakası).
+    // Birden çok cihaz = S/N listesinden çoklu seçim (Otomatik Seç ile N kalem).
+    const { data: sat } = await supabase
+      .from('servis_malzemeleri').select('seri_no').eq('id', id).maybeSingle()
+    if (sat?.seri_no) {
+      throw new Error('S/N’li satırda adet her zaman 1’dir — birden fazla cihaz için üstteki S/N seçiminde adet yazıp "Otomatik Seç" kullanın; her cihaz zimmetten ayrı düşer.')
+    }
+    alanlar.miktar = Number(miktar) || 0
+  }
   if (birimFiyat !== undefined) alanlar.birim_fiyat = Number(birimFiyat) || 0
   if (notlar !== undefined) alanlar.notlar = notlar || null
   if (faturalandirma !== undefined) alanlar.faturalandirma = faturalandirma || null

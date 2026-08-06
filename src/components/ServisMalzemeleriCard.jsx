@@ -41,6 +41,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
   const [birimFiyat, setBirimFiyat] = useState('')
   const [snKalemler, setSnKalemler] = useState([])
   const [seciliKalemIdler, setSeciliKalemIdler] = useState([]) // TOPLU S/N seçimi
+  const [hizliAdet, setHizliAdet] = useState('') // "Otomatik Seç" — ilk N kalem
   const [mesgul, setMesgul] = useState(false)
   const [elleAcik, setElleAcik] = useState(false)
   const [elleAd, setElleAd] = useState('')
@@ -325,14 +326,40 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
           />
         </div>
         {seciliUrun?.seriTakipli ? (
-          <div style={{ flex: 1.4, minWidth: 200 }}>
-            <CokluSelect
-              degerler={seciliKalemIdler}
-              onChange={setSeciliKalemIdler}
-              secenekler={snKalemler.map(k => ({ id: k.id, ad: `${k.seriNo} — ${k.teknisyen?.ad || 'teknisyen ?'}` }))}
-              placeholder={snKalemler.length === 0 ? 'Teknisyende SN yok!' : 'S/N seç (çoklu)…'}
-            />
-          </div>
+          <>
+            <div style={{ flex: 1.4, minWidth: 200 }}>
+              <CokluSelect
+                degerler={seciliKalemIdler}
+                onChange={setSeciliKalemIdler}
+                secenekler={snKalemler.map(k => ({ id: k.id, ad: `${k.seriNo} — ${k.teknisyen?.ad || 'teknisyen ?'}` }))}
+                placeholder={snKalemler.length === 0 ? 'Teknisyende SN yok!' : 'S/N seç (çoklu)…'}
+              />
+            </div>
+            {/* 90+ cihazı tek tek işaretlemek pratik değil (06.08 Salih vakası) —
+                adet yaz, listedeki ilk N kalem otomatik seçilsin */}
+            {snKalemler.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 64 }}>
+                  <Input type="number" className="sayi-sade" min="1" max={snKalemler.length}
+                    value={hizliAdet} onChange={e => setHizliAdet(e.target.value)}
+                    placeholder="Adet" style={{ textAlign: 'right' }} />
+                </div>
+                <Button variant="secondary" size="sm"
+                  disabled={!(Number(hizliAdet) > 0)}
+                  title="Listedeki ilk N seri numarasını seçer — her biri zimmetten ayrı düşer"
+                  onClick={() => {
+                    const n = Math.min(Number(hizliAdet) || 0, snKalemler.length)
+                    setSeciliKalemIdler(snKalemler.slice(0, n).map(k => k.id))
+                  }}>
+                  Otomatik Seç
+                </Button>
+                <Button variant="tertiary" size="sm"
+                  onClick={() => setSeciliKalemIdler(snKalemler.map(k => k.id))}>
+                  Tümü ({snKalemler.length})
+                </Button>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ width: 80 }}>
             <Input type="number" className="sayi-sade" min="0.001" value={miktar}
