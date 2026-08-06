@@ -1032,11 +1032,21 @@ function Gorevler() {
 
   if (yukleniyor) return <SkeletonList />
 
+  // TEK EKRAN (06.08): liste modunda sayfa scroll'u YOK — üst bloklar sabit,
+  // yalnız tablo kayar. Form/kanban modunda normal akış sürer.
+  const tekEkran = gorunumModu === 'liste' && !goster
   return (
-    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+    <div style={{
+      padding: 16, maxWidth: 1440, margin: '0 auto',
+      ...(tekEkran ? {
+        maxWidth: 'none',
+        height: 'calc(100vh - 56px)', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      } : {}),
+    }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 className="t-h1">Görevler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
@@ -1557,7 +1567,7 @@ function Gorevler() {
         const kanbanFiltreAktif = !!(kategoriFiltre || oncelikFiltre || etiketFiltre)
         return (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
             <div style={{ minWidth: 150 }}>
               <CustomSelect value={kategoriFiltre} onChange={e => setKategoriFiltre(e.target.value)}>
                 <option value="">Tüm kategoriler</option>
@@ -1777,7 +1787,11 @@ function Gorevler() {
         }
 
         return (
-          <Card padding={0} style={{ overflow: 'hidden' }}>
+          <Card padding={0} style={{
+            overflow: 'hidden',
+            // Tek ekran: kart kalan alanı doldurur, içindeki tablo kayar
+            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+          }}>
             {/* Sekmeler (madde 30) — yatay kaydırılabilir, sayı rozetli */}
             <SekmeSatiri
               sekmeler={SEKME_LISTESI.map(s => ({ ...s, sayi: sekmeSayilari[s.id] ?? 0 }))}
@@ -1934,7 +1948,7 @@ function Gorevler() {
             </div>
 
             {/* Tablo */}
-            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
+            <div style={{ overflowX: 'auto', flex: 1, minHeight: 0, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
