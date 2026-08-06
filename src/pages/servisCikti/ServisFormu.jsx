@@ -354,7 +354,8 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
                 <span style={{ marginRight: 14 }}>{tipKutu('bakim')} Bakım</span>
                 <span style={{ marginRight: 14 }}>{tipKutu('urun')} Ürün Alımı</span>
                 <span style={{ marginRight: 14 }}>{tipKutu('kurulum')} Kurulum</span>
-                <span>{tipKutu('teslimat')} Teslimat</span>
+                <span style={{ marginRight: 14 }}>{tipKutu('teslimat')} Teslimat</span>
+                <span>{tipKutu('kesif')} Keşif</span>
               </td>
             </tr>
 

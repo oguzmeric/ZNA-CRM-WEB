@@ -14,6 +14,7 @@ const SERVIS_TIPI = [
   { id: 'urun',     label: 'Ürün Alımı' },
   { id: 'kurulum',  label: 'Kurulum' },
   { id: 'teslimat', label: 'Teslimat' },
+  { id: 'kesif',    label: 'Keşif' },
 ]
 const YUKUMLULUK = [
   { id: 'garanti', label: 'Garanti Kapsamında' },
