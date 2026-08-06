@@ -8,7 +8,7 @@
 // Keşiften gelen kalemler 'planlanan' olarak düşer: forma basılmaz, stok
 // düşmez. Teknisyen "Kullandım" deyince stok düşer ve forma girer.
 import { useState, useEffect, useMemo } from 'react'
-import { Package, Trash2, Tag, Check, Plus, Settings2, Eye, EyeOff } from 'lucide-react'
+import { Package, Trash2, Tag, Check, Plus, Settings2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button, Card, Badge, Input, CodeBadge, Modal, Label } from './ui'
 import CustomSelect from './CustomSelect'
 import CokluSelect from './CokluSelect'
@@ -72,6 +72,19 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
   }, [servisId])
 
   const kullanilanlar = useMemo(() => malzemeler.filter(m => m.durum !== 'planlanan'), [malzemeler])
+  // Aynı ürünün SN satırları tek başlık altında toplanır — 148 satır alt alta
+  // sayfayı kilometrelerce uzatıyordu (06.08). Çok satırlı gruplar KAPALI başlar.
+  const [acikGruplar, setAcikGruplar] = useState(() => new Set())
+  const malzemeGruplari = useMemo(() => {
+    const map = new Map()
+    const sira = []
+    for (const m of kullanilanlar) {
+      const k = m.stokKodu || m.urunAdi || String(m.id)
+      if (!map.has(k)) { map.set(k, []); sira.push([k, map.get(k)]) }
+      map.get(k).push(m)
+    }
+    return sira
+  }, [kullanilanlar])
   const genelToplam = useMemo(
     () => kullanilanlar.reduce((s, m) => s + (Number(m.tutar) || 0), 0),
     [kullanilanlar],
@@ -373,6 +386,16 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
         <Button variant="primary" size="sm" onClick={ekle} disabled={mesgul || !seciliUrun}>
           {mesgul ? 'Ekleniyor…' : 'Ekle'}
         </Button>
+        {/* Seçimden vazgeçiş yolu yoktu — ürün seçilince kullanıcı kilitli kalıyordu (06.08) */}
+        {seciliUrun && (
+          <Button variant="tertiary" size="sm" disabled={mesgul}
+            onClick={() => {
+              setSeciliUrun(null); setMiktar(1); setBirimFiyat('')
+              setSnKalemler([]); setSeciliKalemIdler([]); setHizliAdet('')
+            }}>
+            Vazgeç
+          </Button>
+        )}
       </div>
       {seciliUrun?.seriTakipli && snKalemler.length === 0 && (
         <p className="t-caption" style={{ color: 'var(--warning)', marginTop: -2, marginBottom: 8 }}>
@@ -415,7 +438,38 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
       ) : (
         <>
           <div style={{ display: 'grid', gap: 6 }}>
-            {kullanilanlar.map(m => (
+            {malzemeGruplari.map(([gAnahtar, satirlar]) => {
+              const coklu = satirlar.length > 1
+              const acik = !coklu || acikGruplar.has(gAnahtar)
+              const ilk = satirlar[0]
+              const grupToplam = satirlar.reduce((a, s) => a + (Number(s.tutar) || 0), 0)
+              return (
+                <div key={gAnahtar} style={{ display: 'grid', gap: 6 }}>
+                  {coklu && (
+                    <button type="button" aria-expanded={acik}
+                      onClick={() => setAcikGruplar(prev => {
+                        const s = new Set(prev)
+                        if (s.has(gAnahtar)) s.delete(gAnahtar); else s.add(gAnahtar)
+                        return s
+                      })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                        padding: '8px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        border: '1px solid var(--border-default)', background: 'var(--surface-card)',
+                        font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', textAlign: 'left',
+                      }}>
+                      {acik
+                        ? <ChevronDown size={14} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                        : <ChevronRight size={14} strokeWidth={1.5} style={{ flexShrink: 0 }} />}
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ilk.urunAdi}
+                      </span>
+                      {ilk.stokKodu && <CodeBadge>{ilk.stokKodu}</CodeBadge>}
+                      <Badge tone="brand">{satirlar.length} adet</Badge>
+                      <span className="tabular-nums">{paraFmt(grupToplam)}</span>
+                    </button>
+                  )}
+                  {acik && satirlar.map(m => (
               <div key={m.id} style={satirKutu}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -490,7 +544,10 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
                 </button>
                 </div>
               </div>
-            ))}
+                  ))}
+                </div>
+              )
+            })}
           </div>
           <div style={{
             display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'baseline',
