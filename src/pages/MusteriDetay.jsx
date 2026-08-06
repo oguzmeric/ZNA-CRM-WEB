@@ -89,6 +89,14 @@ function MusteriDetay() {
   const [lokasyonlar, setLokasyonlar]   = useState([])
   const [lokasyonForm, setLokasyonForm] = useState(null)
   const [seciliLok, setSeciliLok]       = useState(null)   // lokasyon bazlı döküm paneli
+  const lokasyonPanelRef = useRef(null)
+  // Döküm paneli 76 lokasyonluk listenin ALTINDA açılıyor — ekran dışında
+  // kalınca "sayfa açılmadı" sanılıyordu (06.08). Seçimde panele kaydır.
+  useEffect(() => {
+    if (seciliLok && lokasyonPanelRef.current) {
+      lokasyonPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [seciliLok?.id])
   const [lokKaydediliyor, setLokKaydediliyor] = useState(false)
   const [lokArama, setLokArama] = useState('')
   const [lokHepsi, setLokHepsi] = useState(false)
@@ -838,13 +846,15 @@ function MusteriDetay() {
                 )}
 
                 {/* Seçilen lokasyonun kayıt dökümü — modal yerine altta panel */}
-                {seciliLok && (
-                  <LokasyonKayitPaneli
-                    lokasyon={seciliLok}
-                    musteriId={Number(id)}
-                    onKapat={() => setSeciliLok(null)}
-                  />
-                )}
+                <div ref={lokasyonPanelRef}>
+                  {seciliLok && (
+                    <LokasyonKayitPaneli
+                      lokasyon={seciliLok}
+                      musteriId={Number(id)}
+                      onKapat={() => setSeciliLok(null)}
+                    />
+                  )}
+                </div>
               </div>
             )
           })()
