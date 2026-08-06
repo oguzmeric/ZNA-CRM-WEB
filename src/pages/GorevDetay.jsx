@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Pencil, Trash2, Building2, Handshake, ArrowRight, CheckSquare, FileText, Smartphone,
 } from 'lucide-react'
@@ -435,7 +436,7 @@ function GorevDetay() {
 
       {/* Geri */}
       <button
-        onClick={() => navigate('/gorevler')}
+        onClick={() => geriDon(navigate, '/gorevler')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

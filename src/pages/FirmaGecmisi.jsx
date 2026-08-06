@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Phone, FileText, KeyRound, CheckSquare, MapPin, Inbox, Infinity as InfIcon, ArrowRight,
   Building2, Mail, Clock, Plus, Wrench, ReceiptText, AlertTriangle, User, Video,
@@ -311,7 +312,7 @@ function FirmaGecmisi() {
       <div style={{ padding: 20, maxWidth: 1240, margin: '0 auto' }}>
 
         {/* Geri butonu */}
-        <Button variant="secondary" size="sm" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate(-1)} style={{ marginBottom: 12 }}>
+        <Button variant="secondary" size="sm" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/musteriler')} style={{ marginBottom: 12 }}>
           Geri
         </Button>
 

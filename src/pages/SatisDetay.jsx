@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import { useAuth } from '../context/AuthContext'
 import {
   ArrowLeft, Plus, Trash2, Printer, Mail, Save, Send, CheckCircle2,
@@ -472,7 +473,7 @@ function SatisDetay() {
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
       <button
-        onClick={() => navigate('/satislar')}
+        onClick={() => geriDon(navigate, '/satislar')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

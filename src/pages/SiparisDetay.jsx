@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench, Receipt } from 'lucide-react'
 import { Card, CardTitle, Button, Badge, EmptyState, Textarea, Input, Label, Modal } from '../components/ui'
 import {
@@ -231,7 +232,7 @@ export default function SiparisDetay() {
 
       {/* Üst bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/siparisler')}>Geri</Button>
+        <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => geriDon(navigate, '/siparisler')}>Geri</Button>
         <Button variant="secondary" iconLeft={<Printer size={14} />} onClick={() => window.open(`/siparisler/${siparis.id}/yazdir`, '_blank')}>PDF / Yazdır</Button>
         {/* Satış sözleşmesi (spec: sipariş numarası oluşunca "Satış Sözleşmesi Oluştur") */}
         {siparis.sozlesmeId ? (

@@ -2,6 +2,7 @@
 // sonradan kalem ekleme (yalnız saha sorumlusu — spec madde 15), iptal.
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import { Wrench, ArrowLeft, Plus, Trash2, XCircle, MapPin, Phone, FileText, Printer, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -107,7 +108,7 @@ export default function BakimDetay() {
       {/* Başlık */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => navigate('/bakim-isleri')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'inline-flex' }}>
+          <button onClick={() => geriDon(navigate, '/bakim-isleri')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'inline-flex' }}>
             <ArrowLeft size={20} />
           </button>
           <Wrench size={20} style={{ color: 'var(--brand-primary)' }} />

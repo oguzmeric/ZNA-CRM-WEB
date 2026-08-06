@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, MapPin, Compass, FileText, CheckSquare, Wrench, Camera,
   Plus, Trash2, Save, Upload, X, Printer, Eye, FileInput, MessageSquare,
@@ -533,7 +534,7 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <button
-        onClick={() => navigate('/kesifler')}
+        onClick={() => geriDon(navigate, '/kesifler')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
@@ -286,7 +287,7 @@ function ModelDetay() {
   return (
     <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
       <button
-        onClick={() => navigate('/stok')}
+        onClick={() => geriDon(navigate, '/stok')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

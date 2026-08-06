@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, User, Plus, FileText, AlertCircle, ArrowRight,
   Phone, MessageCircle, Mail, Handshake, Building2, Monitor, Link2, Video, Send, Lightbulb,
@@ -252,7 +253,7 @@ function GorusmeDetay() {
 
       {/* Geri */}
       <button
-        onClick={() => navigate('/gorusmeler')}
+        onClick={() => geriDon(navigate, '/gorusmeler')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

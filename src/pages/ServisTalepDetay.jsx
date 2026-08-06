@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
@@ -289,7 +290,7 @@ export default function ServisTalepDetay() {
 
       {/* Geri */}
       <button
-        onClick={() => navigate('/servis-talepleri')}
+        onClick={() => geriDon(navigate, '/servis-talepleri')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

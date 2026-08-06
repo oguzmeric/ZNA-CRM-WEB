@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, FileSignature, Plus, FileUp, ExternalLink, CheckCircle2, XCircle,
   ShieldCheck, ShieldAlert, History, PauseCircle, PlayCircle, Ban,
@@ -227,7 +228,7 @@ export default function BayiDetay() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
-          <button onClick={() => navigate('/bayiler')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', font: '500 12px/16px var(--font-sans)', padding: 0, marginBottom: 6 }}>
+          <button onClick={() => geriDon(navigate, '/bayiler')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', font: '500 12px/16px var(--font-sans)', padding: 0, marginBottom: 6 }}>
             <ArrowLeft size={13} strokeWidth={1.5} /> Bayiler
           </button>
           <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
