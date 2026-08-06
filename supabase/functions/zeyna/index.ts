@@ -562,6 +562,10 @@ async function toolCalistir(
           return { tip, siralama: Object.values(sayim).sort((a, b) => b.adet - a.adet).slice(0, limit) }
         }
         case 'bu_ay_satis_toplami': {
+          // Satis tutarlari da teklif/fiyat kapisindan gecer (mig 238)
+          if (!ctx.teklifGorur) {
+            return { hata: 'Satis tutarlarini goruntuleme yetkiniz yok.' }
+          }
           const ay_baslangic = baslangic ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
           const ay_bitis = bitis ?? new Date().toISOString().slice(0, 10)
           const { data, error } = await supa
