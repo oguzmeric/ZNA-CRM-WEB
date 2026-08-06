@@ -250,6 +250,9 @@ export const stokBakiyeHaritasiGetir = () => cached('stokBakiye:map', async () =
     const kod = h.stok_kodu
     if (!kod) continue
     const m = Number(h.miktar) || 0
+    // 'sayim' = RESET noktası: miktar mutlak değerdir, önceki toplamı ezer
+    // (mobil sayım akışı + mig 270 trigger'ı ile aynı model)
+    if (h.hareket_tipi === 'sayim') { harita.set(kod, m); continue }
     const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
       : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
       : 0

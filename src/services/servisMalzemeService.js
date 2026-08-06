@@ -27,15 +27,17 @@ const oturumKullanici = async () => {
   return { id: kul?.id || null, ad: kul?.ad || null }
 }
 
-const hareketYaz = async ({ stokKodu, stokAdi, tip, aciklama, kullaniciId }) => {
+const hareketYaz = async ({ stokKodu, stokAdi, tip, miktar = 1, aciklama, kullaniciId, kullaniciAd }) => {
+  // stok_miktari bu insert'in trigger'ı ile güncellenir (mig 270) — elle yazılmaz
   await supabase.from('stok_hareketleri').insert({
     stok_kodu: stokKodu,
     stok_adi: stokAdi || null,
     hareket_tipi: tip,
-    miktar: 1,
+    miktar: Number(miktar) || 1,
     aciklama,
     tarih: new Date().toISOString(),
     kullanici_id: kullaniciId,
+    kullanici_ad: kullaniciAd || null,
   })
 }
 
@@ -124,10 +126,12 @@ export const servisMalzemeEkle = async ({
       stokKodu: urun.stokKodu,
       stokAdi: urun.stokAdi || urun.urunAdi,
       tip: 'cikis',
+      miktar: kalem ? 1 : (Number(miktar) || 1),
       aciklama: kalem
         ? `Serviste kullanıldı: ${kalem.seriNo} — ${servisKodu || 'servis #' + servisId}`
         : `Serviste kullanıldı (${miktar} ${urun.birim || 'Adet'}) — ${servisKodu || 'servis #' + servisId}`,
       kullaniciId: kul.id,
+      kullaniciAd: kul.ad,
     })
   }
   invalidatePrefix('stok')
@@ -152,10 +156,12 @@ export const servisMalzemeSil = async (malzeme, servisKodu) => {
       stokKodu: malzeme.stokKodu,
       stokAdi: malzeme.urunAdi,
       tip: 'giris',
+      miktar: malzeme.kalemId ? 1 : (Number(malzeme.miktar) || 1),
       aciklama: malzeme.seriNo
         ? `Servis kullanımı geri alındı: ${malzeme.seriNo} — ${servisKodu || 'servis #' + malzeme.servisId}`
         : `Servis kullanımı geri alındı (${malzeme.miktar} ${malzeme.birim || 'Adet'}) — ${servisKodu || 'servis #' + malzeme.servisId}`,
       kullaniciId: kul.id,
+      kullaniciAd: kul.ad,
     })
   }
   invalidatePrefix('stok')
@@ -213,10 +219,12 @@ export const servisMalzemeKullanildiYap = async (malzeme, { kalem = null, servis
       stokKodu: malzeme.stokKodu,
       stokAdi: malzeme.urunAdi,
       tip: 'cikis',
+      miktar: kalem ? 1 : (Number(malzeme.miktar) || 1),
       aciklama: kalem
         ? `Serviste kullanıldı: ${kalem.seriNo} — ${servisKodu || 'servis #' + malzeme.servisId}`
         : `Serviste kullanıldı (${malzeme.miktar} ${malzeme.birim || 'Adet'}) — ${servisKodu || 'servis #' + malzeme.servisId}`,
       kullaniciId: kul.id,
+      kullaniciAd: kul.ad,
     })
   }
   invalidatePrefix('stok')
