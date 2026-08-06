@@ -23,7 +23,7 @@ const trAsciify = (s) => String(s || '')
  * Sipariş onaylandı → ön siparişi oluşturana bildirim + SMS.
  * Best-effort — telefon yoksa veya SMS fail olursa akış bozulmaz.
  */
-async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, onaylayanAd, firmaAdi }) {
+async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, onaylayanAd, firmaAdi, gorusmeId, musteriId }) {
   if (!olusturanId) return
   try {
     const { data: k } = await supabase
@@ -33,17 +33,29 @@ async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, ona
       .maybeSingle()
     if (!k) return
 
+    // Ad boşsa müşteri kartından tamamla — "Firma için oluşturduğunuz..." diye
+    // adsız bildirim gidiyordu (06.08 canlı örnekleri)
+    let firma = firmaAdi
+    if (!firma && musteriId) {
+      const { data: m } = await supabase
+        .from('musteriler').select('firma').eq('id', musteriId).maybeSingle()
+      firma = m?.firma || null
+    }
+
     // Sistem bildirimi
     bildirimEkleDb({
       aliciId: k.id,
       baslik: 'Ön Sipariş Onaylandı — Siparişe Dönüştü',
-      mesaj: `${firmaAdi || 'Firma'} için oluşturduğunuz ön sipariş, ${onaylayanAd || 'yönetici'} tarafından onaylandı. Sipariş No: ${siparisNo}`,
+      mesaj: `${firma || 'Firma'} için oluşturduğunuz ön sipariş, ${onaylayanAd || 'yönetici'} tarafından onaylandı. Sipariş No: ${siparisNo}`,
       tip: 'siparis',
-      link: `/siparisler`,
+      // ⚠️ Alıcının ERİŞEBİLDİĞİ yere gitmeli: /siparisler admin+Abdullah(44)
+      // kısıtlı — depo ekibi (Salih/Mahmut) tıklayınca boş sayfaya düşüyordu.
+      // Görüşme detayındaki "Bağlı Ön Siparişler" kartı sipariş no'yu gösterir.
+      link: gorusmeId ? `/gorusmeler/${gorusmeId}` : '',
     }).catch(e => console.warn('[bildirim] onay:', e?.message))
 
     // SMS — log'lu gönderim
-    const mesaj = `ZNA CRM: On siparisiniz onaylandi.\n${trAsciify(firmaAdi || '')}\nSiparis: ${siparisNo}\nOnaylayan: ${trAsciify(onaylayanAd || '')}\ntalep.znateknoloji.com`
+    const mesaj = `ZNA CRM: On siparisiniz onaylandi.\n${trAsciify(firma || '')}\nSiparis: ${siparisNo}\nOnaylayan: ${trAsciify(onaylayanAd || '')}\ntalep.znateknoloji.com`
     smsGonderVeLogla({
       gsm: k.cep_telefon,
       mesaj,
@@ -504,7 +516,11 @@ export async function onSiparisiOnayla(onSiparisId, {
     onSiparisId,
     olusturanId: os.olusturan_id,
     onaylayanAd,
-    firmaAdi: os.firma_adi || null,
+    // firma_adi ön siparişte boş kalabiliyor ("Firma için..." diye gidiyordu) —
+    // görüşmeden çözümlenen adı yedek kullan
+    firmaAdi: os.firma_adi || gorusmeFirma || null,
+    gorusmeId: os.gorusme_id || null,
+    musteriId: os.musteri_id || musteriId || null,
   })
 
   return siparis.siparis_no
