@@ -193,7 +193,6 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
   const urunTanimi = talep.cihazTuru || talep.urunTanimi || '—'
   const seriNo = talep.seriNumarasi || '—'
   const markaModel = [talep.marka, talep.model].filter(Boolean).join(' / ') || '—'
-  const kunye = talep.kunyeNumarasi || talep.servisNo || talep.id || '—'
 
   const yedekParcalar = Array.isArray(talep.yedekParcalar) ? talep.yedekParcalar : []
   const genelToplam = yedekParcalar.reduce((s, p) => s + Number(p.tutar || 0), 0)
@@ -416,11 +415,12 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
               <td style={labelStyle}>Seri Numarası</td>
               <td style={valueStyle}>{seriNo}</td>
             </tr>
+            {/* Künye Numarası kaldırıldı (06.08): fiilen hiç kullanılmıyordu,
+                boş kalınca da iç kayıt id'si basılıyordu — müşteri belgesinde
+                anlamsız */}
             <tr>
               <td style={labelStyle}>Marka / Model</td>
-              <td style={valueStyle}>{markaModel}</td>
-              <td style={labelStyle}>Künye Numarası</td>
-              <td style={valueStyle}>{kunye}</td>
+              <td style={valueStyle} colSpan={3}>{markaModel}</td>
             </tr>
           </tbody>
         </table>

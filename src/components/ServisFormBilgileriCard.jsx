@@ -78,7 +78,6 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
   const [seriNo, setSeriNo]            = useState(talep?.seriNumarasi || '')
   const [marka, setMarka]              = useState(talep?.marka || '')
   const [model, setModel]              = useState(talep?.model || '')
-  const [kunye, setKunye]              = useState(talep?.kunyeNumarasi || '')
   const [cozumAciklamasi, setCozumAciklamasi] = useState(talep?.cozumAciklamasi || '')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [basariMsg, setBasariMsg] = useState(null)
@@ -92,10 +91,9 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
     setSeriNo(talep?.seriNumarasi || '')
     setMarka(talep?.marka || '')
     setModel(talep?.model || '')
-    setKunye(talep?.kunyeNumarasi || '')
     setCozumAciklamasi(talep?.cozumAciklamasi || '')
   }, [talep?.id, talep?.servisTipi, talep?.yukumluluk, talep?.servisYeri,
-      talep?.seriNumarasi, talep?.marka, talep?.model, talep?.kunyeNumarasi,
+      talep?.seriNumarasi, talep?.marka, talep?.model,
       talep?.cozumAciklamasi])
 
   const kaydet = async () => {
@@ -108,7 +106,6 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
         seriNumarasi: seriNo.trim() || null,
         marka: marka.trim() || null,
         model: model.trim() || null,
-        kunyeNumarasi: kunye.trim() || null,
         cozumAciklamasi: cozumAciklamasi.trim() || null,
         // yedekParcalar BİLEREK yazılmıyor: artık servis_malzemeleri'nden DB
         // trigger'ı türetiyor. Buradan yazmak trigger'la yarışır ve listeyi ezerdi.
@@ -159,10 +156,6 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
           <div>
             <Label htmlFor="sf-seri">Seri Numarası</Label>
             <Input id="sf-seri" value={seriNo} onChange={e => setSeriNo(e.target.value)} placeholder="—" />
-          </div>
-          <div>
-            <Label htmlFor="sf-kunye">Künye Numarası</Label>
-            <Input id="sf-kunye" value={kunye} onChange={e => setKunye(e.target.value)} placeholder="—" />
           </div>
           <div>
             <Label htmlFor="sf-marka">Marka</Label>
