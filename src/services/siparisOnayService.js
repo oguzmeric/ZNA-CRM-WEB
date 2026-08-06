@@ -612,6 +612,13 @@ export async function siparisOnayGeriAl(teklifId) {
   const onay = {
     durum: 'bekliyor',
     onay_notu: mevcut.onay_notu || null,   // hazırlayan notu korunur
+    // Erken onay bayrağı da korunur — düşerse teklif "hazır" kuyruğundan
+    // çıkıp onaylanamaz izleme grubuna düşüyordu (06.08 doğrulama turu)
+    ...(mevcut.erken ? {
+      erken: true,
+      erken_alan: mevcut.erken_alan || null,
+      erken_tarih: mevcut.erken_tarih || null,
+    } : {}),
   }
   const { error: e2 } = await supabase
     .from('teklifler')

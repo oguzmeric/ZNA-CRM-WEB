@@ -114,10 +114,15 @@ export default function StokHareketleri() {
   // milyonlarca karşılaştırma, açılış donuyordu. Artık tek geçişte toplanıyor.
   const bakiyeHaritasi = useMemo(() => {
     const m = new Map()
-    for (const h of hareketler) {
+    // 'sayim' RESET noktasıdır (mig 270 trigger + stokBakiyeHaritasiGetir ile
+    // aynı model) — reset'in doğru uygulanması için KRONOLOJİK (id artan)
+    // sırada gezilir; liste ekranda tarih desc geliyor.
+    const sirali = [...hareketler].sort((a, b) => (a.id || 0) - (b.id || 0))
+    for (const h of sirali) {
       const kod = h.stokKodu
       if (!kod) continue
       const mik = Number(h.miktar) || 0
+      if (h.hareketTipi === 'sayim') { m.set(kod, mik); continue }
       const isaret = (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') ? mik
         : (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') ? -mik
         : 0

@@ -408,11 +408,14 @@ function Stok() {
       return
     }
     const yeniUrunler = [...urunler]
+    // Kod havuzu ayrı: başarısız satırın kodu da havuza girer ki sonraki
+    // otomatik kod aynı çakışan koda takılmasın — ama ekrana/listeye GİRMEZ
+    const kodHavuzu = [...urunler]
     const yeniBakiye = new Map(bakiyeHaritasi)
     let basarili = 0
     const basarisizlar = []
     for (const satir of gecerliSatirlar) {
-      const stokKodu = satir.stokKodu || stokKoduOlustur(yeniUrunler)
+      const stokKodu = satir.stokKodu || stokKoduOlustur(kodHavuzu)
       const yeniUrun = await stokUrunEkle({
         stokKodu,
         stokAdi: satir.stokAdi,
@@ -425,9 +428,11 @@ function Stok() {
       if (!yeniUrun) {
         // Ürün eklenemedi (ör. kod çakışması) — hareket YAZILMAZ: yazılırsa
         // giriş DB'deki BAŞKA bir ürünün bakiyesine biner (06.08 denetimi)
+        kodHavuzu.push({ stokKodu })
         basarisizlar.push(`${satir.stokAdi} (${stokKodu})`)
         continue
       }
+      kodHavuzu.push(yeniUrun)
       yeniUrunler.push(yeniUrun)
       basarili++
       if (satir.ilkStok && Number(satir.ilkStok) > 0) {
@@ -441,6 +446,9 @@ function Stok() {
         })
         if (yeniHareket) {
           yeniBakiye.set(stokKodu, (yeniBakiye.get(stokKodu) || 0) + Number(satir.ilkStok))
+        } else {
+          // Ürün eklendi ama stok girişi yazılamadı — sessiz kalma
+          basarisizlar.push(`${satir.stokAdi} (${stokKodu}) — ürün eklendi, STOK GİRİŞİ yazılamadı`)
         }
       }
     }

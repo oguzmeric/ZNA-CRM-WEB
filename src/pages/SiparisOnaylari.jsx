@@ -509,7 +509,7 @@ function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi
     if (!geriAlYetkili) { setHata('Bu kararı sadece onaylayan kişi veya üst yetkili geri alabilir.'); return }
     const eminMi = window.confirm(
       sekme === 'onayli'
-        ? 'Onay geri alınacak. Sipariş tekrar "bekleyen" olacak, mevcut imza silinecek. Devam?'
+        ? 'Onay geri alınacak. Teklif tekrar "bekleyen" olacak, mevcut imza silinecek ve bu onayla oluşturulan ZNA-SIP siparişi İPTAL edilecek. Devam?'
         : 'Red kararı geri alınacak. Sipariş tekrar "bekleyen" olacak. Devam?'
     )
     if (!eminMi) return

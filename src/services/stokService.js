@@ -425,6 +425,61 @@ export const snTeknisyeneVer = async (id, teknisyenId) => {
   return toCamel(data)
 }
 
+// Birden çok depodaki SN'i TEK seferde teknisyene ver — tek UPDATE + tek
+// toplu audit hareketi. (Model detayında tek tek "Teknisyene Ver" tıklamak
+// 30+ kalemde işkenceydi — 06.08 talebi.)
+export const snTopluTeknisyeneVer = async (ids, teknisyenId) => {
+  const liste = [...new Set((ids || []).filter(Boolean))]
+  if (!liste.length) return []
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({ durum: 'teknisyende', teknisyen_id: teknisyenId })
+    .in('id', liste)
+    .eq('durum', 'depoda')   // yarış koşulu: yalnız hâlâ depoda olanlar
+    .select()
+  if (error) { console.error('snTopluTeknisyeneVer:', error.message); throw error }
+  if (data?.length) {
+    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', teknisyenId).maybeSingle()
+    const snler = data.map(k => k.seri_no).filter(Boolean)
+    const ozet = snler.slice(0, 10).join(', ') + (snler.length > 10 ? ` …(+${snler.length - 10})` : '')
+    await hareketEkle({
+      stokKodu: data[0].stok_kodu,
+      stokAdi: data[0].marka || data[0].model,
+      hareketTipi: 'transfer_cikis',
+      miktar: data.length,
+      aciklama: `${data.length} SN teknisyene verildi → ${teknisyen?.ad || '?'}: ${ozet}`,
+    })
+  }
+  invalidatePrefix('stok')
+  return arrayToCamel(data || [])
+}
+
+// Birden çok teknisyendeki SN'i TEK seferde depoya çek — tek UPDATE + tek audit
+export const snTopluDepoyaCek = async (ids) => {
+  const liste = [...new Set((ids || []).filter(Boolean))]
+  if (!liste.length) return []
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({ durum: 'depoda' })   // teknisyen_id trigger ile null olur
+    .in('id', liste)
+    .eq('durum', 'teknisyende')
+    .select()
+  if (error) { console.error('snTopluDepoyaCek:', error.message); throw error }
+  if (data?.length) {
+    const snler = data.map(k => k.seri_no).filter(Boolean)
+    const ozet = snler.slice(0, 10).join(', ') + (snler.length > 10 ? ` …(+${snler.length - 10})` : '')
+    await hareketEkle({
+      stokKodu: data[0].stok_kodu,
+      stokAdi: data[0].marka || data[0].model,
+      hareketTipi: 'transfer_giris',
+      miktar: data.length,
+      aciklama: `${data.length} SN depoya çekildi: ${ozet}`,
+    })
+  }
+  invalidatePrefix('stok')
+  return arrayToCamel(data || [])
+}
+
 // SN'i depoya çek — durum='depoda', teknisyen_id trigger ile null olur + audit
 export const snDepoyaCek = async (id) => {
   // Önce mevcut teknisyen bilgisini al
@@ -640,6 +695,8 @@ export const stokCikisKontrol = async (kalemler) => {
   const bakiyeler = new Map()
   for (const h of data || []) {
     const m = Number(h.miktar) || 0
+    // 'sayim' = RESET noktası (stokBakiyeHaritasiGetir ile aynı model)
+    if (h.hareket_tipi === 'sayim') { bakiyeler.set(h.stok_kodu, m); continue }
     const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
       : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
       : 0

@@ -147,6 +147,15 @@ serve(async (req) => {
           kullaniciAdiAday = `${kokAd}${i}`
         }
 
+        // firma_adi ZORUNLU: musteri_teklif_talepleri RLS insert CHECK'i
+        // "firma_adi = kullanicinin firma_adi'si" kosuluna dayanir — bos
+        // kalirsa musteri portal Teklif Iste hicbir zaman calismaz (06.08).
+        const { data: firmaRow } = await supa
+          .from('musteriler')
+          .select('firma')
+          .eq('id', davet.musteri_id)
+          .maybeSingle()
+
         const { data: yeni, error: insertErr } = await supa
           .from('kullanicilar')
           .insert({
@@ -157,6 +166,7 @@ serve(async (req) => {
             auth_id: authUserId,
             tip: 'musteri',
             musteri_id: davet.musteri_id,
+            firma_adi: firmaRow?.firma || null,
             durum: 'cevrimdisi',
             onay_durum: 'onaylandi',  // admin davet ettigi icin auto-approved
           })
