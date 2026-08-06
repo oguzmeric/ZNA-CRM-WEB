@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { katalogUrunleriniGetir } from '../../services/stokService'
+import { musteriTalepEkle } from '../../services/teklifService'
 import CustomSelect from '../../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
@@ -30,6 +31,7 @@ export default function TeklifIste() {
   const [telefon, setTelefon] = useState('')
   const [hatalar, setHatalar] = useState({})
   const [gonderildi, setGonderildi] = useState(false)
+  const [gonderiliyor, setGonderiliyor] = useState(false)
   const [buyukGorsel, setBuyukGorsel] = useState(null)
 
   useEffect(() => {
@@ -74,24 +76,28 @@ export default function TeklifIste() {
     return Object.keys(h).length === 0
   }
 
-  const gonder = () => {
+  const gonder = async () => {
     if (!dogrula()) return
-    const mevcutlar = JSON.parse(localStorage.getItem('musteri_teklif_talepleri') || '[]')
-    const sayi = mevcutlar.length + 1
-    const yeni = {
-      id: crypto.randomUUID(),
-      talepNo: `TT-${String(sayi).padStart(4, '0')}`,
-      musteriId: kullanici.id, musteriAd: kullanici.ad,
-      firmaAdi: kullanici.firmaAdi || '',
-      urunler: sepet.map(s => ({
-        isim: s.urun.stokAdi, adet: String(s.adet),
-        stokKodu: s.urun.stokKodu, marka: s.urun.marka || '',
-      })),
-      aciklama, butce, iletisimKisi, telefon,
-      tarih: new Date().toISOString(), durum: 'bekliyor',
+    setGonderiliyor(true)
+    try {
+      // Talep DB'ye yazılır — personel Teklifler > Müşteri Talepleri buradan
+      // okur. talep_no DB trigger'ından gelir (mig 269).
+      await musteriTalepEkle({
+        firmaAdi: kullanici.firmaAdi || '',
+        urunler: sepet.map(s => ({
+          isim: s.urun.stokAdi, adet: String(s.adet),
+          stokKodu: s.urun.stokKodu, marka: s.urun.marka || '',
+        })),
+        aciklama, butce, iletisimKisi, telefon,
+        durum: 'bekliyor',
+      })
+      setGonderildi(true)
+    } catch (e) {
+      console.error('[TeklifIste gonder]', e)
+      setHatalar({ genel: 'Talebiniz gönderilemedi. Lütfen tekrar deneyin; sorun sürerse bizi arayın.' })
+    } finally {
+      setGonderiliyor(false)
     }
-    localStorage.setItem('musteri_teklif_talepleri', JSON.stringify([...mevcutlar, yeni]))
-    setGonderildi(true)
   }
 
   if (gonderildi) {
@@ -424,14 +430,19 @@ export default function TeklifIste() {
               <Input type="tel" value={telefon} onChange={e => setTelefon(e.target.value)} placeholder="0xxx xxx xx xx" />
             </div>
 
+            {hatalar.genel && (
+              <p style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--danger)', margin: 0 }}>
+                {hatalar.genel}
+              </p>
+            )}
             <Button
               variant="primary"
               iconLeft={<Check size={14} strokeWidth={2} />}
               onClick={gonder}
-              disabled={sepet.length === 0}
+              disabled={sepet.length === 0 || gonderiliyor}
               style={{ width: '100%', justifyContent: 'center' }}
             >
-              Teklif talebi gönder
+              {gonderiliyor ? 'Gönderiliyor…' : 'Teklif talebi gönder'}
             </Button>
           </div>
         </Card>

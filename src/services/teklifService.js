@@ -122,7 +122,10 @@ export const musteriTalepleriniGetir = async () => {
 
 export const musteriTalepEkle = async (talep) => {
   const { id, ...rest } = talep
-  const { data } = await supabase.from('musteri_teklif_talepleri').insert(toSnake(rest)).select().single()
+  // talep_no gönderilmez — DB trigger üretir (mig 269). Hata sessiz yutulmaz:
+  // müşteriye "talebiniz alındı" ancak insert gerçekten başarılıysa denir.
+  const { data, error } = await supabase.from('musteri_teklif_talepleri').insert(toSnake(rest)).select().single()
+  if (error) throw new Error(error.message)
   return toCamel(data)
 }
 
