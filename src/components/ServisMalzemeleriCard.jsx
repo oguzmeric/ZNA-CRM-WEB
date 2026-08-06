@@ -289,10 +289,10 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
   }
 
   const satirKutu = {
-    display: 'flex', alignItems: 'center', gap: 10,
-    // Dar ekranda sabit genişlikli alanlar (miktar/fiyat/faturalandırma/Cihaz)
-    // kartın DIŞINA taşıp sağ paneldeki kartların üstüne biniyordu — sarsın.
-    flexWrap: 'wrap',
+    // İki katlı satır: üstte ürün kimliği (ad+kod+SN), altta kontroller.
+    // Tek satırda sabit genişlikli alanlar dar kolonda adla yarışıp
+    // taşıyor/karışıyordu (06.08 sağ panelin üstüne binme vakası).
+    display: 'flex', flexDirection: 'column', gap: 6,
     padding: '8px 10px', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
   }
@@ -406,6 +406,8 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
                     {m.kullaniciAd || '—'} · {tarihFmt(m.tarih)}
                   </div>
                 </div>
+                {/* Kontroller — ikinci kat, sağa yaslı; çok dar ekranda kendi içinde sarar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {/* S/N'li satırda miktar hep 1 — SN tekildir */}
                 <div style={{ width: 70 }}>
                   <Input type="number" className="sayi-sade" min="0.001" value={m.miktar}
@@ -459,6 +461,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
                   }}>
                   <Trash2 size={12} strokeWidth={1.5} />
                 </button>
+                </div>
               </div>
             ))}
           </div>
