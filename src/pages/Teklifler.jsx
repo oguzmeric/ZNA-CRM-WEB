@@ -187,12 +187,10 @@ export default function Teklifler() {
     toast.success('Teklif silindi.')
   }
 
-  // Eski faturayaDonustur KALDIRILDI (2026-07-15): localStorage doldurup
-  // /satislar/yeni'ye gidiyordu — proforma sistemini kurma sebebimiz olan
-  // "satışçı fatura numarasını kendi uydurur" yolunun ta kendisi. Menüden
-  // kaldırılan akışın arka kapısıydı. Artık teklif detayına ?proforma=1 ile
-  // gidilir, proforma modalı orada kendiliğinden açılır.
-  const proformayaGit = (teklif) => navigate(`/teklifler/${teklif.id}?proforma=1`)
+  // Eski faturayaDonustur KALDIRILDI (2026-07-15); ?proforma=1 kısayolu da
+  // KALDIRILDI (2026-08-06): proforma artık TEKLİFTEN kesilmez — teklif
+  // siparişe dönüşür, proforma SİPARİŞ üzerinden kesilir (faturaTalepService
+  // aynı kuralı sunucu tarafında da uygular).
 
   const siralayici = {
     yeni:          (a, b) => new Date(b.tarih || b.olusturmaTarih || 0) - new Date(a.tarih || a.olusturmaTarih || 0),
@@ -607,9 +605,10 @@ export default function Teklifler() {
                                     <CheckCircle2 size={12} strokeWidth={1.5} /> Fatura oluşturuldu
                                   </button>
                                 ) : t.onayDurumu === 'kabul' ? (
-                                  <Button variant="primary" size="sm" iconLeft={<Receipt size={12} strokeWidth={1.5} />} onClick={() => proformayaGit(t)}>
-                                    Proforma oluştur
-                                  </Button>
+                                  // İŞ KURALI (06.08): proforma TEKLİFTEN kesilmez — teklif
+                                  // siparişe dönüşür, proforma SİPARİŞ üzerinden kesilir.
+                                  // (Teklif + sipariş çifte proformaya yol açıyordu.)
+                                  <Badge tone="success">Kabul</Badge>
                                 ) : (
                                   <Badge tone={onay.tone}>{onay.isim}</Badge>
                                 )}

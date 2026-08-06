@@ -77,6 +77,28 @@ export const bekleyenFaturaTalepSayisi = async () => {
 
 export const faturaTalebiEkle = async (talep) => {
   const { id, olusturmaTarih, guncellemeTarih, talepNo, ...rest } = talep
+
+  // İŞ KURALI (06.08): proforma TEKLİFTEN kesilmez — teklif siparişe
+  // dönüştükten sonra SİPARİŞ üzerinden kesilir. Teklif + sipariş yolu birlikte
+  // açıkken aynı iş iki kez proformalanıyordu (FTL-16/22 ve FTL-17/21 çiftleri).
+  // Servis talebi kaynaklı proformalar bu kuralın dışındadır.
+  if (rest.teklifId && !rest.siparisId && !rest.servisTalepId) {
+    throw new Error('Proforma teklif aşamasında kesilemez. Teklifi siparişe dönüştürüp proformayı sipariş üzerinden oluşturun.')
+  }
+
+  // Aynı siparişe ikinci proforma da açılmasın (reddedilmişse yenisi serbest)
+  if (rest.siparisId) {
+    const { data: mevcut } = await supabase
+      .from('fatura_talepleri')
+      .select('talep_no, durum')
+      .eq('siparis_id', Number(rest.siparisId))
+      .neq('durum', 'reddedildi')
+      .limit(1)
+    if (mevcut?.[0]) {
+      throw new Error(`Bu sipariş için zaten ${mevcut[0].talep_no} numaralı proforma var (${mevcut[0].durum}).`)
+    }
+  }
+
   const { data, error } = await supabase
     .from('fatura_talepleri')
     .insert(toSnake(rest))   // talep_no DB trigger'ından gelir

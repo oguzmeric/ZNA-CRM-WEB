@@ -1314,9 +1314,13 @@ function TeklifDetay() {
             )
           )}
 
-          {/* Fatura talebi — bekleyen/red talep varsa kuyruğa götür, yoksa talep aç */}
-          {!yeni && !ilgiliFatura && form?.onayDurumu === 'kabul' && (
-            faturaTalebi && faturaTalebi.durum === 'bekliyor' ? (
+          {/* İŞ KURALI (06.08): proforma TEKLİFTEN kesilmez — teklif siparişe
+              dönüşür, proforma SİPARİŞ üzerinden kesilir. "Proforma Oluştur"
+              butonu bu yüzden kaldırıldı (teklif + sipariş çifte proformaya
+              yol açıyordu: FTL-16/22, FTL-17/21). Eski bekleyen talepler için
+              izleme rozeti duruyor; servis katmanında da aynı kilit var. */}
+          {!yeni && !ilgiliFatura && form?.onayDurumu === 'kabul' &&
+            faturaTalebi && faturaTalebi.durum === 'bekliyor' && (
               <Button
                 variant="secondary"
                 iconLeft={<Clock size={14} strokeWidth={1.5} />}
@@ -1325,17 +1329,6 @@ function TeklifDetay() {
               >
                 Proforma Gönderildi
               </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                iconLeft={<Receipt size={14} strokeWidth={1.5} />}
-                onClick={faturaTalebiAc}
-                disabled={faturaTalepMesgul}
-                title="Fatura yetkilisine proforma gönder — gerçek faturayı muhasebe keser"
-              >
-                {faturaTalepMesgul ? 'Hazırlanıyor…' : 'Proforma Oluştur'}
-              </Button>
-            )
           )}
           {/* Satış sözleşmesi (spec: teklif onaylandıktan sonra tek tuşla üretim).
               Zaten oluşturulmuşsa buton kilitlenir, mevcut sözleşmeye götürür (mig 186). */}
