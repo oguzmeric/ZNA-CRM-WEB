@@ -510,11 +510,21 @@ function Gorusmeler() {
     return <SkeletonList />
   }
 
+  // TEK EKRAN (06.08): form kapaliyken sayfa scroll'u YOK — baslik ve filtreler
+  // sabit, yalniz tablo kayar (Gorevler ile ayni iskelet).
+  const tekEkran = !goster
   return (
-    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+    <div style={{
+      padding: 16, maxWidth: 1440, margin: '0 auto',
+      ...(tekEkran ? {
+        maxWidth: 'none',
+        height: 'calc(100vh - 56px)', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      } : {}),
+    }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 className="t-h1">Görüşmeler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
@@ -568,7 +578,7 @@ function Gorusmeler() {
       </div>
 
       {/* Görüşen + konu + arama */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
         <div style={{ gridColumn: 'span 2' }}>
           <Label>Arama</Label>
           <SearchInput
@@ -1035,7 +1045,10 @@ function Gorusmeler() {
 
       {/* Liste — form acikken gizle */}
       {!goster && (
-      <Card padding={0}>
+      <Card padding={0} style={{
+        overflow: 'hidden',
+        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+      }}>
         {gorunenGorusmeler.length === 0 ? (
           <div style={{ padding: 32 }}>
             <EmptyState
@@ -1044,7 +1057,8 @@ function Gorusmeler() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'hidden' }}>
+          <>
+          <div style={{ overflowX: 'hidden', flex: 1, minHeight: 0, overflowY: 'auto' }}>
             <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
               <colgroup>
                 <col style={{ width: 90 }} />
@@ -1069,6 +1083,7 @@ function Gorusmeler() {
                       letterSpacing: '0.04em',
                       borderBottom: '1px solid var(--border-default)',
                       whiteSpace: 'nowrap',
+                      position: 'sticky', top: 0, zIndex: 1,
                     }}>{h}</th>
                   ))}
                 </tr>
@@ -1226,15 +1241,17 @@ function Gorusmeler() {
                 ))}
               </tbody>
             </table>
-            <Sayfalama
-              aktifSayfa={aktifSayfa}
-              toplamSayfa={toplamSayfa}
-              toplam={gorunenGorusmeler.length}
-              sayfaBoyutu={sayfaBoyutu}
-              setSayfa={setSayfa}
-              setSayfaBoyutu={setSayfaBoyutu}
-            />
           </div>
+          {/* Sayfalama kayan alanin DISINDA — altta sabit kalir */}
+          <Sayfalama
+            aktifSayfa={aktifSayfa}
+            toplamSayfa={toplamSayfa}
+            toplam={gorunenGorusmeler.length}
+            sayfaBoyutu={sayfaBoyutu}
+            setSayfa={setSayfa}
+            setSayfaBoyutu={setSayfaBoyutu}
+          />
+          </>
         )}
       </Card>
       )}
