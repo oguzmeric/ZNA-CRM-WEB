@@ -85,8 +85,17 @@ const bosOpsiyonForm = {
 }
 
 function stokKoduOlustur(mevcutlar) {
-  const sayi = mevcutlar.length + 1
-  return `STK${String(sayi).padStart(5, '0')}`
+  // adet+1 DEĞİL max+1: silinen ürünler sayacı geriletir, verilmiş kod
+  // yeniden önerilir (06.08: STK02452 doluydu — otomatik modda ürün eklenemiyordu)
+  let max = 0
+  for (const u of mevcutlar) {
+    const m = /^STK(\d+)$/i.exec(u?.stokKodu ?? '')
+    if (m) {
+      const n = parseInt(m[1], 10)
+      if (n > max) max = n
+    }
+  }
+  return `STK${String(max + 1).padStart(5, '0')}`
 }
 
 function Stok() {
@@ -400,6 +409,8 @@ function Stok() {
     }
     const yeniUrunler = [...urunler]
     const yeniBakiye = new Map(bakiyeHaritasi)
+    let basarili = 0
+    const basarisizlar = []
     for (const satir of gecerliSatirlar) {
       const stokKodu = satir.stokKodu || stokKoduOlustur(yeniUrunler)
       const yeniUrun = await stokUrunEkle({
@@ -411,7 +422,14 @@ function Stok() {
         minStok: satir.minStok,
         aciklama: satir.aciklama,
       })
-      if (yeniUrun) yeniUrunler.push(yeniUrun)
+      if (!yeniUrun) {
+        // Ürün eklenemedi (ör. kod çakışması) — hareket YAZILMAZ: yazılırsa
+        // giriş DB'deki BAŞKA bir ürünün bakiyesine biner (06.08 denetimi)
+        basarisizlar.push(`${satir.stokAdi} (${stokKodu})`)
+        continue
+      }
+      yeniUrunler.push(yeniUrun)
+      basarili++
       if (satir.ilkStok && Number(satir.ilkStok) > 0) {
         const yeniHareket = await stokHareketEkle({
           stokKodu,
@@ -430,7 +448,13 @@ function Stok() {
     setBakiyeHaritasi(yeniBakiye)
     setExcelModal(false)
     setExcelOnizleme(null)
-    toast.success(`${gecerliSatirlar.length} ürün aktarıldı.`)
+    if (basarisizlar.length === 0) {
+      toast.success(`${basarili} ürün aktarıldı.`)
+    } else {
+      const ozet = basarisizlar.slice(0, 3).join(', ') + (basarisizlar.length > 3 ? ` ve ${basarisizlar.length - 3} satır daha` : '')
+      if (basarili === 0) toast.error(`Hiçbir ürün aktarılamadı. Başarısız: ${ozet}`)
+      else toast.error(`${basarili} ürün aktarıldı; ${basarisizlar.length} satır AKTARILAMADI: ${ozet}`)
+    }
   }
 
   const opsiyonAc = (u) => {
