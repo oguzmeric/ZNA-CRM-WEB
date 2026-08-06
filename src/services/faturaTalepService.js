@@ -13,6 +13,7 @@ import { cokluBildirimEkle } from './bildirimService'
 import { smsGonderVeLogla } from './smsLogService'
 import { satisEkle } from './satisService'
 import { musteriGetir } from './musteriService'
+import { formEnvanterKalemleri } from './servisMalzemeService'
 
 export const FATURA_TALEP_DURUM = {
   BEKLIYOR:    'bekliyor',
@@ -122,9 +123,14 @@ async function faturaYetkililerineBildir(talep) {
     const kisiler = data || []
     const alicilar = [...new Set(kisiler.map(k => k.id))]
     if (!alicilar.length) return
+    // Servis kaynaklı proformada tutar yok — "0 TL" yazmak yanıltıyor
+    const tutarMetni = Number(talep.genelToplam) > 0
+      ? `${talep.genelToplam} ${talep.paraBirimi}`
+      : 'tutar kesimde girilecek'
+    const kaynakMetni = talep.teklifNo || (talep.servisTalepId ? 'servis faturası' : 'talep')
     await cokluBildirimEkle(alicilar, {
       baslik: `Proforma fatura — ${talep.firmaAdi}`,
-      mesaj: `${talep.talepNo} · ${talep.teklifNo || 'teklif'} · ${talep.genelToplam} ${talep.paraBirimi}`,
+      mesaj: `${talep.talepNo} · ${kaynakMetni} · ${tutarMetni}`,
       tip: 'uyari',
       link: '/fatura-talepleri',
       meta: { kaynak: 'fatura_talebi', talep_id: talep.id },
@@ -132,7 +138,7 @@ async function faturaYetkililerineBildir(talep) {
 
     // SMS — yalnız fatura YETKİLİLERİNE (muhasebe); adminlere in-app yeter.
     // Telefonu boş olan yetkili sms_gonderim_log'a 'atlandi' düşer.
-    const smsMesaj = `ZNA CRM: Yeni proforma fatura talebi ${talep.talepNo} - ${(talep.firmaAdi || '').slice(0, 40)}. Tutar: ${talep.genelToplam} ${talep.paraBirimi}. Detay: talep.znateknoloji.com/fatura-talepleri`
+    const smsMesaj = `ZNA CRM: Yeni proforma fatura talebi ${talep.talepNo} - ${(talep.firmaAdi || '').slice(0, 40)}. Tutar: ${Number(talep.genelToplam) > 0 ? `${talep.genelToplam} ${talep.paraBirimi}` : 'kesimde girilecek'}. Detay: talep.znateknoloji.com/fatura-talepleri`
     for (const k of kisiler.filter(x => x.faturaYetkilisi ?? x.fatura_yetkilisi)) {
       smsGonderVeLogla({
         gsm: k.cep_telefon || '',
@@ -270,9 +276,21 @@ export const faturaDosyaUrl = async (yol) => {
  * Talebi gerçek faturaya dönüştürür: satislar kaydını AÇAR ve talebi kapatır.
  * Satış kaydı yalnız burada oluşur — talep aşamasında ciro/raporlara sızmasın.
  */
-export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli }) => {
+export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli, tutar }) => {
   const no = (faturaNo || '').trim()
   if (!no) return { _hata: 'Fatura numarası zorunludur.' }
+
+  // Tutar: proforma 0 TL açıldıysa (servis kaynaklı) muhasebe kesim anında girer.
+  // 0 TL fatura = satislar'a 0 TL ciro kaydı (FTL-2026-000025 olayı) — hangi
+  // kaynaktan gelirse gelsin ASLA kaydedilmez.
+  const r2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
+  const girildi = Number(tutar?.araToplam) > 0 || Number(tutar?.kdvToplam) > 0
+  const araT = girildi ? r2(tutar?.araToplam) : (Number(talep.araToplam) || 0)
+  const kdvT = girildi ? r2(tutar?.kdvToplam) : (Number(talep.kdvToplam) || 0)
+  const genelT = girildi ? r2(araT + kdvT) : (Number(talep.genelToplam) || 0)
+  if (!(genelT > 0)) {
+    return { _hata: 'Fatura tutarı 0 olamaz — kesilen faturanın KDV hariç toplamı ile KDV tutarını girin.' }
+  }
 
   if (dosya) {
     const pdfMi = dosya.type === 'application/pdf' || /\.pdf$/i.test(dosya.name)
@@ -326,10 +344,10 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irs
       notlar: talep.talepNotu || '',
       teklifId: talep.teklifId ? String(talep.teklifId) : null,
       teklifNo: talep.teklifNo || '',
-      araToplam: Number(talep.araToplam) || 0,
+      araToplam: araT,
       iskontoToplam: 0,
-      kdvToplam: Number(talep.kdvToplam) || 0,
-      genelToplam: Number(talep.genelToplam) || 0,
+      kdvToplam: kdvT,
+      genelToplam: genelT,
       odenenToplam: 0,
       satirlar: (talep.kalemler || []).map((k, i) => ({
         stokKodu: k.stokKodu || '',
@@ -368,6 +386,9 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irs
       faturalama_tarihi: new Date().toISOString(),
       satis_id: satis?.id ?? null,
       red_nedeni: null,
+      // Kesim anında girilen tutar talebe de işlenir — talep kaydı ve
+      // proforma çıktısı gerçek faturayı yansıtsın
+      ...(girildi ? { ara_toplam: araT, kdv_toplam: kdvT, genel_toplam: genelT } : {}),
     })
     .eq('id', talep.id)
     .select()
@@ -508,11 +529,13 @@ export const tekliftenTalep = (teklif, musteri, kullanici) => {
 // ---------- Servisten proforma ----------
 
 /**
- * Servisten fatura_talebi payload'ı. Servislerin fiyatlı kalemi YOK — proforma
- * müşteri künyesi + servis konusuyla, tutarlar BOŞ açılır; muhasebe gerçek
- * faturayı keserken tutar + ödeme + PDF girer.
+ * Servisten fatura_talebi payload'ı. Servislerin fiyatlı kalemi YOK — tutarlar
+ * BOŞ açılır; muhasebe gerçek faturayı keserken tutarı girer (faturayiKaydet
+ * 0 TL'yi reddeder). Kullanılan malzemeler FİYATSIZ kalem olarak taşınır ki
+ * muhasebe NE faturalanacağını görsün (FTL-2026-000025: bomboş proforma
+ * "hata" sanılmıştı).
  */
-export const servistenTalep = (servis, musteri, kullanici, not = '') => ({
+export const servistenTalep = (servis, musteri, kullanici, not = '', malzemeler = []) => ({
   servisTalepId: servis.id ? Number(servis.id) : null,
   teklifId: null,
   teklifNo: '',
@@ -527,7 +550,16 @@ export const servistenTalep = (servis, musteri, kullanici, not = '') => ({
   konu: servis.konu ? `Servis: ${servis.konu}` : 'Servis faturası',
   paraBirimi: 'TL',
   dovizKuru: null,
-  kalemler: [],
+  // Serviste kullanılan malzemeler — fiyatsız anlık görüntü (fiyat muhasebede)
+  kalemler: (malzemeler || []).map(m => ({
+    stokKodu: m.stokKodu || '',
+    urunAdi: m.seriNo ? `${m.urunAdi || ''} (S/N: ${m.seriNo})` : (m.urunAdi || ''),
+    aciklama: '',
+    miktar: Number(m.miktar) || 1,
+    birim: m.birim || 'Adet',
+    birimFiyat: 0, iskontoOran: 0, kdvOran: 20,
+    araToplam: 0, kdvTutar: 0, satirToplam: 0,
+  })),
   araToplam: 0, kdvToplam: 0, genelToplam: 0,
   odemeSekli: '',
   vadeTarihi: null,
@@ -551,7 +583,9 @@ export const servistenFaturaTalebiAc = async ({ servis, kullanici, not = '' }) =
   if (mevcut) return { _hata: `Bu servise zaten açık bir proforma var (${mevcut.talep_no}).` }
 
   const musteri = servis.musteriId ? await musteriGetir(servis.musteriId).catch(() => null) : null
-  const payload = servistenTalep(servis, musteri, kullanici, not)
+  // Kullanılan malzemeler (web + mobil S/N akışı birleşik) proformaya taşınır
+  const malzemeler = await formEnvanterKalemleri(servis.id).catch(() => [])
+  const payload = servistenTalep(servis, musteri, kullanici, not, malzemeler)
   let kayit
   try {
     kayit = await faturaTalebiEkle(payload)

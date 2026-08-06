@@ -225,6 +225,10 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
   const [faturaNo, setFaturaNo] = useState(talep.faturaNo || '')
   const [faturaTarihi, setFaturaTarihi] = useState(talep.faturaTarihi || bugun())
   const [odemeSekli, setOdemeSekli] = useState(talep.odemeSekli || '')
+  // Servis kaynaklı proforma 0 TL açılır — tutarı muhasebe kesim anında girer
+  const tutarYok = !(Number(talep.genelToplam) > 0)
+  const [araTutar, setAraTutar] = useState('')
+  const [kdvTutar, setKdvTutar] = useState('')
   const [dosya, setDosya] = useState(null)
   const [irsaliyeDosya, setIrsaliyeDosya] = useState(null)
   const [redAcik, setRedAcik] = useState(false)
@@ -251,10 +255,20 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
   const bekliyor = talep.durum === 'bekliyor'
   const meta = FATURA_TALEP_DURUM_META[talep.durum] || FATURA_TALEP_DURUM_META.bekliyor
 
+  // TR girişleri de kabul et: "12.500,50" / "12500,50" / "12500.50"
+  const sayiCoz = (v) => {
+    const s = String(v || '').trim()
+    const n = parseFloat(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
+    return Number.isFinite(n) ? n : 0
+  }
+
   const kaydet = async () => {
     setMesgul(true)
     try {
-      const sonuc = await faturayiKaydet({ talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli })
+      const sonuc = await faturayiKaydet({
+        talep, faturaNo, faturaTarihi, dosya, irsaliyeDosya, kullanici, odemeSekli,
+        tutar: tutarYok ? { araToplam: sayiCoz(araTutar), kdvToplam: sayiCoz(kdvTutar) } : undefined,
+      })
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
       toast.success(`${faturaNo} kaydedildi — Satış Faturaları'na eklendi.`)
       onTamamlandi()
@@ -380,12 +394,27 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <CodeBadge>{talep.talepNo}</CodeBadge>
           <Badge tone={meta.tone}>{meta.isim}</Badge>
+          {/* Kaynak rozeti — muhasebe bir bakışta servis/sipariş faturası olduğunu görsün */}
+          {talep.servisTalepId && <Badge tone="brand">Servis faturası</Badge>}
+          {talep.siparisId && <Badge tone="brand">Sipariş faturası</Badge>}
           <span style={{ font: '600 15px/22px var(--font-sans)' }}>{talep.firmaAdi}</span>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             {talep.teklifId && (
               <Button variant="tertiary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
                 onClick={() => navigate(`/teklifler/${talep.teklifId}`)}>
                 {talep.teklifNo || 'Teklife git'}
+              </Button>
+            )}
+            {talep.siparisId && (
+              <Button variant="tertiary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
+                onClick={() => navigate(`/siparisler/${talep.siparisId}`)}>
+                {talep.teklifNo || 'Siparişe git'}
+              </Button>
+            )}
+            {talep.servisTalepId && (
+              <Button variant="tertiary" size="sm" iconLeft={<ExternalLink size={13} strokeWidth={1.5} />}
+                onClick={() => navigate(`/servis-talepleri/${talep.servisTalepId}`)}>
+                Servise git
               </Button>
             )}
             <Button variant="secondary" size="sm" iconLeft={<Printer size={13} strokeWidth={1.5} />}
@@ -436,6 +465,15 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
 
           <div>
             <div style={baslikSt}>Tutar</div>
+            {tutarYok && bekliyor && (
+              <div style={{
+                background: 'var(--info-soft)', border: '1px solid var(--info)', borderRadius: 8,
+                padding: '8px 12px', marginBottom: 8, font: '400 12px/17px var(--font-sans)',
+              }}>
+                {talep.servisTalepId ? 'Servis faturası — serviste fiyat tutulmaz.' : 'Bu proformada tutar yok.'}
+                {' '}Kesilen faturanın tutarını aşağıdaki <strong>Kesilen Fatura</strong> bölümünde gireceksiniz.
+              </div>
+            )}
             <div style={{ background: 'var(--surface-sunken)', borderRadius: 8, padding: '10px 12px' }}>
               {[['Ara toplam', talep.araToplam], ['KDV', talep.kdvToplam]].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', font: '400 12.5px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
@@ -472,16 +510,29 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 </tr>
               </thead>
               <tbody>
-                {(talep.kalemler || []).map((k, i) => (
+                {(talep.kalemler || []).length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ ...miniHucre, color: 'var(--text-tertiary)' }}>
+                      {talep.servisTalepId
+                        ? 'Serviste kayıtlı malzeme yok — yapılan iş için "Servise git" ile kaynak servise bakın.'
+                        : 'Kalem yok.'}
+                    </td>
+                  </tr>
+                )}
+                {(talep.kalemler || []).map((k, i) => {
+                  // Servis kaynaklı kalemler fiyatsız taşınır — ₺0,00 yerine "—"
+                  const fiyatsiz = !(Number(k.birimFiyat) > 0)
+                  return (
                   <tr key={i}>
                     <td style={miniHucre}>{k.stokKodu || '—'}</td>
                     <td style={miniHucre}>{k.urunAdi}</td>
                     <td style={{ ...miniHucre, textAlign: 'right' }}>{k.miktar} {k.birim}</td>
-                    <td style={{ ...miniHucre, textAlign: 'right' }}>{fmtPara(k.birimFiyat, talep.paraBirimi)}</td>
-                    <td style={{ ...miniHucre, textAlign: 'right' }}>%{k.kdvOran}</td>
-                    <td style={{ ...miniHucre, textAlign: 'right', fontWeight: 600 }}>{fmtPara(k.satirToplam, talep.paraBirimi)}</td>
+                    <td style={{ ...miniHucre, textAlign: 'right' }}>{fiyatsiz ? '—' : fmtPara(k.birimFiyat, talep.paraBirimi)}</td>
+                    <td style={{ ...miniHucre, textAlign: 'right' }}>{fiyatsiz ? '—' : `%${k.kdvOran}`}</td>
+                    <td style={{ ...miniHucre, textAlign: 'right', fontWeight: 600 }}>{fiyatsiz ? '—' : fmtPara(k.satirToplam, talep.paraBirimi)}</td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -496,6 +547,22 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 <Label required>Fatura No</Label>
                 <Input value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="Ör. ZNA2026000000123" />
               </div>
+              {/* Proforma tutarsız açıldıysa (servis faturası) tutar burada girilir —
+                  0 TL fatura kaydına servis katmanı da izin vermez */}
+              {tutarYok && (
+                <>
+                  <div>
+                    <Label required>Ara Toplam (KDV hariç)</Label>
+                    <Input inputMode="decimal" value={araTutar} onChange={e => setAraTutar(e.target.value)}
+                      placeholder="Ör. 12.500,00" />
+                  </div>
+                  <div>
+                    <Label required>KDV Tutarı</Label>
+                    <Input inputMode="decimal" value={kdvTutar} onChange={e => setKdvTutar(e.target.value)}
+                      placeholder="Ör. 2.500,00" />
+                  </div>
+                </>
+              )}
               <div>
                 <Label>Fatura Tarihi</Label>
                 <Input type="date" value={faturaTarihi} onChange={e => setFaturaTarihi(e.target.value)} />
@@ -528,6 +595,11 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 </Button>
               </div>
             </div>
+            {tutarYok && (
+              <p className="t-caption" style={{ margin: '6px 0 0', fontWeight: 600 }}>
+                Genel toplam: {fmtPara(sayiCoz(araTutar) + sayiCoz(kdvTutar), talep.paraBirimi)} — kesilen faturayla birebir aynı olmalı.
+              </p>
+            )}
             <p className="t-caption" style={{ margin: '6px 0 0', color: 'var(--text-tertiary)' }}>
               Gerçek fatura muhasebe / e-arşiv sisteminde kesilir — buraya o faturanın
               PDF'ini yükleyin. CRM'de saklanır ve "Müşteriye Gönder" bu dosyayı iletir.
