@@ -427,6 +427,8 @@ function GorusmeDetay() {
                     : ''
                   const talep = await servisTalepEkle({
                     talepNo: null,
+                    // Kaynak bağı KOLONLA kurulur (açıklama metnine yazılmaz)
+                    gorusmeId: gorusme.id,
                     musteriId: gorusme.musteriId || null,
                     musteriAd: gorusme.muhatapAd || '',
                     firmaAdi: gorusme.firmaAdi || '',
@@ -434,12 +436,12 @@ function GorusmeDetay() {
                     altKategori: '',
                     konu: gorusme.konu || `${gorusme.firmaAdi || 'Müşteri'} servis talebi`,
                     lokasyon: lokasyonMetni,
-                    aciklama: [
-                      gorusme.notlar ? `Görüşme açıklaması: ${gorusme.notlar}` : null,
-                      gorusme.gorusmeSonucu ? `Görüşme sonucu: ${gorusme.gorusmeSonucu}` : null,
-                      gorusme.takipNotu ? `Takip notu: ${gorusme.takipNotu}` : null,
-                      `Kaynak görüşme: ${gorusme.aktNo || gorusme.gorusmeNo || '#' + gorusme.id}`,
-                    ].filter(Boolean).join('\n\n'),
+                    // Arıza Açıklaması ARIZAYI anlatmalı (kullanıcı, 06.08):
+                    // eskiden "Görüşme sonucu / Takip notu / Kaynak görüşme"
+                    // satırları da dökülüyordu — görüşme metadatası açıklama
+                    // değildir; kaynak zaten gorusme_id bağı + durum
+                    // geçmişindeki "ACT-… kaydından oluşturuldu" satırında.
+                    aciklama: gorusme.notlar || '',
                     aciliyet: 'normal',
                     ilgiliKisi: gorusme.muhatapAd || gorusme.gorusen || '',
                     durum: 'bekliyor',
