@@ -571,9 +571,11 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {fotolar.map((f, i) => (
                 <div key={i} style={{ border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden', pageBreakInside: 'avoid' }}>
-                  {/* Saha fotoğrafları telefondan olduğu gibi geliyor (3-6 MB).
-                      Küçültülmüş sürüm çekiliyor: 8 fotoluk talepte 25 MB → ~2,4 MB */}
-                  <img src={kucukGorsel(f.url)} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: '#f1f5f9' }} />
+                  {/* 'contain' ŞART: 'cover' fotoğrafı kutuya KIRPARAK sığdırıyordu —
+                      dikey telefon karelerinin üstü/altı kesilip "çekildiği gibi
+                      görünmüyor" şikayeti doğurdu (06.08). Belge kalitesi için
+                      1200px/82 çekilir (2'li gridde ~300 DPI baskı netliği). */}
+                  <img src={kucukGorsel(f.url, { genislik: 1200, kalite: 82 })} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 220, objectFit: 'contain', display: 'block', background: '#f8fafc' }} />
                   {f.ad && <div style={{ fontSize: 8, color: '#64748b', padding: '3px 6px', borderTop: '1px solid #e2e8f0' }}>{f.ad}</div>}
                 </div>
               ))}
