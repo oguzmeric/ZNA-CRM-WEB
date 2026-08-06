@@ -28,8 +28,9 @@ const oturumKullanici = async () => {
 }
 
 const hareketYaz = async ({ stokKodu, stokAdi, tip, miktar = 1, aciklama, kullaniciId, kullaniciAd }) => {
-  // stok_miktari bu insert'in trigger'ı ile güncellenir (mig 270) — elle yazılmaz
-  await supabase.from('stok_hareketleri').insert({
+  // stok_miktari bu insert'in trigger'ı ile güncellenir (mig 270) — elle yazılmaz.
+  // Hata YUTULMAZ: SN'siz üründe bakiyenin tek kaynağı bu kayıt (06.08 denetimi).
+  const { error } = await supabase.from('stok_hareketleri').insert({
     stok_kodu: stokKodu,
     stok_adi: stokAdi || null,
     hareket_tipi: tip,
@@ -39,6 +40,10 @@ const hareketYaz = async ({ stokKodu, stokAdi, tip, miktar = 1, aciklama, kullan
     kullanici_id: kullaniciId,
     kullanici_ad: kullaniciAd || null,
   })
+  if (error) {
+    console.error('hareketYaz:', error.message)
+    throw new Error('Stok hareketi yazılamadı: ' + error.message)
+  }
 }
 
 export const servisMalzemeleriGetir = async (servisId) => {
@@ -87,12 +92,18 @@ export const servisMalzemeEkle = async ({
 
   if (kalem && !planlanan) {
     // SN düşümü — teknisyen deposundan sahaya
-    const { error: kErr } = await supabase
+    const { data: dusen, error: kErr } = await supabase
       .from('stok_kalemleri')
       .update({ durum: 'sahada' })
       .eq('id', kalem.id)
       .eq('durum', 'teknisyende')  // yarış koşulu: hâlâ teknisyendeyse düş
+      .select('id')
     if (kErr) throw new Error('SN düşümü yapılamadı: ' + kErr.message)
+    // 0 satır = kalem artık teknisyende değil (paralel işlem/yarım kalan tekrar
+    // deneme). Sessizce devam edilirse MÜKERRER satır + hareket yazılıyordu.
+    if (!dusen?.length) {
+      throw new Error(`${kalem.seriNo || 'S/N'} artık teknisyen deposunda değil — liste yenilenip tekrar denenmeli.`)
+    }
   }
 
   const { data, error } = await supabase
@@ -178,11 +189,32 @@ export const servisMalzemeGuncelle = async (id, { miktar, birimFiyat, notlar, fa
     // derken zimmetten yalnız 1 kalem düşmüştü (06.08 TLP-2026-0062 vakası).
     // Birden çok cihaz = S/N listesinden çoklu seçim (Otomatik Seç ile N kalem).
     const { data: sat } = await supabase
-      .from('servis_malzemeleri').select('seri_no').eq('id', id).maybeSingle()
+      .from('servis_malzemeleri')
+      .select('seri_no, miktar, durum, stok_kodu, urun_adi, servis_id')
+      .eq('id', id).maybeSingle()
     if (sat?.seri_no) {
       throw new Error('S/N’li satırda adet her zaman 1’dir — birden fazla cihaz için üstteki S/N seçiminde adet yazıp "Otomatik Seç" kullanın; her cihaz zimmetten ayrı düşer.')
     }
-    alanlar.miktar = Number(miktar) || 0
+    const yeniM = Number(miktar) || 0
+    const eskiM = Number(sat?.miktar) || 0
+    const fark = yeniM - eskiM
+    // SN'siz 'kullanildi' satırda adet değişimi STOĞA da yansımalı: fark kadar
+    // cikis/giris hareketi (mig 270 trigger'ı bakiyeyi bundan günceller).
+    // Eskiden yalnız satır güncelleniyordu — forma 10 gider, stoktan 2 düşmüş
+    // olurdu (06.08 denetimi). Hareket yazılamazsa adet de değişmez (sıra önemli).
+    if (fark !== 0 && sat?.durum === 'kullanildi' && sat?.stok_kodu) {
+      const kul = await oturumKullanici()
+      await hareketYaz({
+        stokKodu: sat.stok_kodu,
+        stokAdi: sat.urun_adi,
+        tip: fark > 0 ? 'cikis' : 'giris',
+        miktar: Math.abs(fark),
+        aciklama: `Servis malzeme adedi güncellendi (${eskiM} → ${yeniM}) — servis #${sat.servis_id}`,
+        kullaniciId: kul.id,
+        kullaniciAd: kul.ad,
+      })
+    }
+    alanlar.miktar = yeniM
   }
   if (birimFiyat !== undefined) alanlar.birim_fiyat = Number(birimFiyat) || 0
   if (notlar !== undefined) alanlar.notlar = notlar || null
@@ -218,10 +250,17 @@ export const servisMalzemeKullanildiYap = async (malzeme, { kalem = null, servis
       tarih: new Date().toISOString(),
     })
     .eq('id', malzeme.id)
-    .select().single()
+    // Çift tıklama/yarış guard'ı: yalnız hâlâ 'planlanan' ise geçir — ikinci
+    // çağrı 0 satır görür, ikinci 'cikis' hareketi YAZILMAZ (06.08 denetimi).
+    .eq('durum', 'planlanan')
+    .select().maybeSingle()
   if (error) {
     if (kalem) await supabase.from('stok_kalemleri').update({ durum: 'teknisyende' }).eq('id', kalem.id)
     throw new Error('İşaretlenemedi: ' + error.message)
+  }
+  if (!data) {
+    if (kalem) await supabase.from('stok_kalemleri').update({ durum: 'teknisyende' }).eq('id', kalem.id)
+    throw new Error('Satır zaten "kullanıldı" olarak işaretlenmiş — mükerrer düşüm engellendi.')
   }
 
   if (malzeme.stokKodu) {

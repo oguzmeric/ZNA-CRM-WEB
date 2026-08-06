@@ -654,15 +654,9 @@ function Stok() {
               await stokKalemleriToplu(hazir)
               const yeniOzet = await stokKalemOzetleriniGetir()
               setKalemOzetleri(yeniOzet)
-              // Hareket kaydı ekle (giriş)
-              await stokHareketEkle({
-                stokKodu: form.stokKodu,
-                stokAdi: form.stokAdi,
-                hareketTipi: 'giris',
-                miktar: snListesi.length,
-                aciklama: `S/N ile toplu giriş (${snListesi.length} adet)`,
-                tarih: new Date().toISOString().split('T')[0],
-              })
+              // Özet 'giris' hareketi YAZILMAZ — DB köprü trigger'ı her yeni kalem
+              // için 'Ana Depo Girişi' kaydını zaten yazıyor; ikisi birden defteri
+              // ÇİFT şişiriyordu: 191 SN = 382 giriş görünüyordu (06.08 denetimi).
               toast.success(`${snListesi.length} adet S/N kaydedildi.`)
             } catch (e) {
               toast.error(e?.message || 'S/N kaydedilirken bir sorun oldu.')

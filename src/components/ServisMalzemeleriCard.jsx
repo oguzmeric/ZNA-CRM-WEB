@@ -154,6 +154,9 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
       setSnKalemler([]); setSeciliKalemIdler([])
     } catch (e) {
       toast.error(e?.message || 'Malzeme eklenemedi.')
+      // Toplu döngü yarım kaldıysa o ana kadar eklenenler DB'de — listeyi tazele
+      // ki tekrar denemede dedupe taze veriyle çalışsın (mükerrer düşüm engeli).
+      await yenile().catch(() => {})
     } finally { setMesgul(false) }
   }
 

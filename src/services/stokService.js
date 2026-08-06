@@ -387,10 +387,12 @@ const oturumKullaniciId = async () => {
   return kul?.id || null
 }
 
-// Ortak hareket ekleyici — kullanici_id otomatik
+// Ortak hareket ekleyici — kullanici_id otomatik.
+// Hata YUTULMAZ: hareket kaydı SN'siz üründe bakiyenin tek kaynağıdır (mig 270
+// trigger'ı buradan beslenir) — sessiz kayıp "başarılı görünen" tutarsızlık yaratır.
 const hareketEkle = async ({ stokKodu, stokAdi, hareketTipi, miktar, aciklama }) => {
   const kullaniciId = await oturumKullaniciId()
-  await supabase.from('stok_hareketleri').insert({
+  const { error } = await supabase.from('stok_hareketleri').insert({
     stok_kodu: stokKodu,
     stok_adi: stokAdi || null,
     hareket_tipi: hareketTipi,
@@ -399,6 +401,10 @@ const hareketEkle = async ({ stokKodu, stokAdi, hareketTipi, miktar, aciklama })
     tarih: new Date().toISOString(),
     kullanici_id: kullaniciId,
   })
+  if (error) {
+    console.error('hareketEkle:', error.message)
+    throw new Error('Stok hareketi yazılamadı: ' + error.message)
+  }
 }
 
 // Bir SN'i teknisyene ver — durum='teknisyende', teknisyen_id set + audit
@@ -410,17 +416,9 @@ export const snTeknisyeneVer = async (id, teknisyenId) => {
     .select()
     .single()
   if (error) { console.error('snTeknisyeneVer:', error.message); throw error }
-  // Audit hareketi ekle
-  if (data) {
-    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', teknisyenId).maybeSingle()
-    await hareketEkle({
-      stokKodu: data.stok_kodu,
-      stokAdi: data.marka || data.model,
-      hareketTipi: 'transfer_cikis',
-      miktar: 1,
-      aciklama: `SN teknisyene verildi: ${data.seri_no} → ${teknisyen?.ad || '?'}`,
-    })
-  }
+  // NOT (06.08 denetimi): elle özet hareket YAZILMAZ — kalem durum değişimini
+  // DB köprü trigger'ı (kalem_to_stok_hareket) zaten deftere yazıyor; ikisi
+  // birden defteri ÇİFT şişiriyordu (16 SN = 32 çıkış görünüyordu).
   invalidatePrefix('stok')
   return toCamel(data)
 }
@@ -438,18 +436,9 @@ export const snTopluTeknisyeneVer = async (ids, teknisyenId) => {
     .eq('durum', 'depoda')   // yarış koşulu: yalnız hâlâ depoda olanlar
     .select()
   if (error) { console.error('snTopluTeknisyeneVer:', error.message); throw error }
-  if (data?.length) {
-    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', teknisyenId).maybeSingle()
-    const snler = data.map(k => k.seri_no).filter(Boolean)
-    const ozet = snler.slice(0, 10).join(', ') + (snler.length > 10 ? ` …(+${snler.length - 10})` : '')
-    await hareketEkle({
-      stokKodu: data[0].stok_kodu,
-      stokAdi: data[0].marka || data[0].model,
-      hareketTipi: 'transfer_cikis',
-      miktar: data.length,
-      aciklama: `${data.length} SN teknisyene verildi → ${teknisyen?.ad || '?'}: ${ozet}`,
-    })
-  }
+  // Özet hareket YAZILMAZ — köprü trigger her kalem için 1'lik kaydı zaten
+  // yazıyor; özet+trigger defteri çift şişiriyordu (06.08 denetimi). Hareket
+  // listesindeki zincir gruplama 1'lik kayıtları tek satırda toplar.
   invalidatePrefix('stok')
   return arrayToCamel(data || [])
 }
@@ -465,17 +454,7 @@ export const snTopluDepoyaCek = async (ids) => {
     .eq('durum', 'teknisyende')
     .select()
   if (error) { console.error('snTopluDepoyaCek:', error.message); throw error }
-  if (data?.length) {
-    const snler = data.map(k => k.seri_no).filter(Boolean)
-    const ozet = snler.slice(0, 10).join(', ') + (snler.length > 10 ? ` …(+${snler.length - 10})` : '')
-    await hareketEkle({
-      stokKodu: data[0].stok_kodu,
-      stokAdi: data[0].marka || data[0].model,
-      hareketTipi: 'transfer_giris',
-      miktar: data.length,
-      aciklama: `${data.length} SN depoya çekildi: ${ozet}`,
-    })
-  }
+  // Özet hareket YAZILMAZ — köprü trigger 'Personelden İade' kaydını zaten yazıyor.
   invalidatePrefix('stok')
   return arrayToCamel(data || [])
 }
@@ -493,16 +472,7 @@ export const snDepoyaCek = async (id) => {
     .select()
     .single()
   if (error) { console.error('snDepoyaCek:', error.message); throw error }
-  if (data && onceki?.teknisyen_id) {
-    const { data: teknisyen } = await supabase.from('kullanicilar').select('ad').eq('id', onceki.teknisyen_id).maybeSingle()
-    await hareketEkle({
-      stokKodu: data.stok_kodu,
-      stokAdi: data.marka || data.model,
-      hareketTipi: 'transfer_giris',
-      miktar: 1,
-      aciklama: `SN depoya çekildi: ${data.seri_no} ← ${teknisyen?.ad || '?'}`,
-    })
-  }
+  // Özet hareket YAZILMAZ — köprü trigger 'Personelden İade' kaydını zaten yazıyor.
   invalidatePrefix('stok')
   return toCamel(data)
 }
@@ -679,28 +649,58 @@ export const stokCikisKontrol = async (kalemler) => {
   }
   if (!istenenler.size) return []
 
-  // Yalnız ilgili ürünlerin hareketleri, 3 kolon — bakiye burada taze sayılır
-  // (ekrandaki harita bayat olabilir; karar anında gerçek değer şart).
-  const { data, error } = await supabase
-    .from('stok_hareketleri')
-    .select('stok_kodu, hareket_tipi, miktar')
-    .in('stok_kodu', [...istenenler.keys()])
-  if (error) {
+  const kodlar = [...istenenler.keys()]
+  // SN'li üründe otorite stok_miktari (= depoda kalem sayısı, mig 272 türevi):
+  // hareket defteri SN'li üründe tarihsel çift kayıtlar içerebildiğinden
+  // defterden hesap yanlış 'yetersiz' uyarısı üretiyordu (06.08 denetimi).
+  const { data: urunler, error: uErr } = await supabase
+    .from('stok_urunler')
+    .select('stok_kodu, stok_miktari, seri_takipli')
+    .in('stok_kodu', kodlar)
+  if (uErr) {
     // Kontrol yapılamıyorsa akışı KİLİTLEME — uyarı özelliği kayıt özelliğini
     // bozamaz. Sessiz de kalma: konsola düşür, boş dön (uyarısız devam).
-    console.warn('stokCikisKontrol: bakiye okunamadı, uyarısız devam:', error.message)
+    console.warn('stokCikisKontrol: ürünler okunamadı, uyarısız devam:', uErr.message)
     return []
   }
 
   const bakiyeler = new Map()
-  for (const h of data || []) {
-    const m = Number(h.miktar) || 0
-    // 'sayim' = RESET noktası (stokBakiyeHaritasiGetir ile aynı model)
-    if (h.hareket_tipi === 'sayim') { bakiyeler.set(h.stok_kodu, m); continue }
-    const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
-      : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
-      : 0
-    bakiyeler.set(h.stok_kodu, (bakiyeler.get(h.stok_kodu) || 0) + isaret)
+  const defterKodlari = []
+  for (const u of urunler || []) {
+    if (u.seri_takipli) bakiyeler.set(u.stok_kodu, Number(u.stok_miktari) || 0)
+    else defterKodlari.push(u.stok_kodu)
+  }
+  // Katalogda satırı olmayan kodlar da defterden hesaplansın
+  for (const kod of kodlar) {
+    if (!bakiyeler.has(kod) && !defterKodlari.includes(kod)) defterKodlari.push(kod)
+  }
+
+  if (defterKodlari.length) {
+    let data
+    try {
+      // id-ARTAN sıra ŞART: 'sayim' MUTLAK reset noktasıdır, sırasız sonuçta
+      // yanlış konumda işlenir. pagedFetch: 1000 satır limiti sessiz kesmesin.
+      data = await pagedFetch((off, size) =>
+        supabase
+          .from('stok_hareketleri')
+          .select('stok_kodu, hareket_tipi, miktar')
+          .in('stok_kodu', defterKodlari)
+          .order('id')
+          .range(off, off + size - 1)
+      )
+    } catch (e) {
+      console.warn('stokCikisKontrol: bakiye okunamadı, uyarısız devam:', e?.message)
+      return []
+    }
+    for (const h of data || []) {
+      const m = Number(h.miktar) || 0
+      // 'sayim' = RESET noktası (stokBakiyeHaritasiGetir ile aynı model)
+      if (h.hareket_tipi === 'sayim') { bakiyeler.set(h.stok_kodu, m); continue }
+      const isaret = (h.hareket_tipi === 'giris' || h.hareket_tipi === 'transfer_giris') ? m
+        : (h.hareket_tipi === 'cikis' || h.hareket_tipi === 'transfer_cikis') ? -m
+        : 0
+      bakiyeler.set(h.stok_kodu, (bakiyeler.get(h.stok_kodu) || 0) + isaret)
+    }
   }
 
   const yetersizler = []
@@ -724,6 +724,8 @@ export const stokHareketEkle = async (hareket) => {
   const { id, olusturmaTarih, ...rest } = hareket
   const { data, error } = await supabase.from('stok_hareketleri').insert(toSnake(rest)).select().single()
   if (error) { console.error('stokHareketEkle hata:', error); return null }
-  invalidate('stokHareketleri:list', 'stokUrunler:list')
+  // stokBakiye:map dahil TÜM stok cache'leri düşsün — yalnız iki liste anahtarı
+  // temizlenince Stok sayfası 5 dk bayat bakiye gösteriyordu (06.08 denetimi).
+  invalidatePrefix('stok')
   return toCamel(data)
 }

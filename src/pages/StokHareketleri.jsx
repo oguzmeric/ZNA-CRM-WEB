@@ -167,7 +167,18 @@ export default function StokHareketleri() {
     if (!form.stokKodu || !form.miktar || !form.hareketTipi) {
       toast.error('Stok, tür ve miktar zorunludur.'); return
     }
+    const miktarSayi = Number(form.miktar)
+    if (!(miktarSayi > 0)) {
+      // Elle '-5' girilebiliyordu: 'cikis' hareketi bakiyeyi ARTIRIYORDU
+      toast.error('Miktar 0’dan büyük olmalıdır.'); return
+    }
     const urun = urunHaritasi.get(form.stokKodu)
+    // S/N takipli üründe elle hareket ETKİSİZDİR: bakiye kalem sayısından gelir,
+    // trigger bu hareketi atlar — kayıt düşer ama hiçbir bakiye değişmez (06.08).
+    if (urun?.seriTakipli) {
+      toast.error('Bu ürün S/N takipli — giriş/çıkış, Stok > Model Detayı’ndaki kalem işlemlerinden (S/N ekle, Teknisyene Ver, Depoya Çek) yapılır.')
+      return
+    }
 
     // "Uyar ama izin ver" (04.08): çıkış bakiyeyi aşıyorsa taze bakiyeyle
     // onay sorulur — ekrandaki harita bayat olabilir, karar anında DB'den sayılır.
@@ -191,7 +202,7 @@ export default function StokHareketleri() {
 
     const yeni = await stokHareketEkle({
       stokKodu: form.stokKodu, stokAdi: urun?.stokAdi || '',
-      hareketTipi: form.hareketTipi, miktar: Number(form.miktar),
+      hareketTipi: form.hareketTipi, miktar: miktarSayi,
       aciklama: form.aciklama || aciklamaOtomatik,
       tarih: form.tarih,
     })
