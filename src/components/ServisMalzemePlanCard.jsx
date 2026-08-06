@@ -212,6 +212,8 @@ export default function ServisMalzemePlanCard({
 
   const satirKutu = {
     display: 'flex', alignItems: 'center', gap: 10,
+    // Dar ekranda sabit genişlikli alanlar kart dışına taşmasın (ServisMalzemeleriCard ile aynı)
+    flexWrap: 'wrap',
     padding: '8px 10px', borderRadius: 'var(--radius-sm)',
     border: '1px dashed var(--border-default)', background: 'var(--surface-sunken)',
   }

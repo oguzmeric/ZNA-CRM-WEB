@@ -290,6 +290,9 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
 
   const satirKutu = {
     display: 'flex', alignItems: 'center', gap: 10,
+    // Dar ekranda sabit genişlikli alanlar (miktar/fiyat/faturalandırma/Cihaz)
+    // kartın DIŞINA taşıp sağ paneldeki kartların üstüne biniyordu — sarsın.
+    flexWrap: 'wrap',
     padding: '8px 10px', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
   }
