@@ -142,19 +142,25 @@ export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUr
     imza_url: imzaUrl,
     onay_gerekcesi: onayGerekcesi || null,
   }
-  // 1) Mevcut geriye uyum: teklifler.siparis_onayi güncelle
-  // Spec 10-durum: sipariş onayı = teklif "Siparişe Aktarıldı" (terminal durum)
-  const { error: e1 } = await supabase
-    .from('teklifler')
-    .update({ siparis_onayi: onay, spek_durum: 'siparise_aktarildi' })
-    .eq('id', teklifId)
-  if (e1) throw e1
-
-  // 2) Yeni: siparisler tablosuna INSERT (kalıcı sipariş no üretimi)
+  // 1) ÖNCE sipariş oluşturulur — müşteri kartı bulunamazsa burada patlar ve
+  //    teklif DOKUNULMAMIŞ kalır. (Eski sıra önce teklifi "siparişe aktarıldı"
+  //    işaretliyordu; sipariş patlarsa ortada sipariş olmadan teklif kuyruktan
+  //    düşüyordu — 06.08 denetimi. TeklifDetay.siparisiOlustur ile aynı sıra.)
   const siparisNo = await tekliftenSiparisiOlustur(teklifId, {
     onaylayanId, onaylayanAd, imzaUrl,
     notlar: onayGerekcesi || null,
   })
+
+  // 2) Sipariş başarıyla oluştu — teklifi işaretle
+  const { error: e1 } = await supabase
+    .from('teklifler')
+    .update({ siparis_onayi: onay, spek_durum: 'siparise_aktarildi' })
+    .eq('id', teklifId)
+  if (e1) {
+    // Sipariş var ama teklif işaretlenemedi: tekrar Onayla idempotent kontrole
+    // takılıp mevcut siparişi döndürür ve bu update'i yeniden dener.
+    throw new Error(`Sipariş ${siparisNo} oluşturuldu ancak teklif güncellenemedi — lütfen Onayla'ya tekrar basın. (${e1.message})`)
+  }
 
   return { ...onay, siparis_no: siparisNo }
 }
@@ -542,6 +548,19 @@ export async function onSiparisiReddet(onSiparisId, { onaylayanId, redNedeni }) 
  * Siparişi reddet — neden zorunlu.
  */
 export async function siparisReddet(teklifId, { onaylayanId, onaylayanAd, redNedeni }) {
+  // Güvenlik ağı: aktif ZNA-SIP siparişi olan teklif reddedilemez —
+  // "reddedilmiş teklif + yaşayan sipariş" tutarsızlığı (06.08 denetimi)
+  const { data: aktifSiparis } = await supabase
+    .from('siparisler')
+    .select('siparis_no')
+    .eq('teklif_id', teklifId)
+    .neq('durum', 'iptal')
+    .limit(1)
+    .maybeSingle()
+  if (aktifSiparis) {
+    throw new Error(`Bu teklifin aktif siparişi var (${aktifSiparis.siparis_no}). Önce "Onayı Geri Al" ile siparişi iptal edin.`)
+  }
+
   const onay = {
     durum: 'reddedildi',
     onaylayan_id: onaylayanId,
@@ -569,6 +588,26 @@ export async function siparisOnayGeriAl(teklifId) {
     .eq('id', teklifId)
     .single()
   if (e1) throw e1
+
+  // Onayla sırasında oluşturulan ZNA-SIP siparişi de iptal edilir — edilmezse
+  // teklif kuyruğa döner ama sipariş yaşamaya devam eder; ikinci onayda
+  // idempotent kontrol ESKİ imzalı siparişi sessizce geri getirir (06.08).
+  const { data: aktifSiparis, error: eS } = await supabase
+    .from('siparisler')
+    .select('id, siparis_no')
+    .eq('teklif_id', teklifId)
+    .neq('durum', 'iptal')
+    .limit(1)
+    .maybeSingle()
+  if (eS) throw eS
+  if (aktifSiparis) {
+    const { error: eIptal } = await supabase
+      .from('siparisler')
+      .update({ durum: 'iptal', iptal_sebebi: 'Sipariş onayı geri alındı' })
+      .eq('id', aktifSiparis.id)
+    if (eIptal) throw eIptal
+  }
+
   const mevcut = t?.siparis_onayi || {}
   const onay = {
     durum: 'bekliyor',
@@ -576,7 +615,7 @@ export async function siparisOnayGeriAl(teklifId) {
   }
   const { error: e2 } = await supabase
     .from('teklifler')
-    .update({ siparis_onayi: onay })
+    .update({ siparis_onayi: onay, spek_durum: 'musteri_onayladi' })
     .eq('id', teklifId)
   if (e2) throw e2
   return onay
