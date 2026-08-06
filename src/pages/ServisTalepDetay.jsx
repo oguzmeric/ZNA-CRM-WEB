@@ -19,7 +19,7 @@ import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
 import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
 import ServisMalzemePlanCard from '../components/ServisMalzemePlanCard'
-import { kalemKullanimlariGetir } from '../services/servisMalzemeService'
+import { kalemKullanimlariGetir, eksikCihazBilgisiKalemleri } from '../services/servisMalzemeService'
 import { uygunZamanFormat } from '../lib/uygunZamanFormat'
 import {
   Button, Input, Textarea, Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState,
@@ -152,7 +152,23 @@ export default function ServisTalepDetay() {
   const aciliyet = ACILIYET_SEVIYELERI.find(a => a.id === talep.aciliyet)
   const znaKullanicilar = kullanicilar.filter(k => k.tip !== 'musteri')
 
-  const durumGuncelle = (yeniDurum, aciklama = '') => {
+  const durumGuncelle = async (yeniDurum, aciklama = '') => {
+    // "Tamamlandı" öncesi hatırlatıcı: kullanılan S/N'li cihazlardan teknik
+    // bilgisi (IP / alt-lokasyon) girilmemiş olan varsa sor. Web'de blok değil
+    // onay — durumu çoğu zaman ofis personeli çekiyor, bilgiyi teknisyen girer.
+    if (yeniDurum === 'tamamlandi') {
+      const eksikler = await eksikCihazBilgisiKalemleri(talep.id)
+      if (eksikler.length > 0) {
+        const ozet = eksikler.slice(0, 4).map(k =>
+          `• ${k.urunAdi || k.stokKodu || 'Ürün'}${k.seriNo ? ` (S/N: ${k.seriNo})` : ''} — eksik: ${k.eksikAlanlar.join(', ')}`
+        ).join('\n')
+        const ekstra = eksikler.length > 4 ? `\n…ve ${eksikler.length - 4} cihaz daha` : ''
+        const devam = window.confirm(
+          `Bu serviste cihaz bilgileri girilmemiş malzeme var:\n\n${ozet}${ekstra}\n\nCihaz bilgileri (IP, kullanıcı adı, şifre, MAC...) teknisyen tarafından cihaz detayından doldurulmalı.\n\nYine de "Tamamlandı" yapılsın mı?`
+        )
+        if (!devam) return
+      }
+    }
     talepGuncelle(talep.id, { durum: yeniDurum }, kullanici.ad, aciklama)
   }
 

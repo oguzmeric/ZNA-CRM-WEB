@@ -271,6 +271,80 @@ export const formEnvanterKalemleri = async (servisTalepId) => {
   })
 }
 
+// Bu serviste kullanılmış S/N'li kalemlerden cihaz bilgisi (IP / alt-lokasyon)
+// girilmemiş olanlar — "Tamamlandı" öncesi hatırlatıcı. Mobildeki
+// eksikCihazKayitlariGetir'in web eşi; iki kaynağı da tarar (web
+// servis_malzemeleri + mobil servis_kalem_kullanimi). Hata halinde [] döner —
+// hatırlatıcı, sorgu hatası yüzünden servisi kilitlememeli.
+export const eksikCihazBilgisiKalemleri = async (servisTalepId) => {
+  const [webM, snM] = await Promise.all([
+    supabase.from('servis_malzemeleri')
+      .select('kalem_id')
+      .eq('servis_id', servisTalepId).eq('durum', 'kullanildi')
+      .not('kalem_id', 'is', null),
+    supabase.from('servis_kalem_kullanimi')
+      .select('kalem_id')
+      .eq('servis_talep_id', servisTalepId).eq('durum', 'kullanildi')
+      .not('kalem_id', 'is', null),
+  ])
+  if (webM.error) console.warn('eksikCihazBilgisi.web:', webM.error.message)
+  if (snM.error) console.warn('eksikCihazBilgisi.mobil:', snM.error.message)
+  const kalemIds = [...new Set(
+    [...(webM.data || []), ...(snM.data || [])].map(r => r.kalem_id)
+  )]
+  if (kalemIds.length === 0) return []
+
+  const { data: kalemler, error } = await supabase
+    .from('stok_kalemleri')
+    .select('id, seri_no, ip_adresi, alt_lokasyon, stok_kodu, musteri_id')
+    .in('id', kalemIds)
+    .not('seri_no', 'is', null)
+    .eq('silindi', false)
+  if (error) { console.warn('eksikCihazBilgisi.kalem:', error.message); return [] }
+
+  let eksikler = (kalemler || []).filter(k => !k.ip_adresi || !k.alt_lokasyon)
+  if (eksikler.length === 0) return []
+
+  // Bilgi musteri_cihazlari'na girilmiş olabilir (ServisMalzemeleriCard "Cihaz"
+  // modalı oraya yazar) — orada IP+lokasyon dolu olan S/N'i eksik sayma.
+  // SN eşleşmesi upper(trim) normalize edilerek yapılır (unique index kuralı).
+  // (Webden düşülen kalemde musteri_id boş kalır — servisin müşterisi de
+  // sete eklenir ki kontrol atlanmasın.)
+  const musteriIdSet = new Set(eksikler.map(k => k.musteri_id).filter(Boolean))
+  const { data: st } = await supabase
+    .from('servis_talepleri').select('musteri_id').eq('id', servisTalepId).maybeSingle()
+  if (st?.musteri_id) musteriIdSet.add(st.musteri_id)
+  const musteriIds = [...musteriIdSet]
+  if (musteriIds.length > 0) {
+    const { data: mcler } = await supabase
+      .from('musteri_cihazlari')
+      .select('seri_no, ip_adresi, lokasyon')
+      .in('musteri_id', musteriIds)
+    const norm = s => String(s || '').trim().toUpperCase()
+    const doluSn = new Set((mcler || [])
+      .filter(c => c.ip_adresi && c.lokasyon)
+      .map(c => norm(c.seri_no)))
+    eksikler = eksikler.filter(k => !doluSn.has(norm(k.seri_no)))
+    if (eksikler.length === 0) return []
+  }
+
+  // Ürün adı: stok_kalemleri→stok_urunler FK yok, bağ stok_kodu metniyle
+  const kodlar = [...new Set(eksikler.map(k => k.stok_kodu).filter(Boolean))]
+  let adlar = new Map()
+  if (kodlar.length > 0) {
+    const { data: urunler } = await supabase
+      .from('stok_urunler').select('stok_kodu, stok_adi').in('stok_kodu', kodlar)
+    adlar = new Map((urunler || []).map(u => [u.stok_kodu, u.stok_adi]))
+  }
+  return eksikler.map(k => ({
+    id: k.id,
+    seriNo: k.seri_no,
+    stokKodu: k.stok_kodu,
+    urunAdi: adlar.get(k.stok_kodu) || null,
+    eksikAlanlar: [!k.ip_adresi && 'IP', !k.alt_lokasyon && 'alt-lokasyon'].filter(Boolean),
+  }))
+}
+
 // Teknisyen envanterinden bu servise düşen S/N kalemleri (mobil akış:
 // teslim al → kullan). servis_kalem_kullanimi'nin TÜM statülerini döndürür ki
 // web servis detayında yönetici "teknisyen hangi cihazı çekmiş" görebilsin.
