@@ -36,9 +36,9 @@ export function TH({ children, align = 'left', style }) {
     <th
       style={{
         background: 'var(--surface-sunken)',
-        padding: '8px 14px',
+        padding: '6px 10px',
         textAlign: align,
-        font: '600 11.5px/16px var(--font-sans)',
+        font: '600 11px/15px var(--font-sans)',
         color: 'var(--text-tertiary)',
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
@@ -78,10 +78,11 @@ export function TD({ children, align = 'left', style }) {
   return (
     <td
       style={{
-        // Yoğunluk (06.08): 12x16 → 10x14 dolgu + 14 → 13px — ERP satır sıklığı
-        padding: '10px 14px',
+        // GRID yoğunluğu (06.08, kullanıcının eski ERP referansı): satır
+        // ~23px — ekranda 30+ kayıt. 12px altına inilmez (okunabilirlik).
+        padding: '5px 10px',
         textAlign: align,
-        font: '400 13px/19px var(--font-sans)',
+        font: '400 12px/17px var(--font-sans)',
         color: 'var(--text-primary)',
         borderBottom: '1px solid var(--border-default)',
         ...style,

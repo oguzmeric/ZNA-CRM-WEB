@@ -95,7 +95,7 @@ function ModelDetay() {
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
   const [sayfa, setSayfa] = useState(1)
-  const [sayfaBoyutu, setSayfaBoyutu] = useState(25)
+  const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
