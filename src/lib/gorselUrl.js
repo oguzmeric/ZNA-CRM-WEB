@@ -16,7 +16,7 @@ const PUBLIC_KALIP = /^(.*)\/storage\/v1\/object\/public\/(.+)$/
 /**
  * @param {string} url  Supabase public object URL'si
  * @param {object} [ayar]
- * @param {number} [ayar.genislik=900]  px. A4'te ~90mm'ye basılınca ≈250 DPI.
+ * @param {number} [ayar.genislik=900]  px — UZUN kenar üst sınırı. A4'te ~90mm'ye basılınca ≈250 DPI.
  * @param {number} [ayar.kalite=75]     1-100
  */
 export const kucukGorsel = (url, { genislik = 900, kalite = 75 } = {}) => {
@@ -26,5 +26,9 @@ export const kucukGorsel = (url, { genislik = 900, kalite = 75 } = {}) => {
   const [, kok, yolVeSorgu] = m
   // Dosya yolunda zaten query varsa (imzalı/parametreli) dokunma — bozmayalım
   if (yolVeSorgu.includes('?')) return url
-  return `${kok}/storage/v1/render/image/public/${yolVeSorgu}?width=${genislik}&quality=${kalite}`
+  // height + resize=contain ŞART (06.08 ölçümü): yalnız width verilince
+  // Supabase yüksekliği KÜÇÜLTMÜYOR — 5712x4284 yatay kare 1200x4284'e
+  // kırpılıp dikey ŞERİT dönüyordu ("yatay fotoğraflar dikey görünüyor").
+  // contain = oran korunur, uzun kenar 'genislik' sınırına küçülür.
+  return `${kok}/storage/v1/render/image/public/${yolVeSorgu}?width=${genislik}&height=${genislik}&resize=contain&quality=${kalite}`
 }
