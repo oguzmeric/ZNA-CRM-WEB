@@ -436,12 +436,11 @@ function GorusmeDetay() {
                     altKategori: '',
                     konu: gorusme.konu || `${gorusme.firmaAdi || 'Müşteri'} servis talebi`,
                     lokasyon: lokasyonMetni,
-                    // Arıza Açıklaması ARIZAYI anlatmalı (kullanıcı, 06.08):
-                    // eskiden "Görüşme sonucu / Takip notu / Kaynak görüşme"
-                    // satırları da dökülüyordu — görüşme metadatası açıklama
-                    // değildir; kaynak zaten gorusme_id bağı + durum
-                    // geçmişindeki "ACT-… kaydından oluşturuldu" satırında.
-                    aciklama: gorusme.notlar || '',
+                    // Arıza Açıklaması müşteriye giden FORM ÇIKTISINA basılır
+                    // (Bildirilen Arıza) — görüşme notu oraya TAŞINMAZ (06.08).
+                    // Not kaybolmasın diye aşağıda İÇ NOT olarak eklenir; iç
+                    // notlar forma basılmaz. Kaynak bağı gorusme_id kolonunda.
+                    aciklama: '',
                     aciliyet: 'normal',
                     ilgiliKisi: gorusme.muhatapAd || gorusme.gorusen || '',
                     durum: 'bekliyor',
@@ -449,7 +448,14 @@ function GorusmeDetay() {
                     atananKullaniciId: null,
                     atananKullaniciAd: null,
                     planliTarih: null,
-                    notlar: [],
+                    notlar: (gorusme.notlar || '').trim() ? [{
+                      id: crypto.randomUUID(),
+                      kullaniciId: kullanici?.id ?? null,
+                      kullaniciAd: kullanici?.ad || '',
+                      metin: `Görüşme notu (${gorusme.aktNo || 'görüşme'}): ${gorusme.notlar.trim()}`,
+                      tarih: new Date().toISOString(),
+                      tip: 'ic',
+                    }] : [],
                     durumGecmisi: [{
                       durum: 'bekliyor',
                       tarih: new Date().toISOString(),
