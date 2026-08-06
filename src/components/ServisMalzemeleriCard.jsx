@@ -303,11 +303,11 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
   }
 
   const satirKutu = {
-    // İki katlı satır: üstte ürün kimliği (ad+kod+SN), altta kontroller.
-    // Tek satırda sabit genişlikli alanlar dar kolonda adla yarışıp
-    // taşıyor/karışıyordu (06.08 sağ panelin üstüne binme vakası).
-    display: 'flex', flexDirection: 'column', gap: 6,
-    padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+    // Sıkı satır: kimlik solda, kontroller sağda aynı hizada. Dar ekranda
+    // kontrol GRUBU bütün olarak alta sarar — tek tek sarıp karışmaz ve
+    // kart dışına taşmaz (06.08 sağ panele binme + "satır çok yüksek" dersleri).
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px',
+    padding: '4px 8px', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
   }
 
@@ -471,7 +471,7 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
                   )}
                   {acik && satirlar.map(m => (
               <div key={m.id} style={satirKutu}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
                       {m.urunAdi}
@@ -482,13 +482,13 @@ export default function ServisMalzemeleriCard({ servisId, servisKodu, musteriId,
                         <Tag size={10} strokeWidth={1.5} style={{ marginRight: 3 }} />{m.seriNo}
                       </Badge>
                     )}
-                  </div>
-                  <div className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    {m.kullaniciAd || '—'} · {tarihFmt(m.tarih)}
+                    <span className="t-caption" style={{ color: 'var(--text-tertiary)' }}>
+                      {m.kullaniciAd || '—'} · {tarihFmt(m.tarih)}
+                    </span>
                   </div>
                 </div>
-                {/* Kontroller — ikinci kat, sağa yaslı; çok dar ekranda kendi içinde sarar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {/* Kontroller — tek grup; yer yoksa bütün olarak alta iner */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
                 {/* S/N'li satırda miktar hep 1 — SN tekildir */}
                 <div style={{ width: 70 }}>
                   <Input type="number" className="sayi-sade" min="0.001" value={m.miktar}
