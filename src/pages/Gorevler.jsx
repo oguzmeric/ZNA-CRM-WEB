@@ -1127,9 +1127,9 @@ function Gorevler() {
         />
       )}
 
-      {/* KPI şeridi (madde 34) — tıklayınca ilgili sekmeye geçer */}
+      {/* KPI şeridi (madde 34) — tıklayınca ilgili sekmeye geçer.
+          Kompakt tek satır (06.08): liste alanı büyüsün */}
       {!goster && (
-        {/* Tek-ekran yoğunluğu (06.08): KPI şeridi kompakt — liste alanı büyüsün */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
           {[
             { l: 'Bana Atanan Açık', v: kpiBanaAcik, renk: 'var(--info)', sekme: 'bana', chip: 'acik' },
