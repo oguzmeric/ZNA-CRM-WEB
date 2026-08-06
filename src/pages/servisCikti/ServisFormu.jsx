@@ -163,7 +163,10 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
   const musteri = {
     no: talep.talepNo || talep.id || '—',
     kurum: talep.firmaAdi || talep.musteriAd || '—',
-    ilIlce: talep.ilIlce || talep.lokasyon || '—',
+    // Lokasyon (alt lokasyon: "Living Lab" gibi) KENDİ satırında basılır —
+    // eskiden İl/İlçe alanına düşüyordu (06.08). İl/İlçe gerçek şehirdir.
+    lokasyon: talep.lokasyon || '—',
+    ilIlce: talep.ilIlce || talep.sehir || '—',
     sube: talep.sube || '—',
     adres: talep.adres || '—',
     gsm: talep.telefon || '—',
@@ -328,6 +331,10 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             <tr>
               <td style={labelStyle}>Kurum/Kuruluş</td>
               <td style={valueStyle} colSpan={3}>{musteri.kurum}</td>
+            </tr>
+            <tr>
+              <td style={labelStyle}>Lokasyon</td>
+              <td style={valueStyle} colSpan={3}>{musteri.lokasyon}</td>
             </tr>
             <tr>
               <td style={labelStyle}>İl/İlçe</td>

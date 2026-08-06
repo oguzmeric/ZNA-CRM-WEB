@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { servisTalepGetir } from '../services/servisService'
+import { musteriGetir } from '../services/musteriService'
 import { formEnvanterKalemleri } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
 
@@ -28,7 +29,15 @@ export default function ServisFormuYazdir() {
   useEffect(() => {
     let iptal = false
     servisTalepGetir(id)
-      .then(d => { if (!iptal) setTalep(d) })
+      .then(async d => {
+        // Formdaki İl/İlçe ve Adres, talepte yoksa MÜŞTERİ KARTINDAN dolar —
+        // eskiden İl/İlçe'ye lokasyon metni düşüyor, Adres boş kalıyordu (06.08)
+        if (d?.musteriId) {
+          const m = await musteriGetir(d.musteriId).catch(() => null)
+          if (m) d = { ...d, sehir: d.sehir || m.sehir, adres: d.adres || m.adres }
+        }
+        if (!iptal) setTalep(d)
+      })
       .catch(e => { if (!iptal) setHata(e?.message ?? 'Talep yuklenemedi') })
     // Envanterden kullanılan malzeme/cihazlar (web + mobil S/N akışı birleşik)
     formEnvanterKalemleri(id)
