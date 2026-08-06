@@ -11,6 +11,7 @@ import {
   modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir,
   snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
+  snTopluTeknisyeneVer, snTopluDepoyaCek,
   SN_SILME_SEBEPLERI, aileleriGetir,
 } from '../services/stokService'
 import {
@@ -98,6 +99,11 @@ function ModelDetay() {
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
   const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
+  // Toplu seçim: tek tek "Teknisyene Ver" tıklamak 30+ kalemde işkenceydi.
+  // Seçim id bazlı Set — sayfalar arası korunur; veri tazelenince sıfırlanır.
+  const [seciliIdler, setSeciliIdler] = useState(new Set())
+  const [topluVerAcik, setTopluVerAcik] = useState(false)
+  const [topluMesgul, setTopluMesgul] = useState(false)
   const [duzenlenenKalem, setDuzenlenenKalem] = useState(null)  // SN düzenleme modalı için
   const [silinecekKalem, setSilinecekKalem] = useState(null)  // SN sil sebep modalı için
   const [silinenleriGoster, setSilinenleriGoster] = useState(false)
@@ -202,6 +208,50 @@ function ModelDetay() {
   // Filtre/arama daralınca eldeki sayfa numarası listenin dışında kalabiliyor
   // (ör. 4. sayfadayken arama 3 sonuca düşerse ekran boş görünürdü)
   useEffect(() => { setSayfa(1) }, [filtre, arama, sayfaBoyutu])
+
+  // Toplu seçim yardımcıları — yalnız depoda/teknisyende kalemler seçilebilir
+  // (toplu aksiyonu olan iki durum). Veri tazelenince seçim sıfırlanır.
+  useEffect(() => { setSeciliIdler(new Set()) }, [yenile])
+  const secilebilirMi = (k) => !k.silindi && (k.durum === 'depoda' || k.durum === 'teknisyende')
+  const seciliKalemler = useMemo(
+    () => kalemler.filter(k => seciliIdler.has(k.id) && secilebilirMi(k)),
+    [kalemler, seciliIdler],
+  )
+  const seciliDepoda = seciliKalemler.filter(k => k.durum === 'depoda')
+  const seciliTeknisyende = seciliKalemler.filter(k => k.durum === 'teknisyende')
+  const secimToggle = (id) => setSeciliIdler(prev => {
+    const yeni = new Set(prev)
+    if (yeni.has(id)) yeni.delete(id); else yeni.add(id)
+    return yeni
+  })
+  const sayfadakiSecilebilir = sayfalanmis.filter(secilebilirMi)
+  const sayfaTamamSecili = sayfadakiSecilebilir.length > 0 && sayfadakiSecilebilir.every(k => seciliIdler.has(k.id))
+  const sayfaSecimToggle = () => setSeciliIdler(prev => {
+    const yeni = new Set(prev)
+    if (sayfaTamamSecili) sayfadakiSecilebilir.forEach(k => yeni.delete(k.id))
+    else sayfadakiSecilebilir.forEach(k => yeni.add(k.id))
+    return yeni
+  })
+
+  const topluDepoyaCek = async () => {
+    const onay = await confirm({
+      baslik: 'Toplu Depoya Çek',
+      mesaj: `${seciliTeknisyende.length} S/N depoya çekilecek. Devam?`,
+      onayMetin: 'Depoya Çek', iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    setTopluMesgul(true)
+    try {
+      const islenen = await snTopluDepoyaCek(seciliTeknisyende.map(k => k.id))
+      toast.success(`${islenen.length} S/N depoya çekildi.`)
+      setSeciliIdler(new Set())
+      setYenile(y => y + 1)
+    } catch (e) {
+      toast.error('Toplu çekme başarısız: ' + (e?.message || 'bilinmeyen hata'))
+    } finally {
+      setTopluMesgul(false)
+    }
+  }
   useEffect(() => {
     if (sayfa > toplamSayfa) setSayfa(toplamSayfa)
   }, [sayfa, toplamSayfa])
@@ -480,6 +530,38 @@ function ModelDetay() {
             </label>
           </div>
 
+          {seciliKalemler.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              padding: '10px 14px', marginBottom: 10,
+              background: 'var(--brand-primary-soft)',
+              border: '1px solid var(--brand-primary)',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                {seciliKalemler.length} S/N seçili
+              </span>
+              {seciliDepoda.length > 0 && (
+                <Button size="sm" variant="primary" disabled={topluMesgul}
+                  iconLeft={<User size={12} strokeWidth={1.5} />}
+                  onClick={() => setTopluVerAcik(true)}>
+                  Teknisyene Ver ({seciliDepoda.length})
+                </Button>
+              )}
+              {seciliTeknisyende.length > 0 && (
+                <Button size="sm" variant="secondary" disabled={topluMesgul}
+                  iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
+                  onClick={topluDepoyaCek}>
+                  Depoya Çek ({seciliTeknisyende.length})
+                </Button>
+              )}
+              <Button size="sm" variant="secondary" disabled={topluMesgul}
+                onClick={() => setSeciliIdler(new Set())}>
+                Seçimi Temizle
+              </Button>
+            </div>
+          )}
+
           <Card padding={0}>
             {filtrelenmis.length === 0 ? (
               <div style={{ padding: 32 }}>
@@ -492,6 +574,15 @@ function ModelDetay() {
               <Table>
                 <THead>
                   <TR>
+                    <TH style={{ width: 36 }}>
+                      <input
+                        type="checkbox"
+                        checked={sayfaTamamSecili}
+                        onChange={sayfaSecimToggle}
+                        title="Sayfadaki depoda/teknisyende kalemleri seç"
+                        style={{ accentColor: 'var(--brand-primary)', cursor: 'pointer' }}
+                      />
+                    </TH>
                     <TH>S/N</TH>
                     <TH>Durum</TH>
                     <TH>Teknisyen / Müşteri</TH>
@@ -509,6 +600,16 @@ function ModelDetay() {
                     const rowStil = k.silindi ? { opacity: 0.5, textDecoration: 'line-through' } : {}
                     return (
                       <TR key={k.id} style={rowStil}>
+                        <TD>
+                          {secilebilirMi(k) ? (
+                            <input
+                              type="checkbox"
+                              checked={seciliIdler.has(k.id)}
+                              onChange={() => secimToggle(k.id)}
+                              style={{ accentColor: 'var(--brand-primary)', cursor: 'pointer' }}
+                            />
+                          ) : null}
+                        </TD>
                         <TD><CodeBadge>{k.seriNo || '—'}</CodeBadge></TD>
                         <TD>
                           {d ? <Badge tone={durumTone[d.id] || 'neutral'}>{d.isim}</Badge> : '—'}
@@ -917,15 +1018,31 @@ function ModelDetay() {
         onEklendi={() => setYenile(y => y + 1)}
       />
 
-      {/* Teknisyene Ver Modalı */}
+      {/* Teknisyene Ver Modalı (tekil) */}
       {seciliKalem && (
         <TeknisyeneVerModal
-          kalem={seciliKalem}
+          kalemler={[seciliKalem]}
           personel={personelListe}
           onKapat={() => setSeciliKalem(null)}
           onKaydet={async (teknisyenId) => {
             await snTeknisyeneVer(seciliKalem.id, teknisyenId)
             setSeciliKalem(null)
+            setYenile(y => y + 1)
+          }}
+        />
+      )}
+
+      {/* Teknisyene Ver Modalı (toplu seçim) */}
+      {topluVerAcik && seciliDepoda.length > 0 && (
+        <TeknisyeneVerModal
+          kalemler={seciliDepoda}
+          personel={personelListe}
+          onKapat={() => setTopluVerAcik(false)}
+          onKaydet={async (teknisyenId) => {
+            const islenen = await snTopluTeknisyeneVer(seciliDepoda.map(k => k.id), teknisyenId)
+            toast.success(`${islenen.length} S/N teknisyene verildi.`)
+            setTopluVerAcik(false)
+            setSeciliIdler(new Set())
             setYenile(y => y + 1)
           }}
         />
@@ -1547,9 +1664,11 @@ function SnDuzenleModal({ kalem, onKapat, onKaydet }) {
   )
 }
 
-function TeknisyeneVerModal({ kalem, personel, onKapat, onKaydet }) {
+function TeknisyeneVerModal({ kalemler, personel, onKapat, onKaydet }) {
   const [teknisyenId, setTeknisyenId] = useState('')
   const [yukleniyor, setYukleniyor] = useState(false)
+  const snOzet = kalemler.slice(0, 6).map(k => k.seriNo).filter(Boolean).join(', ')
+    + (kalemler.length > 6 ? ` …(+${kalemler.length - 6})` : '')
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000,
@@ -1560,9 +1679,11 @@ function TeknisyeneVerModal({ kalem, personel, onKapat, onKaydet }) {
         borderRadius: 12, padding: 24, maxWidth: 460, width: '100%',
         border: '1px solid var(--border-default)',
       }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>Teknisyene Ver</h3>
+        <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>
+          Teknisyene Ver{kalemler.length > 1 ? ` (${kalemler.length} S/N)` : ''}
+        </h3>
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
-          S/N: <span className="t-mono">{kalem.seriNo}</span>
+          S/N: <span className="t-mono">{snOzet}</span>
         </div>
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600 }}>Kime</label>
         <select
