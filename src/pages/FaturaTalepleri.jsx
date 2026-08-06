@@ -100,9 +100,11 @@ export default function FaturaTalepleri() {
   return (
     <div style={sayfaStil}>
       {/* Başlık MainLayout'ta zaten yazıyor — sayfada tekrar etmiyoruz. */}
+      {/* (06.08) "Tekliften kesilen" ifadesi kaldırıldı — proforma artık yalnız
+          sipariş ve servis kaynaklı; tekliften kesim kilitli (faturaTalepService). */}
       <p className="t-caption" style={{ margin: 0, color: 'var(--text-tertiary)' }}>
-        Tekliften kesilen proforma faturalar. Gerçek faturayı kesip numarasını ve PDF'ini buraya girin —
-        satış kaydı ancak o zaman oluşur.
+        Sipariş ve servislerden gelen proforma faturalar. Gerçek faturayı kesip numarasını ve
+        PDF'ini buraya girin — satış kaydı ancak o zaman oluşur.
       </p>
 
       {/* Sekmeler — Teklifler/Sözleşmeler ile aynı alt-çizgi deseni.
