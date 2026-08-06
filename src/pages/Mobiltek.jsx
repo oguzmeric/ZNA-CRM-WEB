@@ -365,20 +365,20 @@ export default function Mobiltek() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '5px 12px' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 4, background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)', font: '600 12px/16px var(--font-sans)' }}>
                           {a.plateNo || `#${a.id}`}
                         </div>
                       </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                      <td style={{ padding: '5px 12px', color: 'var(--text-secondary)' }}>
                         {a.gpsTime ? new Date(a.gpsTime).toLocaleString('tr-TR') : '—'}
                       </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: 380 }}>
+                      <td style={{ padding: '5px 12px', color: 'var(--text-secondary)', maxWidth: 380 }}>
                         {a.address || '—'}
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{hiz} km/s</td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-tertiary)' }}>{a.direction ?? 0}°</td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '5px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{hiz} km/s</td>
+                      <td style={{ padding: '5px 12px', textAlign: 'center', color: 'var(--text-tertiary)' }}>{a.direction ?? 0}°</td>
+                      <td style={{ padding: '5px 12px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                           padding: '3px 8px', borderRadius: 4,

@@ -342,10 +342,10 @@ function StokOpsiyon() {
                       onMouseEnter={e => !suresiDoldu && (e.currentTarget.style.background = 'var(--surface-sunken)')}
                       onMouseLeave={e => !suresiDoldu && (e.currentTarget.style.background = 'transparent')}
                     >
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <CodeBadge>{o.opsiyonNo}</CodeBadge>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 220 }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 220 }}>
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {o.stokAdi}
                         </div>
@@ -353,15 +353,15 @@ function StokOpsiyon() {
                           {o.stokKodu}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <span style={{ font: '600 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{o.miktar}</span>
                         <span className="t-caption" style={{ marginLeft: 4 }}>adet</span>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)' }}>
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{o.satisciAd}</div>
                         <div className="t-caption" style={{ marginTop: 2 }}>Oluşturan: {o.olusturanAd}</div>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 220 }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 220 }}>
                         <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {o.musteriAdi || '—'}
                         </div>
@@ -371,7 +371,7 @@ function StokOpsiyon() {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>{o.bitisTarih}</div>
                         {o.durum === 'aktif' && (
                           <div style={{
@@ -384,10 +384,10 @@ function StokOpsiyon() {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 4 }}>
                           {o.durum === 'aktif' && yetkili && (
                             <button

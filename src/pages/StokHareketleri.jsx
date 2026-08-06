@@ -488,17 +488,17 @@ export default function StokHareketleri() {
                         onMouseEnter={e => { if (!acikMi) e.currentTarget.style.background = 'var(--surface-sunken)' }}
                         onMouseLeave={e => { if (!acikMi) e.currentTarget.style.background = 'transparent' }}
                       >
-                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             {cokluMu && (acikMi ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />)}
                             {tarihSaat(ilkHareket.tarih)}
                             {cokluMu && bitisSaati && bitisSaati !== baslangicSaati && ` – ${bitisSaati}`}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                           <CodeBadge>{ilkHareket.stokKodu}</CodeBadge>
                         </td>
-                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 320 }}>
+                        <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 320 }}>
                           <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {ilkHareket.stokAdi || urun?.stokAdi || '—'}
                           </div>
@@ -514,10 +514,10 @@ export default function StokHareketleri() {
                             )
                           )}
                         </td>
-                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                           {tur && <Badge tone={tur.tone}>{tur.isim}</Badge>}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid var(--border-default)' }}>
+                        <td style={{ padding: '5px 14px', textAlign: 'center', borderBottom: '1px solid var(--border-default)' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: 22, height: 22, borderRadius: '50%',
@@ -527,7 +527,7 @@ export default function StokHareketleri() {
                             {giris ? <ArrowUp size={12} strokeWidth={2} /> : <ArrowDown size={12} strokeWidth={2} />}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                           <span style={{ font: '600 14px/20px var(--font-sans)', color: giris ? 'var(--success)' : 'var(--danger)' }}>
                             {giris ? '+' : '−'}{grup.toplamMiktar.toFixed(0)}
                           </span>

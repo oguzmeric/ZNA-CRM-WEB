@@ -382,16 +382,16 @@ function Raporlar() {
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
-                        <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)' }}>
+                        <td style={{ padding: '5px 20px', borderBottom: '1px solid var(--border-default)' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             <Avatar name={p.ad} size="xs" />
                             <span style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{p.ad}</span>
                           </span>
                         </td>
-                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{p.adet}</td>
-                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--success)', fontWeight: 500 }}>{p.kabul}</td>
-                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>%{p.adet > 0 ? Math.round((p.kabul / p.adet) * 100) : 0}</td>
-                        <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-primary)', fontWeight: 600 }}>₺{formatTutar(p.tutar)}</td>
+                        <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{p.adet}</td>
+                        <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--success)', fontWeight: 500 }}>{p.kabul}</td>
+                        <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>%{p.adet > 0 ? Math.round((p.kabul / p.adet) * 100) : 0}</td>
+                        <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-primary)', fontWeight: 600 }}>₺{formatTutar(p.tutar)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -653,11 +653,11 @@ function Raporlar() {
                       }, 0)
                       return (
                         <tr key={u.id} style={{ background: 'var(--danger-soft)' }}>
-                          <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)', font: '500 12px/16px var(--font-mono)', color: 'var(--text-secondary)' }}>{u.stokKodu}</td>
-                          <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{u.stokAdi}</td>
-                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--danger)', fontWeight: 600 }}>{bakiye.toFixed(0)}</td>
-                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{u.minStok}</td>
-                          <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>{u.birim}</td>
+                          <td style={{ padding: '5px 20px', borderBottom: '1px solid var(--border-default)', font: '500 12px/16px var(--font-mono)', color: 'var(--text-secondary)' }}>{u.stokKodu}</td>
+                          <td style={{ padding: '5px 20px', borderBottom: '1px solid var(--border-default)', font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>{u.stokAdi}</td>
+                          <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--danger)', fontWeight: 600 }}>{bakiye.toFixed(0)}</td>
+                          <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>{u.minStok}</td>
+                          <td style={{ padding: '5px 20px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)' }}>{u.birim}</td>
                         </tr>
                       )
                     })}
@@ -1026,26 +1026,26 @@ function MesaiRaporTab() {
               const ofisDisi = (k.not_ ?? '').toLowerCase().includes('ofis dışı')
               return (
                 <tr key={k.id} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-secondary)', fontSize: 13 }}>{tarihGoster(k.giris_zamani)}</td>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}>
+                  <td style={{ padding: '5px 8px', color: 'var(--text-secondary)', fontSize: 13 }}>{tarihGoster(k.giris_zamani)}</td>
+                  <td style={{ padding: '5px 8px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}>
                     {k.kullanicilar?.ad}
                     {k.kullanicilar?.unvan && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8, fontSize: 11 }}>· {k.kullanicilar.unvan}</span>}
                   </td>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>{saatGoster(k.giris_zamani)}</td>
-                  <td style={{ padding: '10px 8px', color: aktif ? 'var(--success)' : 'var(--text-primary)', fontSize: 13, fontWeight: aktif ? 600 : 400 }}>
+                  <td style={{ padding: '5px 8px', color: 'var(--text-primary)', fontSize: 13 }}>{saatGoster(k.giris_zamani)}</td>
+                  <td style={{ padding: '5px 8px', color: aktif ? 'var(--success)' : 'var(--text-primary)', fontSize: 13, fontWeight: aktif ? 600 : 400 }}>
                     {aktif ? 'devam' : saatGoster(k.cikis_zamani)}
                   </td>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontSize: 13 }}>
+                  <td style={{ padding: '5px 8px', color: 'var(--text-primary)', fontSize: 13 }}>
                     {sureGoster(mesaiKayitDakika(k))}
                     {aktif && (
                       <span title="Mesai devam ediyor — süre şu ana kadar hesaplandı, 18:30 kapanışında kesinleşir"
                         style={{ marginLeft: 3, color: '#f59e0b', cursor: 'help' }}>+</span>
                     )}
                   </td>
-                  <td style={{ padding: '10px 8px', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                  <td style={{ padding: '5px 8px', color: 'var(--text-tertiary)', fontSize: 12 }}>
                     {k.giris_mesafe_m != null ? `${k.giris_mesafe_m} m` : '—'}
                   </td>
-                  <td style={{ padding: '10px 8px', fontSize: 11 }}>
+                  <td style={{ padding: '5px 8px', fontSize: 11 }}>
                     {ofisDisi ? <span style={{ color: 'var(--warning)', fontWeight: 600 }}>⚠ {k.not_}</span> : <span style={{ color: 'var(--text-tertiary)' }}>{k.not_ ?? ''}</span>}
                   </td>
                 </tr>

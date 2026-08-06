@@ -127,11 +127,11 @@ export default function AracYonetimi() {
             )}
             {araclar.map(a => (
               <tr key={a.id} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                <td style={{ padding: '10px 14px', font: '700 14px/20px var(--font-sans)', color: 'var(--text-primary)', letterSpacing: 0.5 }}>{a.plaka}</td>
-                <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontSize: 13 }}>{a.marka || '—'}</td>
-                <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontSize: 13 }}>{a.model || '—'}</td>
-                <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', fontSize: 13 }}>{a.yil || '—'}</td>
-                <td style={{ padding: '10px 14px', fontSize: 13 }}>
+                <td style={{ padding: '5px 14px', font: '700 14px/20px var(--font-sans)', color: 'var(--text-primary)', letterSpacing: 0.5 }}>{a.plaka}</td>
+                <td style={{ padding: '5px 14px', color: 'var(--text-primary)', fontSize: 13 }}>{a.marka || '—'}</td>
+                <td style={{ padding: '5px 14px', color: 'var(--text-primary)', fontSize: 13 }}>{a.model || '—'}</td>
+                <td style={{ padding: '5px 14px', color: 'var(--text-secondary)', fontSize: 13 }}>{a.yil || '—'}</td>
+                <td style={{ padding: '5px 14px', fontSize: 13 }}>
                   {(() => {
                     const kg = kalanGun(a.muayene_bitis)
                     if (kg === null) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>
@@ -144,11 +144,11 @@ export default function AracYonetimi() {
                     )
                   })()}
                 </td>
-                <td style={{ padding: '10px 14px' }}>
+                <td style={{ padding: '5px 14px' }}>
                   <Badge tone={a.aktif ? 'basari' : 'nötr'}>{a.aktif ? 'Aktif' : 'Pasif'}</Badge>
                 </td>
-                <td style={{ padding: '10px 14px', color: 'var(--text-tertiary)', fontSize: 12, maxWidth: 220 }}>{a.not_ || ''}</td>
-                <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                <td style={{ padding: '5px 14px', color: 'var(--text-tertiary)', fontSize: 12, maxWidth: 220 }}>{a.not_ || ''}</td>
+                <td style={{ padding: '5px 14px', textAlign: 'right' }}>
                   <div style={{ display: 'inline-flex', gap: 6 }}>
                     <Button variant="tertiary" size="sm" iconLeft={<Edit2 size={12} strokeWidth={1.75} />} onClick={() => modaliAc(a)}>Düzenle</Button>
                     <Button variant="tertiary" size="sm" iconLeft={<Trash2 size={12} strokeWidth={1.75} />} onClick={() => sil(a)}>Sil</Button>

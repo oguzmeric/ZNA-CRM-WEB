@@ -1081,7 +1081,7 @@ function Gorusmeler() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                       {g.aktNo ? (
                         <span style={{
                           fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
@@ -1095,7 +1095,7 @@ function Gorusmeler() {
                         <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', width: 280, maxWidth: 280 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                         <span style={{
                           font: '500 13px/18px var(--font-sans)',
@@ -1156,7 +1156,7 @@ function Gorusmeler() {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
                       <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {g.takipNotu || g.notlar || '—'}
                       </p>
@@ -1166,16 +1166,16 @@ function Gorusmeler() {
                         </p>
                       )}
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }} title={g.konu || ''}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }} title={g.konu || ''}>
                       <Badge tone="brand" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'middle' }}>{g.konu}</Badge>
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={g.gorusen || ''}>
                       {g.gorusen}
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                       {g.tarih}
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)' }} onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)' }} onClick={e => e.stopPropagation()}>
                       <CustomSelect
                         value={g.durum}
                         onChange={e => durumGuncelle(g.id, e.target.value)}
@@ -1184,7 +1184,7 @@ function Gorusmeler() {
                         {durumlar.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
                       </CustomSelect>
                     </td>
-                    <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 4 }}>
                         <button
                           aria-label="Düzenle"

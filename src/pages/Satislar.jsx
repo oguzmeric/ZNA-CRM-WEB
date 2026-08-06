@@ -220,7 +220,7 @@ export default function Satislar() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <button
                           onClick={() => navigate(`/satislar/${f.id}`)}
                           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
@@ -228,7 +228,7 @@ export default function Satislar() {
                           <CodeBadge>{f.faturaNo}</CodeBadge>
                         </button>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {f.firmaAdi || '—'}
                         </div>
@@ -238,28 +238,28 @@ export default function Satislar() {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {fmtTarih(f.faturaTarihi)}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: vadeGecti ? 'var(--danger)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: vadeGecti ? 'var(--danger)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {fmtTarih(f.vadeTarihi)}
                           {vadeGecti && <AlertTriangle size={11} strokeWidth={1.5} />}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                         {fmtTL(f.genelToplam)}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--success)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--success)', whiteSpace: 'nowrap' }}>
                         {fmtTL(f.odenenToplam)}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '500 13px/18px var(--font-sans)', color: kalan > 0 ? 'var(--warning)' : 'var(--success)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', font: '500 13px/18px var(--font-sans)', color: kalan > 0 ? 'var(--warning)' : 'var(--success)', whiteSpace: 'nowrap' }}>
                         {fmtTL(kalan)}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <Badge tone={badge.tone}>{badge.label}</Badge>
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 4 }}>
                           <button
                             aria-label="Düzenle"

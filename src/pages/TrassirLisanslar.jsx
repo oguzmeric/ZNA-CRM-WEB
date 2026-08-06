@@ -642,13 +642,13 @@ function TrassirLisanslar() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <CodeBadge>{l.lisansKodu}</CodeBadge>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         {l.lisansId ? <CodeBadge>{l.lisansId}</CodeBadge> : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 240 }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 240 }}>
                         <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {l.firmaAdi}
                         </div>
@@ -658,24 +658,24 @@ function TrassirLisanslar() {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 200, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.proje || ''}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 200, font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.proje || ''}>
                         {l.proje || <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         <Badge tone="brand">{l.lisansTuru}</Badge>
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         {l.lisansTipi === 'sureksiz_surekli' && <Badge tone="aktif">Sürekli</Badge>}
                         {l.lisansTipi === 'sureksiz_demo'    && <Badge tone="beklemede">Demo {l.demoGun}g</Badge>}
                         {l.lisansTipi === 'sureksiz'         && <Badge tone="neutral">Süreli</Badge>}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {l.sunucuAdi || '—'}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {l.kanalSayisi || '—'}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         {l.lisansTipi === 'sureksiz_surekli' ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)', font: '500 13px/18px var(--font-sans)' }}>
                             <InfIcon size={14} strokeWidth={1.5} /> Sürekli
@@ -694,10 +694,10 @@ function TrassirLisanslar() {
                           <span style={{ color: 'var(--text-tertiary)' }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                         {durum && <Badge tone={durum.tone}>{durum.isim}</Badge>}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 4 }}>
                           {l.gorselYolu && (
                             <button

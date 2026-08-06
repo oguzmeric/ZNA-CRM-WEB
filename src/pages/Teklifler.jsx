@@ -527,7 +527,7 @@ export default function Teklifler() {
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             {/* Teklif No */}
-                            <td style={{ padding: '12px 10px 12px 14px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                            <td style={{ padding: '5px 10px 12px 14px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                 {hatirlatma && (
                                   <span
@@ -559,7 +559,7 @@ export default function Teklifler() {
                               )}
                             </td>
                             {/* Müşteri */}
-                            <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                            <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
                               <div title={t.firmaAdi || ''} style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {t.firmaAdi || '—'}
                               </div>
@@ -570,7 +570,7 @@ export default function Teklifler() {
                               )}
                             </td>
                             {/* Teklif Açıklaması */}
-                            <td style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                            <td style={{ padding: '5px 10px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <button
                                   onClick={() => navigate(`/teklifler/${t.id}`)}
@@ -591,7 +591,7 @@ export default function Teklifler() {
                                 )}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                                 {ilgiliFatura ? (
                                   <button
@@ -614,7 +614,7 @@ export default function Teklifler() {
                                 )}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                                 {fmtTarih(t.tarih)}
                               </div>
@@ -622,12 +622,12 @@ export default function Teklifler() {
                                 {goreceTarih(t.tarih)}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-secondary)' }}>
                                 {t.olusturanAd || t.hazirlayan || '—'}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 140 }}>
                                 {Number(t.genelToplam) ? (
                                   <>
@@ -652,7 +652,7 @@ export default function Teklifler() {
                                 )}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '5px 14px', textAlign: 'right', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', gap: 4 }}>
                                 <button
                                   aria-label="Düzenle"
