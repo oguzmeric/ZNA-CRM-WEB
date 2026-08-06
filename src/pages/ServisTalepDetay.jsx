@@ -430,9 +430,10 @@ export default function ServisTalepDetay() {
                 Müşteriye Gönder
               </Button>
             )}
-            {/* Fatura Kesilecek — proforma açılmışsa durum rozeti, değilse buton */}
+            {/* Fatura Kesilecek — açık/kesilmiş proforma varsa durum rozeti;
+                reddedilmişse red bilgisi + buton GERİ GELİR (yeniden işaretlenebilir) */}
             {talep.durum === 'tamamlandi' && (
-              faturaTalebi ? (
+              faturaTalebi && faturaTalebi.durum !== 'reddedildi' ? (
                 <Button
                   variant="secondary" size="md"
                   iconLeft={<Receipt size={14} strokeWidth={1.5} />}
@@ -440,18 +441,28 @@ export default function ServisTalepDetay() {
                 >
                   {faturaTalebi.durum === 'faturalandi'
                     ? `Fatura kesildi · ${faturaTalebi.faturaNo || ''}`
-                    : faturaTalebi.durum === 'reddedildi'
-                      ? 'Proforma reddedildi'
-                      : `Fatura bekliyor · ${faturaTalebi.talepNo}`}
+                    : `Fatura bekliyor · ${faturaTalebi.talepNo}`}
                 </Button>
               ) : (
-                <Button
-                  variant="secondary" size="md"
-                  iconLeft={<Receipt size={14} strokeWidth={1.5} />}
-                  onClick={() => setFaturaModalAcik(true)}
-                >
-                  Fatura Kesilecek
-                </Button>
+                <>
+                  {faturaTalebi?.durum === 'reddedildi' && (
+                    <Button
+                      variant="tertiary" size="md"
+                      style={{ color: 'var(--danger)' }}
+                      onClick={() => navigate('/fatura-talepleri')}
+                      title="Red nedenini Proforma Fatura kuyruğunda görebilirsiniz"
+                    >
+                      Proforma reddedildi
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary" size="md"
+                    iconLeft={<Receipt size={14} strokeWidth={1.5} />}
+                    onClick={() => setFaturaModalAcik(true)}
+                  >
+                    Fatura Kesilecek
+                  </Button>
+                </>
               )
             )}
             <Button variant="tertiary" size="md" iconLeft={<Trash2 size={14} strokeWidth={1.5} />} onClick={() => setSilOnayGoster(true)}>
