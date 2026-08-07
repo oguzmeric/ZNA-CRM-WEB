@@ -1,4 +1,5 @@
 import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import {
   Plus, Pencil, Trash2, Shield, User, Check, AlertTriangle, Settings,
   LogIn, LogOut, FileText, Clock, CheckCircle2, PauseCircle, PlayCircle,
@@ -511,7 +512,8 @@ function OzetRaporBolumu({ kullaniciOzet, tumLoglar, saniyeFormat }) {
 // 100lerce log varken duz akan tablo yerine: gun bazli accordion + sayfalama.
 function AktiviteLoglariBolumu({ filtreliLoglar, isPending, saniyeFormat, LOG_TIP }) {
   const SAYFA_BOYUTU = 50
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): geri dönüşte liste aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa()
   const [acikGunler, setAcikGunler] = useState({})
 
   // Sayfalanmis loglar

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useParams, useNavigate } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
 import { useToast } from '../context/ToastContext'
@@ -94,7 +95,8 @@ function ModelDetay() {
   const [personelListe, setPersonelListe] = useState([])
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): geri dönüşte SN listesi aynı sayfada (06.08)
+  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
@@ -208,7 +210,7 @@ function ModelDetay() {
   )
   // Filtre/arama daralınca eldeki sayfa numarası listenin dışında kalabiliyor
   // (ör. 4. sayfadayken arama 3 sonuca düşerse ekran boş görünürdü)
-  useEffect(() => { setSayfa(1) }, [filtre, arama, sayfaBoyutu])
+  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, arama, sayfaBoyutu])
 
   // Toplu seçim yardımcıları — yalnız depoda/teknisyende kalemler seçilebilir
   // (toplu aksiyonu olan iki durum). Veri tazelenince seçim sıfırlanır.

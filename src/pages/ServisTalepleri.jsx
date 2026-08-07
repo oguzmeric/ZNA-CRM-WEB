@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains } from '../lib/trSearch'
@@ -50,7 +51,8 @@ export default function ServisTalepleri() {
   const [gorunum, setGorunum] = useState('liste')
   // Sayfalama — yalnız liste görünümünde. Kanban'da kayıtlar zaten durum
   // sütunlarına dağıldığı için tek sütun nadiren uzuyor.
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): talep detayından geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
 
   // URL param degisirse state'i de guncelle (sidebar'dan navigate edince)

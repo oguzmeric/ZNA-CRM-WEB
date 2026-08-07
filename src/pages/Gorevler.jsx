@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useBildirim } from '../context/BildirimContext'
@@ -397,7 +398,8 @@ function Gorevler() {
     basTar: '', bitTar: '',
     kontrol: '',
   })
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): detaydan geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa()
   const SAYFA_BOYUT = 50
 
   // ─── v2 state (madde 30-35) ───────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import * as XLSX from 'xlsx'
 import {
   Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList,
@@ -120,15 +121,8 @@ function Stok() {
   const [duzenleId, setDuzenleId] = useState(null)
   const [kodModu, setKodModu] = useState('otomatik')
   const [arama, setArama] = useState('')
-  // Sayfa no URL'de tutulur (?sayfa=7): model detayına girip geri dönünce liste
-  // AYNI sayfada açılır — eskiden state kaybolup hep 1. sayfaya dönüyordu (06.08).
-  const [searchParams, setSearchParams] = useSearchParams()
-  const sayfa = Math.max(1, parseInt(searchParams.get('sayfa') || '1', 10) || 1)
-  const setSayfa = (n) => setSearchParams(prev => {
-    const p = new URLSearchParams(prev)
-    if (Number(n) <= 1) p.delete('sayfa'); else p.set('sayfa', String(n))
-    return p
-  }, { replace: true })
+  // Sayfa no URL'de (?sayfa=7): model detayına girip geri dönünce liste aynı sayfada
+  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [opsiyonModal, setOpsiyonModal] = useState(null)
   const [opsiyonForm, setOpsiyonForm] = useState(bosOpsiyonForm)
@@ -824,13 +818,7 @@ function Stok() {
     aktifSayfa * sayfaBoyutu,
   )
 
-  // Filtre değişince 1. sayfaya dön — İLK render'da ÇALIŞMAZ, yoksa geri
-  // dönüşte URL'deki ?sayfa=N daha okunmadan silinirdi.
-  const sayfaResetIlk = useRef(true)
-  useEffect(() => {
-    if (sayfaResetIlk.current) { sayfaResetIlk.current = false; return }
-    setSayfa(1)
-  }, [arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
+  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
 
   const toplamUrun = urunler.length
   const toplamBakiye = urunler.reduce((sum, u) => sum + stokBakiye(u.stokKodu), 0)

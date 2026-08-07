@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUrlSayfa } from '../../lib/useUrlSayfa'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, MapPin, Clock, Calendar, MessageSquare, Trash2,
@@ -35,7 +36,8 @@ export default function Taleplerim() {
   const [kolonFiltre, setKolonFiltre] = useState({
     no: '', tur: '', konu: '', aciliyet: '', atanan: '', planli: '', olusturma: '',
   })
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): talep detayından geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa()
   const SAYFA_BOYUT = 25
 
   const talepler = musteriTalepleri(kullanici?.musteriId)

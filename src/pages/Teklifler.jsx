@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
@@ -99,12 +100,13 @@ export default function Teklifler() {
   const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
-  const [sayfa, setSayfa] = useState(1) // sayfalı gezinme ("yükle" butonu yerine)
+  // Sayfa no URL'de (?sayfa=N): teklif detayından geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
   const [benimTekliflerim, setBenimTekliflerim] = useState(false) // "Tekliflerim" — hazırlayan/temsilci benim
 
   // Filtre/sekme/arama değişince 1. sayfaya dön
-  useEffect(() => { setSayfa(1) }, [aktifSekme, arama, siralama, benimTekliflerim])
+  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [aktifSekme, arama, siralama, benimTekliflerim])
 
   useEffect(() => {
     let iptal = false

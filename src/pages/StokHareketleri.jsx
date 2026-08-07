@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import {
@@ -85,10 +86,11 @@ export default function StokHareketleri() {
   const [arama, setArama] = useState('')
   // Kalabalık liste çözümü: varsayılan son 30 gün + sayfalama
   const [tarihAralik, setTarihAralik] = useState('30') // 'bugun' | '7' | '30' | 'hepsi'
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): geri dönüşte liste aynı sayfada (06.08)
+  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
 
   // Filtre değişince ilk sayfaya dön
-  useEffect(() => { setSayfa(1) }, [filtre, arama, tarihAralik])
+  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, arama, tarihAralik])
   const [detayHareket, setDetayHareket] = useState(null)
   const [acikGruplar, setAcikGruplar] = useState(new Set())  // expand olan grup ID'leri
 

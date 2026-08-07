@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -93,7 +94,8 @@ function Gorusmeler() {
   const [benimGorusmelerim, setBenimGorusmelerim] = useState(false) // "Görüşmelerim" — görüşen benim
   const [konuYonetimAcik, setKonuYonetimAcik] = useState(false)
   const [arama, setArama] = useState('')
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de (?sayfa=N): detaydan geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [manuelKonuAc, setManuelKonuAc] = useState(false)
   const [yeniDosyalar, setYeniDosyalar] = useState([])   // Henüz yüklenmemiş File[]
@@ -495,7 +497,7 @@ function Gorusmeler() {
   )
 
   // Filtre değişince sayfa 1'e dön
-  useEffect(() => { setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu, benimGorusmelerim])
+  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, gorusenFiltre, konuFiltre, arama, sayfaBoyutu, benimGorusmelerim])
 
   // Tam liste arkada inerken sekme sayıları ilk sayfadan YANLIŞ görünmesin:
   // toplam sunucu sayısından, durum kırılımları tam liste gelince gösterilir.
