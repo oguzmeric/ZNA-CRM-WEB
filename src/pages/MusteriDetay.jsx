@@ -11,7 +11,7 @@ import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
-import { musteriGetir, musteriGuncelle, musterileriGetir } from '../services/musteriService'
+import { musteriGetir, musteriGuncelle, musterileriGetir, musteriSil, musteriBagliKayitSayilari } from '../services/musteriService'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonDetay } from '../components/Skeleton'
 import { musteriKisileriniGetir, musteriKisiEkle, musteriKisiGuncelle, musteriKisiSil } from '../services/musteriKisiService'
@@ -103,6 +103,7 @@ function MusteriDetay() {
   const [lokHepsi, setLokHepsi] = useState(false)
 
   const [davetAcik, setDavetAcik] = useState(false)
+  const [siliniyor, setSiliniyor] = useState(false)
 
   const [gorusmeler, setGorusmeler] = useState([])
   const [teklifler, setTeklifler]   = useState([])
@@ -264,6 +265,54 @@ function MusteriDetay() {
     finally { setDuzenleKaydediliyor(false) }
   }
 
+  // ── Müşteriyi sil (mükerrer kayıt temizliği) ──
+  // Bağlı kaydı OLAN müşteri silinmez: teklifler/gorusmeler/servis_talepleri
+  // gibi tablolarda FK YOK, yani DB engellemez ve kayıtlar sahipsiz kalır.
+  const musteriyiSil = async () => {
+    setSiliniyor(true)
+    try {
+      const ozet = await musteriBagliKayitSayilari(Number(id))
+
+      if (ozet.okunamayan.length) {
+        toast.error('Bağlı kayıtlar kontrol edilemedi — güvenlik için silme durduruldu.')
+        return
+      }
+
+      if (ozet.toplam > 0) {
+        const liste = ozet.bagli.map(b => `• ${b.adet} ${b.ad}`).join('\n')
+        const pasifle = await confirm({
+          baslik: 'Bu müşteri silinemez',
+          mesaj: `${musteri.firma || 'Bu müşteri'} kaydına bağlı işlemler var:\n\n${liste}\n\nSilinirse bu kayıtlar sahipsiz kalır. Mükerrer kayıtsa kayıtları doğru müşteriye taşıyın.\n\nDilerseniz bu kartı PASİF yapabilirsiniz — listede "Aktif" filtresinde görünmez.`,
+          onayMetin: 'Pasif Yap', iptalMetin: 'Kapat', tip: 'tehlikeli',
+        })
+        if (pasifle && musteri.durum !== 'pasif') {
+          const g = await musteriGuncelle(Number(id), { durum: 'pasif' })
+          if (g) { setMusteri(prev => ({ ...prev, durum: 'pasif' })); toast.success('Müşteri pasife alındı.') }
+          else toast.error('Pasife alınamadı.')
+        }
+        return
+      }
+
+      const ekstra = ozet.cascade.length
+        ? `\n\nBirlikte silinecek: ${ozet.cascade.map(c => `${c.adet} ${c.ad}`).join(', ')}.`
+        : ''
+      const onay = await confirm({
+        baslik: 'Müşteriyi Sil',
+        mesaj: `${musteri.firma || 'Bu müşteri'} silinecek. Bağlı görüşme, teklif, servis veya sipariş kaydı YOK.${ekstra}\n\nBu işlem geri alınamaz. Emin misiniz?`,
+        onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+      })
+      if (!onay) return
+
+      await musteriSil(Number(id))
+      toast.success('Müşteri silindi.')
+      navigate('/musteriler')
+    } catch (e) {
+      toast.error(e?.message || 'Müşteri silinemedi.')
+    } finally {
+      setSiliniyor(false)
+    }
+  }
+
   // ── Finansal özet ──
   const toplam = satislar.reduce((s, f) => s + (f.genelToplam || 0), 0)
   const tahsil = satislar.reduce((s, f) => s + (f.odenenToplam || 0), 0)
@@ -363,6 +412,11 @@ function MusteriDetay() {
             <Button variant="primary" size="sm" iconLeft={<Pencil size={13} strokeWidth={1.5} />} onClick={duzenleBaslat}>Düzenle</Button>
             <Button variant="secondary" size="sm" iconLeft={<Send size={13} strokeWidth={1.5} />} onClick={() => setDavetAcik(true)}>Portal Davet</Button>
             <Button variant="secondary" size="sm" iconLeft={<FileText size={13} strokeWidth={1.5} />} onClick={() => navigate(`/firma-gecmisi/${encodeURIComponent(musteri.firma)}`)}>Firma geçmişi</Button>
+            <Button variant="tertiary" size="sm" style={{ color: 'var(--danger)' }}
+              iconLeft={<Trash2 size={13} strokeWidth={1.5} />}
+              disabled={siliniyor} onClick={musteriyiSil}>
+              {siliniyor ? 'Siliniyor…' : 'Sil'}
+            </Button>
           </div>
         </div>
 

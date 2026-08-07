@@ -154,9 +154,13 @@ function Musteriler() {
       tip: 'tehlikeli',
     })
     if (!onay) return
-    await dbMusteriSil(id)
-    setMusteriler(prev => prev.filter(m => m.id !== id))
-    toast.success('Müşteri silindi.')
+    try {
+      await dbMusteriSil(id)
+      setMusteriler(prev => prev.filter(m => m.id !== id))
+      toast.success('Müşteri silindi.')
+    } catch (err) {
+      toast.error(err?.message || 'Müşteri silinemedi.')
+    }
   }
 
   const inSearch = (val, q) => !q || String(val ?? '').toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
