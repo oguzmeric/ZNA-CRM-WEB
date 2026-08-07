@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, MapPin, ArrowRight,
@@ -58,7 +58,14 @@ function Musteriler() {
   const [kodModu, setKodModu] = useState('otomatik')
   const [filtre, setFiltre] = useState('hepsi')
   const [arama, setArama] = useState('')
-  const [sayfa, setSayfa] = useState(1)
+  // Sayfa no URL'de tutulur (?sayfa=7): detaya girip geri dönünce liste AYNI
+  // sayfada açılır — eskiden state kaybolup hep 1. sayfaya dönüyordu (06.08).
+  const sayfa = Math.max(1, parseInt(searchParams.get('sayfa') || '1', 10) || 1)
+  const setSayfa = (n) => setSearchParams(prev => {
+    const p = new URLSearchParams(prev)
+    if (Number(n) <= 1) p.delete('sayfa'); else p.set('sayfa', String(n))
+    return p
+  }, { replace: true })
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
 
   // Sütun bazli filtreler
@@ -181,7 +188,13 @@ function Musteriler() {
     aktifSayfa * sayfaBoyutu,
   )
 
-  useEffect(() => { setSayfa(1) }, [filtre, arama, sayfaBoyutu])
+  // Filtre değişince 1. sayfaya dön — İLK render'da ÇALIŞMAZ, yoksa geri
+  // dönüşte URL'deki ?sayfa=N daha okunmadan silinirdi.
+  const sayfaResetIlk = useRef(true)
+  useEffect(() => {
+    if (sayfaResetIlk.current) { sayfaResetIlk.current = false; return }
+    setSayfa(1)
+  }, [filtre, arama, sayfaBoyutu])
 
   const filtreSayilari = {
     hepsi: musteriler.length,
