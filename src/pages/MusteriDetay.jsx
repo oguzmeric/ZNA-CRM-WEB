@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Children } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
 import {
@@ -59,6 +59,49 @@ const TIMELINE_RENK = {
   teklif:  'var(--brand-primary)',
   fatura:  'var(--success)',
   gorev:   'var(--warning)',
+}
+
+// Bir bölümde tek seferde gösterilecek en fazla satır. 148 cihazlı müşteride
+// (ELEMENT ELEKTRİK) tüm kayıtlar alt alta dökülüyor, sayfa kullanılamaz hâle
+// geliyordu — mobilde de aynı sorun yaşandı (07.08).
+const BOLUM_SINIR = 25
+
+function Bolum({ ikon, baslik, sayi, children }) {
+  const [tumu, setTumu] = useState(false)
+  if (!sayi) return null
+
+  const hepsi = Children.toArray(children)
+  const gorunen = tumu ? hepsi : hepsi.slice(0, BOLUM_SINIR)
+  const gizli = hepsi.length - gorunen.length
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        {ikon}
+        <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+          {baslik}
+        </span>
+        <span className="tabular-nums" style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+          ({sayi})
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{gorunen}</div>
+      {(gizli > 0 || tumu) && (
+        <button
+          type="button"
+          onClick={() => setTumu(t => !t)}
+          style={{
+            marginTop: 6, width: '100%', padding: '6px 10px', cursor: 'pointer',
+            background: 'var(--surface-subtle, rgba(148,163,184,0.10))',
+            border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+            font: '600 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)',
+          }}
+        >
+          {tumu ? '▴ Daha az göster' : `▾ Tümünü göster (${gizli} kayıt daha)`}
+        </button>
+      )}
+    </div>
+  )
 }
 
 function MusteriDetay() {
@@ -1344,23 +1387,9 @@ function LokasyonKayitPaneli({ lokasyon, musteriId, onKapat }) {
       veri.servisler.length + veri.bakimlar.length
     : 0
 
-  const Bolum = ({ ikon, baslik, sayi, children }) => {
-    if (!sayi) return null
-    return (
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          {ikon}
-          <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
-            {baslik}
-          </span>
-          <span className="tabular-nums" style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-            ({sayi})
-          </span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{children}</div>
-      </div>
-    )
-  }
+  // Bolum dosya seviyesine taşındı (aşağıda): bileşen gövdesi içinde
+  // tanımlıysa her render'da YENİ tip sayılır, state'i sıfırlanır ve
+  // "tümünü göster" seçimi kendiliğinden kapanırdı.
 
   const Satir = ({ kod, ad, sag, onClick }) => (
     <div
