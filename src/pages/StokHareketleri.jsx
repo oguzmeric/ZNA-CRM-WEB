@@ -87,10 +87,9 @@ export default function StokHareketleri() {
   // Kalabalık liste çözümü: varsayılan son 30 gün + sayfalama
   const [tarihAralik, setTarihAralik] = useState('30') // 'bugun' | '7' | '30' | 'hepsi'
   // Sayfa no URL'de (?sayfa=N): geri dönüşte liste aynı sayfada (06.08)
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
+  const [sayfa, setSayfa] = useUrlSayfa([filtre, arama, tarihAralik])
 
   // Filtre değişince ilk sayfaya dön
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, arama, tarihAralik])
   const [detayHareket, setDetayHareket] = useState(null)
   const [acikGruplar, setAcikGruplar] = useState(new Set())  // expand olan grup ID'leri
 

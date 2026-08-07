@@ -82,7 +82,7 @@ export default function ServisRaporlari() {
   const [tarihBaslangic, setTarihBaslangic] = useState('')
   const [tarihBitis, setTarihBitis] = useState('')
   // Sayfa no URL'de (?sayfa=N): rapor detayından geri dönünce liste aynı sayfada (06.08)
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
+  const [sayfa, setSayfa] = useUrlSayfa([arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
   const [seciliRapor, setSeciliRapor] = useState(null)
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
@@ -200,7 +200,6 @@ export default function ServisRaporlari() {
 
   const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUTU))
 
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
   const temizle = () => {
     setArama(''); setFirmaFiltre(''); setTeknisyenFiltre(''); setArizaFiltre(''); setTakipFiltre('')

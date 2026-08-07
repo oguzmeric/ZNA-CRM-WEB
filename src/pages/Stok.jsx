@@ -121,8 +121,6 @@ function Stok() {
   const [duzenleId, setDuzenleId] = useState(null)
   const [kodModu, setKodModu] = useState('otomatik')
   const [arama, setArama] = useState('')
-  // Sayfa no URL'de (?sayfa=7): model detayına girip geri dönünce liste aynı sayfada
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
   const [opsiyonModal, setOpsiyonModal] = useState(null)
   const [opsiyonForm, setOpsiyonForm] = useState(bosOpsiyonForm)
@@ -153,6 +151,9 @@ function Stok() {
   const [ozellikTanimlar, setOzellikTanimlar] = useState([])   // tüm tanımlar (pasifler dahil — yönetim için)
   const [ozellikDegerleri, setOzellikDegerleri] = useState({}) // formdaki ürünün değerleri {ozellikId: deger}
   const [ozellikFiltre, setOzellikFiltre] = useState({})       // liste filtreleri {ozellikId: deger}
+  // Sayfa no URL'de (?sayfa=7): model detayına girip geri dönünce liste aynı sayfada.
+  // ozellikFiltre OBJE — hook DEĞER karşılaştırır, referans değişimi resetlemez.
+  const [sayfa, setSayfa] = useUrlSayfa([arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
   const [urunOzellikMap, setUrunOzellikMap] = useState(null)   // Map<urunId, Map<ozellikId,deger>> — lazy
 
   // Kategori filtresi seçilince ürün özellik değerlerini (filtre için) lazy yükle
@@ -817,8 +818,6 @@ function Stok() {
     (aktifSayfa - 1) * sayfaBoyutu,
     aktifSayfa * sayfaBoyutu,
   )
-
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
 
   const toplamUrun = urunler.length
   const toplamBakiye = urunler.reduce((sum, u) => sum + stokBakiye(u.stokKodu), 0)

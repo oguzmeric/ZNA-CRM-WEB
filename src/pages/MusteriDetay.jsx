@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
@@ -300,9 +301,9 @@ function MusteriDetay() {
         }
       `}</style>
 
-      {/* Geri */}
+      {/* Geri — geriDon: geldiğin listeye AYNI sayfayla döner (?sayfa=N korunur) */}
       <button
-        onClick={() => navigate('/musteriler')}
+        onClick={() => geriDon(navigate, '/musteriler')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

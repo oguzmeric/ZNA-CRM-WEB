@@ -59,9 +59,9 @@ function Musteriler() {
   const [kodModu, setKodModu] = useState('otomatik')
   const [filtre, setFiltre] = useState('hepsi')
   const [arama, setArama] = useState('')
-  // Sayfa no URL'de (?sayfa=7): detaya girip geri dönünce liste aynı sayfada
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
+  // Sayfa no URL'de (?sayfa=7): detaya girip geri dönünce liste aynı sayfada
+  const [sayfa, setSayfa] = useUrlSayfa([filtre, arama, sayfaBoyutu])
 
   // Sütun bazli filtreler
   const [kolonFiltre, setKolonFiltre] = useState({
@@ -182,8 +182,6 @@ function Musteriler() {
     (aktifSayfa - 1) * sayfaBoyutu,
     aktifSayfa * sayfaBoyutu,
   )
-
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, arama, sayfaBoyutu])
 
   const filtreSayilari = {
     hepsi: musteriler.length,

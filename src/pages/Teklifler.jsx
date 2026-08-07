@@ -100,13 +100,12 @@ export default function Teklifler() {
   const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
-  // Sayfa no URL'de (?sayfa=N): teklif detayından geri dönünce liste aynı sayfada (06.08)
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
   const [benimTekliflerim, setBenimTekliflerim] = useState(false) // "Tekliflerim" — hazırlayan/temsilci benim
+  // Sayfa no URL'de (?sayfa=N): teklif detayından geri dönünce liste aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa([aktifSekme, arama, siralama, benimTekliflerim])
 
   // Filtre/sekme/arama değişince 1. sayfaya dön
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [aktifSekme, arama, siralama, benimTekliflerim])
 
   useEffect(() => {
     let iptal = false

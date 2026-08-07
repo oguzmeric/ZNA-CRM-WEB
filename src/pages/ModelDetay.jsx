@@ -95,9 +95,9 @@ function ModelDetay() {
   const [personelListe, setPersonelListe] = useState([])
   const [filtre, setFiltre] = useState('tumu')
   const [arama, setArama] = useState('')
-  // Sayfa no URL'de (?sayfa=N): geri dönüşte SN listesi aynı sayfada (06.08)
-  const [sayfa, setSayfa, sayfaResetIlkMi] = useUrlSayfa()
   const [sayfaBoyutu, setSayfaBoyutu] = useState(50)
+  // Sayfa no URL'de (?sayfa=N): geri dönüşte SN listesi aynı sayfada (06.08)
+  const [sayfa, setSayfa] = useUrlSayfa([filtre, arama, sayfaBoyutu])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
@@ -210,7 +210,6 @@ function ModelDetay() {
   )
   // Filtre/arama daralınca eldeki sayfa numarası listenin dışında kalabiliyor
   // (ör. 4. sayfadayken arama 3 sonuca düşerse ekran boş görünürdü)
-  useEffect(() => { if (sayfaResetIlkMi()) return; setSayfa(1) }, [filtre, arama, sayfaBoyutu])
 
   // Toplu seçim yardımcıları — yalnız depoda/teknisyende kalemler seçilebilir
   // (toplu aksiyonu olan iki durum). Veri tazelenince seçim sıfırlanır.
