@@ -11,7 +11,7 @@ import { useBildirim } from '../context/BildirimContext'
 import { gorevleriGetir, gorevGuncelle, gorevOnayaGonder } from '../services/gorevService'
 import { gorevYorumEkle } from '../services/gorevYorumService'
 import { gorusmeleriGetir, gorusmeGuncelle } from '../services/gorusmeService'
-import { gorevGecikti, gecikmeGunu } from '../lib/gorevSabitleri'
+import { gorevGecikti, gecikmeGunu, bugunStr } from '../lib/gorevSabitleri'
 import { Button, Input, Textarea, Label } from './ui'
 
 // Kapıya TAKILMAYAN durumlar: kapalılar + onayda bekleyen (iş teslim edilmiş)
@@ -26,7 +26,8 @@ const SEBEPLER = [
   { id: 'uretici_tedarik',   isim: 'Üretici / Tedarik', ikon: '📦' },
 ]
 
-const bugunStr = () => new Date().toISOString().slice(0, 10)
+// ⚠️ "bugün" TR gününe göre — yerel UTC kopyası gece 00:00-03:00 arasında bir
+// önceki günü verdiği için erteleme tarihi kontrolü kayıyordu (bugunStr merkezî)
 
 const benimMi = (g, kullaniciId) => {
   const id = String(kullaniciId)

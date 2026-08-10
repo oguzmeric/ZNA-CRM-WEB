@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:gorev": "node scripts/test-gorev-filtre.mjs",
     "preview": "vite preview",
     "supabase": "supabase",
     "deploy:fn": "supabase functions deploy"

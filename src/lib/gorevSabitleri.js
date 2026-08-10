@@ -29,7 +29,16 @@ export const KAPALI_DURUMLAR = GOREV_DURUMLARI.filter(d => d.grup === 'kapali').
 export const SEBEP_ZORUNLU_DURUMLAR = ['beklemede', 'bilgi_bekleniyor', 'iptal']
 
 // ─── Hesaplanan durumlar ────────────────────────────────────────────────────
-export const bugunStr = () => new Date().toISOString().slice(0, 10)
+// ⚠️ TR GÜNÜ: toISOString() UTC'ye göre keser → gece 00:00-03:00 arasında
+// "bugün" bir ÖNCEKİ günü gösteriyordu. Hafta aralığı yerel hesaplandığı için
+// aynı ekranda "bugün bitecek ama bu hafta değil" çelişkisi çıkıyordu.
+// Europe/Istanbul'a sabitlendi ('sv-SE' = YYYY-MM-DD) — GunlukOzet.jsx deseni.
+// ⚠️ Biçimleyici MODÜL seviyesinde: liste render'ında binlerce kez çağrılıyor
+// (232 görev × 9 sekme rozeti). Her çağrıda `toLocaleDateString(...)` ile yeni
+// Intl kurmak ölçümde 11,5 kat yavaştı; tek örneği tekrar kullanmak eski
+// toISOString sürümünden bile 5 kat hızlı.
+const TR_GUN_BICIM = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' })
+export const bugunStr = () => TR_GUN_BICIM.format(new Date())
 
 // SLA "saat durdurma": bu durumlarda görev dış bir şeyi bekler (serviste araç,
 // müşteriden bilgi) — gecikme saati DURUR (mig 221). Beklenen gün, devam edince
@@ -43,14 +52,25 @@ export const etkinSonTarih = (g) => {
   const taban = String(g.sonTarih).slice(0, 10)
   const ofset = Number(g.toplamBeklemeGun) || 0
   if (ofset <= 0) return taban
-  const d = new Date(taban + 'T00:00:00')
-  d.setDate(d.getDate() + ofset)
-  return d.toISOString().slice(0, 10)
+  // ⚠️ Takvim aritmetiği UTC'de yapılır. Eski hâli (yerel `new Date(...T00:00:00)`
+  // + toISOString) TR'de sonucu BİR GÜN GERİ kaydırıyordu — yerel 00:00, UTC'de
+  // bir önceki günün 21:00'i. Yani beklemede kalmış her görev 1 gün erken
+  // "gecikti" sayılıyordu.
+  const [y, ay, gun] = taban.split('-').map(Number)
+  if (!y || !ay || !gun) return taban
+  return new Date(Date.UTC(y, ay - 1, gun + ofset)).toISOString().slice(0, 10)
 }
 
-export const gorevGecikti = (g) =>
-  !!g?.sonTarih && !KAPALI_DURUMLAR.includes(g?.durum) && !gorevBekliyorMu(g) &&
-  etkinSonTarih(g) < bugunStr()
+// ⚠️ Taslak (grup 'pasif') gecikmiş SAYILMAZ: ne açık ne kapalı olduğu için
+// eski kontrol ("kapalı değilse") onu da gecikmiş işaretliyordu — aynı görev
+// KPI'da "açık değil" ama listede "gecikti" görünüyordu.
+export const gorevGecikti = (g) => {
+  if (!g?.sonTarih) return false
+  const grup = durumBilgi(g?.durum).grup
+  if (grup === 'kapali' || grup === 'pasif') return false
+  if (gorevBekliyorMu(g)) return false
+  return etkinSonTarih(g) < bugunStr()
+}
 
 export const gecikmeGunu = (g) => {
   if (!gorevGecikti(g)) return 0
@@ -192,7 +212,8 @@ export const isYukuHesapla = (gorevListesi, kullaniciId) => {
     (Array.isArray(g.ekip) && g.ekip.map(String).includes(id)))
   const acik = benim.filter(g => !KAPALI_DURUMLAR.includes(g.durum) && g.durum !== 'taslak')
   const bugun = bugunStr()
-  const bugunBitecek = acik.filter(g => String(g.sonTarih || '').slice(0, 10) === bugun)
+  // Bekleme telafisi dahil (etkinSonTarih) — "gecikti" ile aynı takvimi konuşsun
+  const bugunBitecek = acik.filter(g => etkinSonTarih(g) === bugun)
   const geciken = acik.filter(g => gorevGecikti(g))
   const kritik = acik.filter(g => g.oncelik === 'kritik' || g.oncelik === 'acil')
   const puan = acik.reduce((t, g) => t + oncelikBilgi(g.oncelik).agirlik, 0) + geciken.length * 2

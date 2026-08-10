@@ -13,18 +13,22 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock, MapPin, Settings,
   FolderOpen, CheckCircle2, Circle, History, Filter, Calendar, ChevronLeft, ChevronRight, X,
-  ChevronDown, CornerDownRight, Bookmark, Repeat, Loader2, HelpCircle, Hourglass, Ban,
+  ChevronDown, CornerDownRight, Bookmark, Repeat, Loader2, HelpCircle, Hourglass, Ban, Archive,
 } from 'lucide-react'
 import {
   gorevleriGetir, gorevGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
 } from '../services/gorevService'
 import { gorevKategorileriGetir } from '../services/gorevKategoriService'
 import {
-  GOREV_DURUMLARI, durumBilgi, ACIK_DURUMLAR, KAPALI_DURUMLAR, SEBEP_ZORUNLU_DURUMLAR,
+  GOREV_DURUMLARI, durumBilgi, KAPALI_DURUMLAR, SEBEP_ZORUNLU_DURUMLAR,
   gorevGecikti, etkinDurum, ONCELIK_SECENEKLERI, ONCELIK_MAP, oncelikBilgi,
   GIZLILIK_SECENEKLERI, ATAMA_TURLERI, TAMAMLAMA_KURALLARI, bugunStr,
   anaGorevKapatKontrol,
 } from '../lib/gorevSabitleri'
+import {
+  SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, kisiselSekmeMi,
+  gorunurMu, durumEsle, inSearch, inDateEq, bitisGorunen, hiyerarsikSirala,
+} from '../lib/gorevFiltre'
 import {
   IlerlemeBar, EtkinDurumRozeti, OncelikNokta, SekmeSatiri, SebepModal, IsYukuPaneli,
 } from '../components/gorev/GorevListeParcalari'
@@ -62,18 +66,12 @@ const kolonlar = [
 // durumBilgi ile normalize: legacy 'devam_ediyor' gibi alias'lar da kolonunu bulsun
 const kolonBul = (durum) => kolonlar.find(k => k.durumlar.includes(durumBilgi(durum).id))
 
-// Liste sekmeleri (madde 30)
-const SEKME_LISTESI = [
-  { id: 'bana',         isim: 'Bana Atananlar' },
-  { id: 'olusturdugum', isim: 'Oluşturduklarım' },
-  { id: 'alt',          isim: 'Alt Görevlerim' },
-  { id: 'onay',         isim: 'Onay Bekleyenler' },
-  { id: 'geciken',      isim: 'Gecikenler' },
-  { id: 'bugun',        isim: 'Bugün Bitecekler' },
-  { id: 'hafta',        isim: 'Bu Hafta Bitecekler' },
-  { id: 'tamamlanan',   isim: 'Tamamlananlar' },
-  { id: 'tumu',         isim: 'Tümü' },
-]
+// Liste sekmeleri (madde 30) — tanım ve eşleşme kuralı src/lib/gorevFiltre.js'te
+
+// Sütun filtrelerinin boş hâli — hem ilk değer, hem "Filtreleri temizle", hem
+// kayıtlı filtre uygulaması BURADAN başlar (biri unutulursa eski değer kalıyor
+// ve kullanıcı sebebini göremediği bir daralmayla karşılaşıyordu).
+const BOS_KOLON_FILTRE = { no: '', takip: '', veren: '', alan: '', gorev: '', basTar: '', bitTar: '', kontrol: '' }
 
 const bosForm = {
   baslik: '', aciklama: '', atanan: '', oncelik: 'normal', durum: 'bekliyor',
@@ -393,11 +391,7 @@ function Gorevler() {
   const [kaydetMesgul, setKaydetMesgul] = useState(false)
 
   // Liste görünümü için sütun filtreleri + sayfalama
-  const [kolonFiltre, setKolonFiltre] = useState({
-    no: '', takip: '', veren: '', alan: '', gorev: '',
-    basTar: '', bitTar: '',
-    kontrol: '',
-  })
+  const [kolonFiltre, setKolonFiltre] = useState(BOS_KOLON_FILTRE)
   // Sayfa no URL'de (?sayfa=N): detaydan geri dönünce liste aynı sayfada (06.08)
   const [sayfa, setSayfa] = useUrlSayfa()
   const SAYFA_BOYUT = 50
@@ -920,28 +914,16 @@ function Gorevler() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ─── Kişi eşleşme yardımcıları (madde 30) ─────────────────────────────────
-  const uid = kullanici?.id != null ? String(kullanici.id) : ''
-
-  // "Görevlerim"/"Bana Atananlar": bana atanan VEYA ekip üyesi olduğum görevler.
-  const banaAitGorev = (g) => {
-    if (!uid) return false
-    return String(g.atanan ?? '') === uid
-      || String(g.atananId ?? '') === uid
-      || (Array.isArray(g.ekip) && g.ekip.some(x => String(x) === uid))
-  }
-
-  const benOlusturdum = (g) => {
-    if (!uid) return false
-    return String(g.olusturanId ?? '') === uid
-      || (!!g.olusturanAd && (g.olusturanAd === kullanici?.ad || g.olusturanAd === kullanici?.kullaniciAdi))
-  }
-
-  const benimleIlgili = (g) => banaAitGorev(g) || benOlusturdum(g)
+  // ─── Filtre çekirdeği (src/lib/gorevFiltre.js) ────────────────────────────
+  // ⭐ Rozet, KPI ve tablo AYNI fonksiyondan (sekmeKumesi) geçer. Ayrı ayrı
+  // sayıldıkları sürümde "rozet 37 · liste 0" gibi matematiksel boş kümeler
+  // oluşuyordu (10.08 denetimi). Kural: yeni bir sayı gösterecekseniz onu da
+  // sekmeKumesi'nden türetin, elle filtrelemeyin.
+  const ctx = { ...sekmeBaglami(kullanici), sadeceBenim, kisiFiltre }
 
   // Görünürlük: HERKES tüm görevleri görür (mig 174 — RLS SELECT is_staff()).
   // TEK istisna: taslak görevler yalnız oluşturana görünür (madde 30/8).
-  const gorunurGorevler = gorevler.filter(g => g && (g.durum !== 'taslak' || benOlusturdum(g)))
+  const gorunurGorevler = gorevler.filter(g => gorunurMu(g, ctx))
 
   // Alt görev sayısı + görev lookup (rozet ve üst görev no gösterimi için)
   const gorevMap = new Map(gorunurGorevler.map(g => [g.id, g]))
@@ -950,48 +932,25 @@ function Gorevler() {
     if (g.ustGorevId) altSayiMap.set(g.ustGorevId, (altSayiMap.get(g.ustGorevId) || 0) + 1)
   }
 
-  // Bu haftanın Pzt–Paz aralığı (yerel saat) — 'Bu Hafta Bitecekler' sekmesi
-  const bugunTarih = bugunStr()
-  const simdi = new Date()
-  const haftaGunIdx = (simdi.getDay() + 6) % 7 // Pzt=0
-  const yerelStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const haftaBasD = new Date(simdi); haftaBasD.setDate(simdi.getDate() - haftaGunIdx)
-  const haftaSonD = new Date(haftaBasD); haftaSonD.setDate(haftaBasD.getDate() + 6)
-  const haftaBas = yerelStr(haftaBasD)
-  const haftaSon = yerelStr(haftaSonD)
-
-  // Sekme eşleşmesi (madde 30)
-  const sekmeEsle = (g, sekmeId) => {
-    const sonT = String(g.sonTarih || '').slice(0, 10)
-    switch (sekmeId) {
-      case 'bana': return banaAitGorev(g)
-      case 'olusturdugum': return benOlusturdum(g)
-      case 'alt': return !!g.ustGorevId && banaAitGorev(g)
-      case 'onay': return g.durum === 'onay_bekliyor'
-        && (String(g.onaylayiciId ?? '') === uid || (g.onayGerekli && !g.onaylayiciId && benOlusturdum(g)))
-      case 'geciken': return gorevGecikti(g) && benimleIlgili(g)
-      case 'bugun': return !KAPALI_DURUMLAR.includes(g.durum) && sonT === bugunTarih && benimleIlgili(g)
-      case 'hafta': return !KAPALI_DURUMLAR.includes(g.durum) && !!sonT && sonT >= haftaBas && sonT <= haftaSon && benimleIlgili(g)
-      case 'tamamlanan': return g.durum === 'tamamlandi'
-      default: return true // 'tumu'
-    }
-  }
-
+  // Sekme rozetleri — kapsam DAHİL
   const sekmeSayilari = {}
   for (const s of SEKME_LISTESI) {
-    sekmeSayilari[s.id] = gorunurGorevler.filter(g => sekmeEsle(g, s.id)).length
+    sekmeSayilari[s.id] = sekmeKumesi(gorunurGorevler, s.id, ctx).length
   }
 
-  // KPI şeridi değerleri (madde 34)
-  const kpiBanaAcik = gorunurGorevler.filter(g => banaAitGorev(g) && ACIK_DURUMLAR.includes(g.durum)).length
+  // KPI şeridi değerleri (madde 34) — kartın sayısı, tıklayınca açılan listenin
+  // birebir kendisi olsun diye aynı kümeden + aynı chip kuralından geçer.
+  const kpiBanaAcik = sekmeKumesi(gorunurGorevler, 'bana', ctx).filter(g => durumEsle(g, 'acik')).length
 
-  // Kanban + liste ortak kapsam filtresi (durum chip filtresi liste içinde uygulanır)
-  const filtreliGorevler = gorunurGorevler.filter(g => {
-    if (sadeceBenim && !banaAitGorev(g)) return false
-    // "Görevlerim" açıkken kişi açılırı yok sayılır (aynı boyut).
-    if (!sadeceBenim && kisiFiltre && g.atanan?.toString() !== kisiFiltre) return false
-    return true
-  })
+  // Kanban kapsam filtresi (panoda sekme kavramı yok — yalnız kapsam uygulanır)
+  const filtreliGorevler = gorunurGorevler.filter(g => kapsamEsle(g, ctx))
+
+  // Aktif sekmenin kümesi — tablonun tabanı (rozetle aynı kaynak)
+  const sekmeliGorevler = sekmeKumesi(gorunurGorevler, sekme, ctx)
+
+  // Kişisel sekmelerde kapsam kontrolleri yok sayılır → arayüzde de pasif
+  // görünsünler (çalışmayan bir düğmeyi aktif göstermek yanıltıyordu).
+  const kapsamPasif = gorunumModu === 'liste' && !goster && kisiselSekmeMi(sekme)
 
   // KPI kartı tıklaması → ilgili sekmeye geç
   const kpiTikla = (sekmeId, durumChip = 'hepsi') => {
@@ -1021,7 +980,10 @@ function Gorevler() {
     setKategoriFiltre(f.kategoriFiltre || '')
     setOncelikFiltre(f.oncelikFiltre || '')
     setEtiketFiltre(f.etiketFiltre || '')
-    setKolonFiltre(k => ({ ...k, gorev: f.arama || '' }))
+    // ⚠️ Sütun filtrelerinin TAMAMI sıfırlanır: yalnız 'gorev' yazıldığı
+    // sürümde ekranda kalan diğer 7 alan kayıtlı filtreye sessizce ekleniyor,
+    // "kaydettiğim filtre başka sonuç veriyor" hissi doğuyordu.
+    setKolonFiltre({ ...BOS_KOLON_FILTRE, gorev: f.arama || '' })
     setSayfa(1)
   }
 
@@ -1030,6 +992,86 @@ function Gorevler() {
     const yeni = kayitliFiltreler.filter(f => f.ad !== ad)
     setKayitliFiltreler(yeni)
     try { localStorage.setItem(filtreAnahtar, JSON.stringify(yeni)) } catch { /* yoksay */ }
+  }
+
+  // ─── Tablo hesap zinciri ──────────────────────────────────────────────────
+  // Gövdede hesaplanır: başlıktaki sayaç, tablo ve alttaki "toplam N kayıt"
+  // tek bir kümeden okur (eskiden başlık kapsamı, footer süzülmüşü sayıyor,
+  // ikisi aynı ekranda farklı rakam gösteriyordu).
+  const listeSuzulmus = sekmeliGorevler
+    .filter(g => durumEsle(g, filtre))
+    .filter(g => {
+      // Ek filtreler (madde 31): kategori, öncelik, etiket
+      if (kategoriFiltre && String(g.kategoriId ?? '') !== kategoriFiltre) return false
+      if (oncelikFiltre) {
+        const esdeger = oncelikFiltre === 'normal' ? ['normal', 'orta'] : [oncelikFiltre]
+        if (!esdeger.includes(g.oncelik)) return false
+      }
+      if (etiketFiltre) {
+        const q = etiketFiltre.toLocaleLowerCase('tr')
+        if (!Array.isArray(g.etiketler) || !g.etiketler.some(t => String(t).toLocaleLowerCase('tr').includes(q))) return false
+      }
+      return true
+    })
+    .filter(g => {
+      const atananKisi = kullanicilar.find(k => k.id?.toString() === g.atanan)
+      const oncAd = oncelikBilgi(g.oncelik).isim
+      const basTar = g.olusturmaTarih ? String(g.olusturmaTarih).slice(0, 10) : ''
+      return (
+        inSearch(g.gorevNo, kolonFiltre.no) &&
+        (!kolonFiltre.takip ||
+          (kolonFiltre.takip === 'suresi_gecti' ? gorevGecikti(g) : durumBilgi(g.durum).id === kolonFiltre.takip)) &&
+        inSearch(g.olusturanAd, kolonFiltre.veren) &&
+        inSearch(atananKisi?.ad, kolonFiltre.alan) &&
+        (inSearch(g.baslik, kolonFiltre.gorev) || inSearch(g.aciklama, kolonFiltre.gorev)) &&
+        inDateEq(basTar, kolonFiltre.basTar) &&
+        inDateEq(bitisGorunen(g), kolonFiltre.bitTar) &&
+        inSearch(oncAd, kolonFiltre.kontrol)
+      )
+    })
+    .sort((a, b) => String(b.olusturmaTarih || '').localeCompare(String(a.olusturmaTarih || '')))
+
+  // Alt görevleri üstlerinin hemen altına grupla (madde 32)
+  const tabloRow = hiyerarsikSirala(listeSuzulmus)
+  const toplam = tabloRow.length
+  const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUT))
+  const guvSayfa = Math.min(sayfa, toplamSayfa)
+  const dilim = tabloRow.slice((guvSayfa - 1) * SAYFA_BOYUT, guvSayfa * SAYFA_BOYUT)
+
+  // İkincil durum filtresi (sekme İÇİNDE) — satırda görünen HER durum şeritte
+  // de seçilebilir; 'Açık'/'Kapalı' hızlı grup olarak durur. Eşleşme kuralı
+  // gorevFiltre.CHIP_DURUMLARI'nda; burası yalnız sunum (ikon/renk/isim).
+  // ⚠️ Taslak artık 'Atandı'nın içinde DEĞİL (atanmamış taslak "Atandı"
+  // başlığında görünüyor, chip toplamları "Tümü"yü tutmuyordu); kendi chip'i
+  // yalnızca kullanıcının görebildiği bir taslak varsa çıkar.
+  const taslakVar = gorunurGorevler.some(g => g.durum === 'taslak')
+  const durumChipler = [
+    { id: 'hepsi',     isim: 'Tümü',            icon: List },
+    { id: 'acik',      isim: 'Açık',            icon: Circle,       renk: 'var(--info)' },
+    { id: 'kapali',    isim: 'Kapalı',          icon: Archive,      renk: 'var(--text-muted)' },
+    ...(taslakVar ? [{ id: 'taslak', isim: 'Taslak', icon: Pencil, renk: 'var(--text-muted)' }] : []),
+    { id: 'atandi',    isim: 'Atandı',          icon: User,         renk: 'var(--info)' },
+    { id: 'devam',     isim: 'Devam Ediyor',    icon: Loader2,      renk: 'var(--warning)' },
+    { id: 'beklemede', isim: 'Beklemede',       icon: Clock,        renk: '#f97316' },
+    { id: 'bilgi',     isim: 'Bilgi Bekleniyor',icon: HelpCircle,   renk: '#a855f7' },
+    { id: 'onay',      isim: 'Onay Bekliyor',   icon: Hourglass,    renk: '#06b6d4' },
+    { id: 'tamam',     isim: 'Tamamlandı',      icon: CheckCircle2, renk: 'var(--success)' },
+    { id: 'iptal',     isim: 'İptal / Red',     icon: Ban,          renk: 'var(--text-muted)' },
+    { id: 'gecmis',    isim: 'Geçmiş',          icon: History,      renk: 'var(--danger)' },
+  ]
+
+  // ⚠️ Durum chip'i de "aktif filtre" sayılır: tek başına seçiliyken temizle
+  // düğmesi hiç görünmüyordu, kullanıcı daralmayı geri alamıyordu.
+  const chipAktif = !!filtre && filtre !== 'hepsi'
+  const chipAdi = durumChipler.find(c => c.id === filtre)?.isim || filtre
+  const filtreVar = Object.values(kolonFiltre).some(Boolean)
+    || !!kategoriFiltre || !!oncelikFiltre || !!etiketFiltre || chipAktif
+
+  const filtreleriTemizle = () => {
+    setKolonFiltre(BOS_KOLON_FILTRE)
+    setKategoriFiltre(''); setOncelikFiltre(''); setEtiketFiltre('')
+    setFiltre('hepsi')
+    setSayfa(1)
   }
 
   if (yukleniyor) return <SkeletonList />
@@ -1051,28 +1093,54 @@ function Gorevler() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 className="t-h1">Görevler</h1>
+          {/* Başlık sayacı listedeki NİHAİ sayıyı gösterir — alttaki "toplam N
+              kayıt" ile aynı kümedir (eskiden ikisi farklı rakam veriyordu). */}
           <p className="t-caption" style={{ marginTop: 4 }}>
-            {sadeceBenim
-              ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — Görevlerim</>
-              : kisiFiltre
-                ? <><span className="tabular-nums">{filtreliGorevler.length}</span> görev — {kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad}</>
-                : <><span className="tabular-nums">{gorunurGorevler.length}</span> görev</>}
+            {gorunumModu === 'liste' && !goster ? (
+              <>
+                <span className="tabular-nums">{toplam}</span> görev
+                {' — '}{SEKME_LISTESI.find(s => s.id === sekme)?.isim}
+                {!kapsamPasif && sadeceBenim && ' · Görevlerim'}
+                {!kapsamPasif && !sadeceBenim && kisiFiltre &&
+                  ` · ${kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad || ''}`}
+              </>
+            ) : (
+              <>
+                <span className="tabular-nums">{filtreliGorevler.length}</span> görev
+                {sadeceBenim && ' — Görevlerim'}
+                {!sadeceBenim && kisiFiltre &&
+                  ` — ${kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad || ''}`}
+              </>
+            )}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* Kapsam: Tümü | Görevlerim (bana atanan + ekip) */}
-          <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+          {/* Kapsam: Tümü | Görevlerim (bana atanan + ekip).
+              ⚠️ Kişisel sekmelerde (Bana Atananlar / Oluşturduklarım / Alt
+              Görevlerim / Onay Bekleyenler) kişi boyutunu sekmenin kendisi
+              belirler; kapsam yok sayıldığı için burada da PASİF görünür —
+              eskiden ikisi AND'lenip "Oluşturduklarım"dan başkasına atadığın
+              görevleri, "Onay Bekleyenler"den de yarısını sessizce düşürüyordu. */}
+          <div
+            title={kapsamPasif ? 'Bu sekme zaten kişiye göre süzüyor — kapsam seçimi uygulanmaz.' : undefined}
+            style={{
+              display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)',
+              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+              opacity: kapsamPasif ? 0.4 : 1,
+            }}
+          >
             {[{ v: false, l: 'Tümü' }, { v: true, l: 'Görevlerim' }].map(s => (
               <button
                 key={s.l}
                 onClick={() => setSadeceBenim(s.v)}
+                disabled={kapsamPasif}
                 style={{
                   padding: '6px 12px',
                   borderRadius: 'calc(var(--radius-sm) - 2px)',
                   background: sadeceBenim === s.v ? 'var(--surface-card)' : 'transparent',
                   boxShadow: sadeceBenim === s.v ? 'var(--shadow-sm)' : 'none',
                   color: sadeceBenim === s.v ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: 'none', cursor: 'pointer',
+                  border: 'none', cursor: kapsamPasif ? 'not-allowed' : 'pointer',
                   font: '500 13px/18px var(--font-sans)',
                 }}
               >
@@ -1081,9 +1149,16 @@ function Gorevler() {
             ))}
           </div>
           {/* Kişi açılırı her zaman render edilir (kaldırılırsa layout sağa kayıyordu).
-              "Görevlerim" aktifken devre dışı + soluk — filtrede zaten yok sayılıyor. */}
-          <div style={{ minWidth: 180, opacity: sadeceBenim ? 0.4 : 1, pointerEvents: sadeceBenim ? 'none' : 'auto' }}>
-            <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)} disabled={sadeceBenim}>
+              "Görevlerim" aktifken veya kişisel sekmede devre dışı + soluk. */}
+          <div
+            title={kapsamPasif ? 'Bu sekme zaten kişiye göre süzüyor — kişi seçimi uygulanmaz.' : undefined}
+            style={{
+              minWidth: 180,
+              opacity: (sadeceBenim || kapsamPasif) ? 0.4 : 1,
+              pointerEvents: (sadeceBenim || kapsamPasif) ? 'none' : 'auto',
+            }}
+          >
+            <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)} disabled={sadeceBenim || kapsamPasif}>
               <option value="">Tüm kişiler</option>
               {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
             </CustomSelect>
@@ -1608,6 +1683,25 @@ function Gorevler() {
                 <X size={12} strokeWidth={1.5} /> Temizle ({kanbanGorevler.length})
               </button>
             )}
+            {/* Panoda sekme ve durum filtresi UYGULANMAZ (kolonlar zaten
+                duruma göre dizili). Listede daraltılan küme burada geri
+                geldiği için "filtrem kayboldu" hissi doğuyordu — sessiz
+                kalmak yerine söylüyoruz. */}
+            {(sekme !== 'tumu' || chipAktif) && (
+              <span
+                title="Pano tüm akışı gösterir; sekme ve durum filtresi yalnız liste görünümüne uygulanır."
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '5px 10px', borderRadius: 'var(--radius-pill)',
+                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                  font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+                }}
+              >
+                <Filter size={11} strokeWidth={1.5} />
+                Panoda uygulanmaz: {SEKME_LISTESI.find(s => s.id === sekme)?.isim}
+                {chipAktif && ` · ${chipAdi}`}
+              </span>
+            )}
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter}
             onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -1638,104 +1732,6 @@ function Gorevler() {
 
       {/* Liste — Profesyonel tablo görünümü */}
       {!goster && gorunumModu === 'liste' && (() => {
-        // İkincil durum filtresi (sekme İÇİNDE) — satırda görünen HER durum şeritte
-        // de seçilebilir (tutarsızlık bulgusu); 'Açık' hızlı grup olarak kalır.
-        const durumChipler = [
-          { id: 'hepsi',     isim: 'Tümü',            icon: List },
-          { id: 'acik',      isim: 'Açık',            icon: Circle,       renk: 'var(--info)' },
-          { id: 'atandi',    isim: 'Atandı',          icon: User,         renk: 'var(--info)',       durumlar: ['bekliyor', 'taslak'] },
-          { id: 'devam',     isim: 'Devam Ediyor',    icon: Loader2,      renk: 'var(--warning)',    durumlar: ['devam', 'revize'] },
-          { id: 'beklemede', isim: 'Beklemede',       icon: Clock,        renk: '#f97316',           durumlar: ['beklemede'] },
-          { id: 'bilgi',     isim: 'Bilgi Bekleniyor',icon: HelpCircle,   renk: '#a855f7',           durumlar: ['bilgi_bekleniyor'] },
-          { id: 'onay',      isim: 'Onay Bekliyor',   icon: Hourglass,    renk: '#06b6d4',           durumlar: ['onay_bekliyor'] },
-          { id: 'tamam',     isim: 'Tamamlandı',      icon: CheckCircle2, renk: 'var(--success)',    durumlar: ['tamamlandi'] },
-          { id: 'iptal',     isim: 'İptal / Red',     icon: Ban,          renk: 'var(--text-muted)', durumlar: ['iptal', 'reddedildi'] },
-          { id: 'gecmis',    isim: 'Geçmiş',          icon: History,      renk: 'var(--danger)' },
-        ]
-
-        const durumEsle = (g) => {
-          if (!filtre || filtre === 'hepsi') return true
-          if (filtre === 'gecmis') return gorevGecikti(g)
-          const dId = durumBilgi(g.durum).id
-          if (filtre === 'acik') return ACIK_DURUMLAR.includes(dId)
-          if (filtre === 'kapali') return KAPALI_DURUMLAR.includes(dId) // legacy: eski kayıtlı filtreler
-          const chip = durumChipler.find(c => c.id === filtre)
-          return chip?.durumlar ? chip.durumlar.includes(dId) : true
-        }
-
-        const inSearch = (val, q) => !q || String(val ?? '').toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
-        const inDateEq = (val, q) => {
-          if (!q) return true
-          if (!val) return false
-          return String(val).slice(0, 10) === q
-        }
-
-        const suzulmus = filtreliGorevler
-          .filter(g => sekmeEsle(g, sekme))
-          .filter(durumEsle)
-          .filter(g => {
-            // Ek filtreler (madde 31): kategori, öncelik, etiket
-            if (kategoriFiltre && String(g.kategoriId ?? '') !== kategoriFiltre) return false
-            if (oncelikFiltre) {
-              const esdeger = oncelikFiltre === 'normal' ? ['normal', 'orta'] : [oncelikFiltre]
-              if (!esdeger.includes(g.oncelik)) return false
-            }
-            if (etiketFiltre) {
-              const q = etiketFiltre.toLocaleLowerCase('tr')
-              if (!Array.isArray(g.etiketler) || !g.etiketler.some(t => String(t).toLocaleLowerCase('tr').includes(q))) return false
-            }
-            return true
-          })
-          .filter(g => {
-            const atananKisi = kullanicilar.find(k => k.id?.toString() === g.atanan)
-            const durumAd = etkinDurum(g).isim
-            const oncAd = oncelikBilgi(g.oncelik).isim
-            const basTar = g.olusturmaTarih ? String(g.olusturmaTarih).slice(0, 10) : ''
-            const bitTar = g.sonTarih || ''
-            return (
-              inSearch(g.gorevNo, kolonFiltre.no) &&
-              (!kolonFiltre.takip ||
-                (kolonFiltre.takip === 'suresi_gecti' ? gorevGecikti(g) : durumBilgi(g.durum).id === kolonFiltre.takip)) &&
-              inSearch(g.olusturanAd, kolonFiltre.veren) &&
-              inSearch(atananKisi?.ad, kolonFiltre.alan) &&
-              (inSearch(g.baslik, kolonFiltre.gorev) || inSearch(g.aciklama, kolonFiltre.gorev)) &&
-              inDateEq(basTar, kolonFiltre.basTar) &&
-              inDateEq(bitTar, kolonFiltre.bitTar) &&
-              inSearch(oncAd, kolonFiltre.kontrol)
-            )
-          })
-          .sort((a, b) => String(b.olusturmaTarih || '').localeCompare(String(a.olusturmaTarih || '')))
-
-        // Alt görevleri üstlerinin hemen altına grupla (üst listede varsa) —
-        // görsel girinti + ↳ işaretiyle hiyerarşi okunur (madde 32)
-        const idSet = new Set(suzulmus.map(g => g.id))
-        const cocukMap = new Map()
-        const kokler = []
-        for (const g of suzulmus) {
-          if (g.ustGorevId && idSet.has(g.ustGorevId)) {
-            if (!cocukMap.has(g.ustGorevId)) cocukMap.set(g.ustGorevId, [])
-            cocukMap.get(g.ustGorevId).push(g)
-          } else {
-            kokler.push(g)
-          }
-        }
-        const tabloRow = []
-        const sirayaEkle = (g) => {
-          tabloRow.push(g)
-          const cocuklar = (cocukMap.get(g.id) || [])
-            .slice()
-            .sort((a, b) => String(a.gorevNo || '').localeCompare(String(b.gorevNo || '')))
-          cocuklar.forEach(sirayaEkle)
-        }
-        kokler.forEach(sirayaEkle)
-
-        const toplam = tabloRow.length
-        const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUT))
-        const guvSayfa = Math.min(sayfa, toplamSayfa)
-        const dilim = tabloRow.slice((guvSayfa - 1) * SAYFA_BOYUT, guvSayfa * SAYFA_BOYUT)
-
-        const filtreVar = Object.values(kolonFiltre).some(Boolean) || !!kategoriFiltre || !!oncelikFiltre || !!etiketFiltre
-
         // ISO timestamp'ı TR saat dilimine göre biçimle (UTC → Europe/Istanbul)
         const fmtTarih = (iso) => {
           if (!iso) return ''
@@ -1795,10 +1791,15 @@ function Gorevler() {
             flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
           }}>
             {/* Sekmeler (madde 30) — yatay kaydırılabilir, sayı rozetli */}
+            {/* ⚠️ Sekme değişince durum chip'i SIFIRLANIR: KPI'dan gelen
+                chip ("Açık") yeni sekmeyle çelişince liste matematiksel olarak
+                boşalıyor, rozet dolu görünüyordu ("rozet 37 · liste 0").
+                Kayıtlı filtre uygulaması bu yoldan geçmez (filtreUygula
+                sekme+chip'i birlikte yazar) — chip'i ezmez. */}
             <SekmeSatiri
               sekmeler={SEKME_LISTESI.map(s => ({ ...s, sayi: sekmeSayilari[s.id] ?? 0 }))}
               aktif={sekme}
-              onSec={(id) => { setSekme(id); setSayfa(1) }}
+              onSec={(id) => { setSekme(id); setFiltre('hepsi'); setSayfa(1) }}
             />
 
             {/* Kayıtlı filtreler + ek filtreler (madde 31) */}
@@ -1930,10 +1931,7 @@ function Gorevler() {
               })}
               {filtreVar && (
                 <button
-                  onClick={() => {
-                    setKolonFiltre({ no:'', takip:'', veren:'', alan:'', gorev:'', basTar:'', bitTar:'', kontrol:'' })
-                    setKategoriFiltre(''); setOncelikFiltre(''); setEtiketFiltre(''); setSayfa(1)
-                  }}
+                  onClick={filtreleriTemizle}
                   style={{
                     marginLeft: 'auto',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -2021,7 +2019,22 @@ function Gorevler() {
                   {dilim.length === 0 && (
                     <tr>
                       <td colSpan={10} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', font: '400 13px/18px var(--font-sans)' }}>
-                        Görev bulunamadı
+                        {/* Boş liste SEBEBİNİ söyler: "rozet dolu ama liste boş"
+                            şikâyetinin yarısı, daralmanın görünmemesindendi. */}
+                        {filtreVar ? (
+                          <>
+                            <div style={{ marginBottom: 10 }}>
+                              Bu sekmede filtrelerle eşleşen görev yok.
+                              {' '}<span style={{ color: 'var(--text-secondary)' }}>
+                                (sekme: {SEKME_LISTESI.find(s => s.id === sekme)?.isim}
+                                {chipAktif && ` · durum: ${chipAdi}`})
+                              </span>
+                            </div>
+                            <Button variant="secondary" onClick={filtreleriTemizle} iconLeft={<X size={13} strokeWidth={1.5} />}>
+                              Filtreleri temizle
+                            </Button>
+                          </>
+                        ) : 'Bu sekmede görev bulunmuyor.'}
                       </td>
                     </tr>
                   )}
