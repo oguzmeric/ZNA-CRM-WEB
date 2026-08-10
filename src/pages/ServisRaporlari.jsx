@@ -973,7 +973,15 @@ export default function ServisRaporlari() {
             @media print {
               body * { visibility: hidden !important; }
               .rapor-form-print, .rapor-form-print * { visibility: visible !important; }
-              .rapor-form-print { position: absolute; left: 0; top: 0; width: 100%; }
+              /* ⚠️ Overlay position:fixed + overflow:auto — yazdırmayı TEK
+                 viewport'a KIRPIYORDU: çok sayfalı formda yalnız ekranda
+                 görünen kısım basılıyor, son fotoğraf ortadan kesiliyordu
+                 ("foto yarım çıkıyor", 10.08 — visibility:hidden kutunun
+                 GEOMETRİSİNİ kaldırmaz, kırpma sürer). İkisi de print'te
+                 normal akışa döner; pdfjs ölçümü: 1 sayfa/8 kayıp foto →
+                 3 sayfa/0 kayıp. */
+              .rapor-form-overlay { position: static !important; overflow: visible !important; display: block !important; background: #fff !important; }
+              .rapor-form-print { position: static !important; overflow: visible !important; height: auto !important; flex: none !important; padding: 0 !important; }
               .rapor-form-toolbar { display: none !important; }
             }
           `}</style>
