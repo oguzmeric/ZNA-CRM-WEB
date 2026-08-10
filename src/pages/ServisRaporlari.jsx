@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { supabase } from '../lib/supabase'
+import { useSearchParams } from 'react-router-dom'
 import {
-  Wrench, Download, ChevronLeft, ChevronRight,
+  Wrench, Download, ChevronLeft, ChevronRight, ExternalLink,
   Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer, RefreshCw,
 } from 'lucide-react'
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
 } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
-import { servisRaporlariSayfa, servisRaporFiltreSecenekleri } from '../services/servisRaporService'
+import { servisRaporlariSayfa, servisRaporFiltreSecenekleri, servisRaporGetir } from '../services/servisRaporService'
 import { servisTalepGetir } from '../services/servisService'
 import { formEnvanterKalemleri } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
@@ -91,6 +92,9 @@ export default function ServisRaporlari() {
   // ettiriyordu — "her harfte sayfa yenileniyor" hissinin kaynağı (07.08).
   const [sayfa, setSayfa] = useUrlSayfa([aramaDebounced, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
   const [seciliRapor, setSeciliRapor] = useState(null)
+  // Rapor artık ADRESLENEBİLİR (?rapor=ID): satırdaki ikonla yeni sekmede
+  // açılır — esnweb alışkanlığı, birden çok raporu yan yana inceleme (10.08)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
   const [esnGuncelleniyor, setEsnGuncelleniyor] = useState(false)
@@ -169,6 +173,27 @@ export default function ServisRaporlari() {
     const t = setTimeout(() => setAramaDebounced(arama), 250)
     return () => clearTimeout(t)
   }, [arama])
+
+  // ?rapor=ID ile açılan sekme: rapor listede olmayabilir (farklı sayfa/filtre)
+  // — tekil çekilip doğrudan detayda açılır. Yalnız ilk açılışta çalışır.
+  useEffect(() => {
+    const rid = Number(searchParams.get('rapor'))
+    if (!rid) return
+    servisRaporGetir(rid).then(r => { if (r) setSeciliRapor(r) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Detay kapanınca ?rapor parametresi de silinir — F5'te yeniden açılmasın
+  const raporKapat = () => {
+    setSeciliRapor(null)
+    if (searchParams.get('rapor')) {
+      setSearchParams(prev => {
+        const p = new URLSearchParams(prev)
+        p.delete('rapor')
+        return p
+      }, { replace: true })
+    }
+  }
 
   // Filtre dropdown verisini bir kez çek
   useEffect(() => {
@@ -595,7 +620,7 @@ export default function ServisRaporlari() {
               <thead>
                 <tr>
                   {[
-                    ['Fiş No', 126], ['Takip', 78], ['Müşteri Adı', null], ['Lokasyon', '14%'],
+                    ['', 36], ['Fiş No', 126], ['Takip', 78], ['Müşteri Adı', null], ['Lokasyon', '14%'],
                     ['Arıza', '13%'], ['Teknisyen', 126], ['Gid. Tarih', 96], ['Sonuç', '19%'],
                   ].map(([h, w], i) => (
                     <th key={i} style={{
@@ -629,11 +654,25 @@ export default function ServisRaporlari() {
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }
                   return (
-                  <tr key={r.i} style={{ transition: 'background 120ms', cursor: 'pointer' }}
+                  <tr key={r.id} style={{ transition: 'background 120ms', cursor: 'pointer' }}
                     onClick={() => setSeciliRapor(r)}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
+                    {/* Yeni sekmede aç — gerçek <a>: orta tık / Ctrl+tık da çalışır */}
+                    <td style={{ ...hucre, padding: '10px 6px 10px 12px' }} onClick={e => e.stopPropagation()}>
+                      <a
+                        href={`/servis-raporlari?rapor=${r.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Yeni sekmede aç"
+                        style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                      >
+                        <ExternalLink size={14} strokeWidth={1.5} />
+                      </a>
+                    </td>
                     <td style={{ ...hucre, color: undefined }}>
                       <CodeBadge>{r.fisNo}</CodeBadge>
                     </td>
@@ -712,7 +751,7 @@ export default function ServisRaporlari() {
       {/* Detay modali — satıra tıklanınca açılır */}
       <Modal
         open={!!seciliRapor}
-        onClose={() => setSeciliRapor(null)}
+        onClose={raporKapat}
         title={seciliRapor ? `Servis Raporu · ${seciliRapor.fisNo}` : ''}
         width={760}
         footer={
