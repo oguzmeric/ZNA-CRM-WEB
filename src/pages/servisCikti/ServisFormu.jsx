@@ -120,8 +120,13 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     background: '#fff',
     color: '#000',
     fontFamily: '"Microsoft Sans Serif", Arial, sans-serif',
-    fontSize: 8.4,
+    fontSize: 9.2,   // 8.4'ten büyütüldü — sahada küçük bulundu (07.08)
     lineHeight: 1.22,
+    // Antet (adres dipnotu) EKRANDA da sayfanın dibine otursun: içerik kısa
+    // kalınca antet ortada görünüyordu. Print'te .sf-sayfa display:block'a
+    // döner (printCss) — flex, sayfa kırılmalarını bozmasın.
+    display: 'flex',
+    flexDirection: 'column',
   }
 
   // Dikey yoğunluk: imza bloğu ilk sayfaya sığsın diye boşluklar kısıldı
@@ -151,7 +156,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
     background: ACCENT_BG,
     color: ACCENT,
     fontWeight: 800,
-    fontSize: 9,
+    fontSize: 9.8,
     padding: '3px 6px',
     textAlign: 'left',
     letterSpacing: 0.3,
@@ -247,6 +252,10 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
         transform: none !important;
         width: auto !important;
         max-width: none !important;
+        /* Ekrandaki flex (antet dibe otursun diye) yazdırmada sayfa
+           kırılmalarını bozabilir — print'te blok akışa dön; antet zaten
+           position:fixed ile her sayfanın dibinde. */
+        display: block !important;
         /* ⚠️ min-height 297mm EKRAN için (A4 önizlemesi). Yazdırmada ilk sayfayı
            zorla tam boya şişirip imza bloğunu tek başına 2. sayfaya itiyordu —
            sayfanın %80'i boş kalıyordu. */
@@ -329,7 +338,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
               <td colSpan={4} style={sectionHeader}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>MÜŞTERİ BİLGİLERİ</span>
-                  <span style={{ fontSize: 9 }}>{musteri.no}</span>
+                  <span style={{ fontSize: 9.8 }}>{musteri.no}</span>
                 </div>
               </td>
             </tr>
@@ -361,7 +370,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             {/* Servis Tipi */}
             <tr>
               <td style={labelStyle}>Servis Tipi</td>
-              <td style={{ ...valueStyle, fontSize: 9 }} colSpan={3}>
+              <td style={{ ...valueStyle, fontSize: 9.8 }} colSpan={3}>
                 <span style={{ marginRight: 14 }}>{tipKutu('ariza')} Arıza Tespiti</span>
                 <span style={{ marginRight: 14 }}>{tipKutu('bakim')} Bakım</span>
                 <span style={{ marginRight: 14 }}>{tipKutu('urun')} Ürün Alımı</span>
@@ -374,7 +383,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             {/* Yükümlülük */}
             <tr>
               <td style={labelStyle}>Yükümlülük</td>
-              <td style={{ ...valueStyle, fontSize: 9 }} colSpan={3}>
+              <td style={{ ...valueStyle, fontSize: 9.8 }} colSpan={3}>
                 <span style={{ marginRight: 14 }}>{yukumKutu('garanti')} Garanti Kapsamında</span>
                 <span style={{ marginRight: 14 }}>{yukumKutu('servis')} Servis Sözleşmeli</span>
                 <span>{yukumKutu('bakim')} Bakım Sözleşmeli</span>
@@ -384,7 +393,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             {/* Servis Yeri */}
             <tr>
               <td style={labelStyle}>Servis Yeri</td>
-              <td style={{ ...valueStyle, fontSize: 9 }} colSpan={3}>
+              <td style={{ ...valueStyle, fontSize: 9.8 }} colSpan={3}>
                 <span style={{ marginRight: 14 }}>{yerKutu('teknik')} ZNA Teknik Servis</span>
                 <span style={{ marginRight: 14 }}>{yerKutu('yerinde')} Müşteri Yerinde</span>
                 <span style={{ marginRight: 14 }}>{yerKutu('online')} Online</span>
@@ -522,7 +531,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           <tbody>
             <tr><td style={sectionHeader}>SERVİS KOŞULLARI</td></tr>
             <tr>
-              <td style={{ ...valueStyle, fontSize: 7.6, lineHeight: 1.5, color: '#333', padding: '5px 6px' }}>
+              <td style={{ ...valueStyle, fontSize: 8.2, lineHeight: 1.5, color: '#333', padding: '5px 6px' }}>
                 - Garanti dışı arıza müdahalelerinde, sistemin çalışır durumda teslim edilmesinden sonra gerçekleşen arızaların giderilmesi ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen değiştirilmesi tespit edilmiş ve kurum yetkilisi tarafından imzalanarak onaylanmış parçaların değiştirilmemesinden kaynaklanan her türlü arızalara müdahale ayrıca ücretlendirilecektir.<br />
                 - Servis Formunda belirtilen bilgiler doğrultusunda yapılan tüm işlemler müşteri onayı imzasını takiben geçerlilik kazanır.
@@ -543,30 +552,30 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
           <tbody>
             <tr>
               <td style={{ ...cellStyle, width: '33.3%', verticalAlign: 'top' }}>
-                <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
-                <div style={{ fontSize: 8, color: '#666' }}>{talep.teslimAlanAd || talep.ilgiliKisi || 'Kurum/Kuruluş Yetkilisi'}</div>
+                <div style={{ fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
+                <div style={{ fontSize: 8.6, color: '#666' }}>{talep.teslimAlanAd || talep.ilgiliKisi || 'Kurum/Kuruluş Yetkilisi'}</div>
                 {talep.musteriImza
                   ? <img src={talep.musteriImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 56, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
                   : <div style={{ height: 34 }} />}
-                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
+                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>
                   ONAY / İMZA
                 </div>
               </td>
               <td style={{ ...cellStyle, width: '33.3%', verticalAlign: 'top' }}>
-                <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
-                <div style={{ fontSize: 8, color: '#666' }}>Kurum/Kuruluş Yetkilisi</div>
+                <div style={{ fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>Servis İstemini Onaylayan</div>
+                <div style={{ fontSize: 8.6, color: '#666' }}>Kurum/Kuruluş Yetkilisi</div>
                 <div style={{ height: 34 }} />
-                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
+                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>
                   TEKNİK İNCELEME
                 </div>
               </td>
               <td style={{ ...cellStyle, width: '33.3%', verticalAlign: 'top' }}>
-                <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>{cfg.firmaAdi.split(' SANAYİ')[0]}</div>
-                <div style={{ fontSize: 8, color: '#666' }}>{talep.teknisyen || '—'}</div>
+                <div style={{ fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>{cfg.firmaAdi.split(' SANAYİ')[0]}</div>
+                <div style={{ fontSize: 8.6, color: '#666' }}>{talep.teknisyen || '—'}</div>
                 {talep.personelImza
                   ? <img src={talep.personelImza} alt="imza" style={{ maxWidth: '100%', maxHeight: 56, objectFit: 'contain', display: 'block', margin: '2px 0' }} />
                   : <div style={{ height: 34 }} />}
-                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8, color: ACCENT, fontWeight: 600 }}>
+                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 4, fontSize: 8.6, color: ACCENT, fontWeight: 600 }}>
                   TEKNİK İNCELEME / İMZA
                 </div>
               </td>
@@ -589,7 +598,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
                       görünmüyor" şikayeti doğurdu (06.08). Belge kalitesi için
                       1200px/82 çekilir (2'li gridde ~300 DPI baskı netliği). */}
                   <img src={kucukGorsel(f.url, { genislik: 1200, kalite: 82 })} alt={f.ad || `Fotoğraf ${i + 1}`} style={{ width: '100%', height: 220, objectFit: 'contain', display: 'block', background: '#f8fafc' }} />
-                  {f.ad && <div style={{ fontSize: 8, color: '#64748b', padding: '3px 6px', borderTop: '1px solid #e2e8f0' }}>{f.ad}</div>}
+                  {f.ad && <div style={{ fontSize: 8.6, color: '#64748b', padding: '3px 6px', borderTop: '1px solid #e2e8f0' }}>{f.ad}</div>}
                 </div>
               ))}
             </div>
@@ -604,8 +613,11 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
         <div
           className="sf-antet"
           style={{
-            marginTop: 8, paddingTop: 5, borderTop: `1px solid ${BORDER}`,
-            fontSize: 8.5, color: ACCENT, textAlign: 'center', lineHeight: 1.5,
+            // marginTop: 'auto' — sayfa flex column; içerik kısa kalsa da
+            // antet A4 önizlemesinin DİBİNE oturur ("adres hep altta olmalı",
+            // 07.08). Print'te .sf-antet fixed bottom:0 zaten devralıyor.
+            marginTop: 'auto', paddingTop: 5, borderTop: `1px solid ${BORDER}`,
+            fontSize: 9, color: ACCENT, textAlign: 'center', lineHeight: 1.5,
             background: '#fff',
           }}
         >
