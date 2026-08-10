@@ -174,18 +174,58 @@ export default function ServisRaporlari() {
     return () => clearTimeout(t)
   }, [arama])
 
-  // ?rapor=ID ile açılan sekme: rapor listede olmayabilir (farklı sayfa/filtre)
-  // — tekil çekilip doğrudan detayda açılır. Yalnız ilk açılışta çalışır.
+  // Servis Formu görünümünü aç. Fiş bir CRM talebine denk geliyorsa form
+  // GERÇEK talepten üretilir — rapor satırında yedek parça/envanter/checkbox
+  // alanları yok (esnweb şeması), form boş görünüyordu (mig 210 arşivi).
+  // Hem modaldeki "Servis Formu" butonu hem ?rapor sekmesi bunu kullanır.
+  const formuAc = async (raporSatiri) => {
+    let rapor = raporSatiri
+    try {
+      const { data: t } = await supabase
+        .from('servis_talepleri').select('id')
+        .eq('talep_no', rapor.fisNo).maybeSingle()
+      if (t?.id) {
+        const [talep, malzemeler] = await Promise.all([
+          servisTalepGetir(t.id),
+          formEnvanterKalemleri(t.id).catch(() => []),
+        ])
+        setFormRapor({ ...rapor, _talep: talep, _malzemeler: malzemeler })
+        setSeciliRapor(null)
+        return
+      }
+    } catch { /* esnweb kaydı — rapor satırından devam */ }
+    if (rapor?.imzaUrl) {
+      const { data } = await supabase.storage.from('imzalar').createSignedUrl(rapor.imzaUrl, 3600)
+      if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
+    }
+    if (rapor?.teknisyen) {
+      // TR: PostgreSQL ilike İ↔i eşleştiremiyor + esnweb bazen orta ismi düşürüyor (MUHAMMET NAYMAN vs Muhammet Emin Nayman)
+      const { data: kullanicilar } = await supabase
+        .from('kullanicilar')
+        .select('ad, imza')
+        .not('imza', 'is', null)
+      const hedefTokens = trNormalize(rapor.teknisyen).split(/\s+/).filter(Boolean)
+      const bulunan = (kullanicilar || []).find(k => {
+        const adTokens = trNormalize(k.ad || '').split(/\s+/).filter(Boolean)
+        return hedefTokens.length > 0 && hedefTokens.every(t => adTokens.includes(t))
+      })
+      if (bulunan?.imza) rapor = { ...rapor, _personelImza: bulunan.imza }
+    }
+    setFormRapor(rapor); setSeciliRapor(null)
+  }
+
+  // ?rapor=ID ile açılan sekme: rapor tekil çekilip DOĞRUDAN Servis Formu'nda
+  // açılır (detay modalı değil — çıktı için açılıyor, ara tıklama olmasın;
+  // 10.08 geri bildirimi). Yalnız ilk açılışta çalışır.
   useEffect(() => {
     const rid = Number(searchParams.get('rapor'))
     if (!rid) return
-    servisRaporGetir(rid).then(r => { if (r) setSeciliRapor(r) })
+    servisRaporGetir(rid).then(r => { if (r) formuAc(r) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Detay kapanınca ?rapor parametresi de silinir — F5'te yeniden açılmasın
-  const raporKapat = () => {
-    setSeciliRapor(null)
+  // Detay/form kapanınca ?rapor parametresi de silinir — F5'te yeniden açılmasın
+  const raporParamTemizle = () => {
     if (searchParams.get('rapor')) {
       setSearchParams(prev => {
         const p = new URLSearchParams(prev)
@@ -194,6 +234,8 @@ export default function ServisRaporlari() {
       }, { replace: true })
     }
   }
+  const raporKapat = () => { setSeciliRapor(null); raporParamTemizle() }
+  const formKapat = () => { setFormRapor(null); raporParamTemizle() }
 
   // Filtre dropdown verisini bir kez çek
   useEffect(() => {
@@ -775,44 +817,7 @@ export default function ServisRaporlari() {
             <Button
               variant="secondary"
               iconLeft={<FileText size={14} strokeWidth={1.5} />}
-              onClick={async () => {
-                let rapor = seciliRapor
-                // Fiş no bir CRM talebine denk geliyorsa (mig 210 arşivi) formu
-                // GERÇEK talepten üret — rapor satırında yedek parça/envanter/
-                // checkbox alanları yok (esnweb şeması), form boş görünüyordu.
-                try {
-                  const { data: t } = await supabase
-                    .from('servis_talepleri').select('id')
-                    .eq('talep_no', rapor.fisNo).maybeSingle()
-                  if (t?.id) {
-                    const [talep, malzemeler] = await Promise.all([
-                      servisTalepGetir(t.id),
-                      formEnvanterKalemleri(t.id).catch(() => []),
-                    ])
-                    setFormRapor({ ...rapor, _talep: talep, _malzemeler: malzemeler })
-                    setSeciliRapor(null)
-                    return
-                  }
-                } catch { /* esnweb kaydı — rapor satırından devam */ }
-                if (rapor?.imzaUrl) {
-                  const { data } = await supabase.storage.from('imzalar').createSignedUrl(rapor.imzaUrl, 3600)
-                  if (data?.signedUrl) rapor = { ...rapor, _imzaUrl: data.signedUrl }
-                }
-                if (rapor?.teknisyen) {
-                  // TR: PostgreSQL ilike İ↔i eşleştiremiyor + esnweb bazen orta ismi düşürüyor (MUHAMMET NAYMAN vs Muhammet Emin Nayman)
-                  const { data: kullanicilar } = await supabase
-                    .from('kullanicilar')
-                    .select('ad, imza')
-                    .not('imza', 'is', null)
-                  const hedefTokens = trNormalize(rapor.teknisyen).split(/\s+/).filter(Boolean)
-                  const bulunan = (kullanicilar || []).find(k => {
-                    const adTokens = trNormalize(k.ad || '').split(/\s+/).filter(Boolean)
-                    return hedefTokens.length > 0 && hedefTokens.every(t => adTokens.includes(t))
-                  })
-                  if (bulunan?.imza) rapor = { ...rapor, _personelImza: bulunan.imza }
-                }
-                setFormRapor(rapor); setSeciliRapor(null)
-              }}
+              onClick={() => formuAc(seciliRapor)}
             >
               Servis Formu
             </Button>
@@ -999,7 +1004,7 @@ export default function ServisRaporlari() {
             <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={() => window.print()}>
               Yazdır
             </Button>
-            <Button variant="secondary" onClick={() => setFormRapor(null)}>Kapat</Button>
+            <Button variant="secondary" onClick={formKapat}>Kapat</Button>
           </div>
 
           {/* Form */}
