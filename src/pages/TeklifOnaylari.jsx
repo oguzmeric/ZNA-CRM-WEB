@@ -5,7 +5,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle2, XCircle, Clock, FileText, Building2, User as UserIcon, Calendar, Receipt,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import {
   Card, CardTitle, Button, Badge, EmptyState, Textarea,
@@ -54,6 +56,10 @@ export default function TeklifOnaylari() {
   const [tarihBas, setTarihBas] = useState('')
   const [tarihBit, setTarihBit] = useState('')
   const [siralama, setSiralama] = useState('yeni') // 'yeni' | 'eski'
+  // ⚠️ Sayfalama: 409 kayıt tek seferde basılıyor, liste dümdüz aşağı akıyordu
+  // (10.08 geri bildirimi). Sayfa no URL'de — detaydan dönünce aynı sayfa.
+  const [sayfa, setSayfa] = useUrlSayfa()
+  const SAYFA_BOYUT = 50
 
   const yetkili = kullanici?.teklifOnayYetkilisi === true || kullanici?.teklif_onay_yetkilisi === true
 
@@ -91,6 +97,14 @@ export default function TeklifOnaylari() {
     return sonuc
   }
 
+  // ⚠️ TEK hesap: filtreliListe() eskiden her render'da ÜÇ kez çağrılıyordu
+  // (sayaç + boş kontrolü + tablo) — her seferinde 409 kayıt filtrelenip
+  // sıralanıyordu.
+  const suzulmus = filtreliListe()
+  const toplamSayfa = Math.max(1, Math.ceil(suzulmus.length / SAYFA_BOYUT))
+  const guvSayfa = Math.min(sayfa, toplamSayfa)
+  const dilim = suzulmus.slice((guvSayfa - 1) * SAYFA_BOYUT, guvSayfa * SAYFA_BOYUT)
+
   if (!yetkili) {
     return (
       <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>
@@ -121,7 +135,7 @@ export default function TeklifOnaylari() {
           return (
             <button
               key={s.id}
-              onClick={() => { setSekme(s.id); setSecili(null) }}
+              onClick={() => { setSekme(s.id); setSecili(null); setSayfa(1) }}
               style={{
                 padding: '8px 16px', borderRadius: 8,
                 background: aktif ? '#fff' : 'transparent',
@@ -142,19 +156,19 @@ export default function TeklifOnaylari() {
       }}>
         <div>
           <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Tarih başlangıç</label>
-          <input type="date" value={tarihBas} onChange={e => setTarihBas(e.target.value)}
+          <input type="date" value={tarihBas} onChange={e => { setTarihBas(e.target.value); setSayfa(1) }}
             style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: '#fff', fontSize: 13 }} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Tarih bitiş</label>
-          <input type="date" value={tarihBit} onChange={e => setTarihBit(e.target.value)}
+          <input type="date" value={tarihBit} onChange={e => { setTarihBit(e.target.value); setSayfa(1) }}
             style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: '#fff', fontSize: 13 }} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, fontWeight: 600 }}>Sıralama</label>
           <div style={{ display: 'inline-flex', background: '#fff', border: '1px solid var(--border-default)', borderRadius: 8, padding: 3 }}>
             {[{ id: 'yeni', label: 'Yeniden → Eskiye' }, { id: 'eski', label: 'Eskiden → Yeniye' }].map(o => (
-              <button key={o.id} onClick={() => setSiralama(o.id)}
+              <button key={o.id} onClick={() => { setSiralama(o.id); setSayfa(1) }}
                 style={{
                   padding: '6px 12px', borderRadius: 6,
                   background: siralama === o.id ? 'var(--brand-primary)' : 'transparent',
@@ -165,15 +179,12 @@ export default function TeklifOnaylari() {
           </div>
         </div>
         {(tarihBas || tarihBit) && (
-          <Button variant="secondary" size="sm" onClick={() => { setTarihBas(''); setTarihBit('') }}>
+          <Button variant="secondary" size="sm" onClick={() => { setTarihBas(''); setTarihBit(''); setSayfa(1) }}>
             Tarihi Temizle
           </Button>
         )}
         <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {(() => {
-            const f = filtreliListe()
-            return `${f.length} kayıt${(tarihBas || tarihBit) ? ` (${liste.length}'den)` : ''}`
-          })()}
+          {`${suzulmus.length} kayıt${(tarihBas || tarihBit) ? ` (${liste.length}'den)` : ''}`}
         </div>
       </div>
 
@@ -197,7 +208,7 @@ export default function TeklifOnaylari() {
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {yukleniyor ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
-        ) : filtreliListe().length === 0 ? (
+        ) : suzulmus.length === 0 ? (
           <EmptyState
             title={sekme === 'bekleyen' ? 'Bekleyen teklif onayı yok' : sekme === 'onayli' ? 'Onaylanmış teklif yok' : 'Reddedilmiş teklif yok'}
             icon={<Clock size={24} />}
@@ -217,7 +228,7 @@ export default function TeklifOnaylari() {
                 </tr>
               </thead>
               <tbody>
-                {filtreliListe().map(t => {
+                {dilim.map(t => {
                   const to = t.teklifOnayi || {}
                   const tarihGoster = sekme === 'bekleyen'
                     ? fmtTarih(to.gonderme_tarih || t.tarih)
@@ -230,19 +241,22 @@ export default function TeklifOnaylari() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={tdStyle}>
+                      {/* ⚠️ No / tarih / tutar SARILMAZ: "TEK-1013" ve
+                          "$ 106.473,66" iki satıra bölünüp okunmaz oluyordu.
+                          Uzun metin taşıyan Firma ve Konu serbest kalır. */}
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                         <strong style={{ color: 'var(--text-primary)' }}>{t.teklifNo}</strong>
                       </td>
                       <td style={tdStyle}>{t.firmaAdi || '—'}</td>
                       <td style={tdStyle}>
                         <span style={{ color: 'var(--text-secondary)' }}>{t.konu || '—'}</span>
                       </td>
-                      <td style={tdStyle}>{sekme === 'bekleyen' ? (to.gonderen_ad || '—') : (to.onaylayan_ad || t.hazirlayan || '—')}</td>
-                      <td style={{ ...tdStyle, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{tarihGoster}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{sekme === 'bekleyen' ? (to.gonderen_ad || '—') : (to.onaylayan_ad || t.hazirlayan || '—')}</td>
+                      <td style={{ ...tdStyle, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{tarihGoster}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {fmtPara(gerçekToplam(t), t.paraBirimi)}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <Button variant="secondary" size="sm">İncele →</Button>
                       </td>
                     </tr>
@@ -250,6 +264,64 @@ export default function TeklifOnaylari() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {/* Sayfalama — 409 kayıt tek listede dümdüz akıyordu */}
+        {!yukleniyor && suzulmus.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            padding: '10px 16px', borderTop: '1px solid var(--border-default)',
+            background: 'var(--surface-sunken)', flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {[
+                { etiket: '«', git: () => setSayfa(1), pasif: guvSayfa === 1 },
+                { ikon: <ChevronLeft size={14} strokeWidth={1.5} />, git: () => setSayfa(p => Math.max(1, p - 1)), pasif: guvSayfa === 1 },
+              ].map((b, i) => (
+                <button key={`o${i}`} onClick={b.git} disabled={b.pasif}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-secondary)', cursor: b.pasif ? 'not-allowed' : 'pointer',
+                    opacity: b.pasif ? 0.5 : 1, display: 'inline-flex', alignItems: 'center',
+                    font: '500 12px/16px var(--font-sans)',
+                  }}>{b.etiket || b.ikon}</button>
+              ))}
+              {(() => {
+                const bas = Math.max(1, Math.min(guvSayfa - 4, toplamSayfa - 9))
+                const son = Math.min(toplamSayfa, bas + 9)
+                const sayilar = []
+                for (let i = Math.max(1, bas); i <= son; i++) sayilar.push(i)
+                return sayilar.map(n => (
+                  <button key={n} onClick={() => setSayfa(n)}
+                    style={{
+                      minWidth: 32, padding: '6px 10px',
+                      background: n === guvSayfa ? 'var(--brand-primary)' : 'var(--surface-card)',
+                      color: n === guvSayfa ? '#fff' : 'var(--text-secondary)',
+                      border: `1px solid ${n === guvSayfa ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      font: '500 12px/16px var(--font-sans)', fontVariantNumeric: 'tabular-nums',
+                    }}>{n}</button>
+                ))
+              })()}
+              {[
+                { ikon: <ChevronRight size={14} strokeWidth={1.5} />, git: () => setSayfa(p => Math.min(toplamSayfa, p + 1)), pasif: guvSayfa === toplamSayfa },
+                { etiket: '»', git: () => setSayfa(toplamSayfa), pasif: guvSayfa === toplamSayfa },
+              ].map((b, i) => (
+                <button key={`s${i}`} onClick={b.git} disabled={b.pasif}
+                  style={{
+                    padding: '6px 10px', background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-secondary)', cursor: b.pasif ? 'not-allowed' : 'pointer',
+                    opacity: b.pasif ? 0.5 : 1, display: 'inline-flex', alignItems: 'center',
+                    font: '500 12px/16px var(--font-sans)',
+                  }}>{b.etiket || b.ikon}</button>
+              ))}
+            </div>
+            <div style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
+              <span className="tabular-nums">{toplamSayfa}</span> sayfada toplam{' '}
+              <strong style={{ color: 'var(--text-primary)' }} className="tabular-nums">{suzulmus.length}</strong> kayıt var
+            </div>
           </div>
         )}
       </Card>
