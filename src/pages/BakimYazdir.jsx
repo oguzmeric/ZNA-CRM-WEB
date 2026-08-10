@@ -114,6 +114,9 @@ export default function BakimYazdir() {
           .no-print { display: none !important; }
           .sayfa-kes { page-break-before: always; }
           body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Koyu temada body arka planı koyu; exact onu basmaya zorlar →
+             içerik altı SİYAH çıkar (bkz. ServisFormu, MTJ-2026-0001). */
+          html, body { background: #fff !important; }
           @page { size: A4; margin: 8mm; }
         }
         table { border-collapse: collapse; width: 100%; }

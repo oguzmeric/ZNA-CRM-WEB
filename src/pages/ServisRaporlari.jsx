@@ -82,7 +82,10 @@ export default function ServisRaporlari() {
   const [tarihBaslangic, setTarihBaslangic] = useState('')
   const [tarihBitis, setTarihBitis] = useState('')
   // Sayfa no URL'de (?sayfa=N): rapor detayından geri dönünce liste aynı sayfada (06.08)
-  const [sayfa, setSayfa] = useUrlSayfa([arama, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
+  // ⚠️ Bağımlılık HAM arama DEĞİL debounced: veri aramaDebounced ile çekiliyor;
+  // ham arama her tuş vuruşunda URL'i yeniden yazdırıp tüm sayfayı render
+  // ettiriyordu — "her harfte sayfa yenileniyor" hissinin kaynağı (07.08).
+  const [sayfa, setSayfa] = useUrlSayfa([aramaDebounced, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
   const [seciliRapor, setSeciliRapor] = useState(null)
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'

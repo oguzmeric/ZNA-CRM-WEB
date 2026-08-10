@@ -17,6 +17,10 @@ export const useUrlSayfa = (resetDegerleri) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const sayfa = Math.max(1, parseInt(searchParams.get('sayfa') || '1', 10) || 1)
 
+  // Reset effect'inin sayfayı bağımlılığa almadan okuyabilmesi için
+  const sayfaRef = useRef(sayfa)
+  sayfaRef.current = sayfa
+
   const setSayfa = useCallback((n) => {
     setSearchParams(prev => {
       const p = new URLSearchParams(prev)
@@ -32,7 +36,11 @@ export const useUrlSayfa = (resetDegerleri) => {
     if (anahtar === null) return
     if (oncekiAnahtar.current === anahtar) return   // ilk render + referans-only değişim
     oncekiAnahtar.current = anahtar
-    setSayfa(1)
+    // ⚠️ Sayfa ZATEN 1 ise URL'e dokunma. setSearchParams her çağrıda yeni
+    // location üretir ve router tüm sayfayı yeniden render eder — arama
+    // kutusuna yazılan HER HARF "sayfa yenileniyor" hissi veriyordu (07.08,
+    // Servis Raporları). Değişiklik yoksa çağrı da yok.
+    if (sayfaRef.current !== 1) setSayfa(1)
   }, [anahtar, setSayfa])
 
   return [sayfa, setSayfa]

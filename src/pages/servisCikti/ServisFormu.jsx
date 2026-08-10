@@ -204,6 +204,12 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
   const printCss = `
     @media print {
       body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      /* ⚠️ Koyu temada html/body arka planı koyu (tokens.css --surface-bg);
+         yukarıdaki print-color-adjust: exact onu BASMAYA zorluyor. Form
+         içeriği bittiği yerden sonra sayfanın kalanı SİYAH çıkıyordu —
+         kısa raporda bariz (07.08 MTJ-2026-0001, montaj). Çıktı kâğıdı
+         temadan bağımsız DAİMA beyaz. */
+      html, body { background: #fff !important; }
       .no-print { display: none !important; }
 
       /* Kenar boşluğunu YALNIZ @page verir; sayfa kutusu bu alanı birebir
