@@ -329,7 +329,10 @@ export const AVANS_DURUM = {
 export const avansDurumBilgi = (id) =>
   AVANS_DURUM[id] || { isim: id || '—', tone: 'neutral' }
 
-export const TAKSIT_SECENEKLERI = [1, 2, 3, 4, 5, 6, 9, 12]
+// ⚠️ Üst sınır 4 (10.08 kararı — 12 taksit fazla bulundu). Üç yerde birden
+// tutulur: bu liste, avansTalepEkle guard'ı ve DB CHECK kısıtı (mig 279).
+export const TAKSIT_SECENEKLERI = [1, 2, 3, 4]
+export const MAKS_TAKSIT = 4
 
 export const tutarBicim = (t) =>
   (Number(t) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺'
@@ -385,7 +388,7 @@ export async function avansTalepEkle({ kullaniciId, tutar, taksitSayisi, gerekce
   const t = Number(String(tutar).replace(/\./g, '').replace(',', '.'))
   if (!Number.isFinite(t) || t <= 0) throw new Error('Geçerli bir avans tutarı girin.')
   const taksit = Number(taksitSayisi) || 1
-  if (taksit < 1 || taksit > 12) throw new Error('Taksit sayısı 1–12 arasında olmalı.')
+  if (taksit < 1 || taksit > MAKS_TAKSIT) throw new Error(`Taksit sayısı 1–${MAKS_TAKSIT} arasında olmalı.`)
 
   const { data, error } = await supabase
     .from('avans_talepleri')
