@@ -659,18 +659,24 @@ export default function ServisRaporlari() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    {/* Yeni sekmede aç — gerçek <a>: orta tık / Ctrl+tık da çalışır */}
-                    <td style={{ ...hucre, padding: '10px 6px 10px 12px' }} onClick={e => e.stopPropagation()}>
+                    {/* Yeni sekmede aç — gerçek <a>: orta tık / Ctrl+tık da çalışır.
+                        ⚠️ Anchor HÜCRENİN TAMAMINI kaplar: 14px'lik ikon hedefi
+                        ıskalanınca ilk tık boşa gidiyordu ("bir kez daha tıklamam
+                        gerekiyor" bildirimi, 10.08). td padding'i anchor'a taşındı. */}
+                    <td style={{ ...hucre, padding: 0 }} onClick={e => e.stopPropagation()}>
                       <a
                         href={`/servis-raporlari?rapor=${r.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Yeni sekmede aç"
-                        style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '10px 8px', color: 'var(--text-tertiary)',
+                        }}
                         onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
                         onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
                       >
-                        <ExternalLink size={14} strokeWidth={1.5} />
+                        <ExternalLink size={15} strokeWidth={1.5} />
                       </a>
                     </td>
                     <td style={{ ...hucre, color: undefined }}>
