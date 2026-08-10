@@ -87,13 +87,18 @@ export function SekmeSatiri({ sekmeler, aktif, onSec }) {
             onMouseLeave={e => { if (!secili) e.currentTarget.style.background = 'var(--surface-sunken)' }}
           >
             {s.isim}
+            {/* Uyarı rengi: KPI şeridi kaldırıldığında (10.08 sadeleştirme) o
+                şeridin işlevi buraya taşındı — dolu olan Gecikenler/Onay/Bugün
+                rozeti renkli yanar, göz doğrudan oraya gider. */}
             <span className="tabular-nums" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               minWidth: 18, height: 16, padding: '0 5px', borderRadius: 9,
-              background: secili ? 'rgba(255,255,255,0.22)' : 'var(--surface-card)',
-              border: secili ? 'none' : '1px solid var(--border-default)',
+              background: secili
+                ? 'rgba(255,255,255,0.22)'
+                : (s.vurgu && s.sayi > 0 ? s.vurgu : 'var(--surface-card)'),
+              border: secili || (s.vurgu && s.sayi > 0) ? 'none' : '1px solid var(--border-default)',
               font: '600 10px/1 var(--font-sans)',
-              color: secili ? '#fff' : 'var(--text-tertiary)',
+              color: secili || (s.vurgu && s.sayi > 0) ? '#fff' : 'var(--text-tertiary)',
             }}>
               {s.sayi}
             </span>

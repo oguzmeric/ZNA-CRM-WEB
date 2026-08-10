@@ -9,6 +9,7 @@
 // Filtre davranışını değiştirecekseniz ÖNCE burayı güncelleyin.
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, kisiselSekmeMi,
   gorunurMu, durumEsle, hiyerarsikSirala, bitisGorunen, haftaAraligi,
@@ -18,10 +19,17 @@ import {
 } from '../src/lib/gorevSabitleri.js'
 
 let gecen = 0, kalan = []
+// ⚠️ Testler SENKRON olmalı: async bir test reject olursa buradaki try/catch
+// onu yakalayamaz, "geçti" yazılır ve süreç sonradan çöker (bir kez yaşandı).
 const test = (ad, fn) => {
-  try { fn(); gecen++ }
-  catch (e) { kalan.push(`${ad}\n    ${e.message.split('\n')[0]}`) }
+  try {
+    const r = fn()
+    if (r && typeof r.then === 'function') throw new Error('Test senkron olmalı (async fn verilmiş)')
+    gecen++
+  } catch (e) { kalan.push(`${ad}\n    ${e.message.split('\n')[0]}`) }
 }
+
+const kaynak = (yol) => readFileSync(new URL(`../${yol}`, import.meta.url), 'utf8')
 
 // ─── Yardımcılar ────────────────────────────────────────────────────────────
 const gunEkle = (n) => {
@@ -133,10 +141,9 @@ test('K1 · chip taşınırsa liste MATEMATİKSEL olarak boşalır (fix gerekçe
   assert.equal(kume.filter(g => durumEsle(g, 'hepsi')).length, 2, 'chip sıfırlanınca liste dolu')
 })
 
-test('K1b · Gorevler.jsx sekme seçimi chip’i sıfırlıyor (kaynak kontrolü)', async () => {
-  const { readFileSync } = await import('node:fs')
-  const src = readFileSync(new URL('../src/pages/Gorevler.jsx', import.meta.url), 'utf8')
-  assert.match(src, /onSec=\{\(id\) => \{ setSekme\(id\); setFiltre\('hepsi'\); setSayfa\(1\) \}\}/,
+test('K1b · Gorevler.jsx sekme seçimi chip’i sıfırlıyor (kaynak kontrolü)', () => {
+  assert.match(kaynak('src/pages/Gorevler.jsx'),
+    /onSec=\{\(id\) => \{ setSekme\(id\); setFiltre\('hepsi'\); setSayfa\(1\) \}\}/,
     'SekmeSatiri onSec chip sıfırlamalı')
 })
 
@@ -174,17 +181,37 @@ test('K2 · rozet sayıları KAPSAMI yansıtır (eskiden kapsamdan bağımsızd�
   }
 })
 
-test('K2a · Gorevler.jsx rozet ve tabloyu AYNI fonksiyondan besliyor (kaynak kontrolü)', async () => {
-  const { readFileSync } = await import('node:fs')
-  const src = readFileSync(new URL('../src/pages/Gorevler.jsx', import.meta.url), 'utf8')
+test('K2a · Gorevler.jsx rozet ve tabloyu AYNI fonksiyondan besliyor (kaynak kontrolü)', () => {
+  const src = kaynak('src/pages/Gorevler.jsx')
   assert.match(src, /sekmeSayilari\[s\.id\] = sekmeKumesi\(gorunurGorevler, s\.id, ctx\)\.length/,
     'rozetler sekmeKumesi()’nden sayılmalı')
   assert.match(src, /const sekmeliGorevler = sekmeKumesi\(gorunurGorevler, sekme, ctx\)/,
     'tablo da sekmeKumesi()’nden beslenmeli')
   assert.match(src, /const listeSuzulmus = sekmeliGorevler/,
     'tablo zinciri sekmeliGorevler ile başlamalı')
-  assert.match(src, /const kpiBanaAcik = sekmeKumesi\(gorunurGorevler, 'bana', ctx\)/,
-    'KPI da aynı kümeden sayılmalı')
+})
+
+test('S1 · KPI şeridi kaldırıldı, uyarı sinyali sekme rozetine taşındı', () => {
+  // 10.08 sadeleştirme: dört karttan üçü sekme rozetinin birebir kopyasıydı.
+  const src = kaynak('src/pages/Gorevler.jsx')
+  assert.ok(!/kpiTikla|kpiBanaAcik/.test(src), 'KPI şeridine ait kod kalmamalı')
+  assert.match(src, /const SEKME_VURGU = \{ geciken:/, 'uyarı renkleri tanımlı olmalı')
+  assert.match(src, /vurgu: SEKME_VURGU\[s\.id\]/, 'rozetlere vurgu geçirilmeli')
+  assert.match(kaynak('src/components/gorev/GorevListeParcalari.jsx'),
+    /s\.vurgu && s\.sayi > 0/, 'rozet yalnız sayı doluyken renklenmeli')
+})
+
+test('S2 · satır tıklaması metin seçimini yutmuyor (görev no kopyalanabilir)', () => {
+  assert.match(kaynak('src/pages/Gorevler.jsx'),
+    /if \(window\.getSelection\(\)\?\.toString\(\)\) return/,
+    'seçim varken navigate edilmemeli')
+})
+
+test('S3 · filtre paneli katlanır ve gizliyken kaç filtre daralttığını söyler', () => {
+  const src = kaynak('src/pages/Gorevler.jsx')
+  assert.match(src, /\{filtrePaneli && \(/, 'ek filtre şeridi koşullu olmalı')
+  assert.match(src, /\{filtrePaneli && \(\s*<tr>/, 'sütun filtre satırı da koşullu olmalı')
+  assert.match(src, /const ekFiltreSayisi =/, 'gizli filtre sayacı olmalı')
 })
 
 test('K2d · chip yokken tablo tabanı rozetle birebir eşit', () => {

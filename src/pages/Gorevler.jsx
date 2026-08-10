@@ -11,9 +11,9 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, User, Building2, Clock, MapPin, Settings,
-  FolderOpen, CheckCircle2, Circle, History, Filter, Calendar, ChevronLeft, ChevronRight, X,
-  ChevronDown, CornerDownRight, Bookmark, Repeat, Loader2, HelpCircle, Hourglass, Ban, Archive,
+  Plus, Pencil, Trash2, LayoutGrid, List, AlertCircle, Building2, Clock, MapPin, Settings,
+  FolderOpen, CheckCircle2, Circle, Filter, ChevronLeft, ChevronRight, X,
+  ChevronDown, CornerDownRight, Bookmark, Repeat, Copy,
 } from 'lucide-react'
 import {
   gorevleriGetir, gorevGetir, gorevEkle, gorevGuncelle as dbGorevGuncelle, gorevSil as dbGorevSil,
@@ -411,6 +411,17 @@ function Gorevler() {
       return Array.isArray(kayit) ? kayit : []
     } catch { return [] }
   })
+  // Filtre paneli (kategori/öncelik/etiket + sütun filtreleri) katlanır: her
+  // zaman açık dururken liste alanından ~90px yiyordu. Tercih kişiye özel.
+  const [filtrePaneli, setFiltrePaneli] = useState(() => {
+    try { return localStorage.getItem('gorevFiltrePaneli') === '1' } catch { return false }
+  })
+  const filtrePaneliDegistir = () => {
+    setFiltrePaneli(a => {
+      try { localStorage.setItem('gorevFiltrePaneli', a ? '0' : '1') } catch { /* dolu olabilir */ }
+      return !a
+    })
+  }
   const [gelismisAcik, setGelismisAcik] = useState(false)      // form "Gelişmiş" bölümü
   const [detayYuklendi, setDetayYuklendi] = useState(true)     // düzenlemede tam kayıt indi mi
   const [sebepModal, setSebepModal] = useState(null)           // kanban sebep zorunlu geçiş
@@ -938,10 +949,6 @@ function Gorevler() {
     sekmeSayilari[s.id] = sekmeKumesi(gorunurGorevler, s.id, ctx).length
   }
 
-  // KPI şeridi değerleri (madde 34) — kartın sayısı, tıklayınca açılan listenin
-  // birebir kendisi olsun diye aynı kümeden + aynı chip kuralından geçer.
-  const kpiBanaAcik = sekmeKumesi(gorunurGorevler, 'bana', ctx).filter(g => durumEsle(g, 'acik')).length
-
   // Kanban kapsam filtresi (panoda sekme kavramı yok — yalnız kapsam uygulanır)
   const filtreliGorevler = gorunurGorevler.filter(g => kapsamEsle(g, ctx))
 
@@ -952,13 +959,9 @@ function Gorevler() {
   // görünsünler (çalışmayan bir düğmeyi aktif göstermek yanıltıyordu).
   const kapsamPasif = gorunumModu === 'liste' && !goster && kisiselSekmeMi(sekme)
 
-  // KPI kartı tıklaması → ilgili sekmeye geç
-  const kpiTikla = (sekmeId, durumChip = 'hepsi') => {
-    setGorunumModu('liste')
-    setSekme(sekmeId)
-    setFiltre(durumChip)
-    setSayfa(1)
-  }
+  // Sekme rozetlerindeki uyarı rengi (KPI şeridinin yerini alır): sayı sıfırdan
+  // büyükse ilgili sekme renkli yanar, göz doğrudan oraya gider.
+  const SEKME_VURGU = { geciken: 'var(--danger)', onay: '#06b6d4', bugun: 'var(--warning)' }
 
   // Kayıtlı filtre işlemleri (madde 31)
   const filtreKaydetTikla = () => {
@@ -1045,20 +1048,26 @@ function Gorevler() {
   // başlığında görünüyor, chip toplamları "Tümü"yü tutmuyordu); kendi chip'i
   // yalnızca kullanıcının görebildiği bir taslak varsa çıkar.
   const taslakVar = gorunurGorevler.some(g => g.durum === 'taslak')
+  // Sunum: 12 ayrı lucide ikonu yerine tabloyla AYNI dil (renk noktası) —
+  // hem daha sade hem şerit daha dar (10.08 sadeleştirme).
   const durumChipler = [
-    { id: 'hepsi',     isim: 'Tümü',            icon: List },
-    { id: 'acik',      isim: 'Açık',            icon: Circle,       renk: 'var(--info)' },
-    { id: 'kapali',    isim: 'Kapalı',          icon: Archive,      renk: 'var(--text-muted)' },
-    ...(taslakVar ? [{ id: 'taslak', isim: 'Taslak', icon: Pencil, renk: 'var(--text-muted)' }] : []),
-    { id: 'atandi',    isim: 'Atandı',          icon: User,         renk: 'var(--info)' },
-    { id: 'devam',     isim: 'Devam Ediyor',    icon: Loader2,      renk: 'var(--warning)' },
-    { id: 'beklemede', isim: 'Beklemede',       icon: Clock,        renk: '#f97316' },
-    { id: 'bilgi',     isim: 'Bilgi Bekleniyor',icon: HelpCircle,   renk: '#a855f7' },
-    { id: 'onay',      isim: 'Onay Bekliyor',   icon: Hourglass,    renk: '#06b6d4' },
-    { id: 'tamam',     isim: 'Tamamlandı',      icon: CheckCircle2, renk: 'var(--success)' },
-    { id: 'iptal',     isim: 'İptal / Red',     icon: Ban,          renk: 'var(--text-muted)' },
-    { id: 'gecmis',    isim: 'Geçmiş',          icon: History,      renk: 'var(--danger)' },
+    { id: 'hepsi',     isim: 'Tümü' },
+    { id: 'acik',      isim: 'Açık',            renk: 'var(--info)' },
+    { id: 'kapali',    isim: 'Kapalı',          renk: 'var(--text-muted)' },
+    ...(taslakVar ? [{ id: 'taslak', isim: 'Taslak', renk: 'var(--text-muted)' }] : []),
+    { id: 'atandi',    isim: 'Atandı',          renk: 'var(--info)' },
+    { id: 'devam',     isim: 'Devam Ediyor',    renk: 'var(--warning)' },
+    { id: 'beklemede', isim: 'Beklemede',       renk: '#f97316' },
+    { id: 'bilgi',     isim: 'Bilgi Bekleniyor',renk: '#a855f7' },
+    { id: 'onay',      isim: 'Onay Bekliyor',   renk: '#06b6d4' },
+    { id: 'tamam',     isim: 'Tamamlandı',      renk: 'var(--success)' },
+    { id: 'iptal',     isim: 'İptal / Red',     renk: 'var(--text-muted)' },
+    { id: 'gecmis',    isim: 'Geçmiş',          renk: 'var(--danger)' },
   ]
+
+  // Panel kapalıyken bile kaç filtrenin daralttığı düğmede rozetle görünür
+  const ekFiltreSayisi = [kategoriFiltre, oncelikFiltre, etiketFiltre]
+    .filter(Boolean).length + Object.values(kolonFiltre).filter(Boolean).length
 
   // ⚠️ Durum chip'i de "aktif filtre" sayılır: tek başına seçiliyken temizle
   // düğmesi hiç görünmüyordu, kullanıcı daralmayı geri alamıyordu.
@@ -1214,30 +1223,12 @@ function Gorevler() {
         />
       )}
 
-      {/* KPI şeridi (madde 34) — tıklayınca ilgili sekmeye geçer.
-          Kompakt tek satır (06.08): liste alanı büyüsün */}
-      {!goster && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-          {[
-            { l: 'Bana Atanan Açık', v: kpiBanaAcik, renk: 'var(--info)', sekme: 'bana', chip: 'acik' },
-            { l: 'Bugün Bitecek', v: sekmeSayilari.bugun, renk: 'var(--warning)', sekme: 'bugun', chip: 'hepsi' },
-            { l: 'Geciken', v: sekmeSayilari.geciken, renk: 'var(--danger)', sekme: 'geciken', chip: 'hepsi' },
-            { l: 'Onayımı Bekleyen', v: sekmeSayilari.onay, renk: '#06b6d4', sekme: 'onay', chip: 'hepsi' },
-          ].map(k => (
-            <Card
-              key={k.l}
-              padding={8}
-              onClick={() => kpiTikla(k.sekme, k.chip)}
-              style={{ flex: '1 1 160px', borderLeft: `3px solid ${k.renk}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-            >
-              <span className="tabular-nums" style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)' }}>
-                {k.v}
-              </span>
-              <span className="t-caption">{k.l}</span>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* KPI şeridi KALDIRILDI (10.08 sadeleştirme): dört karttan üçü
+          ("Bugün Bitecek", "Geciken", "Onayımı Bekleyen") hemen altındaki sekme
+          rozetinin BİREBİR kopyasıydı — aynı sayıyı iki kez göstermek liste
+          alanından ~70px yiyordu. Uyarı işlevi sekme rozetlerine taşındı:
+          dolu olduğunda "Gecikenler" kırmızı, "Onay Bekleyenler" camgöbeği
+          yanar (SEKME_VURGU). */}
 
       {/* Form */}
       {goster && (
@@ -1626,6 +1617,8 @@ function Gorevler() {
       <style>{`
         .gorev-karti:hover .gorev-aksiyon { opacity: 1 !important; }
         .gorev-karti:focus-within .gorev-aksiyon { opacity: 1 !important; }
+        tr.gorev-satir:hover .no-kopyala { opacity: 1 !important; }
+        tr.gorev-satir:focus-within .no-kopyala { opacity: 1 !important; }
       `}</style>
       {!goster && gorunumModu === 'kanban' && (() => {
         // Kanban da liste ile aynı ek filtreleri kullanır (kategori/öncelik/etiket) —
@@ -1797,17 +1790,20 @@ function Gorevler() {
                 Kayıtlı filtre uygulaması bu yoldan geçmez (filtreUygula
                 sekme+chip'i birlikte yazar) — chip'i ezmez. */}
             <SekmeSatiri
-              sekmeler={SEKME_LISTESI.map(s => ({ ...s, sayi: sekmeSayilari[s.id] ?? 0 }))}
+              sekmeler={SEKME_LISTESI.map(s => ({
+                ...s, sayi: sekmeSayilari[s.id] ?? 0, vurgu: SEKME_VURGU[s.id],
+              }))}
               aktif={sekme}
               onSec={(id) => { setSekme(id); setFiltre('hepsi'); setSayfa(1) }}
             />
 
-            {/* Kayıtlı filtreler + ek filtreler (madde 31) */}
+            {/* Kayıtlı filtreler + ek filtreler (madde 31) — KATLANIR */}
+            {filtrePaneli && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
               padding: '8px 8px',
               borderBottom: '1px solid var(--border-default)',
-              background: 'var(--surface-card)',
+              background: 'var(--surface-sunken)',
             }}>
               <div style={{ minWidth: 150 }}>
                 <CustomSelect value={kategoriFiltre} onChange={e => { setKategoriFiltre(e.target.value); setSayfa(1) }}>
@@ -1881,70 +1877,90 @@ function Gorevler() {
                 </span>
               ))}
             </div>
+            )}
 
-            {/* Üst durum şeridi: + Yeni · Açık · Beklemede · Kapalı · Geçmiş · Tümü */}
+            {/* Durum şeridi — renk noktası + isim (tabloyla aynı dil).
+                "+ Yeni" chip'i KALDIRILDI: sağ üstteki "Yeni görev" düğmesiyle
+                aynı işi yapıyordu. */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
-              padding: '10px 8px',
+              display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+              padding: '7px 8px',
               borderBottom: '1px solid var(--border-default)',
               background: 'var(--surface-card)',
             }}>
-              <button
-                onClick={formAc}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '6px 12px',
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  color: 'var(--brand-primary)',
-                  font: '600 13px/18px var(--font-sans)',
-                  borderRadius: 'var(--radius-sm)',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-primary-soft)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <Plus size={14} strokeWidth={2} /> Yeni
-              </button>
-              <div style={{ width: 1, height: 20, background: 'var(--border-default)', margin: '0 4px' }} />
               {durumChipler.map(d => {
                 const aktif = filtre === d.id
-                const Icon = d.icon
                 return (
                   <button
                     key={d.id}
                     onClick={() => { setFiltre(d.id); setSayfa(1) }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px',
+                      padding: '5px 10px',
                       background: aktif ? 'var(--brand-primary-soft)' : 'transparent',
                       color: aktif ? 'var(--brand-primary)' : 'var(--text-secondary)',
                       border: 'none', cursor: 'pointer',
                       borderRadius: 'var(--radius-sm)',
                       font: aktif ? '600 13px/18px var(--font-sans)' : '500 13px/18px var(--font-sans)',
+                      whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={e => { if (!aktif) e.currentTarget.style.background = 'var(--surface-sunken)' }}
                     onMouseLeave={e => { if (!aktif) e.currentTarget.style.background = 'transparent' }}
                   >
-                    <Icon size={13} strokeWidth={1.5} style={{ color: d.renk || undefined }} />
+                    {d.renk && (
+                      <span style={{
+                        width: 7, height: 7, borderRadius: '50%',
+                        background: d.renk, flexShrink: 0,
+                      }} />
+                    )}
                     {d.isim}
                   </button>
                 )
               })}
-              {filtreVar && (
+              <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {filtreVar && (
+                  <button
+                    onClick={filtreleriTemizle}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '5px 10px',
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      color: 'var(--text-secondary)', cursor: 'pointer',
+                      borderRadius: 'var(--radius-sm)',
+                      font: '500 12px/16px var(--font-sans)',
+                    }}
+                  >
+                    <X size={12} strokeWidth={1.5} /> Temizle
+                  </button>
+                )}
+                {/* Katlanır filtre paneli: kategori/öncelik/etiket + sütun
+                    filtreleri. Kapalıyken kaç filtrenin daralttığı rozette
+                    görünür — daralmanın sessiz kalmamasi sart. */}
                 <button
-                  onClick={filtreleriTemizle}
+                  onClick={filtrePaneliDegistir}
+                  title={filtrePaneli ? 'Filtre alanını gizle' : 'Kategori, öncelik, etiket ve sütun filtrelerini göster'}
                   style={{
-                    marginLeft: 'auto',
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '6px 10px',
-                    background: 'transparent', border: '1px solid var(--border-default)',
-                    color: 'var(--text-secondary)', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '5px 10px',
+                    background: filtrePaneli ? 'var(--brand-primary-soft)' : 'transparent',
+                    border: '1px solid var(--border-default)',
+                    color: filtrePaneli ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
                     borderRadius: 'var(--radius-sm)',
                     font: '500 12px/16px var(--font-sans)',
                   }}
                 >
-                  <X size={12} strokeWidth={1.5} /> Filtreleri temizle
+                  <Filter size={12} strokeWidth={1.5} /> Filtreler
+                  {ekFiltreSayisi > 0 && (
+                    <span className="tabular-nums" style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 16, height: 15, padding: '0 4px', borderRadius: 8,
+                      background: 'var(--brand-primary)', color: '#fff',
+                      font: '600 10px/1 var(--font-sans)',
+                    }}>{ekFiltreSayisi}</span>
+                  )}
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Tablo */}
@@ -1963,7 +1979,8 @@ function Gorevler() {
                     <th style={thStyle}>Bit. Tarih</th>
                     <th style={thStyle}>Öncelik</th>
                   </tr>
-                  {/* Sütun filtre satırı */}
+                  {/* Sütun filtre satırı — "Filtreler" düğmesiyle katlanır */}
+                  {filtrePaneli && (
                   <tr>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}></th>
                     <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
@@ -2014,6 +2031,7 @@ function Gorevler() {
                         style={colFilterInput} />
                     </th>
                   </tr>
+                  )}
                 </thead>
                 <tbody>
                   {dilim.length === 0 && (
@@ -2054,19 +2072,27 @@ function Gorevler() {
                     return (
                       <tr
                         key={g.id}
-                        onClick={() => navigate(`/gorevler/${g.id}`)}
+                        className="gorev-satir"
+                        // ⚠️ Metin seçiliyken satır tıklaması detayı AÇMAZ:
+                        // görev no'sunu kopyalamak için basılı tutup sürüklemek
+                        // "tıklama" sayılıyor, seçim tamamlanır tamamlanmaz
+                        // sayfa detaya atlıyordu.
+                        onClick={() => {
+                          if (window.getSelection()?.toString()) return
+                          navigate(`/gorevler/${g.id}`)
+                        }}
                         style={{ cursor: 'pointer', background: 'var(--surface-card)' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-card)'}
                       >
-                        <td style={{ ...tdStyle, padding: '8px 12px' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ ...tdStyle, padding: '4px 12px' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'inline-flex', gap: 2 }}>
                             <button
                               aria-label="Detay"
                               onClick={() => navigate(`/gorevler/${g.id}`)}
                               title="Detay"
                               style={{
-                                width: 26, height: 26,
+                                width: 22, height: 22,
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 background: 'transparent', border: '1px solid var(--border-default)',
                                 borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
@@ -2081,7 +2107,7 @@ function Gorevler() {
                               onClick={() => navigate(`/gorevler/${g.id}`)}
                               title={durumBil.isim}
                               style={{
-                                width: 26, height: 26,
+                                width: 22, height: 22,
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 background: 'transparent', border: '1px solid var(--border-default)',
                                 borderRadius: 'var(--radius-sm)', cursor: 'pointer',
@@ -2094,9 +2120,35 @@ function Gorevler() {
                         <td style={{ ...tdStyle, paddingLeft: altGorevMu ? 20 : 8 }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }} title={ustNo ? `Üst görev: ${ustNo}` : undefined}>
                             {altGorevMu && <CornerDownRight size={11} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
-                            <span style={{ font: '500 11px/14px var(--font-mono, monospace)', color: 'var(--text-tertiary)', letterSpacing: 0.3 }}>
+                            <span style={{ font: '500 11px/14px var(--font-mono, monospace)', color: 'var(--text-tertiary)', letterSpacing: 0.3, userSelect: 'text' }}>
                               {g.gorevNo || '—'}
                             </span>
+                            {/* Elle seçmeye gerek kalmadan tek tıkla kopyalama —
+                                satır hover'ında belirir, sakin dururken görünmez */}
+                            {g.gorevNo && (
+                              <button
+                                className="no-kopyala"
+                                title="Görev numarasını kopyala"
+                                aria-label="Görev numarasını kopyala"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigator.clipboard?.writeText(g.gorevNo)
+                                    .then(() => toast.success(`${g.gorevNo} kopyalandı.`))
+                                    .catch(() => toast.error('Kopyalanamadı — numarayı elle seçebilirsiniz.'))
+                                }}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 18, height: 18, flexShrink: 0,
+                                  background: 'transparent', border: 'none', padding: 0,
+                                  color: 'var(--text-tertiary)', cursor: 'pointer',
+                                  opacity: 0, transition: 'opacity 120ms',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                              >
+                                <Copy size={11} strokeWidth={1.8} />
+                              </button>
+                            )}
                           </span>
                           {altGorevMu && ustNo && (
                             <div style={{ font: '400 10px/13px var(--font-mono, monospace)', color: 'var(--text-tertiary)', opacity: 0.7, paddingLeft: 14 }}>
