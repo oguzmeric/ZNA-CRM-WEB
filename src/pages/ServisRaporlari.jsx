@@ -71,6 +71,10 @@ export default function ServisRaporlari() {
   const [gorunen, setGorunen] = useState([])         // şu anki sayfada gösterilen rapor satırları
   const [toplam, setToplam] = useState(0)            // filtreye uyan toplam kayıt
   const [yukleniyor, setYukleniyor] = useState(true)
+  // İskelet ekranı YALNIZ ilk açılışta: sonraki arama/filtre çekimlerinde
+  // sayfa yerinde kalır (aksi hâlde her aramada tüm sayfa — arama kutusu ve
+  // odak dahil — sökülüp iskelete dönüyordu: "sayfa yeniden başlıyor" hissi).
+  const [ilkYukleme, setIlkYukleme] = useState(true)
   const [hata, setHata] = useState(null)
 
   const [arama, setArama] = useState('')
@@ -196,8 +200,9 @@ export default function ServisRaporlari() {
         setGorunen(rows)
         setToplam(toplam)
         setYukleniyor(false)
+        setIlkYukleme(false)
       })
-      .catch((e) => { if (!iptal) { setHata(String(e)); setYukleniyor(false) } })
+      .catch((e) => { if (!iptal) { setHata(String(e)); setYukleniyor(false); setIlkYukleme(false) } })
     return () => { iptal = true }
   }, [sayfa, aramaDebounced, firmaFiltre, teknisyenFiltre, arizaFiltre, takipFiltre, tarihBaslangic, tarihBitis])
 
@@ -395,7 +400,9 @@ export default function ServisRaporlari() {
     w.document.close()
   }
 
-  if (yukleniyor) {
+  // İskelet YALNIZ ilk açılışta. Sonraki çekimlerde (arama/filtre/sayfa)
+  // sayfa yerinde kalır, tablo hafifçe solar — arama kutusu ve odak korunur.
+  if (yukleniyor && ilkYukleme) {
     return <SkeletonList satirSayisi={10} />
   }
 
@@ -570,8 +577,8 @@ export default function ServisRaporlari() {
         )}
       </Card>
 
-      {/* Table */}
-      <Card padding={0} style={{ overflow: 'hidden' }}>
+      {/* Table — veri çekilirken sökülmez, hafifçe solar */}
+      <Card padding={0} style={{ overflow: 'hidden', opacity: yukleniyor ? 0.55 : 1, transition: 'opacity .15s' }}>
         {gorunen.length === 0 ? (
           <div style={{ padding: 32 }}>
             <EmptyState
