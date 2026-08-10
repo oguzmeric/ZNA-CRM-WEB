@@ -973,14 +973,25 @@ export default function ServisRaporlari() {
             @media print {
               body * { visibility: hidden !important; }
               .rapor-form-print, .rapor-form-print * { visibility: visible !important; }
-              /* ⚠️ Overlay position:fixed + overflow:auto — yazdırmayı TEK
-                 viewport'a KIRPIYORDU: çok sayfalı formda yalnız ekranda
-                 görünen kısım basılıyor, son fotoğraf ortadan kesiliyordu
-                 ("foto yarım çıkıyor", 10.08 — visibility:hidden kutunun
-                 GEOMETRİSİNİ kaldırmaz, kırpma sürer). İkisi de print'te
-                 normal akışa döner; pdfjs ölçümü: 1 sayfa/8 kayıp foto →
-                 3 sayfa/0 kayıp. */
-              .rapor-form-overlay { position: static !important; overflow: visible !important; display: block !important; background: #fff !important; }
+              /* ⚠️ İKİ AYRI KIRPMA KAFESİ VAR — ikisi de çözülmeli (10.08):
+                 1) Overlay fixed+overflow:auto → çıktı tek viewport'a
+                    kırpılıyor, son foto ortadan kesiliyordu.
+                 2) Overlay AKIŞA (static) alınırsa bu kez MainLayout'un
+                    100vh+overflow:hidden kafesine girer → SAYFA BOMBOŞ,
+                    yalnız fixed antet basılır (ilk düzeltmenin regresyonu).
+                 ÇÖZÜM: overlay BELGE KÖKÜNE göre ABSOLUTE — konumlanmamış
+                 kaydırma ataları absolute torunu KIRPAMAZ. Layout kafesli
+                 birebir yapıda pdfjs ölçümü: bozuk=1 sayfa/20 işaret kayıp →
+                 bu reçete=3 sayfa/0 kayıp. */
+              html, body { overflow: visible !important; height: auto !important; }
+              .rapor-form-overlay {
+                position: absolute !important;
+                top: 0 !important; left: 0 !important;
+                right: auto !important; bottom: auto !important;
+                width: 100% !important; height: auto !important;
+                overflow: visible !important; display: block !important;
+                background: #fff !important;
+              }
               .rapor-form-print { position: static !important; overflow: visible !important; height: auto !important; flex: none !important; padding: 0 !important; }
               .rapor-form-toolbar { display: none !important; }
             }
