@@ -270,6 +270,13 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
       /* Satır ve imza bloğu ortadan bölünmesin. Tablonun tamamına avoid
          vermiyoruz: uzun açıklama tablosu sığmayınca koca boşluk bırakırdı. */
       tr { break-inside: avoid; page-break-inside: avoid; }
+      /* ⚠️ İSTİSNA: çerçeve tablosunun gövde satırı TÜM FORMU sarar (antet
+         tfoot deseni gereği) ve fotoğraflı formda birkaç sayfa uzunluğundadır.
+         Yukarıdaki global kural onu "bölünemez" işaretleyince Chrome, bölünmek
+         zorunda kalan bu satırın İÇİNDEKİ avoid'ları güvenilmez uyguluyordu —
+         servis fotoğrafı sayfa sınırında ORTADAN kesiliyordu (10.08). */
+      tr.sf-govde-tr { break-inside: auto !important; page-break-inside: auto !important; }
+      .sf-foto-kart { break-inside: avoid !important; page-break-inside: avoid !important; }
       .sf-imza { break-inside: avoid; page-break-inside: avoid; }
       img { break-inside: avoid; page-break-inside: avoid; }
     }
@@ -309,7 +316,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             </td></tr>
           </tfoot>
           <tbody>
-            <tr><td style={{ border: 'none', padding: 0 }}>
+            {/* sf-govde-tr: print'te global "tr bölünmesin" kuralından MUAF —
+                bu satır formun tamamı, bölünmek zorunda (bkz. printCss notu) */}
+            <tr className="sf-govde-tr"><td style={{ border: 'none', padding: 0 }}>
         {/* ─── BANNER ─── */}
         <div style={{ marginBottom: 8, textAlign: 'center' }}>
           <img
@@ -592,7 +601,7 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {fotolar.map((f, i) => (
-                <div key={i} style={{ border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden', pageBreakInside: 'avoid' }}>
+                <div key={i} className="sf-foto-kart" style={{ border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden', pageBreakInside: 'avoid' }}>
                   {/* 'contain' ŞART: 'cover' fotoğrafı kutuya KIRPARAK sığdırıyordu —
                       dikey telefon karelerinin üstü/altı kesilip "çekildiği gibi
                       görünmüyor" şikayeti doğurdu (06.08). Belge kalitesi için
