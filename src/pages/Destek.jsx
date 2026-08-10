@@ -264,7 +264,6 @@ function Destek() {
     <div style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <LifeBuoy size={22} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
-        <h1 className="t-h1" style={{ margin: 0 }}>Destek</h1>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
         Kullanım sırasında aldığınız hataları buradan bildirin — ekran görüntüsü eklerseniz çözüm hızlanır.

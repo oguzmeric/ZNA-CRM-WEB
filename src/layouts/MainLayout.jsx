@@ -552,13 +552,27 @@ function MainLayout({ children }) {
     if (location.pathname === '/satislar') return 'Satış Faturaları'
     if (location.pathname.startsWith('/satislar/')) return 'Fatura Detayı'
     if (location.pathname === '/servis-talepleri') return 'Servis Talepleri'
+    if (location.pathname === '/servis-talepleri/yeni') return 'Yeni Servis Talebi'
     if (location.pathname.startsWith('/servis-talepleri/')) return 'Servis Talep Detayı'
     if (location.pathname === '/chat') return 'Sohbet'
     if (location.pathname === '/profil') return 'Profilim'
     if (location.pathname.startsWith('/firma-gecmisi/')) return 'Firma Geçmişi'
-    const bulunan = gorunenMenu.find(
-      (m) => !m.altMenu && location.pathname.startsWith(m.yol) && m.yol !== '/dashboard'
-    )
+    if (location.pathname === '/demolar/yeni') return 'Yeni Demo Cihazı'
+    if (location.pathname.endsWith('/duzenle') && location.pathname.startsWith('/demolar/')) return 'Cihaz Düzenle'
+    // ⚠️ ALT MENÜ öğeleri de taranır: eskiden yalnız üst seviye (altMenu'süz)
+    // öğelere bakılıyordu, bu yüzden Teklif Onayları / Rapor Merkezi gibi alt
+    // menüdeki sayfalarda üst bar BOŞ kalıyordu (10.08).
+    // Eşleşme tam yol ya da yol + '/' — düz startsWith, '/stok-hareketleri'ni
+    // '/stok' ile eşleştirip yanlış başlık basıyordu. En UZUN eşleşme kazanır.
+    const adaylar = []
+    for (const m of gorunenMenu) {
+      if (m.altMenu) { for (const a of m.altMenu) if (a.yol) adaylar.push(a) }
+      else if (m.yol) adaylar.push(m)
+    }
+    const bulunan = adaylar
+      .filter(m => m.yol !== '/dashboard'
+        && (location.pathname === m.yol || location.pathname.startsWith(m.yol + '/')))
+      .sort((a, b) => b.yol.length - a.yol.length)[0]
     return bulunan?.isim || ''
   }
 

@@ -1104,7 +1104,6 @@ function Gorevler() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Görevler</h1>
           {/* Başlık sayacı listedeki NİHAİ sayıyı gösterir — alttaki "toplam N
               kayıt" ile aynı kümedir (eskiden ikisi farklı rakam veriyordu). */}
           <p className="t-caption" style={{ marginTop: 4 }}>

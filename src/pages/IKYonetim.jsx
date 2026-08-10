@@ -215,7 +215,6 @@ export default function IKYonetim() {
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 className="t-h1" style={{ margin: 0 }}>İK Yönetim</h1>
         <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 4 }}>
           İzin taleplerini karara bağla, personel bordrolarını yükle ve yönet.
         </p>

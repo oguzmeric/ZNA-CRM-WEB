@@ -289,7 +289,6 @@ export default function KisiselDokumanlar() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="t-h1" style={{ margin: 0 }}>Dokümanlarım</h1>
           <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 4 }}>
             Kişisel dosya ve linklerin. Görünürlüğü sen belirlersin.
           </p>

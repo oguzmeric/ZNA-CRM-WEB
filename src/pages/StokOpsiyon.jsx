@@ -183,7 +183,6 @@ function StokOpsiyon() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Stok Opsiyonları</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{opsiyonlar.filter(o => o.durum === 'aktif').length}</span> aktif opsiyon
           </p>

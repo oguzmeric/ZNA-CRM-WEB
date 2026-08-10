@@ -45,7 +45,6 @@ export default function SozlesmeOnaylari() {
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
-        <h1 className="t-h1" style={{ margin: 0 }}>Sözleşme Onayları</h1>
         <p className="t-caption" style={{ marginTop: 4 }}>
           {sozlesme
             ? <>Yürürlükteki sürüm <b>{sozlesme.versiyon}</b> · {new Date(sozlesme.yururluk_tarihi).toLocaleDateString('tr-TR')}</>

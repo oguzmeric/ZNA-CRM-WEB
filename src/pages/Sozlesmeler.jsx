@@ -61,9 +61,6 @@ export default function Sozlesmeler() {
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
-        <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FileSignature size={22} strokeWidth={1.75} /> Sözleşmeler
-        </h1>
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border-default)', flexWrap: 'wrap' }}>

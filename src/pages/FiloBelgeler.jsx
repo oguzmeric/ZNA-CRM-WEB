@@ -68,9 +68,6 @@ export default function FiloBelgeler() {
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
-          <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <FileCheck size={22} strokeWidth={1.75} /> Araç Belgeleri
-          </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Bitişe 30 gün kala ve süresi geçince her sabah yöneticilere bildirim gider.
           </p>

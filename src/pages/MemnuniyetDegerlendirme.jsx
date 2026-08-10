@@ -150,7 +150,6 @@ export default function MemnuniyetDegerlendirme() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Müşteri Memnuniyeti</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>Servis sonrası değerlendirmeler</p>
         </div>
         <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/servis-talepleri')}>

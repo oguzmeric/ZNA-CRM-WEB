@@ -344,7 +344,6 @@ function Notlarim() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="t-h1">Notlarım</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{filtrelenmis.length}</span> not
             {filtrelenmis.length !== notlar.length && (

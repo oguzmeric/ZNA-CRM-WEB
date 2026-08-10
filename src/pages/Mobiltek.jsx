@@ -181,7 +181,6 @@ export default function Mobiltek() {
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h1 className="t-h1" style={{ margin: 0 }}>Mobiltek Araç Takip</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             {araclar.length} araç · {mock ? 'MOCK modu — kredensiyel bekleniyor' : 'canlı takip (30 sn)'}
             {sonGuncelleme && (

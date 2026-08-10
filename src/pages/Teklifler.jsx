@@ -223,7 +223,6 @@ export default function Teklifler() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Teklifler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{tamListeHazir ? bazTeklifler.length : sunucuToplam}</span> teklif
             {!tamListeHazir && <span style={{ opacity: 0.6 }}> · tüm kayıtlar yükleniyor…</span>}

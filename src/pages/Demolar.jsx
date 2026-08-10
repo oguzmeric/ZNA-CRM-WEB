@@ -89,7 +89,6 @@ export default function Demolar() {
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Demolar</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{filtreli.length}</span> cihaz
           </p>

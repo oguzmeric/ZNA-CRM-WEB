@@ -54,9 +54,6 @@ export default function Kesifler() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Compass size={22} strokeWidth={1.5} /> Keşifler
-          </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Saha keşif kayıtları — notlar, malzeme listesi, fotoğraflar. Keşiften tek tıkla teklif, görev veya servis oluştur.
           </p>

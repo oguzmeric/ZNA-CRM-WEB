@@ -131,7 +131,6 @@ export default function Kargolar() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Kargo Takip</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{kargolar.length}</span> kayıt · <span className="tabular-nums">{ist.aktif}</span> aktif
           </p>

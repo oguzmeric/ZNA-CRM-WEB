@@ -125,7 +125,6 @@ function Bayiler() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Bayiler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{firmalar.length}</span> bayi kayıtlı ·{' '}
             <span className="tabular-nums">{firmalar.filter(f => f.bayiStatusu === 'aktif').length}</span> aktif

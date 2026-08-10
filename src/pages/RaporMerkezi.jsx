@@ -419,7 +419,6 @@ export default function RaporMerkezi() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Rapor Merkezi</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Seçilen dönem: <span style={{ color: 'var(--brand-primary)', fontWeight: 500 }}>{aralikEtiketi}</span>
             <> · </>

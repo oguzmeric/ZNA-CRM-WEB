@@ -155,7 +155,6 @@ export default function YeniServisTalebi() {
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Yeni Servis Talebi</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Müşteri için arıza, talep, keşif veya bakım kaydı oluştur.
           </p>

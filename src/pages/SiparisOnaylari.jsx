@@ -174,7 +174,6 @@ export default function SiparisOnaylari() {
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        <h1 className="t-h1">Sipariş Onayları</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="secondary" onClick={() => navigate('/siparisler')}>Siparişler →</Button>
           <Button

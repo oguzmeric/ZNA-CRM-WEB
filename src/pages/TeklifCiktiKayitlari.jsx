@@ -86,7 +86,6 @@ export default function TeklifCiktiKayitlari() {
   return (
     <div style={{ padding: 24, maxWidth: 1120, margin: '0 auto' }}>
       <div style={{ marginBottom: 4 }}>
-        <h1 className="t-h1" style={{ margin: 0 }}>Teklif Çıktı Kayıtları</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
           Hangi teklif kaç kere, kim tarafından, hangi yolla çıktı alınmış — değiştirilemez kayıt.
           Loglama sistemin bu özelliği eklendiği andan (bugün) itibaren birikir.

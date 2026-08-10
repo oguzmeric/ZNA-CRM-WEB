@@ -335,7 +335,6 @@ export default function KullanilanMalzemeler() {
       {/* Header + KPI */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Kullanılan Malzemeler</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Sipariş + servis + manuel teslimlerin fatura takibi — hiçbir ürün faturasız unutulmasın
           </p>

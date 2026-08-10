@@ -136,7 +136,6 @@ export default function IzinBordro() {
       {/* Başlık */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 className="t-h1" style={{ margin: 0 }}>İzin &amp; Bordro</h1>
           <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 4 }}>
             İzin ve avans taleplerini buradan oluştur ve takip et; onaylı bordrolarını indir.
           </p>

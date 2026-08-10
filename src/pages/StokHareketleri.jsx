@@ -303,7 +303,6 @@ export default function StokHareketleri() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Stok Hareketleri</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{gorunenHareketler.length}</span> hareket gösteriliyor
             {tarihAralik !== 'hepsi' && (

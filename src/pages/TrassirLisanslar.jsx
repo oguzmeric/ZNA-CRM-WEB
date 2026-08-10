@@ -256,7 +256,6 @@ function TrassirLisanslar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <img src="/trassirlogo2.jpg" alt="Trassir" style={{ height: 40, objectFit: 'contain' }} />
           <div>
-            <h1 className="t-h1">Trassir Lisanslar</h1>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 4 }}>
               <KompaktKpi label="Toplam" value={sayilari.toplam} />
               <KompaktKpi label="Aktif" value={sayilari.aktif} renk="var(--success)" />

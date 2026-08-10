@@ -127,7 +127,6 @@ export default function Duyurular() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Duyurular</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Müşteri portalı ana panelinde gösterilen sistem duyuruları.
           </p>

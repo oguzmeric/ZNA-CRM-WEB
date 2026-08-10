@@ -120,7 +120,6 @@ export default function TeklifOnaylari() {
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 className="t-h1">Teklif Onayları</h1>
         <Button variant="secondary" onClick={() => navigate('/teklifler')}>← Tekliflere dön</Button>
       </div>
 

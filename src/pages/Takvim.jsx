@@ -314,7 +314,6 @@ export default function Takvim() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="t-h1">Takvim</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{filtreliEvs.length}</span> etkinlik · <span className="tabular-nums">{buAyEvs.length}</span> bu ay
           </p>

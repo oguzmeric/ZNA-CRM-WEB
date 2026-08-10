@@ -989,7 +989,6 @@ export default function KullaniciYonetimi() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="t-h1">Kullanıcı Yönetimi</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             <span className="tabular-nums">{kullanicilar.length}</span> kullanıcı
           </p>

@@ -48,7 +48,6 @@ export default function YeniDemoCihaz() {
       <Button variant="ghost" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/demolar')}>
         Demolar
       </Button>
-      <h1 className="t-h1" style={{ marginTop: 12, marginBottom: 20 }}>Yeni Demo Cihazı</h1>
 
       <Card style={{ marginBottom: 12, padding: 14, background: 'var(--info-soft, rgba(59,130,246,0.08))', borderLeft: '3px solid var(--info)' }}>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>

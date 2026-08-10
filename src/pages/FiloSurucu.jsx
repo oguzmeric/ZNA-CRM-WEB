@@ -2,7 +2,7 @@
 // Atama sirket_araclari.surucu_kullanici_id'de; ehliyet bilgisi kullanicilar'da (mig 143).
 
 import { useEffect, useMemo, useState } from 'react'
-import { UserCog, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Button, Card, Modal, Input, Select, Label, Table, THead, TBody, TR, TH, TD, Badge } from '../components/ui'
 import { filoAraclariGetir, surucuAta, ehliyetGuncelle } from '../services/filoService'
 import { fmtTarih, kalanGun, FiloKpi } from '../components/FiloOrtak'
@@ -58,9 +58,6 @@ export default function FiloSurucu() {
   return (
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
-        <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <UserCog size={22} strokeWidth={1.75} /> Sürücüler
-        </h1>
         <p className="t-caption" style={{ marginTop: 4 }}>
           Hangi araç kimde — sorumluluk ataması ve ehliyet geçerlilik takibi.
         </p>

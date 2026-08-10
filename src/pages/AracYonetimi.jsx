@@ -1,7 +1,7 @@
 // Şirket araçları CRUD — Ali/Oğuz için. Plaka, marka, model, yıl, aktif,
 // muayene/sigorta/kasko bitiş tarihleri + sorumlu(lar) (bitiş hatırlatmaları için).
 import { useEffect, useState } from 'react'
-import { Car, Plus, Edit2, Trash2, Check, X, CalendarClock } from 'lucide-react'
+import { Plus, Edit2, Trash2, Check, X, CalendarClock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Card, Button, Badge } from '../components/ui'
 import CokluSelect from '../components/CokluSelect'
@@ -96,9 +96,6 @@ export default function AracYonetimi() {
     <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h1 className="t-h1" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Car size={22} strokeWidth={1.75} /> Araç Yönetimi
-          </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Şirket araç listesi — teknisyenler mobilden foto kaydı için buradaki plakaları görür.
           </p>

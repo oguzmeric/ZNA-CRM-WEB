@@ -138,9 +138,6 @@ export default function SozlesmeArsivi() {
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
-          <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Archive size={22} strokeWidth={1.75} /> Sözleşme Arşivi
-          </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             Firmalara ilettiğimiz tüm sözleşmeler tek listede. İmza sonrası taranmış PDF'i satırdan yükleyin —
             yükleme yapıldığında sözleşme <strong>İmzalı</strong> duruma geçer.

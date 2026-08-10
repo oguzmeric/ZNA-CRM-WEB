@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Sun, Compass, Wrench, AlertTriangle, FileText, Banknote,
+  Compass, Wrench, AlertTriangle, FileText, Banknote,
   PackageMinus, FileSignature, KeyRound, ShoppingCart, Undo2, RefreshCw,
   PauseCircle, Loader,
 } from 'lucide-react'
@@ -187,9 +187,6 @@ export default function GunlukOzet() {
     <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
-          <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Sun size={22} strokeWidth={1.75} style={{ color: '#f59e0b' }} /> Günlük Özet
-          </h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
             {new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })} ·
             {' '}<strong>{toplamIs}</strong> takip kalemi · her sabah 08:00'de telefona da gelir
