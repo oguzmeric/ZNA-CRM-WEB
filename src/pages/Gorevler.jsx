@@ -26,7 +26,7 @@ import {
   anaGorevKapatKontrol,
 } from '../lib/gorevSabitleri'
 import {
-  SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, kisiselSekmeMi,
+  SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle,
   gorunurMu, durumEsle, inSearch, inDateEq, bitisGorunen, hiyerarsikSirala,
 } from '../lib/gorevFiltre'
 import {
@@ -384,8 +384,7 @@ function Gorevler() {
   const [gorunumModu, setGorunumModu] = useState('liste')
   const [otomasyonAcik, setOtomasyonAcik] = useState(false)
   const [filtre, setFiltre] = useState('hepsi')
-  const [kisiFiltre, setKisiFiltre] = useState('')
-  const [sadeceBenim, setSadeceBenim] = useState(false) // "Görevlerim" — bana atanan + ekip
+  const [kisiFiltre, setKisiFiltre] = useState('')      // tek kişi kontrolü (boş = herkes)
   const [gorevEkleri, setGorevEkleri] = useState([])    // formda seçilen YENİ ekler (File[], mig 184)
   const [mevcutEkler, setMevcutEkler] = useState([])    // düzenlemede görevde zaten ekli olanlar (meta[])
   const [kaydetMesgul, setKaydetMesgul] = useState(false)
@@ -930,7 +929,7 @@ function Gorevler() {
   // sayıldıkları sürümde "rozet 37 · liste 0" gibi matematiksel boş kümeler
   // oluşuyordu (10.08 denetimi). Kural: yeni bir sayı gösterecekseniz onu da
   // sekmeKumesi'nden türetin, elle filtrelemeyin.
-  const ctx = { ...sekmeBaglami(kullanici), sadeceBenim, kisiFiltre }
+  const ctx = { ...sekmeBaglami(kullanici), kisiFiltre }
 
   // Görünürlük: HERKES tüm görevleri görür (mig 174 — RLS SELECT is_staff()).
   // TEK istisna: taslak görevler yalnız oluşturana görünür (madde 30/8).
@@ -955,9 +954,10 @@ function Gorevler() {
   // Aktif sekmenin kümesi — tablonun tabanı (rozetle aynı kaynak)
   const sekmeliGorevler = sekmeKumesi(gorunurGorevler, sekme, ctx)
 
-  // Kişisel sekmelerde kapsam kontrolleri yok sayılır → arayüzde de pasif
-  // görünsünler (çalışmayan bir düğmeyi aktif göstermek yanıltıyordu).
-  const kapsamPasif = gorunumModu === 'liste' && !goster && kisiselSekmeMi(sekme)
+  // Seçili kişinin adı — başlıkta ve boş liste açıklamasında kullanılır
+  const kisiAdi = kisiFiltre
+    ? (String(kullanici?.id ?? '') === kisiFiltre ? kullanici?.ad : kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad) || ''
+    : ''
 
   // Sekme rozetlerindeki uyarı rengi (KPI şeridinin yerini alır): sayı sıfırdan
   // büyükse ilgili sekme renkli yanar, göz doğrudan oraya gider.
@@ -1073,13 +1073,16 @@ function Gorevler() {
   // düğmesi hiç görünmüyordu, kullanıcı daralmayı geri alamıyordu.
   const chipAktif = !!filtre && filtre !== 'hepsi'
   const chipAdi = durumChipler.find(c => c.id === filtre)?.isim || filtre
+  // Kişi seçimi de daraltan bir filtredir — temizleme onu da kapsar, yoksa
+  // "liste neden boş" sorusunun cevabı ekranın başka bir köşesinde kalıyor.
   const filtreVar = Object.values(kolonFiltre).some(Boolean)
-    || !!kategoriFiltre || !!oncelikFiltre || !!etiketFiltre || chipAktif
+    || !!kategoriFiltre || !!oncelikFiltre || !!etiketFiltre || chipAktif || !!kisiFiltre
 
   const filtreleriTemizle = () => {
     setKolonFiltre(BOS_KOLON_FILTRE)
     setKategoriFiltre(''); setOncelikFiltre(''); setEtiketFiltre('')
     setFiltre('hepsi')
+    setKisiFiltre('')
     setSayfa(1)
   }
 
@@ -1109,67 +1112,32 @@ function Gorevler() {
               <>
                 <span className="tabular-nums">{toplam}</span> görev
                 {' — '}{SEKME_LISTESI.find(s => s.id === sekme)?.isim}
-                {!kapsamPasif && sadeceBenim && ' · Görevlerim'}
-                {!kapsamPasif && !sadeceBenim && kisiFiltre &&
-                  ` · ${kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad || ''}`}
+                {kisiAdi && ` · ${kisiAdi}`}
               </>
             ) : (
               <>
                 <span className="tabular-nums">{filtreliGorevler.length}</span> görev
-                {sadeceBenim && ' — Görevlerim'}
-                {!sadeceBenim && kisiFiltre &&
-                  ` — ${kullanicilar.find(k => k.id?.toString() === kisiFiltre)?.ad || ''}`}
+                {kisiAdi && ` — ${kisiAdi}`}
               </>
             )}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* Kapsam: Tümü | Görevlerim (bana atanan + ekip).
-              ⚠️ Kişisel sekmelerde (Bana Atananlar / Oluşturduklarım / Alt
-              Görevlerim / Onay Bekleyenler) kişi boyutunu sekmenin kendisi
-              belirler; kapsam yok sayıldığı için burada da PASİF görünür —
-              eskiden ikisi AND'lenip "Oluşturduklarım"dan başkasına atadığın
-              görevleri, "Onay Bekleyenler"den de yarısını sessizce düşürüyordu. */}
-          <div
-            title={kapsamPasif ? 'Bu sekme zaten kişiye göre süzüyor — kapsam seçimi uygulanmaz.' : undefined}
-            style={{
-              display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)',
-              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
-              opacity: kapsamPasif ? 0.4 : 1,
-            }}
-          >
-            {[{ v: false, l: 'Tümü' }, { v: true, l: 'Görevlerim' }].map(s => (
-              <button
-                key={s.l}
-                onClick={() => setSadeceBenim(s.v)}
-                disabled={kapsamPasif}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'calc(var(--radius-sm) - 2px)',
-                  background: sadeceBenim === s.v ? 'var(--surface-card)' : 'transparent',
-                  boxShadow: sadeceBenim === s.v ? 'var(--shadow-sm)' : 'none',
-                  color: sadeceBenim === s.v ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: 'none', cursor: kapsamPasif ? 'not-allowed' : 'pointer',
-                  font: '500 13px/18px var(--font-sans)',
-                }}
-              >
-                {s.l}
-              </button>
-            ))}
-          </div>
-          {/* Kişi açılırı her zaman render edilir (kaldırılırsa layout sağa kayıyordu).
-              "Görevlerim" aktifken veya kişisel sekmede devre dışı + soluk. */}
-          <div
-            title={kapsamPasif ? 'Bu sekme zaten kişiye göre süzüyor — kişi seçimi uygulanmaz.' : undefined}
-            style={{
-              minWidth: 180,
-              opacity: (sadeceBenim || kapsamPasif) ? 0.4 : 1,
-              pointerEvents: (sadeceBenim || kapsamPasif) ? 'none' : 'auto',
-            }}
-          >
-            <CustomSelect value={kisiFiltre} onChange={e => setKisiFiltre(e.target.value)} disabled={sadeceBenim || kapsamPasif}>
+          {/* ⚠️ "Tümü | Görevlerim" anahtarı KALDIRILDI (10.08 geri bildirimi:
+              "yukarıdakilere tıklayamıyorum, normal mi?"). O anahtar sekmelerin
+              kopyasıydı — "Görevlerim" = Bana Atananlar sekmesi, "Tümü" = Tümü
+              sekmesi — ve kişisel sekmelerle çakışmasın diye kilitleniyordu.
+              Varsayılan sekme de kişisel olduğu için sayfa HER açılışta gri
+              geliyordu: kilitli bir düğme kullanıcıya "bozuk" görünür.
+              Geriye TEK kişi kontrolü kaldı; her sekmede çalışır, varsayılanı
+              boş olduğu için hiçbir listeyi sessizce daraltmaz. */}
+          <div style={{ minWidth: 180 }}>
+            <CustomSelect value={kisiFiltre} onChange={e => { setKisiFiltre(e.target.value); setSayfa(1) }}>
               <option value="">Tüm kişiler</option>
-              {kullanicilar.map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
+              {kullanici?.id != null && <option value={String(kullanici.id)}>{kullanici.ad} (ben)</option>}
+              {kullanicilar
+                .filter(k => String(k.id) !== String(kullanici?.id ?? ''))
+                .map(k => <option key={k.id} value={k.id?.toString()}>{k.ad}</option>)}
             </CustomSelect>
           </div>
           <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
@@ -2045,7 +2013,8 @@ function Gorevler() {
                               Bu sekmede filtrelerle eşleşen görev yok.
                               {' '}<span style={{ color: 'var(--text-secondary)' }}>
                                 (sekme: {SEKME_LISTESI.find(s => s.id === sekme)?.isim}
-                                {chipAktif && ` · durum: ${chipAdi}`})
+                                {chipAktif && ` · durum: ${chipAdi}`}
+                                {kisiAdi && ` · kişi: ${kisiAdi}`})
                               </span>
                             </div>
                             <Button variant="secondary" onClick={filtreleriTemizle} iconLeft={<X size={13} strokeWidth={1.5} />}>

@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
-  SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, kisiselSekmeMi,
+  SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, sekmeEsle,
   gorunurMu, durumEsle, hiyerarsikSirala, bitisGorunen, haftaAraligi,
 } from '../src/lib/gorevFiltre.js'
 import {
@@ -38,7 +38,7 @@ const gunEkle = (n) => {
 }
 
 const BEN = { id: 7, ad: 'OĞUZ MERİÇ', kullaniciAdi: 'oguzmeric' }
-const ctxTemel = (ek = {}) => ({ ...sekmeBaglami(BEN), sadeceBenim: false, kisiFiltre: '', ...ek })
+const ctxTemel = (ek = {}) => ({ ...sekmeBaglami(BEN), kisiFiltre: '', ...ek })
 
 let sayac = 0
 const gorev = (o = {}) => ({
@@ -165,19 +165,23 @@ const karisikListe = () => [
 
 test('K2 · rozet sayıları KAPSAMI yansıtır (eskiden kapsamdan bağımsızdı)', () => {
   // Şikâyetin kaynağı: rozet gorunurGorevler'den, liste kapsamlı kümeden
-  // sayılıyordu → "Görevlerim"de rozet 300, tabloda 25 satır.
+  // sayılıyordu → rozet 300, tabloda 25 satır.
   const ctxTum = ctxTemel()
   const gorunur = karisikListe().filter(g => gorunurMu(g, ctxTum))
   const tumu = sekmeKumesi(gorunur, 'tumu', ctxTum).length
-  const benim = sekmeKumesi(gorunur, 'tumu', ctxTemel({ sadeceBenim: true })).length
   const kisi = sekmeKumesi(gorunur, 'tumu', ctxTemel({ kisiFiltre: '9' })).length
-  assert.ok(benim < tumu, `kapsam daraltınca rozet düşmeli (${benim} < ${tumu})`)
   assert.ok(kisi < tumu, `kişi seçilince rozet düşmeli (${kisi} < ${tumu})`)
-  // Kişisel sekmeler kapsamdan ETKİLENMEZ — orada sayı sabit kalmalı
-  for (const id of ['bana', 'olusturdugum', 'alt', 'onay']) {
+})
+
+test('K2e · kişi seçimi BOŞken hiçbir sekme daralmaz', () => {
+  // "Tümü | Görevlerim" anahtarı kaldırıldı; geriye kalan tek kontrol
+  // varsayılan boş olmalı ki sayfa açılışta hiçbir listeyi kırpmasın.
+  const ctx = ctxTemel()
+  const gorunur = karisikListe().filter(g => gorunurMu(g, ctx))
+  for (const s of SEKME_LISTESI) {
     assert.equal(
-      sekmeKumesi(gorunur, id, ctxTum).length,
-      sekmeKumesi(gorunur, id, ctxTemel({ sadeceBenim: true })).length, id)
+      sekmeKumesi(gorunur, s.id, ctx).length,
+      gorunur.filter(g => sekmeEsle(g, s.id, ctx)).length, s.id)
   }
 })
 
@@ -250,44 +254,48 @@ test('K3a · "Gecikenler" kapsamı daraltmaz — başkasının gecikeni de gör�
   assert.ok(geciken.some(g => g.atanan === '9'), 'yönetici başkasının gecikenini görmeli')
 })
 
-test('K3a2 · kapsam anahtarı "Gecikenler"i yine de daraltabilir', () => {
-  const ctx = ctxTemel({ sadeceBenim: true })
+test('K3a2 · kişi seçmek "Gecikenler"i BİLİNÇLİ olarak daraltır', () => {
+  const ctx = ctxTemel({ kisiFiltre: '7' })
   const gorunur = karisikListe().filter(g => gorunurMu(g, ctx))
   const geciken = sekmeKumesi(gorunur, 'geciken', ctx)
   assert.equal(geciken.length, 1)
   assert.equal(geciken[0].atanan, '7')
 })
 
-test('K3b · "Oluşturduklarım" + Görevlerim → başkasına atadıklarım KAYBOLMAZ', () => {
-  const ctx = ctxTemel({ sadeceBenim: true })
+test('K3b · "Oluşturduklarım" başkasına atadıklarımı GİZLEMEZ', () => {
+  // Eskiden "Görevlerim" anahtarı bu sekmeyle AND'lenip devrettiklerimi
+  // düşürüyordu. Anahtar kalktı: sekme artık kendi tanımını uygular.
+  const ctx = ctxTemel()
   const gorunur = karisikListe().filter(g => gorunurMu(g, ctx))
   const kume = sekmeKumesi(gorunur, 'olusturdugum', ctx)
-  // ⚠️ Ekipte olduğum görevler kapsamdan zaten geçer; testin anlamlı olması için
-  // TAMAMEN devrettiğim (ekibinde de olmadığım) görevi arıyoruz.
   const devredilen = kume.filter(g => g.atanan === '9' && !(Array.isArray(g.ekip) && g.ekip.includes(7)))
   assert.ok(devredilen.length > 0, 'ekibinde olmadığım halde oluşturduğum görev listede olmalı')
 })
 
-test('K3c · "Onay Bekleyenler" + Görevlerim → bana atanmamış onaylar KAYBOLMAZ', () => {
-  const ctx = ctxTemel({ sadeceBenim: true })
+test('K3c · "Onay Bekleyenler" bana atanmamış onayları GİZLEMEZ', () => {
+  const ctx = ctxTemel()
   const gorunur = karisikListe().filter(g => gorunurMu(g, ctx))
   const kume = sekmeKumesi(gorunur, 'onay', ctx)
   assert.equal(kume.length, 1)
   assert.equal(kume[0].atanan, '9', 'onaylayıcısı benim ama atananı başkası')
 })
 
-test('K3d · kişisel sekmelerde kapsam yok sayılır, nötr sekmelerde uygulanır', () => {
-  assert.deepEqual(SEKME_LISTESI.filter(s => kisiselSekmeMi(s.id)).map(s => s.id),
-    ['bana', 'olusturdugum', 'alt', 'onay'])
-  for (const id of ['geciken', 'bugun', 'hafta', 'tamamlanan', 'tumu']) {
-    assert.equal(kisiselSekmeMi(id), false, id)
+test('K3d · kişi kontrolü TEK ve her sekmede aynı şekilde uygulanır', () => {
+  // "Tümü | Görevlerim" anahtarı kaldırıldı: artık istisna yok, dolayısıyla
+  // kilitli görünen (tıklanamayan) kontrol de yok.
+  const g = gorev({ atanan: '9' })
+  for (const s of SEKME_LISTESI) {
+    const ctx = ctxTemel({ kisiFiltre: '7' })
+    assert.equal(sekmeKumesi([g], s.id, ctx).length, 0, `${s.id} kişi filtresini uygulamalı`)
   }
+  assert.ok(!/sadeceBenim/.test(kaynak('src/lib/gorevFiltre.js')), 'çekirdekte kapsam anahtarı kalmamalı')
+  assert.ok(!/sadeceBenim/.test(kaynak('src/pages/Gorevler.jsx')), 'sayfada kapsam anahtarı kalmamalı')
 })
 
 test('K3e · kişi açılırı ekip üyeliğini de sayar (kapsam anahtarıyla aynı tanım)', () => {
   const ekipli = gorev({ atanan: '9', ekip: [7] })
   assert.equal(kapsamEsle(ekipli, ctxTemel({ kisiFiltre: '7' })), true)
-  assert.equal(kapsamEsle(ekipli, ctxTemel({ sadeceBenim: true })), true)
+  assert.equal(kapsamEsle(ekipli, ctxTemel()), true, 'kişi seçilmemişken herkes geçer')
 })
 
 test('K3f · "Bana Atananlar" ekipte olduğum görevleri kapsar', () => {
@@ -365,7 +373,7 @@ test('D2 · üstü listede olmayan alt görev KAYBOLMAZ (kök sayılır)', () =>
 })
 
 test('D3 · oturum yokken (uid boş) kişisel sekmeler boş döner, çökmez', () => {
-  const ctx = { ...sekmeBaglami(null), sadeceBenim: false, kisiFiltre: '' }
+  const ctx = { ...sekmeBaglami(null), kisiFiltre: '' }
   const liste = karisikListe()
   for (const s of SEKME_LISTESI) {
     assert.ok(Array.isArray(sekmeKumesi(liste, s.id, ctx)), s.id)

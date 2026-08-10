@@ -29,12 +29,13 @@ export const SEKME_LISTESI = [
   { id: 'tumu',         isim: 'Tümü' },
 ]
 
-// ⚠️ KİŞİSEL SEKMELER: kişi boyutunu SEKMENİN KENDİSİ belirler. Dıştaki kapsam
-// (Görevlerim anahtarı / kişi açılırı) bu sekmelerde YOK SAYILIR — ikisi
-// AND'lenirse "Oluşturduklarım" başkasına atadıklarını gizler, "Onay
-// Bekleyenler" bana atanmamış olanları düşürüp boşalır.
-export const KISISEL_SEKMELER = ['bana', 'olusturdugum', 'alt', 'onay']
-export const kisiselSekmeMi = (sekmeId) => KISISEL_SEKMELER.includes(sekmeId)
+// ⚠️ Kişi boyutunu ya SEKME ('Bana Atananlar', 'Oluşturduklarım'…) ya da kişi
+// açılırı belirler — başka kontrol YOK. Eskiden bir de "Tümü | Görevlerim"
+// anahtarı vardı; sekmelerin kopyasıydı ve kişisel sekmelerle AND'lenmesin
+// diye kilitleniyordu. Varsayılan sekme de kişisel olduğu için sayfa her
+// açılışta kilitli geliyor, kullanıcıya "bozuk" görünüyordu (10.08 geri
+// bildirimi). Anahtar kaldırıldı; kalan tek kontrolün varsayılanı boş olduğu
+// için hiçbir listeyi sessizce daraltmaz.
 
 // ─── Kişi eşleşmesi ─────────────────────────────────────────────────────────
 // Bir görev kişiye "ait" sayılır: sorumlusuysa VEYA ekibindeyse. Kapsam
@@ -117,20 +118,18 @@ export const sekmeEsle = (g, sekmeId, ctx) => {
   }
 }
 
-// ─── Kapsam (Görevlerim anahtarı + kişi açılırı) ────────────────────────────
+// ─── Kapsam (kişi açılırı) ──────────────────────────────────────────────────
+// Boşken hiçbir şeyi daraltmaz; bir kişi seçmek BİLİNÇLİ bir daraltmadır ve
+// her sekmede aynı şekilde uygulanır (artık istisna yok — istisna, kilitli
+// görünen kontroller demekti).
 export const kapsamEsle = (g, ctx) => {
-  if (ctx?.sadeceBenim) return banaAitGorev(g, ctx)
   if (ctx?.kisiFiltre) return kisiyeAit(g, ctx.kisiFiltre)
   return true
 }
 
-// Kapsam bu sekmede uygulanır mı? (kişisel sekmelerde hayır)
-export const kapsamGecerliMi = (sekmeId) => !kisiselSekmeMi(sekmeId)
-
 // ⭐ TEK KAYNAK — sekme rozeti de tablo da buradan geçer.
 export const sekmeKumesi = (liste, sekmeId, ctx) =>
-  (liste || []).filter(g =>
-    (!kapsamGecerliMi(sekmeId) || kapsamEsle(g, ctx)) && sekmeEsle(g, sekmeId, ctx))
+  (liste || []).filter(g => kapsamEsle(g, ctx) && sekmeEsle(g, sekmeId, ctx))
 
 // ─── Durum chip'leri (sekme İÇİNDE ikincil filtre) ──────────────────────────
 // Görsel sunum (ikon/renk) Gorevler.jsx'te; eşleşme kuralı burada.
