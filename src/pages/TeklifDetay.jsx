@@ -29,7 +29,9 @@ import { bayiTeklifKontrol } from '../services/bayiService'
 import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
-import { teklifHesapla, satirHesapla } from '../lib/teklifHesap'
+import {
+  teklifHesapla, satirHesapla, kdvSatirlari, iskontoEtiketi, oranMetni, tutarMetni,
+} from '../lib/teklifHesap'
 import { tekliftenDurum, TEKLIF_DURUM, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
@@ -610,13 +612,18 @@ function TeklifDetay() {
 
   // ⚠️ Ekrandaki toplamlar ve müşteriye giden çıktı AYNI modülden beslenir.
   // İkisi ayrı hesap yaparsa aynı teklif iki yerde iki tutar gösterir.
-  const { araToplam, genelIskontoTutar, kdvToplam, genelToplam } = teklifHesapla(form)
+  const hesap = teklifHesapla(form)
+  // KDV toplamı tek satır değil, oran kırılımı olarak basılıyor → kdvSatirlari(hesap)
+  const { araToplam, genelIskontoTutar, genelToplam } = hesap
   const paraBirimi = paraBirimleri.find((p) => p.id === form.paraBirimi)
   const tlKarsiligi = form.paraBirimi !== 'TL' && form.dovizKuru
     ? genelToplam * Number(form.dovizKuru)
     : null
 
-  const fmtPara = (n) => `${paraBirimi?.sembol || ''}${n.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+  // ⚠️ `tutarMetni` kullanılıyor: düz toLocaleString'e `maximumFractionDigits`
+  // yazılmazsa Intl 3 ondalığa çıkıyor ve ekranda ₺45.599,983 gibi tutarlar
+  // beliriyordu (çıktı tarafında da aynı hata vardı).
+  const fmtPara = (n) => `${paraBirimi?.sembol || ''}${tutarMetni(n)}`
 
   const kaydet = async () => {
     // Kayıt sürerken gelen ikinci tıklama sessizce yutulur. Buton da disabled
@@ -1745,59 +1752,6 @@ function TeklifDetay() {
             </div>
           )}
 
-          <div style={{ marginBottom: 16 }}>
-            <Label>Genel iskonto (%)</Label>
-            <Input
-              type="number"
-              value={form.genelIskonto}
-              onChange={(e) => setForm({ ...form, genelIskonto: Number(e.target.value) })}
-              placeholder="0"
-              min="0"
-              max="100"
-            />
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="t-caption">Ara toplam</span>
-              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(araToplam)}</span>
-            </div>
-            {form.genelIskonto > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="t-caption">İskonto ({form.genelIskonto}%)</span>
-                <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
-                  −{fmtPara(genelIskontoTutar)}
-                </span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="t-caption">KDV toplam</span>
-              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(kdvToplam)}</span>
-            </div>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              paddingTop: 8, marginTop: 4,
-              borderTop: '1px solid var(--border-default)',
-            }}>
-              <span className="t-body-strong">Genel toplam</span>
-              <span className="tabular-nums" style={{ font: '600 15px/22px var(--font-sans)', color: 'var(--brand-primary)' }}>
-                {fmtPara(genelToplam)}
-              </span>
-            </div>
-            {tlKarsiligi !== null && (
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                padding: '8px 12px', marginTop: 6,
-                background: 'var(--surface-sunken)',
-                borderRadius: 'var(--radius-sm)',
-              }}>
-                <span className="t-caption">TL karşılığı</span>
-                <span className="tabular-nums" style={{ font: '500 12px/16px var(--font-sans)' }}>
-                  ₺{tlKarsiligi.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            )}
-          </div>
         </Card>
       </div>
 
@@ -2043,6 +1997,89 @@ function TeklifDetay() {
             </TBody>
           </Table>
         )}
+      </Card>
+
+      {/* Toplamlar — ürün satırlarının HEMEN ALTINDA.
+          Eskiden sağ üstteki kartın içindeydi: satırları düzenlerken ekranın
+          dışında kalıyordu, kullanıcı toplamı ancak kaydedip PDF alınca
+          görebiliyordu. Kalem düzeni ve sırası çıktı belgesiyle birebir aynı —
+          ekranda görülen ile müşteriye giden aynı okunsun. */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 220, flex: '0 1 260px' }}>
+            <Label>Genel iskonto (%)</Label>
+            <Input
+              type="number"
+              value={form.genelIskonto}
+              onChange={(e) => setForm({ ...form, genelIskonto: Number(e.target.value) })}
+              placeholder="0"
+              min="0"
+              max="100"
+            />
+            <p className="t-caption" style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
+              Satır iskontolarının üstüne, toplam üzerinden uygulanır.
+              Girilen oran genel toplama birebir yansır.
+            </p>
+          </div>
+
+          <div style={{ minWidth: 260, flex: '0 1 300px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {hesap.satirIskontoVar && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="t-caption">Brüt toplam</span>
+                  <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(hesap.brutToplam)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="t-caption" style={{ color: 'var(--danger)' }}>{iskontoEtiketi(hesap)}</span>
+                  <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
+                    −{fmtPara(hesap.satirIskontoToplam)}
+                  </span>
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="t-caption">Ara toplam</span>
+              <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(araToplam)}</span>
+            </div>
+            {hesap.genelIskontoVar && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="t-caption" style={{ color: 'var(--danger)' }}>Genel iskonto (%{oranMetni(hesap.genelIskontoOran)})</span>
+                <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--danger)' }}>
+                  −{fmtPara(genelIskontoTutar)}
+                </span>
+              </div>
+            )}
+            {kdvSatirlari(hesap).map(({ etiket, tutar }) => (
+              <div key={etiket} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="t-caption">{etiket}</span>
+                <span className="tabular-nums" style={{ font: '500 13px/18px var(--font-sans)' }}>{fmtPara(tutar)}</span>
+              </div>
+            ))}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              paddingTop: 8, marginTop: 4,
+              borderTop: '1px solid var(--border-default)',
+            }}>
+              <span className="t-body-strong">Genel toplam</span>
+              <span className="tabular-nums" style={{ font: '600 15px/22px var(--font-sans)', color: 'var(--brand-primary)' }}>
+                {fmtPara(genelToplam)}
+              </span>
+            </div>
+            {tlKarsiligi !== null && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '8px 12px', marginTop: 6,
+                background: 'var(--surface-sunken)',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+                <span className="t-caption">TL karşılığı</span>
+                <span className="tabular-nums" style={{ font: '500 12px/16px var(--font-sans)' }}>
+                  ₺{tutarMetni(tlKarsiligi)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
 
       {/* Hatırlatma */}
