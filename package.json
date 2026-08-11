@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test:gorev": "node scripts/test-gorev-filtre.mjs",
+    "test:teklif": "node scripts/test-teklif-hesap.mjs",
     "preview": "vite preview",
     "supabase": "supabase",
     "deploy:fn": "supabase functions deploy"

@@ -2,6 +2,9 @@
 // (Eskiden 5 sayfaydı; istek üzerine yalnızca eski 3. sayfa korundu.)
 
 import { ZNA_FIRMA } from '../../lib/teklifTemplates'
+import {
+  teklifHesapla, kdvSatirlari, iskontoEtiketi, satirIskontoMetni, oranMetni, tutarMetni, r2,
+} from '../../lib/teklifHesap'
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
@@ -61,18 +64,13 @@ function SayfaBasligi() {
 
 export default function KarelCikti({ teklif, pacal = false }) {
   const paraSembol = teklif.paraBirimi === 'USD' ? '$' : teklif.paraBirimi === 'EUR' ? '€' : '₺'
-  const fmt = (n) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+  const fmt = tutarMetni
 
-  const araToplam = (teklif.satirlar || []).reduce((s, r) => {
-    const ara = r.miktar * r.birimFiyat
-    return s + ara - ara * ((r.iskonto || 0) / 100)
-  }, 0)
-  const kdvToplam = (teklif.satirlar || []).reduce((s, r) => {
-    const ara = r.miktar * r.birimFiyat
-    const isk = ara * ((r.iskonto || 0) / 100)
-    return s + (ara - isk) * ((r.kdv || 20) / 100)
-  }, 0)
-  const genelToplam = araToplam + kdvToplam
+  const h = teklifHesapla(teklif)
+  const { araToplam, genelToplam } = h
+  // İskonto kolonu yalnız iskontolu tekliflerde basılır — iskontosuz teklifin
+  // çıktısı olduğu gibi kalsın, boş bir "—" sütunu eklenmesin.
+  const iskKolon = h.satirIskontoVar
 
   const sayfaStil = {
     width: '210mm',
@@ -154,32 +152,38 @@ export default function KarelCikti({ teklif, pacal = false }) {
               padding: '14px 20px', border: '1px solid #0176D3', borderTop: 'none',
             }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>PROJE BEDELİ</span>
-              <span style={{ fontSize: 20, fontWeight: 800 }}>{paraSembol}{fmt(araToplam)}</span>
+              {/* Paçalda kalem fiyatı gösterilmediği için iskonto oranı da basılmaz —
+                  bedelin kendisi iskontolu tutardır. */}
+              <span style={{ fontSize: 20, fontWeight: 800 }}>{paraSembol}{fmt(r2(araToplam - h.genelIskontoTutar))}</span>
             </div>
           </>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
             <thead>
               <tr style={{ background: '#0176D3', color: '#fff' }}>
-                <th style={{ padding: 8, textAlign: 'left',  border: '1px solid #0176D3', width: '15%' }}>Marka</th>
+                <th style={{ padding: 8, textAlign: 'left',  border: '1px solid #0176D3', width: iskKolon ? '14%' : '15%' }}>Marka</th>
                 <th style={{ padding: 8, textAlign: 'left',  border: '1px solid #0176D3' }}>Açıklama</th>
-                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '13%' }}>Ad./Mt.</th>
-                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '15%' }}>Birim Fiyat</th>
-                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '17%' }}>Toplam Fiyat</th>
+                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: iskKolon ? '11%' : '13%' }}>Ad./Mt.</th>
+                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: iskKolon ? '14%' : '15%' }}>Birim Fiyat</th>
+                {iskKolon && <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '9%' }}>İskonto</th>}
+                <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: iskKolon ? '16%' : '17%' }}>Toplam Fiyat</th>
               </tr>
             </thead>
             <tbody>
               {(teklif.satirlar || []).map((s, i) => {
-                const ara = s.miktar * s.birimFiyat
-                const isk = ara * ((s.iskonto || 0) / 100)
-                const top = ara - isk
+                const hs = h.satirlar[i]
                 return (
                   <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? '—' : 'ZNA')}</td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(top)}</td>
+                    {iskKolon && (
+                      <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right', color: hs.iskontoOran > 0 ? '#b45309' : '#94a3b8', fontWeight: hs.iskontoOran > 0 ? 700 : 400 }}>
+                        {satirIskontoMetni(hs.iskontoOran)}
+                      </td>
+                    )}
+                    <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(hs.net)}</td>
                   </tr>
                 )
               })}
@@ -187,17 +191,28 @@ export default function KarelCikti({ teklif, pacal = false }) {
           </table>
         )}
 
+        {/* Toplamlar — iskonto varsa brüt tutar ve indirim ayrı satırlarda görünür.
+            KDV etiketi satırların gerçek oranından üretilir; sabit "% 20" yazısı
+            %18'li tekliflerde tutar doğruyken bile yanlış oran gösteriyordu. */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
           <table style={{ fontSize: 13, minWidth: 280 }}>
             <tbody>
-              <tr>
-                <td style={{ padding: 4, paddingRight: 16, color: '#475569' }}>Ara Tutar :</td>
-                <td style={{ textAlign: 'right', padding: 4 }}>{paraSembol}{fmt(araToplam)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 4, paddingRight: 16, color: '#475569' }}>Kdv % 20 :</td>
-                <td style={{ textAlign: 'right', padding: 4 }}>{paraSembol}{fmt(kdvToplam)}</td>
-              </tr>
+              {[
+                ...(h.satirIskontoVar ? [
+                  { k: 'Brüt Tutar', v: `${paraSembol}${fmt(h.brutToplam)}` },
+                  { k: iskontoEtiketi(h), v: `−${paraSembol}${fmt(h.satirIskontoToplam)}`, vurgu: true },
+                ] : []),
+                { k: 'Ara Tutar', v: `${paraSembol}${fmt(araToplam)}` },
+                ...(h.genelIskontoVar ? [
+                  { k: `Genel İskonto (%${oranMetni(h.genelIskontoOran)})`, v: `−${paraSembol}${fmt(h.genelIskontoTutar)}`, vurgu: true },
+                ] : []),
+                ...kdvSatirlari(h).map(({ etiket, tutar }) => ({ k: etiket, v: `${paraSembol}${fmt(tutar)}` })),
+              ].map(({ k, v, vurgu }) => (
+                <tr key={k}>
+                  <td style={{ padding: 4, paddingRight: 16, color: vurgu ? '#b45309' : '#475569', fontWeight: vurgu ? 700 : 400 }}>{k} :</td>
+                  <td style={{ textAlign: 'right', padding: 4, color: vurgu ? '#b45309' : undefined, fontWeight: vurgu ? 700 : 400 }}>{v}</td>
+                </tr>
+              ))}
               <tr style={{ fontWeight: 800, color: '#0176D3' }}>
                 <td style={{ padding: 8, paddingRight: 16, borderTop: '2px solid #0176D3' }}>Genel Toplam :</td>
                 <td style={{ textAlign: 'right', padding: 8, borderTop: '2px solid #0176D3' }}>{paraSembol}{fmt(genelToplam)}</td>

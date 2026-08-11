@@ -1,23 +1,15 @@
 // Standart teklif çıktısı — A4 dikey, tek sayfa, sade.
-// (Eski TeklifYazdir.jsx render'ının birebir taşınmış hâli; sadece component'a sarıldı.)
+// Tutarlar ortak `teklifHesap` modülünden gelir (bkz. src/lib/teklifHesap.js).
+
+import {
+  teklifHesapla, kdvSatirlari, iskontoEtiketi, satirIskontoMetni, oranMetni, tutarMetni, r2,
+} from '../../lib/teklifHesap'
 
 export default function StandartCikti({ teklif, pacal = false }) {
-  const kdvOranlari = {}
-  ;(teklif.satirlar || []).forEach((s) => {
-    const kdv = s.kdv || 20
-    const ara = s.miktar * s.birimFiyat
-    const isk = ara * ((s.iskonto || 0) / 100)
-    const kdvT = (ara - isk) * (kdv / 100)
-    kdvOranlari[kdv] = (kdvOranlari[kdv] || 0) + kdvT
-  })
-  const araToplam = (teklif.satirlar || []).reduce((s, r) => {
-    const ara = r.miktar * r.birimFiyat
-    return s + ara - ara * ((r.iskonto || 0) / 100)
-  }, 0)
-  const kdvToplam = Object.values(kdvOranlari).reduce((a, b) => a + b, 0)
-  const genelToplam = araToplam + kdvToplam
+  const h = teklifHesapla(teklif)
+  const { araToplam, genelToplam } = h
   const paraSembol = teklif.paraBirimi === 'USD' ? '$' : teklif.paraBirimi === 'EUR' ? '€' : '₺'
-  const fmt = (n) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+  const fmt = tutarMetni
 
   return (
     <>
@@ -132,7 +124,9 @@ export default function StandartCikti({ teklif, pacal = false }) {
               borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
             }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>PROJE BEDELİ</span>
-              <span style={{ fontSize: 22, fontWeight: 800 }}>{paraSembol}{fmt(araToplam)}</span>
+              {/* Paçalda kalem fiyatı gösterilmediği için iskonto oranı da basılmaz —
+                  bedelin kendisi iskontolu tutardır. */}
+              <span style={{ fontSize: 22, fontWeight: 800 }}>{paraSembol}{fmt(r2(araToplam - h.genelIskontoTutar))}</span>
             </div>
           </>
         ) : (
@@ -162,10 +156,7 @@ export default function StandartCikti({ teklif, pacal = false }) {
             </thead>
             <tbody>
               {(teklif.satirlar || []).map((s, i) => {
-                const ara = s.miktar * s.birimFiyat
-                const isk = ara * ((s.iskonto || 0) / 100)
-                const kdvT = (ara - isk) * ((s.kdv || 20) / 100)
-                const top = ara - isk + kdvT
+                const hs = h.satirlar[i]
                 return (
                   <tr key={i}>
                     <td style={{ color: '#94a3b8' }}>{i + 1}</td>
@@ -173,9 +164,12 @@ export default function StandartCikti({ teklif, pacal = false }) {
                     <td style={{ textAlign: 'right' }}>{s.miktar}</td>
                     <td>{s.birim}</td>
                     <td style={{ textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
-                    <td style={{ textAlign: 'right', color: s.iskonto > 0 ? '#f59e0b' : '#94a3b8' }}>{s.iskonto || 0}%</td>
-                    <td style={{ textAlign: 'right' }}>%{s.kdv || 20}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(top)}</td>
+                    {/* İskontosuz satırda "0%" yerine tire — iskontolu satır göze çarpsın */}
+                    <td style={{ textAlign: 'right', color: hs.iskontoOran > 0 ? '#b45309' : '#94a3b8', fontWeight: hs.iskontoOran > 0 ? 700 : 400 }}>
+                      {satirIskontoMetni(hs.iskontoOran)}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>%{oranMetni(hs.kdvOran)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(hs.toplam)}</td>
                   </tr>
                 )
               })}
@@ -183,14 +177,22 @@ export default function StandartCikti({ teklif, pacal = false }) {
           </table>
         )}
 
-        {/* Toplamlar */}
+        {/* Toplamlar — iskonto varsa brüt tutar ve indirim ayrı satırlarda gösterilir,
+            böylece müşteri hangi orandan ne kadar indirim aldığını belgede görür. */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 28 }}>
           <div style={{ width: 280, background: '#f8fafc', borderRadius: 10, padding: '14px 16px' }}>
             {[
-              { k: 'Ara Toplam', v: `${paraSembol}${fmt(araToplam)}`, bold: false },
-              ...Object.entries(kdvOranlari).map(([oran, tutar]) => ({ k: `KDV %${oran}`, v: `${paraSembol}${fmt(tutar)}`, bold: false })),
-            ].map(({ k, v }) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: '#475569' }}>
+              ...(h.satirIskontoVar ? [
+                { k: 'Brüt Toplam', v: `${paraSembol}${fmt(h.brutToplam)}` },
+                { k: iskontoEtiketi(h), v: `−${paraSembol}${fmt(h.satirIskontoToplam)}`, vurgu: true },
+              ] : []),
+              { k: 'Ara Toplam', v: `${paraSembol}${fmt(araToplam)}` },
+              ...(h.genelIskontoVar ? [
+                { k: `Genel İskonto (%${oranMetni(h.genelIskontoOran)})`, v: `−${paraSembol}${fmt(h.genelIskontoTutar)}`, vurgu: true },
+              ] : []),
+              ...kdvSatirlari(h).map(({ etiket, tutar }) => ({ k: etiket, v: `${paraSembol}${fmt(tutar)}` })),
+            ].map(({ k, v, vurgu }) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: vurgu ? '#b45309' : '#475569', fontWeight: vurgu ? 700 : 400 }}>
                 <span>{k}</span><span>{v}</span>
               </div>
             ))}

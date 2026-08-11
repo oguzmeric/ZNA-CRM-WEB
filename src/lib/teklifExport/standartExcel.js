@@ -1,5 +1,7 @@
 // Standart şablon — basit fallback Excel (görselsiz, tek sheet)
+// Tutarlar ortak `teklifHesap` modülünden gelir; PDF çıktısıyla aynı rakam.
 import ExcelJS from 'exceljs'
+import { teklifHesapla, kdvSatirlari, iskontoEtiketi, oranMetni } from '../teklifHesap'
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : ''
 
@@ -36,23 +38,28 @@ export async function standartExcelOlustur(teklif) {
   headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0176D3' } }
   headerRow.eachCell(c => c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } })
 
-  let araToplam = 0
-  let kdvToplam = 0
+  const h = teklifHesapla(teklif)
   ;(teklif.satirlar || []).forEach((s, i) => {
-    const ara = s.miktar * s.birimFiyat
-    const isk = ara * ((s.iskonto || 0) / 100)
-    const kdvT = (ara - isk) * ((s.kdv || 20) / 100)
-    const top = ara - isk + kdvT
-    araToplam += ara - isk
-    kdvToplam += kdvT
-    const r = ws.addRow([i + 1, s.stokAdi || '', s.miktar, s.birim || '', s.birimFiyat, s.iskonto || 0, s.kdv || 20, top])
+    const hs = h.satirlar[i]
+    // İskonto oranı sayı olarak yazılır (Excel'de süzülebilsin); iskontosuz
+    // satırda hücre boş bırakılır — "0" sütunu gürültü yapıyordu.
+    const r = ws.addRow([
+      i + 1, s.stokAdi || '', s.miktar, s.birim || '', s.birimFiyat,
+      hs.iskontoOran > 0 ? hs.iskontoOran : '', hs.kdvOran, hs.toplam,
+    ])
     r.eachCell(c => c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } })
   })
 
   ws.addRow([])
-  ws.addRow(['', '', '', '', '', '', 'Ara Toplam', araToplam]).font = { italic: true }
-  ws.addRow(['', '', '', '', '', '', 'KDV Toplam', kdvToplam]).font = { italic: true }
-  const gtRow = ws.addRow(['', '', '', '', '', '', 'GENEL TOPLAM', araToplam + kdvToplam])
+  const ozet = (etiket, tutar) => { ws.addRow(['', '', '', '', '', '', etiket, tutar]).font = { italic: true } }
+  if (h.satirIskontoVar) {
+    ozet('Brüt Toplam', h.brutToplam)
+    ozet(iskontoEtiketi(h), -h.satirIskontoToplam)
+  }
+  ozet('Ara Toplam', h.araToplam)
+  if (h.genelIskontoVar) ozet(`Genel İskonto (%${oranMetni(h.genelIskontoOran)})`, -h.genelIskontoTutar)
+  for (const { etiket, tutar } of kdvSatirlari(h)) ozet(etiket, tutar)
+  const gtRow = ws.addRow(['', '', '', '', '', '', 'GENEL TOPLAM', h.genelToplam])
   gtRow.font = { bold: true, size: 12, color: { argb: 'FF0176D3' } }
   gtRow.eachCell((c, col) => { if (col === 7 || col === 8) c.border = { top: { style: 'medium' } } })
 
