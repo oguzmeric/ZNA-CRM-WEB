@@ -160,6 +160,13 @@ function TeklifDetay() {
   const [aktifKarsilastirmaIdx, setAktifKarsilastirmaIdx] = useState(0)
   // Modal "Yine de oluştur"a basıldığında çağrılacak resolver — Promise pattern
   const karsilastirmaResolverRef = useRef(null)
+  // ⚠️ ÇİFT KAYIT KİLİDİ — 11.08.2026'da aynı teklif 7 kez kaydedildi
+  // (TEK-1028…1038, beşi tek saniye içinde). Kaydet butonunda hiçbir koruma
+  // yoktu: her tıklama bağımsız bir INSERT atıyordu. Kilit `useRef` ile tutulur
+  // çünkü `setState` asenkron — hızlı ard arda tıklamada state henüz güncellenmemiş
+  // olur ve ikinci tıklama kapıdan geçerdi.
+  const kaydetKilidiRef = useRef(false)
+  const [kaydediliyor, setKaydediliyor] = useState(false)
   const [mevcutTeklif, setMevcutTeklif] = useState(null)
   const [veriYuklendi, setVeriYuklendi] = useState(false)
   const [hatirlatmaGun, setHatirlatmaGun] = useState(7)
@@ -640,6 +647,20 @@ function TeklifDetay() {
   const fmtPara = (n) => `${paraBirimi?.sembol || ''}${n.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
 
   const kaydet = async () => {
+    // Kayıt sürerken gelen ikinci tıklama sessizce yutulur. Buton da disabled
+    // ama fare/klavye yarışını yalnız bu senkron kilit kapatır.
+    if (kaydetKilidiRef.current) return
+    kaydetKilidiRef.current = true
+    setKaydediliyor(true)
+    try {
+      await kaydetGovde()
+    } finally {
+      kaydetKilidiRef.current = false
+      setKaydediliyor(false)
+    }
+  }
+
+  const kaydetGovde = async () => {
     if (!form.firmaAdi || !form.konu) {
       toast.warning('Firma ve konu zorunludur.')
       return
@@ -776,6 +797,29 @@ function TeklifDetay() {
       }
     } catch (err) {
       console.error('[TeklifDetay.kaydet] Tam hata:', err)
+
+      // DB güvenlik ağı (mig 280): aynı teklif saniyeler içinde ikinci kez
+      // gelirse reddedilir. Bu bir hata değil, korumanın çalıştığının işareti.
+      if (err?.code === 'P0001' && /mukerrer_teklif/i.test(err?.message || '')) {
+        toast.warning('Bu teklif az önce zaten kaydedildi. Teklifler listesinde görebilirsiniz.')
+        navigate('/teklifler')
+        return
+      }
+
+      // ⚠️ Zaman aşımı "kaydedilmedi" DEMEK DEĞİL: istek sunucuya ulaşmış ve
+      // kayıt oluşmuş olabilir; kesilen yalnızca tarayıcının beklemesidir.
+      // Eskiden burada düz "Kaydetme hatası" yazıyordu, kullanıcı tekrar
+      // basıyordu ve mükerrer teklif oluşuyordu (11.08.2026'da 7+ kayıt).
+      const zamanAsimi = err?.name === 'TimeoutError' || err?.name === 'AbortError' ||
+        /timed out|aborted|failed to fetch/i.test(err?.message || '')
+      if (zamanAsimi) {
+        toast.warning(
+          'Sunucu yanıtı gecikti. Kayıt oluşmuş OLABİLİR — tekrar kaydetmeden önce ' +
+          'Teklifler listesini kontrol edin.',
+        )
+        return
+      }
+
       const detay = [err?.message, err?.details, err?.hint, err?.code].filter(Boolean).join(' · ')
       toast.error('Kaydetme hatası: ' + (detay || 'bilinmeyen hata'))
     }
@@ -1368,7 +1412,9 @@ function TeklifDetay() {
               </>
             )
           )}
-          <Button variant="primary" onClick={kaydet}>Kaydet</Button>
+          <Button variant="primary" onClick={kaydet} disabled={kaydediliyor}>
+            {kaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+          </Button>
         </div>
       </div>
 

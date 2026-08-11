@@ -19,6 +19,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // tarayıcıda taze bağlantı kurar, tipik olarak ~1sn'de veri gelir.
 const DEFAULT_TIMEOUT_MS = 5000
 const RETRY_TIMEOUT_MS = 8000
+// Yazma istekleri tekrar denenmediği için ayrı ve geniş bütçe (aşağıda gerekçe).
+const MUTASYON_TIMEOUT_MS = 25000
 
 // Aktif fetch'leri başlangıç timestamp'i ile takip et.
 // abortStaleInFlight ile sadece eski (>= eşik) olanları iptal ediyoruz —
@@ -228,12 +230,25 @@ const fetchWithTimeout = (input, init = {}) => {
   }
 
   const method = (init.method || 'GET').toUpperCase()
+  const mutasyon = method !== 'GET' && method !== 'HEAD'
+
+  // ⚠️ MUTASYONLAR (POST/PATCH/PUT/DELETE) — 11.08.2026 mükerrer teklif olayı.
+  // Bunlar tekrar DENENMEZ (tekrar = mükerrer kayıt), dolayısıyla bütçeleri
+  // cömert olmalı. 5sn'de kesilen bir INSERT sunucuda TAMAMLANMIŞ olabilir:
+  // abort yalnızca tarayıcının beklemesini keser, isteği geri almaz. Kullanıcı
+  // "Request timed out" görüp "kaydedilmedi" sanıyor, tekrar basıyor ve ikinci
+  // kayıt oluşuyordu. Aynı teklif 7+ kez kaydedildi.
+  //
+  // ⭐ korumali=true — edge çağrılarındakiyle aynı gerekçe: sekmeye dönüşteki
+  // abortStaleInFlight(5000) süpürmesi, 5sn'i aşan bir INSERT'i "askıda kalmış"
+  // sayıp kesiyordu. Yarıda kesilen mutasyon sunucuda işlenmiş olabilir; bu
+  // süpürmeler takılmış OKUMA sorguları içindir, yan etkili yazma için değil.
+  if (mutasyon) return zamanAsimliDeneme(input, init, MUTASYON_TIMEOUT_MS, true)
+
   const ilk = zamanAsimliDeneme(input, init, DEFAULT_TIMEOUT_MS)
 
-  // Yalnız GET/HEAD tekrar denenir (idempotent — mutasyonlarda tekrar
-  // duplicate kayıt riski). Yalnız TIMEOUT'ta: abortStaleInFlight gibi
-  // bilinçli iptaller (AbortError) yeniden diriltilmez.
-  if (method !== 'GET' && method !== 'HEAD') return ilk
+  // Yalnız GET/HEAD tekrar denenir (idempotent). Yalnız TIMEOUT'ta:
+  // abortStaleInFlight gibi bilinçli iptaller (AbortError) yeniden diriltilmez.
   return ilk.catch((err) => {
     if (err?.name === 'TimeoutError') {
       console.info('[fetch] timeout → otomatik tekrar:', typeof input === 'string' ? input.slice(0, 90) : '')
