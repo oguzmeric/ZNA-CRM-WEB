@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict'
 import {
   teklifAcikMi, teklifYasi, yasKovasi, YAS_KOVALARI, yaslandirmaOzeti,
-  kovayaGiriyorMu, kisiBazliAcik, kisaTutar, KAPALI_DURUMLAR,
+  kovayaGiriyorMu, kisiBazliAcik, kisaTutar, tamTutar, KAPALI_DURUMLAR,
 } from '../src/lib/teklifTakip.js'
 
 let gecen = 0, kalan = []
@@ -159,17 +159,59 @@ test('P1 · kişi bazlı açık yük adet/tutar/en eski gün', () => {
     teklif({ id: 3, olusturanAd: 'VELİ', tarih: gunOnce(5), genelToplam: 900 }),
     teklif({ id: 4, olusturanAd: 'ALİ', onayDurumu: 'kabul', genelToplam: 5000 }), // kapalı
   ], SIMDI)
-  assert.equal(r[0].kisi, 'ALİ')
+  assert.equal(r[0].kisi, 'Ali')
   assert.equal(r[0].adet, 2)
   assert.equal(r[0].tutar, 300)
   assert.equal(r[0].enEskiGun, 50)
-  assert.equal(r[1].kisi, 'VELİ')
+  assert.equal(r[1].kisi, 'Veli')
 })
 
 test('P2 · sahipsiz teklif "(atanmamış)" altında toplanır — kaybolmaz', () => {
   const r = kisiBazliAcik([teklif({ olusturanAd: null, hazirlayan: null })], SIMDI)
+  // Parantezle başladığı için baş-harf büyütme uygulanmaz; etiket olduğu gibi kalır
   assert.equal(r[0].kisi, '(atanmamış)')
   assert.equal(r[0].adet, 1)
+})
+
+// ⭐ ATIF KURALI — canlıdaki en büyük sapma buradaydı.
+// 914 açık teklifin 312'sinde teklifi giren hesap ile hazırlayan farklı.
+// Ters sırada Ali'ye 334 teklif yazılıyordu; gerçekte 26'sı onundu.
+test('P3 · hazırlayan doluysa yük ONA yazılır, hesabı açana değil', () => {
+  const r = kisiBazliAcik([
+    teklif({ id: 1, olusturanAd: 'ALİ UĞUR AKTEPE', hazirlayan: 'SADIK BALOĞLU', genelToplam: 100 }),
+    teklif({ id: 2, olusturanAd: 'ALİ UĞUR AKTEPE', hazirlayan: 'SADIK BALOĞLU', genelToplam: 100 }),
+    teklif({ id: 3, olusturanAd: 'ALİ UĞUR AKTEPE', hazirlayan: '', genelToplam: 100 }),
+  ], SIMDI)
+  assert.equal(r.length, 2)
+  assert.equal(r[0].kisi, 'Sadık Baloğlu')
+  assert.equal(r[0].adet, 2)
+  assert.equal(r[1].kisi, 'Ali Uğur Aktepe')
+  assert.equal(r[1].adet, 1)
+})
+
+test('P4 · sadece boşluk içeren hazırlayan hesap sahibine düşer', () => {
+  const r = kisiBazliAcik([teklif({ olusturanAd: 'Tarık Altaş', hazirlayan: '   ' })], SIMDI)
+  assert.equal(r[0].kisi, 'Tarık Altaş')
+})
+
+// Canlıda aynı kişi "SALİH ÇAKMAKLI" ve "SALIH ÇAKMAKLI" olarak iki satırdı.
+test('P5 · Türkçe İ/I ve büyük-küçük harf farkı aynı kişide toplanır', () => {
+  const r = kisiBazliAcik([
+    teklif({ hazirlayan: 'SALİH ÇAKMAKLI', genelToplam: 10 }),
+    teklif({ hazirlayan: 'SALIH ÇAKMAKLI', genelToplam: 10 }),
+    teklif({ hazirlayan: 'Salih Çakmaklı', genelToplam: 10 }),
+    teklif({ hazirlayan: 'salih  çakmaklı', genelToplam: 10 }), // çift boşluk
+  ], SIMDI)
+  assert.equal(r.length, 1)
+  assert.equal(r[0].adet, 4)
+})
+
+test('P6 · gösterim Türkçe kurallı — ekranda tek biçim', () => {
+  const bak = (girdi) => kisiBazliAcik([teklif({ hazirlayan: girdi })], SIMDI)[0].kisi
+  assert.equal(bak('SADIK BALOĞLU'), 'Sadık Baloğlu')   // I → ı
+  assert.equal(bak('SALİH ÇAKMAKLI'), 'Salih Çakmaklı') // İ → i
+  assert.equal(bak('TARIK ALTAŞ'), 'Tarık Altaş')
+  assert.equal(bak('abdullah iğde'), 'Abdullah İğde')   // i → İ
 })
 
 // ─── Biçimleme ──────────────────────────────────────────────────────────────
@@ -177,17 +219,26 @@ test('P2 · sahipsiz teklif "(atanmamış)" altında toplanır — kaybolmaz', (
 test('B1 · kısa tutar okunur biçimde', () => {
   assert.equal(kisaTutar(25144331), '₺25,1M')
   assert.equal(kisaTutar(17384273), '₺17,4M')
-  // 1M–10M aralığı da M ile gösterilmeli — eşik kayarsa "₺6194B" gibi
-  // okunmaz bir çıktı olur (canlıda 0-7 gün kovası tam bu aralıkta: ₺6,19M)
+  // 1M–10M aralığı da M ile gösterilmeli — eşik kayarsa "₺6.193.644" basar
+  // (canlıda 0-7 gün kovası tam bu aralıkta: ₺6,19M)
   assert.equal(kisaTutar(6193644), '₺6,2M')
   assert.equal(kisaTutar(1566414), '₺1,6M')
   assert.equal(kisaTutar(1000000), '₺1M')
-  // Eşiğin hemen altı binlik ayırıcıyla basılır (TR biçimi) — kabul edilen davranış
-  assert.equal(kisaTutar(999999), '₺1.000B')
-  assert.equal(kisaTutar(840000), '₺840B')
-  assert.equal(kisaTutar(1500), '₺2B')
+  // ⚠️ Milyon ALTI kısaltılmaz. Eski biçim "₺486B" idi — "B" bin mi milyar mı
+  // belirsizdi. Tam tutar zaten kısa ve hiç şüphe bırakmıyor.
+  assert.equal(kisaTutar(999999), '₺999.999')
+  assert.equal(kisaTutar(486350), '₺486.350')
+  assert.equal(kisaTutar(840000), '₺840.000')
+  assert.equal(kisaTutar(1500), '₺1.500')
   assert.equal(kisaTutar(0), '₺0')
   assert.equal(kisaTutar(null), '₺0')
+})
+
+test('B2 · tam tutar kuruşsuz ve binlik ayırıcılı', () => {
+  assert.equal(tamTutar(25144331), '₺25.144.331')
+  assert.equal(tamTutar(486350.4), '₺486.350')
+  assert.equal(tamTutar(0), '₺0')
+  assert.equal(tamTutar(null), '₺0')
 })
 
 // ─── Sınır durumları ────────────────────────────────────────────────────────

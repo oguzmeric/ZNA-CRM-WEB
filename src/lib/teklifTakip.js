@@ -89,25 +89,58 @@ export const kovayaGiriyorMu = (t, kovaId, simdi = new Date()) => {
   return yasKovasi(yas) === kovaId
 }
 
+/**
+ * Teklifi kim hazırladı — kişi bazlı yükün ATIF kuralı.
+ *
+ * ⚠️ Sıra ÖNEMLİ: önce `hazirlayan`, sonra hesabı açan. Sahada teklifler sıkça
+ * bir başkasının hesabından giriliyor: canlıda 914 açık teklifin 312'sinde
+ * hazırlayan ile hesap sahibi farklı (Ali'nin hesabından 132 Sadık, 93 Tarık,
+ * 66 Salih teklifi). Ters sırada Ali 334 açık teklif taşıyor görünüyordu,
+ * gerçekte 26'sı onundu. Hazırlayan boşsa (483 teklif) hesap sahibine düşer.
+ */
+export const teklifSahibi = (t) =>
+  (t?.hazirlayan || '').trim() || (t?.olusturanAd || '').trim() || '(atanmamış)'
+
+/**
+ * Gruplama anahtarı — büyük/küçük harf ve Türkçe İ/I/ı/i farkını yok sayar.
+ * Canlıda aynı kişi "SALİH ÇAKMAKLI" ve "SALIH ÇAKMAKLI" olarak iki ayrı
+ * satırda görünüyordu. Bkz. [[reference-turkce-i-tuzagi]]
+ */
+export const kisiAnahtari = (ad) =>
+  String(ad || '').toLocaleUpperCase('tr').replace(/[İIıi]/g, 'I').replace(/\s+/g, ' ').trim()
+
+/** Ekranda tek biçim: "SADIK BALOĞLU" → "Sadık Baloğlu" (Türkçe kurallı) */
+export const kisiGosterim = (ad) =>
+  String(ad || '').trim().split(/\s+/)
+    .map(k => k.charAt(0).toLocaleUpperCase('tr') + k.slice(1).toLocaleLowerCase('tr'))
+    .join(' ')
+
 /** Kişi bazlı açık teklif yükü — kimin üzerinde ne kadar iş birikmiş */
 export const kisiBazliAcik = (teklifler, simdi = new Date(), limit = 6) => {
   const harita = new Map()
   for (const t of (teklifler || []).filter(teklifAcikMi)) {
-    const ad = t.olusturanAd || t.hazirlayan || '(atanmamış)'
-    const kayit = harita.get(ad) || { kisi: ad, adet: 0, tutar: 0, enEskiGun: 0 }
+    const ham = teklifSahibi(t)
+    const anahtar = kisiAnahtari(ham)
+    const kayit = harita.get(anahtar) || { kisi: kisiGosterim(ham), adet: 0, tutar: 0, enEskiGun: 0 }
     kayit.adet += 1
     kayit.tutar += sayi(t.genelToplam)
     const yas = teklifYasi(t, simdi)
     if (yas != null && yas > kayit.enEskiGun) kayit.enEskiGun = yas
-    harita.set(ad, kayit)
+    harita.set(anahtar, kayit)
   }
   return [...harita.values()].sort((a, b) => b.adet - a.adet).slice(0, limit)
 }
 
-/** ₺25.144.331 → "₺25,1M" · ₺6.193.644 → "₺6,2M" · ₺840.000 → "₺840B" */
+/**
+ * ₺25.144.331 → "₺25,1M" · ₺486.350 → "₺486.350"
+ * ⚠️ Milyon altı KISALTILMAZ. Eski biçim "₺486B" idi; "B" bin mi milyar mı
+ * belirsizdi ve tutarın kendisi zaten kısa. Milyon üstünde "M" evrensel.
+ */
 export const kisaTutar = (n) => {
   const v = sayi(n)
   if (Math.abs(v) >= 1_000_000) return `₺${(v / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}M`
-  if (Math.abs(v) >= 1_000) return `₺${Math.round(v / 1_000).toLocaleString('tr-TR')}B`
-  return `₺${v.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`
+  return `₺${Math.round(v).toLocaleString('tr-TR')}`
 }
+
+/** Tam tutar — tooltip'te ve tek satırlık özetlerde */
+export const tamTutar = (n) => `₺${sayi(n).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`

@@ -22,8 +22,8 @@ import {
 import { trContains } from '../lib/trSearch'
 import {
   teklifAcikMi, yaslandirmaOzeti, kovayaGiriyorMu, kisiBazliAcik,
-  YAS_KOVALARI, kisaTutar,
 } from '../lib/teklifTakip'
+import AcikTeklifSeridi from '../components/AcikTeklifSeridi'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import {
@@ -307,96 +307,16 @@ export default function Teklifler() {
       )}
 
       {/* ─── AÇIK TEKLİF TAKİBİ — yaşlandırma şeridi ───
-          Canlı ölçüm (11.08.2026): 911 açık teklif, ₺25,1M; 525'i (₺17,4M)
-          31-90 gündür bekliyordu ve hiçbir ekranda görünmüyordu. Kutular
-          tıklanabilir; gösterdikleri kümeyi aynen listeler. */}
-      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && takipOzeti.toplamAdet > 0 && (
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 4,
-          padding: '8px 10px', marginBottom: 12,
-          background: 'var(--surface-card)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-md)',
-        }}>
-          <div style={{ padding: '4px 12px 4px 4px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-              Açık teklif
-            </span>
-            <span style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-              {takipOzeti.toplamAdet} · {kisaTutar(takipOzeti.toplamTutar)}
-            </span>
-          </div>
-          <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
-
-          {YAS_KOVALARI.map(k => {
-            const v = takipOzeti.kovalar[k.id]
-            const secili = yasFiltresi === k.id && aktifSekme === 'acik'
-            return (
-              <button
-                key={k.id}
-                onClick={() => kovaSec(k.id)}
-                title={`${k.etiket} bekleyen açık teklifleri listele`}
-                style={{
-                  padding: '4px 12px', border: 'none', cursor: 'pointer',
-                  borderRadius: 'var(--radius-sm)', textAlign: 'left',
-                  background: secili ? 'var(--surface-sunken)' : 'transparent',
-                  boxShadow: secili ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
-                  opacity: v.adet === 0 ? 0.45 : 1,
-                }}
-              >
-                <div style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
-                  {k.etiket}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
-                  <span style={{ font: '700 15px/20px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{v.adet}</span>
-                  <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{kisaTutar(v.tutar)}</span>
-                </div>
-              </button>
-            )
-          })}
-
-          {/* Tarihsiz açık teklifler — sessizce yok sayılmasın */}
-          {takipOzeti.tarihsiz.adet > 0 && (
-            <button
-              onClick={() => kovaSec('tarihsiz')}
-              title="Tarihi girilmemiş açık teklifler"
-              style={{
-                padding: '4px 12px', border: 'none', cursor: 'pointer',
-                borderRadius: 'var(--radius-sm)', textAlign: 'left',
-                background: (yasFiltresi === 'tarihsiz' && aktifSekme === 'acik') ? 'var(--surface-sunken)' : 'transparent',
-                boxShadow: (yasFiltresi === 'tarihsiz' && aktifSekme === 'acik') ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
-              }}
-            >
-              <div style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
-                Tarihsiz
-              </div>
-              <div style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                {takipOzeti.tarihsiz.adet}
-              </div>
-            </button>
-          )}
-
-          {/* Kim ne kadar açık iş taşıyor — sağa yaslı, sade.
-              ⚠️ Başlıksız bırakılmıştı; kullanıcı "bu sayılar ne?" diye sordu.
-              Etiketsiz sayı = kullanıcıya tahmin ettirmek. */}
-          {kisiYuku.length > 0 && (
-            <div style={{
-              marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10,
-              paddingLeft: 12, borderLeft: '1px solid var(--border-default)',
-              flexWrap: 'wrap',
-            }}>
-              <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
-                Kişi başına açık
-              </span>
-              {kisiYuku.slice(0, 4).map(k => (
-                <span key={k.kisi} title={`${k.kisi} — ${k.adet} açık teklif · toplam ${kisaTutar(k.tutar)} · en eskisi ${k.enEskiGun} gündür bekliyor`}
-                  style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                  {k.kisi.split(' ')[0]} <b style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{k.adet}</b>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+          Kutular tıklanabilir; gösterdikleri kümeyi AYNEN listeler
+          (sayaç ↔ liste kapsam kuralı). Düzen AcikTeklifSeridi içinde. */}
+      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
+        <AcikTeklifSeridi
+          ozet={takipOzeti}
+          kisiYuku={kisiYuku}
+          yasFiltresi={yasFiltresi}
+          aktif={aktifSekme === 'acik'}
+          onKovaSec={kovaSec}
+        />
       )}
 
       {/* Sekmeler */}
