@@ -22,7 +22,7 @@ import {
 import { trContains } from '../lib/trSearch'
 import {
   teklifAcikMi, yaslandirmaOzeti, kovayaGiriyorMu, kisiBazliAcik,
-  YAS_KOVALARI, kisaTutar, teklifYasi,
+  YAS_KOVALARI, kisaTutar,
 } from '../lib/teklifTakip'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -376,15 +376,20 @@ export default function Teklifler() {
             </button>
           )}
 
-          {/* Kim ne kadar açık iş taşıyor — sağa yaslı, sade */}
+          {/* Kim ne kadar açık iş taşıyor — sağa yaslı, sade.
+              ⚠️ Başlıksız bırakılmıştı; kullanıcı "bu sayılar ne?" diye sordu.
+              Etiketsiz sayı = kullanıcıya tahmin ettirmek. */}
           {kisiYuku.length > 0 && (
             <div style={{
               marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10,
               paddingLeft: 12, borderLeft: '1px solid var(--border-default)',
               flexWrap: 'wrap',
             }}>
+              <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                Kişi başına açık
+              </span>
               {kisiYuku.slice(0, 4).map(k => (
-                <span key={k.kisi} title={`${k.kisi} · en eski ${k.enEskiGun} gün · ${kisaTutar(k.tutar)}`}
+                <span key={k.kisi} title={`${k.kisi} — ${k.adet} açık teklif · toplam ${kisaTutar(k.tutar)} · en eskisi ${k.enEskiGun} gündür bekliyor`}
                   style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                   {k.kisi.split(' ')[0]} <b style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{k.adet}</b>
                 </span>
