@@ -312,7 +312,8 @@ const sayfaIsimleri = {
 function MainLayout({ children }) {
   const { kullanici, cikisYap, durumGuncelle } = useAuth()
   const { okunmamis } = useChat()
-  const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil } = useBildirim()
+  const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil,
+          topluSil, bildirimSayilari } = useBildirim()
   // Servis talebi rozetleri — kaynak'a göre ayrılır: personel = "Servis Talepleri",
   // musteri = "Müşteri Talepleri". Eski bildirimlerde meta.kaynak yoksa 'personel' kabul.
   const _servisTalepBildirimleri = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi')
@@ -391,6 +392,35 @@ function MainLayout({ children }) {
   const [durumMenuAcik, setDurumMenuAcik] = useState(false)
   const [bildirimPanelAcik, setBildirimPanelAcik] = useState(false)
   const [temaPaneliAcik, setTemaPaneliAcik] = useState(false)
+  const [temizleniyor, setTemizleniyor] = useState(false)
+
+  /**
+   * Bildirimleri toplu sil. Panel yalnız son 20 kaydı gösterdiği için onay
+   * ekranındaki sayı DB'den okunur — bellekteki liste gerçek hacmi yansıtmaz
+   * (canlıda bir kullanıcıda 886 bildirim var, panelde 20 görünüyor).
+   */
+  const topluTemizle = async (sadeceOkunan) => {
+    if (temizleniyor) return
+    setTemizleniyor(true)
+    try {
+      const { toplam, okunan, okunmamis } = await bildirimSayilari()
+      const adet = sadeceOkunan ? okunan : toplam
+      if (adet === 0) {
+        window.alert(sadeceOkunan ? 'Silinecek okunmuş bildirim yok.' : 'Silinecek bildirim yok.')
+        return
+      }
+      const mesaj = sadeceOkunan
+        ? `${okunan} okunmuş bildirim silinecek.${okunmamis > 0 ? ` ${okunmamis} okunmamış bildirim korunacak.` : ''}\n\nDevam edilsin mi?`
+        : `${toplam} bildirimin TAMAMI silinecek${okunmamis > 0 ? ` (${okunmamis} tanesi henüz okunmamış)` : ''}.\n\nBu işlem geri alınamaz. Devam edilsin mi?`
+      if (!window.confirm(mesaj)) return
+
+      const { ok, silinen } = await topluSil(sadeceOkunan)
+      if (!ok) window.alert('Bildirimler silinemedi. Lütfen tekrar deneyin.')
+      else if (silinen > 0) setBildirimPanelAcik(false)
+    } finally {
+      setTemizleniyor(false)
+    }
+  }
   const sayfaGirisZamani = useRef(null)
   const oncekiSayfa = useRef(null)
 
@@ -1186,6 +1216,46 @@ function MainLayout({ children }) {
                       })
                     )}
                   </div>
+
+                  {/* Toplu temizleme — 800+ bildirimi tek tek silmek gerekiyordu.
+                      Panel yalnız son 20'yi gösterir, bu butonlar TÜM kayıtlara
+                      işler; onay ekranındaki sayı bu yüzden DB'den okunur. */}
+                  {benimBildirimlerim.length > 0 && (
+                    <div style={{
+                      padding: '10px 16px',
+                      borderTop: '1px solid var(--border-default)',
+                      background: 'var(--surface-sunken)',
+                      display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end',
+                    }}>
+                      <button
+                        onClick={() => topluTemizle(true)}
+                        disabled={temizleniyor}
+                        style={{
+                          background: 'none', border: 'none',
+                          cursor: temizleniyor ? 'wait' : 'pointer',
+                          color: 'var(--text-secondary)',
+                          font: '500 12px/16px var(--font-sans)',
+                          padding: '4px 6px',
+                        }}
+                      >
+                        Okunanları temizle
+                      </button>
+                      <span style={{ width: 1, height: 14, background: 'var(--border-default)' }} />
+                      <button
+                        onClick={() => topluTemizle(false)}
+                        disabled={temizleniyor}
+                        style={{
+                          background: 'none', border: 'none',
+                          cursor: temizleniyor ? 'wait' : 'pointer',
+                          color: 'var(--danger)',
+                          font: '500 12px/16px var(--font-sans)',
+                          padding: '4px 6px',
+                        }}
+                      >
+                        {temizleniyor ? 'Siliniyor…' : 'Tümünü sil'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

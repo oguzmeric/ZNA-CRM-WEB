@@ -17,6 +17,8 @@ import {
   bildirimOkuDb,
   tumBildirimleriOkuDb,
   bildirimSilDb,
+  tumBildirimleriSilDb,
+  bildirimSayilariGetir,
   bildirimleriDinle,
 } from '../services/bildirimService'
 
@@ -217,6 +219,28 @@ export function BildirimProvider({ children }) {
     await bildirimSilDb(id)
   }, [])
 
+  /**
+   * Toplu silme. `sadeceOkunan` varsayılan true — okunmamış bildirim iş demek,
+   * kazara silinmesin.
+   * İyimser güncelleme: liste hemen düşer, DB reddederse eski hâle dönülür.
+   */
+  const topluSil = useCallback(async (sadeceOkunan = true) => {
+    if (!kullanici?.id) return { ok: false, silinen: 0 }
+    const oncekiler = bildirimler
+    // `bildirimler` zaten yalnız bu kullanıcının kayıtları (bildirimleriGetir
+    // kullaniciId ile çekiyor) — ayrıca alıcı filtresine gerek yok.
+    setBildirimler(prev => (sadeceOkunan ? prev.filter(b => !b.okundu) : []))
+    const sonuc = await tumBildirimleriSilDb(kullanici.id, { sadeceOkunan })
+    if (!sonuc.ok) setBildirimler(oncekiler)   // rollback
+    return sonuc
+  }, [kullanici?.id, bildirimler])
+
+  /** Onay ekranında gerçek sayıyı göstermek için — bellekteki liste kırpılmış olabilir */
+  const bildirimSayilari = useCallback(
+    () => bildirimSayilariGetir(kullanici?.id),
+    [kullanici?.id],
+  )
+
   return (
     <BildirimContext.Provider value={{
       bildirimler,
@@ -226,6 +250,8 @@ export function BildirimProvider({ children }) {
       bildirimOku,
       tumunuOku,
       bildirimSil,
+      topluSil,
+      bildirimSayilari,
       talepBildirimleriniOku,
     }}>
       {children}

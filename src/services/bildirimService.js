@@ -108,6 +108,54 @@ export const bildirimSilDb = async (id) => {
   if (error) console.error('[bildirimSilDb] hata:', error.message)
 }
 
+/**
+ * Toplu silme — kullanıcının bildirimlerini tek istekte siler.
+ * `sadeceOkunan: true` ise okunmamışlar korunur (varsayılan davranış budur;
+ * okunmamış bir bildirimi kazara silmek iş kaybı demek).
+ *
+ * Mobilde bu zaten vardı (crm-mobile/src/services/bildirimService.js), webde
+ * yoktu: kullanıcılar 800+ bildirimi tek tek siliyordu.
+ *
+ * ⚠️ Güvenlik: `alici_id` filtresi İSTEMCİ tarafı kolaylık; asıl kapı RLS
+ * `bildirimler_owner_delete` politikası — alici_id, auth.uid()'nin kullanıcı
+ * kaydıyla eşleşmeyen satır silinemez. Yani başkasının bildirimi silinemez.
+ */
+export const tumBildirimleriSilDb = async (kullaniciId, { sadeceOkunan = true } = {}) => {
+  if (!kullaniciId) return { ok: false, silinen: 0 }
+  let q = supabase.from('bildirimler').delete({ count: 'exact' }).eq('alici_id', kullaniciId)
+  if (sadeceOkunan) q = q.eq('okundu', true)
+  const { error, count } = await q
+  if (error) {
+    console.error('[tumBildirimleriSilDb] hata:', error.message)
+    return { ok: false, silinen: 0 }
+  }
+  return { ok: true, silinen: count ?? 0 }
+}
+
+/**
+ * Bildirim sayaçları — toplu silme onayında "kaç kayıt gidecek" bilgisi için.
+ * ⚠️ Panelin gösterdiği liste yalnız son 20 kayıt, bellekteki dizi 50 ile
+ * sınırlı; gerçek toplam çok daha büyük olabilir (canlıda bir kullanıcıda 886).
+ * Onay ekranında bellekteki sayıyı göstermek kullanıcıyı yanıltırdı.
+ */
+export const bildirimSayilariGetir = async (kullaniciId) => {
+  if (!kullaniciId) return { toplam: 0, okunan: 0, okunmamis: 0 }
+  const say = async (filtreUygula) => {
+    let q = supabase.from('bildirimler')
+      .select('id', { count: 'exact', head: true })
+      .eq('alici_id', kullaniciId)
+    if (filtreUygula) q = filtreUygula(q)
+    const { count, error } = await q
+    if (error) { console.error('[bildirimSayilariGetir] hata:', error.message); return 0 }
+    return count ?? 0
+  }
+  const [toplam, okunan] = await Promise.all([
+    say(null),
+    say(q => q.eq('okundu', true)),
+  ])
+  return { toplam, okunan, okunmamis: Math.max(0, toplam - okunan) }
+}
+
 // Realtime — yeni bildirim geldiğinde callback tetikler
 // Kullanım: const sub = bildirimleriDinle(kullaniciId, (yeni) => { ... })
 //          sub.unsubscribe() (cleanup'ta)
