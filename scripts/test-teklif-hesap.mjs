@@ -224,17 +224,16 @@ test('G1 · genel iskonto yoksa toplam = ara + KDV (mevcut çıktı davranışı
   assert.equal(h.genelToplam, 1200)
 })
 
-test('G2 · genel iskonto ara toplamdan düşer — TeklifDetay ekranıyla aynı formül', () => {
-  // Ekrandaki hesap: genelToplam = araToplam − genelIskontoTutar + kdvToplam
-  // (KDV, genel iskonto düşülmeden hesaplanır — belge ile sistem ayrışmasın diye birebir korundu)
+test('G2 · genel iskonto KDV matrahından da düşer', () => {
   const h = teklifHesapla({ genelIskonto: 5, satirlar: [
     { miktar: 10, birimFiyat: 100, iskonto: 10, kdv: 20 },
   ] })
   assert.equal(h.araToplam, 900)
   assert.equal(h.genelIskontoOran, 5)
   assert.equal(h.genelIskontoTutar, 45)
-  assert.equal(h.kdvToplam, 180)
-  assert.equal(h.genelToplam, 1035)   // 900 − 45 + 180
+  assert.equal(h.kdvToplam, 171)      // 855 matrahın %20'si — eskiden 180 (indirim öncesi) idi
+  assert.equal(h.genelToplam, 1026)   // 900 − 45 + 171
+  belgeTutarli(h)
 })
 
 test('G3 · satır iskontosu + genel iskonto birlikte çalışır', () => {
@@ -245,7 +244,72 @@ test('G3 · satır iskontosu + genel iskonto birlikte çalışır', () => {
   assert.equal(h.satirIskontoToplam, 200)
   assert.equal(h.araToplam, 800)
   assert.equal(h.genelIskontoTutar, 80)
-  assert.equal(r2(h.genelToplam), 880)   // 800 − 80 + 160
+  assert.equal(h.genelToplam, 864)   // 800 − 80 + 144
+  belgeTutarli(h)
+})
+
+test('G4 · KULLANICI BEKLENTİSİ — girilen oran genel toplama BİREBİR yansır', () => {
+  // "Toplam rakamı düzlemek icin oran giriyorum" — %5 yazılınca toplam tam %5
+  // düşmeli. Eski formulde KDV indirim öncesinden hesaplandığı için %4,17
+  // düşüyordu ve girilen oran tutmuyordu.
+  const satirlar = [
+    { miktar: 10, birimFiyat: 100, iskonto: 0, kdv: 20 },
+    { miktar: 5, birimFiyat: 200, iskonto: 0, kdv: 20 },
+  ]
+  const iskontosuz = teklifHesapla({ satirlar })
+  assert.equal(iskontosuz.genelToplam, 2400)
+
+  for (const oran of [5, 10, 12.5, 20, 33]) {
+    const h = teklifHesapla({ genelIskonto: oran, satirlar })
+    assert.equal(h.genelToplam, r2(iskontosuz.genelToplam * (1 - oran / 100)),
+      `%${oran} iskontoda genel toplam orana birebir yansımıyor`)
+    belgeTutarli(h)
+  }
+})
+
+test('G5 · karışık KDV oranında da genel iskonto orantılı yansır', () => {
+  const satirlar = [
+    { miktar: 1, birimFiyat: 5000, iskonto: 0, kdv: 20 },
+    { miktar: 1, birimFiyat: 5000, iskonto: 0, kdv: 18 },
+  ]
+  const iskontosuz = teklifHesapla({ satirlar })
+  assert.equal(iskontosuz.genelToplam, 11900)      // 10.000 + 1.000 + 900
+
+  const h = teklifHesapla({ genelIskonto: 5, satirlar })
+  assert.equal(h.genelToplam, 11305)               // 11.900 × 0,95
+  assert.deepEqual(kdvSatirlari(h).map(x => [x.etiket, x.tutar]),
+    [['KDV %20', 950], ['KDV %18', 855]])          // her iki matrah da %5 düşmüş
+  belgeTutarli(h)
+})
+
+test('G5b · ondalıklı satırlarda orantıdan sapma en fazla 1 kuruş', () => {
+  // Satırlar tek tek kuruşa yuvarlandığı için "toplam × (1−oran)" ile birebir
+  // eşitlik her zaman mümkün değil. Sınır 1 kuruş; bundan büyük sapma
+  // hesapta bir kayma var demektir.
+  const satirlar = [
+    { miktar: 14, birimFiyat: 66, iskonto: 11.09122, kdv: 20 },
+    { miktar: 3, birimFiyat: 387.8, iskonto: 5, kdv: 20 },
+    { miktar: 7, birimFiyat: 19.99, iskonto: 0, kdv: 18 },
+  ]
+  const yok = teklifHesapla({ satirlar })
+  for (const oran of [5, 10, 15, 33, 47.5]) {
+    const h = teklifHesapla({ satirlar, genelIskonto: oran })
+    const orantili = r2(yok.genelToplam * (1 - oran / 100))
+    assert.ok(Math.abs(h.genelToplam - orantili) <= 0.01,
+      `%${oran}: ${h.genelToplam} ↔ ${orantili} — sapma 1 kuruşu aşıyor`)
+    belgeTutarli(h)
+  }
+})
+
+test('G6 · %100 genel iskonto bedelsiz teklif üretir', () => {
+  const h = teklifHesapla({ genelIskonto: 100, satirlar: [
+    { miktar: 2, birimFiyat: 500, iskonto: 0, kdv: 20 },
+  ] })
+  assert.equal(h.araToplam, 1000)
+  assert.equal(h.genelIskontoTutar, 1000)
+  assert.equal(h.kdvToplam, 0)
+  assert.equal(h.genelToplam, 0)
+  belgeTutarli(h)
 })
 
 // ─── Biçimleme ──────────────────────────────────────────────────────────────

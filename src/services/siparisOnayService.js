@@ -7,6 +7,19 @@ import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 import { bildirimEkleDb } from './bildirimService'
 import { smsGonderVeLogla } from './smsLogService'
+import { teklifHesapla } from '../lib/teklifHesap'
+
+/**
+ * Teklifin ORAN cinsinden genel iskontosunu, siparişin beklediği TUTAR'a çevirir.
+ * Teklif satırları snake_case gelmiş olabilir (doğrudan DB okuması) — hesap
+ * modülü camelCase bekliyor, o yüzden burada normalize ediliyor.
+ */
+const teklifGenelIskontoTutari = (teklif) => {
+  const oran = Number(teklif?.genel_iskonto ?? teklif?.genelIskonto) || 0
+  if (oran <= 0) return 0
+  const satirlar = Array.isArray(teklif?.satirlar) ? teklif.satirlar : []
+  return teklifHesapla({ satirlar, genelIskonto: oran }).genelIskontoTutar
+}
 
 const BUCKET = 'siparis-imzalari'
 
@@ -223,7 +236,11 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
     imza_url: imzaUrl,
     para_birimi: teklif.para_birimi || 'TL',
     doviz_kuru: teklif.doviz_kuru || 1,
-    genel_iskonto: teklif.genel_iskonto || 0,
+    // ⚠️ BİRİM DÖNÜŞÜMÜ: `teklifler.genel_iskonto` ORAN (%), `siparisler.genel_iskonto`
+    // TUTAR (₺) — kalemlerToplam() onu araToplam'dan düz çıkarıyor. Eskiden alan
+    // olduğu gibi kopyalanıyordu: teklifteki %5, siparişte ₺5 indirime dönüşüyordu.
+    // Genel iskonto bugüne dek hiç kullanılmadığı için sessiz kalmıştı.
+    genel_iskonto: teklifGenelIskontoTutari(teklif),
     genel_toplam: teklif.genel_toplam || 0,
     konu: teklif.konu,
     notlar,
@@ -455,11 +472,15 @@ export async function onSiparisiOnayla(onSiparisId, {
     const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0)
     return s + m * f * (1 - i / 100)
   }, 0)
+  // Genel iskonto (TUTAR) KDV matrahından da düşer — kalemlerToplam() ve teklif
+  // tarafıyla aynı kural; aksi hâlde aynı iş iki ekranda iki tutar gösterir.
+  const genelIskontoTutar = Number(genelIskonto || 0)
+  const matrahCarpani = araToplam > 0 ? (araToplam - genelIskontoTutar) / araToplam : 1
   const kdvToplam = (fiyatliKalemler || []).reduce((s, k) => {
     const m = Number(k.miktar || 0), f = Number(k.birimFiyat || 0), i = Number(k.iskontoOrani || 0), kd = Number(k.kdvOrani || 0)
-    return s + m * f * (1 - i / 100) * (kd / 100)
+    return s + m * f * (1 - i / 100) * matrahCarpani * (kd / 100)
   }, 0)
-  const genelToplam = araToplam - Number(genelIskonto || 0) + kdvToplam
+  const genelToplam = araToplam - genelIskontoTutar + kdvToplam
 
   // siparisler INSERT
   const payload = {

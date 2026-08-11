@@ -45,6 +45,18 @@ export const teklifHesapla = (teklif) => {
   const satirIskontoToplam = r2(satirlar.reduce((t, s) => t + s.iskontoTutar, 0))
   const araToplam = r2(brutToplam - satirIskontoToplam)
 
+  const genelIskontoOran = sayi(teklif?.genelIskonto)
+  const genelIskontoTutar = r2(araToplam * (genelIskontoOran / 100))
+
+  // ⚠️ GENEL İSKONTO KDV MATRAHINDAN DÜŞER (11.08.2026 kullanıcı kararı).
+  // Eskiden iskonto ara toplamdan düşülüyor ama KDV indirim ÖNCESİ tutardan
+  // hesaplanıyordu: %5 yazınca genel toplam %4,17 düşüyordu. Kullanıcı toplam
+  // rakamı düzlemek için oran giriyor — girilen oran genel toplama BİREBİR
+  // yansımalı. Fatura düzenlemesi de indirimli matrahtan KDV ister.
+  //   10.000 + %20 KDV = 12.000 · %5 iskonto → 9.500 matrah, 1.900 KDV, 11.400
+  //   (= 12.000 × 0,95 — tam orantılı)
+  const matrahCarpani = 1 - genelIskontoOran / 100
+
   // KDV, her oranın YUVARLANMIŞ matrahı üzerinden hesaplanır — satır satır
   // yuvarlanmış KDV'leri toplamak kuruş kırıntısı biriktirip belgeyi sistemdeki
   // genel toplamdan ayırıyordu (TEK-0672'de 45.599,99 ↔ 45.599,98).
@@ -52,15 +64,11 @@ export const teklifHesapla = (teklif) => {
   const matrah = {}
   for (const s of satirlar) matrah[s.kdvOran] = (matrah[s.kdvOran] || 0) + s.net
   const kdvKirilimi = {}
-  for (const [oran, tutar] of Object.entries(matrah)) kdvKirilimi[oran] = r2(r2(tutar) * (Number(oran) / 100))
+  for (const [oran, tutar] of Object.entries(matrah)) {
+    kdvKirilimi[oran] = r2(r2(r2(tutar) * matrahCarpani) * (Number(oran) / 100))
+  }
   const kdvToplam = r2(Object.values(kdvKirilimi).reduce((a, b) => a + b, 0))
 
-  const genelIskontoOran = sayi(teklif?.genelIskonto)
-  const genelIskontoTutar = r2(araToplam * (genelIskontoOran / 100))
-
-  // ⚠️ KDV, genel iskonto düşülmeden hesaplanır. TeklifDetay ekranı da böyle
-  // hesaplıyor ve DB'deki genel_toplam bu formülle yazılmış; çıktı ondan
-  // ayrılırsa aynı teklif iki yerde iki tutar gösterir.
   const genelToplam = r2(araToplam - genelIskontoTutar + kdvToplam)
 
   const iskontoOranlari = [...new Set(satirlar.map((s) => s.iskontoOran))]

@@ -333,8 +333,13 @@ export const kalemAraToplam = (kalem) => {
 export const kalemlerToplam = (kalemler, genelIskonto = 0) => {
   const araToplam = (kalemler || []).reduce((s, k) => s + kalemAraToplam(k), 0)
   const iskontolu = araToplam - Number(genelIskonto || 0)
+  // ⚠️ Genel iskonto KDV MATRAHINDAN da düşer — teklif tarafıyla (lib/teklifHesap.js)
+  // aynı kural. Eskiden KDV indirim öncesi tutardan hesaplanıyordu: aynı teklif
+  // siparişe dönüşünce toplam değişiyordu (₺2.280 → ₺2.300).
+  // Not: `genelIskonto` burada TUTAR'dır (teklifte ORAN) — köprü çeviriyor.
+  const matrahCarpani = araToplam > 0 ? iskontolu / araToplam : 1
   const kdvToplam = (kalemler || []).reduce((s, k) => {
-    return s + kalemAraToplam(k) * (Number(k?.kdvOrani || 0) / 100)
+    return s + kalemAraToplam(k) * matrahCarpani * (Number(k?.kdvOrani || 0) / 100)
   }, 0)
   return {
     araToplam,

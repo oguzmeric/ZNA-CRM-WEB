@@ -29,6 +29,7 @@ import { bayiTeklifKontrol } from '../services/bayiService'
 import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogService'
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
+import { teklifHesapla, satirHesapla } from '../lib/teklifHesap'
 import { tekliftenDurum, TEKLIF_DURUM, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
 import { gorusmeleriGetir } from '../services/gorusmeService'
@@ -97,19 +98,11 @@ const kopyaSatirlariHesapla = (satirlar, { mod, yuzde }) =>
     return yeni
   })
 
-// Satırlardan genel toplam (TeklifDetay.toplamHesapla ile aynı formül)
-const satirlardanGenelToplam = (satirlar, genelIskonto) => {
-  const araToplam = (satirlar || []).reduce((sum, s) => {
-    const ara = (Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0)
-    return sum + ara - ara * ((Number(s.iskonto) || 0) / 100)
-  }, 0)
-  const kdvToplam = (satirlar || []).reduce((sum, s) => {
-    const ara = (Number(s.miktar) || 0) * (Number(s.birimFiyat) || 0)
-    const net = ara - ara * ((Number(s.iskonto) || 0) / 100)
-    return sum + net * ((Number(s.kdv) || 0) / 100)
-  }, 0)
-  return araToplam - araToplam * ((Number(genelIskonto) || 0) / 100) + kdvToplam
-}
+// Satırlardan genel toplam — hesap ORTAK modülden (src/lib/teklifHesap.js).
+// Eskiden formül burada ve toplamHesapla'da ayrı ayrı yazılıydı; çıktı
+// şablonlarındaki kopyalarla birlikte altı yere dağılmıştı ve ayrışmışlardı.
+const satirlardanGenelToplam = (satirlar, genelIskonto) =>
+  teklifHesapla({ satirlar, genelIskonto }).genelToplam
 
 const gecerlilikSecenekleri = [
   { label: 'Aynı gün', gun: 0 },
@@ -611,34 +604,13 @@ function TeklifDetay() {
   }
 
   const satirToplamHesapla = (satir) => {
-    const ara = satir.miktar * satir.birimFiyat
-    const iskontoTutar = ara * (satir.iskonto / 100)
-    const kdvTutar = (ara - iskontoTutar) * (satir.kdv / 100)
-    return {
-      araToplam: ara,
-      iskontoTutar,
-      kdvTutar,
-      toplam: ara - iskontoTutar + kdvTutar,
-    }
+    const h = satirHesapla(satir)
+    return { araToplam: h.brut, iskontoTutar: h.iskontoTutar, kdvTutar: h.kdvTutar, toplam: h.toplam }
   }
 
-  const toplamHesapla = () => {
-    const araToplam = form.satirlar.reduce((sum, s) => {
-      const ara = s.miktar * s.birimFiyat
-      const iskonto = ara * (s.iskonto / 100)
-      return sum + ara - iskonto
-    }, 0)
-    const genelIskontoTutar = araToplam * (form.genelIskonto / 100)
-    const kdvToplam = form.satirlar.reduce((sum, s) => {
-      const ara = s.miktar * s.birimFiyat
-      const iskonto = ara * (s.iskonto / 100)
-      return sum + (ara - iskonto) * (s.kdv / 100)
-    }, 0)
-    const genelToplam = araToplam - genelIskontoTutar + kdvToplam
-    return { araToplam, genelIskontoTutar, kdvToplam, genelToplam }
-  }
-
-  const { araToplam, genelIskontoTutar, kdvToplam, genelToplam } = toplamHesapla()
+  // ⚠️ Ekrandaki toplamlar ve müşteriye giden çıktı AYNI modülden beslenir.
+  // İkisi ayrı hesap yaparsa aynı teklif iki yerde iki tutar gösterir.
+  const { araToplam, genelIskontoTutar, kdvToplam, genelToplam } = teklifHesapla(form)
   const paraBirimi = paraBirimleri.find((p) => p.id === form.paraBirimi)
   const tlKarsiligi = form.paraBirimi !== 'TL' && form.dovizKuru
     ? genelToplam * Number(form.dovizKuru)
