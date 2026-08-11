@@ -19,7 +19,12 @@ const A4_PX = 794
 const SIRKET_BILGI = {
   zna: {
     bannerSrc: znaBanner,
-    bannerYukseklik: 58,
+    // ⚠️ Bu değer artık YÜKSEKLİK TAVANI. Banner içerik genişliğine yayılır
+    // (width:100%), yükseklik oranından hesaplanır ve bu sınırı aşmaz.
+    // ZNA banner'ı 1505×213 (7,07:1) → 794px genişlikte ~112px.
+    // Eskiden sabit 58px'ti: banner içerik alanının ancak yarısını kaplıyor,
+    // altındaki tam genişlik tablolarla hizasız duruyordu (11.08 geri bildirimi).
+    bannerYukseklik: 112,
     showText: false,           // ZNA banner zaten "SERVIS RAPORU" yazisi iceriyor
     firmaAdi: 'ZNA TEKNOLOJİ BİLİŞİM HİZMETLERİ SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
     adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
@@ -29,7 +34,9 @@ const SIRKET_BILGI = {
   },
   anadolunet: {
     bannerSrc: anadolunetLogo,
-    bannerYukseklik: 52,
+    // Anadolunet logosu 983×198 (4,96:1) — tam genişlikte 160px olurdu, sayfayı
+    // boğardı. Tavan 92px: oranı korunur, ortalanır, altındaki başlıkla dengeli.
+    bannerYukseklik: 92,
     showText: true,            // Anadolunet logosunda 'SERVIS RAPORU' yok — yazi ekle
     firmaAdi: 'ANADOLUNET DİJİTAL YAPI A.Ş.',
     adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
@@ -319,15 +326,28 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
             {/* sf-govde-tr: print'te global "tr bölünmesin" kuralından MUAF —
                 bu satır formun tamamı, bölünmek zorunda (bkz. printCss notu) */}
             <tr className="sf-govde-tr"><td style={{ border: 'none', padding: 0 }}>
-        {/* ─── BANNER ─── */}
-        <div style={{ marginBottom: 8, textAlign: 'center' }}>
+        {/* ─── BANNER ───
+            Banner içerik genişliğine yayılır; yükseklik oranından gelir ve
+            cfg.bannerYukseklik tavanını aşmaz. Oranı geniş olan şablon (ZNA)
+            kenardan kenara oturur, dar olan (Anadolunet) tavana dayanıp
+            ortalanır. Alttaki ince çizgi anteti gövdeden ayırır — antet ile
+            ilk tablo arasında nefes bırakır. */}
+        <div style={{
+          marginBottom: 8,
+          paddingBottom: 6,
+          borderBottom: `1.5px solid ${ACCENT}`,
+          textAlign: 'center',
+        }}>
           <img
             src={cfg.bannerSrc}
             alt={cfg.firmaAdi}
             style={{
-              maxWidth: '100%',
-              height: cfg.bannerYukseklik,
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+              maxHeight: cfg.bannerYukseklik,
               objectFit: 'contain',
+              margin: '0 auto',
             }}
           />
           {cfg.showText && (
