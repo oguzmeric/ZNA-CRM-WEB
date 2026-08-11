@@ -20,6 +20,10 @@ import {
   TEKLIF_DURUM_META, tekliftenDurum,
 } from '../lib/teklifDurumlari'
 import { trContains } from '../lib/trSearch'
+import {
+  teklifAcikMi, yaslandirmaOzeti, kovayaGiriyorMu, kisiBazliAcik,
+  YAS_KOVALARI, kisaTutar, teklifYasi,
+} from '../lib/teklifTakip'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import {
@@ -74,7 +78,12 @@ const goreceTarih = (t) => {
   return `${Math.floor(gun / 365)} yıl önce`
 }
 
+// ⚠️ Sekmeler TÜM durumları kapsamalı. 11.08.2026'ya kadar `bekliyor` hiçbir
+// sekmede yoktu: 482 teklif (toplamın %32'si) yalnız "Tümü"de görünüyordu.
+// Aynı hata Servis Talepleri'nde de vardı (kapalı işler hiç sayılmıyordu).
 const filtreMap = {
+  acik:              (t) => teklifAcikMi(t),          // bekliyor + takipte + revizyon + durumsuz
+  bekleyenler:       (t) => t.onayDurumu === 'bekliyor',
   cevap_beklenenler: (t) => ['takipte', 'revizyon'].includes(t.onayDurumu),
   onaylananlar:      (t) => t.onayDurumu === 'kabul',
   reddedilenler:     (t) => t.onayDurumu === 'vazgecildi',
@@ -103,7 +112,10 @@ export default function Teklifler() {
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk
   const [benimTekliflerim, setBenimTekliflerim] = useState(false) // "Tekliflerim" — hazırlayan/temsilci benim
   // Sayfa no URL'de (?sayfa=N): teklif detayından geri dönünce liste aynı sayfada (06.08)
-  const [sayfa, setSayfa] = useUrlSayfa([aktifSekme, arama, siralama, benimTekliflerim])
+  // Yaşlandırma kovası filtresi — şeritteki kutuya tıklayınca dolar.
+  // null = kova filtresi yok.
+  const [yasFiltresi, setYasFiltresi] = useState(null)
+  const [sayfa, setSayfa] = useUrlSayfa([aktifSekme, arama, siralama, benimTekliflerim, yasFiltresi])
 
   // Filtre/sekme/arama değişince 1. sayfaya dön
 
@@ -200,10 +212,25 @@ export default function Teklifler() {
     tutar_dusuk:   (a, b) => Number(a.genelToplam || 0) - Number(b.genelToplam || 0),
   }
 
-  const filtreli = [...bazTeklifler]
-    .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
+  // ⚠️ Yaşlandırma özeti ve liste AYNI kümeden türer (`aramaSonrasi`). Özet ham
+  // listeden hesaplanırsa şerit bir sayı, liste başka sayı gösterir — bugün
+  // Görevler ve Servis Talepleri'nde tam olarak bu yaşandı.
+  const aramaSonrasi = bazTeklifler
     .filter(t => trContains(`${t.teklifNo || ''} ${t.firmaAdi || ''} ${t.konu || ''}`, arama))
+  const takipOzeti = yaslandirmaOzeti(aramaSonrasi)
+  const kisiYuku = kisiBazliAcik(aramaSonrasi)
+
+  const filtreli = [...aramaSonrasi]
+    .filter(t => (filtreMap[aktifSekme] || (() => true))(t))
+    .filter(t => !yasFiltresi || kovayaGiriyorMu(t, yasFiltresi))
     .sort(siralayici[siralama] || siralayici.yeni)
+
+  // Şeritteki kutuya tıkla → açık teklifler + o yaş kovası
+  const kovaSec = (kovaId) => {
+    const ayni = yasFiltresi === kovaId && aktifSekme === 'acik'
+    setYasFiltresi(ayni ? null : kovaId)
+    setAktifSekme(ayni ? 'tumu' : 'acik')
+  }
 
   const SAYFA_BOY = 100
   const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOY))
@@ -235,7 +262,7 @@ export default function Teklifler() {
               {[{ v: false, l: 'Tümü' }, { v: true, l: 'Tekliflerim' }].map(s => (
                 <button
                   key={s.l}
-                  onClick={() => { setBenimTekliflerim(s.v); setGosterilecek(100) }}
+                  onClick={() => { setBenimTekliflerim(s.v); setYasFiltresi(null) }}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 'calc(var(--radius-sm) - 2px)',
@@ -279,9 +306,99 @@ export default function Teklifler() {
         </div>
       )}
 
+      {/* ─── AÇIK TEKLİF TAKİBİ — yaşlandırma şeridi ───
+          Canlı ölçüm (11.08.2026): 911 açık teklif, ₺25,1M; 525'i (₺17,4M)
+          31-90 gündür bekliyordu ve hiçbir ekranda görünmüyordu. Kutular
+          tıklanabilir; gösterdikleri kümeyi aynen listeler. */}
+      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && takipOzeti.toplamAdet > 0 && (
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 4,
+          padding: '8px 10px', marginBottom: 12,
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+        }}>
+          <div style={{ padding: '4px 12px 4px 4px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Açık teklif
+            </span>
+            <span style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {takipOzeti.toplamAdet} · {kisaTutar(takipOzeti.toplamTutar)}
+            </span>
+          </div>
+          <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
+
+          {YAS_KOVALARI.map(k => {
+            const v = takipOzeti.kovalar[k.id]
+            const secili = yasFiltresi === k.id && aktifSekme === 'acik'
+            return (
+              <button
+                key={k.id}
+                onClick={() => kovaSec(k.id)}
+                title={`${k.etiket} bekleyen açık teklifleri listele`}
+                style={{
+                  padding: '4px 12px', border: 'none', cursor: 'pointer',
+                  borderRadius: 'var(--radius-sm)', textAlign: 'left',
+                  background: secili ? 'var(--surface-sunken)' : 'transparent',
+                  boxShadow: secili ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
+                  opacity: v.adet === 0 ? 0.45 : 1,
+                }}
+              >
+                <div style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                  {k.etiket}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+                  <span style={{ font: '700 15px/20px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{v.adet}</span>
+                  <span style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{kisaTutar(v.tutar)}</span>
+                </div>
+              </button>
+            )
+          })}
+
+          {/* Tarihsiz açık teklifler — sessizce yok sayılmasın */}
+          {takipOzeti.tarihsiz.adet > 0 && (
+            <button
+              onClick={() => kovaSec('tarihsiz')}
+              title="Tarihi girilmemiş açık teklifler"
+              style={{
+                padding: '4px 12px', border: 'none', cursor: 'pointer',
+                borderRadius: 'var(--radius-sm)', textAlign: 'left',
+                background: (yasFiltresi === 'tarihsiz' && aktifSekme === 'acik') ? 'var(--surface-sunken)' : 'transparent',
+                boxShadow: (yasFiltresi === 'tarihsiz' && aktifSekme === 'acik') ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
+              }}
+            >
+              <div style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                Tarihsiz
+              </div>
+              <div style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                {takipOzeti.tarihsiz.adet}
+              </div>
+            </button>
+          )}
+
+          {/* Kim ne kadar açık iş taşıyor — sağa yaslı, sade */}
+          {kisiYuku.length > 0 && (
+            <div style={{
+              marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10,
+              paddingLeft: 12, borderLeft: '1px solid var(--border-default)',
+              flexWrap: 'wrap',
+            }}>
+              {kisiYuku.slice(0, 4).map(k => (
+                <span key={k.kisi} title={`${k.kisi} · en eski ${k.enEskiGun} gün · ${kisaTutar(k.tutar)}`}
+                  style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                  {k.kisi.split(' ')[0]} <b style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{k.adet}</b>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Sekmeler */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 0, borderBottom: '1px solid var(--border-default)', overflowX: 'auto' }}>
         {[
+          { id: 'acik',              label: 'Açık' },
+          { id: 'bekleyenler',       label: 'Bekleyenler' },
           { id: 'cevap_beklenenler', label: 'Cevap Beklenenler' },
           { id: 'onaylananlar',      label: 'Onaylananlar' },
           { id: 'reddedilenler',     label: 'Reddedilenler' },
@@ -293,7 +410,10 @@ export default function Teklifler() {
           return (
             <button
               key={s.id}
-              onClick={() => { setAktifSekme(s.id); setGosterilecek(100) }}
+              // Sekme değişince yaş kovası filtresi düşer — aksi hâlde
+              // "Onaylananlar"a geçince gizli bir 31-90 gün filtresi kalır
+              // ve liste boş görünür, sebebi ekranda yazmaz.
+              onClick={() => { setAktifSekme(s.id); setYasFiltresi(null) }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '10px 14px',
