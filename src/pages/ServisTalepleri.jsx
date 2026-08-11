@@ -61,12 +61,22 @@ export default function ServisTalepleri() {
     if (p !== kaynakFiltre) setKaynakFiltre(p)
   }, [searchParams])
 
-  const filtrelenmis = talepler.filter(t => {
+  // ⚠️ Yalnızca ÇOKLU durum kapsayan filtreler burada tanımlı; tekil durumlar
+  // doğrudan kendi id'siyle filtrelenir (böylece şerit ile aşağıdaki "Tüm
+  // Durumlar" açılır listesi aynı değeri konuşur, biri diğerini şaşırtmaz).
+  const DURUM_GRUBU = {
+    devam: ['inceleniyor', 'atandi', 'devam_ediyor'],
+  }
+  const grupCoz = (f) => DURUM_GRUBU[f] || [f]
+
+  // Durum DIŞINDAKİ filtreler — sayaçlar da liste de bu kümeden türer.
+  // Sayaçları ham `talepler`den hesaplamak, sayfanın kaynak kapsamını (personel
+  // / müşteri talebi) yok sayıyordu: şerit 116 derken liste 115 gösteriyordu.
+  const kapsamdaki = talepler.filter(t => {
     if (aramaMetni && !trContains(
       [t.talepNo, t.konu, t.musteriAd, t.firmaAdi].filter(Boolean).join(' '),
       aramaMetni,
     )) return false
-    if (durumFiltre !== 'tumu' && t.durum !== durumFiltre) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     if (aciliyetFiltre !== 'tumu' && t.aciliyet !== aciliyetFiltre) return false
     if (kaynakFiltre !== 'tumu') {
@@ -74,7 +84,11 @@ export default function ServisTalepleri() {
       if (k !== kaynakFiltre) return false
     }
     return true
-  }).sort((a, b) => {
+  })
+
+  const durumEsle = (t) => durumFiltre === 'tumu' || grupCoz(durumFiltre).includes(t.durum)
+
+  const filtrelenmis = kapsamdaki.filter(durumEsle).sort((a, b) => {
     // En yeni en üstte. Aciliyet kolonda zaten renkli badge olarak görünüyor +
     // filtre var → sıralama saf kronolojik kalsın.
     // Tarih null'sa id ile tiebreak (id artan numara, en büyük = en yeni).
@@ -98,12 +112,35 @@ export default function ServisTalepleri() {
   const aktifSayfa = Math.min(sayfa, toplamSayfa)
   const sayfalanmis = filtrelenmis.slice((aktifSayfa - 1) * sayfaBoyutu, aktifSayfa * sayfaBoyutu)
 
+  const say = (f) => kapsamdaki.filter(t => grupCoz(f).includes(t.durum)).length
   const ist = {
-    toplam: talepler.length,
-    bekliyor: talepler.filter(t => t.durum === 'bekliyor').length,
-    devam: talepler.filter(t => ['inceleniyor', 'atandi', 'devam_ediyor'].includes(t.durum)).length,
-    tamamlandi: talepler.filter(t => t.durum === 'tamamlandi').length,
-    acil: talepler.filter(t => t.aciliyet === 'acil' && !['tamamlandi', 'iptal'].includes(t.durum)).length,
+    toplam: kapsamdaki.length,
+    bekliyor: say('bekliyor'),
+    devam: say('devam'),
+    tamamlandi: say('tamamlandi'),
+    onaylandi: say('onaylandi'),
+    reddedildi: say('reddedildi'),
+    iptal: say('iptal'),
+    // Acil = henüz KAPANMAMIŞ acil işler; kapanmış acil iş uyarı değil, geçmiştir.
+    acil: kapsamdaki.filter(t => t.aciliyet === 'acil' &&
+      !['tamamlandi', 'onaylandi', 'reddedildi', 'iptal'].includes(t.durum)).length,
+  }
+
+  // ⚠️ Şeritteki kutuların toplamı, toplam kayıt sayısını TUTMAK ZORUNDA.
+  // 11.08.2026'da tutmuyordu: `onaylandi` (kapanmış işler) hiçbir kutuda yoktu
+  // ve 116 talebin 79'u şeritte görünmüyordu — kullanıcı "kapalı servisleri
+  // gösteren bir kısım yok" dedi, haklıydı. DURUM_LISTESI'ne yeni bir durum
+  // eklenip buraya kutu eklenmezse aynı sessiz kayıp tekrarlar; bu kontrol
+  // geliştirmede uyarır.
+  if (import.meta.env.DEV) {
+    const kutuToplami = ist.bekliyor + ist.devam + ist.tamamlandi
+      + ist.onaylandi + ist.reddedildi + ist.iptal
+    if (kutuToplami !== ist.toplam) {
+      const sayilan = new Set([...grupCoz('devam'), 'bekliyor', 'tamamlandi', 'onaylandi', 'reddedildi', 'iptal'])
+      const kayip = [...new Set(kapsamdaki.filter(t => !sayilan.has(t.durum)).map(t => t.durum))]
+      console.warn('[ServisTalepleri] Şeritte sayılmayan durum(lar):', kayip,
+        `— ${ist.toplam - kutuToplami} kayıt hiçbir kutuda görünmüyor.`)
+    }
   }
 
   const temizle = () => { setDurumFiltre('tumu'); setTurFiltre('tumu'); setAciliyetFiltre('tumu'); setAramaMetni('') }
@@ -175,16 +212,38 @@ export default function ServisTalepleri() {
         alignItems: 'stretch',
       }}>
         {[
-          { l: 'Toplam',      v: ist.toplam,      ton: 'var(--text-primary)' },
-          { l: 'Bekliyor',    v: ist.bekliyor,    ton: 'var(--text-secondary)' },
-          { l: 'Devam eden',  v: ist.devam,       ton: 'var(--warning)' },
-          { l: 'Tamamlandı',  v: ist.tamamlandi,  ton: 'var(--success)' },
+          { l: 'Toplam',      v: ist.toplam,      ton: 'var(--text-primary)',   f: 'tumu' },
+          { l: 'Bekliyor',    v: ist.bekliyor,    ton: 'var(--text-secondary)', f: 'bekliyor' },
+          { l: 'Devam eden',  v: ist.devam,       ton: 'var(--warning)',        f: 'devam' },
+          { l: 'Tamamlandı',  v: ist.tamamlandi,  ton: 'var(--success)',        f: 'tamamlandi' },
+          { l: 'Kapalı',      v: ist.onaylandi,   ton: 'var(--text-secondary)', f: 'onaylandi' },
+          ...(ist.reddedildi > 0 ? [{ l: 'Reddedildi', v: ist.reddedildi, ton: 'var(--danger)', f: 'reddedildi' }] : []),
+          ...(ist.iptal > 0 ? [{ l: 'İptal', v: ist.iptal, ton: 'var(--text-tertiary)', f: 'iptal' }] : []),
           { l: 'Acil',        v: ist.acil,        ton: ist.acil > 0 ? 'var(--danger)' : 'var(--text-tertiary)' },
         ].map((k, i, arr) => [
-          <div key={k.l} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
-            <span style={{ font: '700 14px/18px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
-          </div>,
+          // Sayaç tıklanabilir: aynı küme listeye uygulanır, seçili kutu vurgulanır.
+          // "Acil" bir durum değil aciliyet — onun filtresi ayrı, tıklanmıyor.
+          k.f ? (
+            <button
+              key={k.l}
+              onClick={() => { setDurumFiltre(k.f); setSayfa(1) }}
+              title={`${k.l} olanları listele`}
+              style={{
+                padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+                background: durumFiltre === k.f ? 'var(--surface-sunken)' : 'transparent',
+                boxShadow: durumFiltre === k.f ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
+              }}
+            >
+              <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
+              <span style={{ font: '700 14px/18px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
+            </button>
+          ) : (
+            <div key={k.l} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
+              <span style={{ font: '700 14px/18px var(--font-sans)', color: k.ton, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
+            </div>
+          ),
           i < arr.length - 1 && (
             <span key={`sep-${i}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-default)' }} />
           ),
@@ -201,8 +260,11 @@ export default function ServisTalepleri() {
               placeholder="Talep no, konu, müşteri, firma…"
             />
           </div>
-          <CustomSelect value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)}>
+          <CustomSelect value={durumFiltre} onChange={e => { setDurumFiltre(e.target.value); setSayfa(1) }}>
             <option value="tumu">Tüm Durumlar</option>
+            {/* Şeritteki "Devam eden" kutusu bu değeri set eder — listede de
+                karşılığı olmalı, yoksa seçim açılır listede boş görünür. */}
+            <option value="devam">Devam Eden (atandı + inceleniyor + devam ediyor)</option>
             {DURUM_LISTESI.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
           </CustomSelect>
           <CustomSelect value={turFiltre} onChange={e => setTurFiltre(e.target.value)}>
