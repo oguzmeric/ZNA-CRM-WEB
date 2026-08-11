@@ -66,8 +66,18 @@ export default function ServisTalepleri() {
   // Durumlar" açılır listesi aynı değeri konuşur, biri diğerini şaşırtmaz).
   const DURUM_GRUBU = {
     devam: ['inceleniyor', 'atandi', 'devam_ediyor'],
+    // "Açık" = henüz kapanmamış. `tamamlandi` de buradadır: teknisyen bitirdi
+    // ama onay bekliyor, iş defterden düşmüş değil (bkz. servis kapanış zinciri).
+    acik: ['bekliyor', 'inceleniyor', 'atandi', 'devam_ediyor', 'tamamlandi'],
   }
   const grupCoz = (f) => DURUM_GRUBU[f] || [f]
+
+  // ⚠️ Aciliyet dört kademeli: dusuk / normal / yuksek / acil. Şeritteki kutu
+  // eskiden YALNIZ `acil` sayıyordu — oysa sahada kimse "Acil" seçmiyor,
+  // "Yüksek" seçiyor (canlıda: normal 114, yuksek 2, acil 0). Kutu hep 0
+  // gösteriyordu ve öncelikli işler hiçbir yerde dikkat çekmiyordu.
+  const ACILIYET_GRUBU = { oncelikli: ['acil', 'yuksek'] }
+  const aciliyetCoz = (f) => ACILIYET_GRUBU[f] || [f]
 
   // Durum DIŞINDAKİ filtreler — sayaçlar da liste de bu kümeden türer.
   // Sayaçları ham `talepler`den hesaplamak, sayfanın kaynak kapsamını (personel
@@ -78,7 +88,7 @@ export default function ServisTalepleri() {
       aramaMetni,
     )) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
-    if (aciliyetFiltre !== 'tumu' && t.aciliyet !== aciliyetFiltre) return false
+    if (aciliyetFiltre !== 'tumu' && !aciliyetCoz(aciliyetFiltre).includes(t.aciliyet)) return false
     if (kaynakFiltre !== 'tumu') {
       const k = t.kaynak || 'personel'   // eski kayitlar default personel
       if (k !== kaynakFiltre) return false
@@ -121,9 +131,12 @@ export default function ServisTalepleri() {
     onaylandi: say('onaylandi'),
     reddedildi: say('reddedildi'),
     iptal: say('iptal'),
-    // Acil = henüz KAPANMAMIŞ acil işler; kapanmış acil iş uyarı değil, geçmiştir.
-    acil: kapsamdaki.filter(t => t.aciliyet === 'acil' &&
-      !['tamamlandi', 'onaylandi', 'reddedildi', 'iptal'].includes(t.durum)).length,
+    // Öncelikli = AÇIK olan acil/yüksek işler. Kapanmış acil iş uyarı değil,
+    // geçmiştir; bu yüzden kapsam `acik` durum grubuyla sınırlı — kutuya
+    // tıklandığında da aynı küme listelenir.
+    oncelikli: kapsamdaki.filter(t =>
+      aciliyetCoz('oncelikli').includes(t.aciliyet) &&
+      grupCoz('acik').includes(t.durum)).length,
   }
 
   // ⚠️ Şeritteki kutuların toplamı, toplam kayıt sayısını TUTMAK ZORUNDA.
@@ -219,20 +232,28 @@ export default function ServisTalepleri() {
           { l: 'Kapalı',      v: ist.onaylandi,   ton: 'var(--text-secondary)', f: 'onaylandi' },
           ...(ist.reddedildi > 0 ? [{ l: 'Reddedildi', v: ist.reddedildi, ton: 'var(--danger)', f: 'reddedildi' }] : []),
           ...(ist.iptal > 0 ? [{ l: 'İptal', v: ist.iptal, ton: 'var(--text-tertiary)', f: 'iptal' }] : []),
-          { l: 'Acil',        v: ist.acil,        ton: ist.acil > 0 ? 'var(--danger)' : 'var(--text-tertiary)' },
+          { l: 'Öncelikli',   v: ist.oncelikli,   ton: ist.oncelikli > 0 ? 'var(--danger)' : 'var(--text-tertiary)',
+            f: 'acik', af: 'oncelikli', ipucu: 'Açık olan acil ve yüksek öncelikli talepler' },
         ].map((k, i, arr) => [
-          // Sayaç tıklanabilir: aynı küme listeye uygulanır, seçili kutu vurgulanır.
-          // "Acil" bir durum değil aciliyet — onun filtresi ayrı, tıklanmıyor.
+          // Sayaç tıklanabilir: gösterdiği küme AYNEN listeye uygulanır.
+          // "Öncelikli" kutusu iki ekseni birden ayarlar (aciliyet + açık durum),
+          // çünkü saydığı küme de o ikisinin kesişimi.
           k.f ? (
             <button
               key={k.l}
-              onClick={() => { setDurumFiltre(k.f); setSayfa(1) }}
-              title={`${k.l} olanları listele`}
+              onClick={() => {
+                setDurumFiltre(k.f)
+                setAciliyetFiltre(k.af || 'tumu')
+                setSayfa(1)
+              }}
+              title={k.ipucu || `${k.l} olanları listele`}
               style={{
                 padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6,
                 border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-sm)',
-                background: durumFiltre === k.f ? 'var(--surface-sunken)' : 'transparent',
-                boxShadow: durumFiltre === k.f ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
+                // Seçili vurgusu iki ekseni de kontrol eder; yoksa "Öncelikli"
+                // seçiliyken "Toplam" da seçili görünürdü.
+                background: (durumFiltre === k.f && aciliyetFiltre === (k.af || 'tumu')) ? 'var(--surface-sunken)' : 'transparent',
+                boxShadow: (durumFiltre === k.f && aciliyetFiltre === (k.af || 'tumu')) ? 'inset 0 0 0 1px var(--border-strong)' : 'none',
               }}
             >
               <span style={{ font: '500 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{k.l}</span>
@@ -264,6 +285,7 @@ export default function ServisTalepleri() {
             <option value="tumu">Tüm Durumlar</option>
             {/* Şeritteki "Devam eden" kutusu bu değeri set eder — listede de
                 karşılığı olmalı, yoksa seçim açılır listede boş görünür. */}
+            <option value="acik">Açık (kapanmamış tüm talepler)</option>
             <option value="devam">Devam Eden (atandı + inceleniyor + devam ediyor)</option>
             {DURUM_LISTESI.map(d => <option key={d.id} value={d.id}>{d.isim}</option>)}
           </CustomSelect>
@@ -271,8 +293,10 @@ export default function ServisTalepleri() {
             <option value="tumu">Tüm Türler</option>
             {ANA_TURLER.map(t => <option key={t.id} value={t.id}>{t.isim}</option>)}
           </CustomSelect>
-          <CustomSelect value={aciliyetFiltre} onChange={e => setAciliyetFiltre(e.target.value)}>
+          <CustomSelect value={aciliyetFiltre} onChange={e => { setAciliyetFiltre(e.target.value); setSayfa(1) }}>
             <option value="tumu">Tüm Aciliyet</option>
+            {/* Şeritteki "Öncelikli" kutusunun karşılığı — seçim burada da görünsün */}
+            <option value="oncelikli">Öncelikli (acil + yüksek)</option>
             {ACILIYET_SEVIYELERI.map(a => <option key={a.id} value={a.id}>{a.isim}</option>)}
           </CustomSelect>
           {filtreAktif && (
