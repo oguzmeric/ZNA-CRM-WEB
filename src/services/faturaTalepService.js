@@ -705,3 +705,34 @@ export const siparisFaturaTalebiGetir = async (siparisId) => {
     .limit(1)
   return data?.[0] ? toCamel(data[0]) : null
 }
+
+// ---------- Fatura kesim ekranı için servis künyesi (12.08.2026) ----------
+
+/**
+ * Proformanın kaynağı olan servisin FATURAYA ESAS bilgileri.
+ *
+ * Neden var: proforma yalnız firma künyesi + kalem listesi taşıyor. Faturayı
+ * kesen kişi "ne yapıldı, hangi cihaz, garanti mi ücretli mi" göremiyordu ve
+ * tutarı körlemesine giriyordu (kullanıcı isteği 12.08.2026).
+ *
+ * ⚠️ Anlık görüntü DEĞİL, canlı okuma: teknisyen açıklamayı sonradan
+ * düzeltirse muhasebe güncelini görsün. Kalemler ve tutar ise proformaya
+ * kopyalanır (onlar belgenin kendisi).
+ *
+ * Doluluk ölçümü (83 kapalı servis): cozum_aciklamasi %89, aciklama %84,
+ * yukumluluk %96. `yapilan_mudahale` / `kok_sebep` / servis üstündeki
+ * marka-model alanları canlıda HİÇ kullanılmıyor (0/83) — bu yüzden
+ * sorgulanmıyor, ekranda yer kaplamasın.
+ */
+export const faturaIcinServisBilgisi = async (servisTalepId) => {
+  if (!servisTalepId) return null
+  const { data, error } = await supabase
+    .from('servis_talepleri')
+    .select(`id, talep_no, konu, aciklama, cozum_aciklamasi, yukumluluk,
+             servis_tipi, servis_yeri, lokasyon, cihaz_turu,
+             atanan_kullanici_ad, tamamlanma_tarihi, durum`)
+    .eq('id', servisTalepId)
+    .maybeSingle()
+  if (error || !data) return null
+  return toCamel(data)
+}

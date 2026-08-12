@@ -28,6 +28,7 @@ import {
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
+  faturaIcinServisBilgisi,
   faturaDosyaUrl, irsaliyeKaydet, faturaPdfDegistir, faturaPdfSil, irsaliyeSil,
   faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
@@ -251,6 +252,20 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
     faturaTalebiYorumlariGetir(talep.id).then(y => { if (!iptal) setYorumlar(y) }).catch(() => {})
     return () => { iptal = true }
   }, [talep.id])
+
+  // Servis kaynaklı proformada "ne yapıldı" bilgisi — tutar buna bakılarak
+  // kesiliyor; eskiden yalnız firma adı ve kalem listesi görünüyordu.
+  const [servisBilgi, setServisBilgi] = useState(null)
+  useEffect(() => {
+    let iptal = false
+    // ⚠️ Effect içinde SENKRON setState yok (cascading render). Servis
+    // kaynaklı olmayan talepte kart, aşağıdaki servisTalepId koşuluyla gizlenir.
+    if (!talep.servisTalepId) return undefined
+    faturaIcinServisBilgisi(talep.servisTalepId)
+      .then(s => { if (!iptal) setServisBilgi(s) })
+      .catch(() => {})
+    return () => { iptal = true }
+  }, [talep.servisTalepId])
 
   const bekliyor = talep.durum === 'bekliyor'
   const meta = FATURA_TALEP_DURUM_META[talep.durum] || FATURA_TALEP_DURUM_META.bekliyor
@@ -495,6 +510,58 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
             </div>
           </div>
         </div>
+
+        {/* ---- Yapılan iş (servis kaynaklı proformalarda) ----
+            Faturayı kesen kişi tutarı buna bakarak onaylıyor; canlı okunur,
+            teknisyen açıklamayı düzeltirse burada da güncel görünür. */}
+        {talep.servisTalepId && servisBilgi && (
+          <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14 }}>
+            <div style={baslikSt}>Yapılan İş · {servisBilgi.talepNo}</div>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10,
+            }}>
+              {[
+                servisBilgi.yukumluluk && { e: 'Yükümlülük', d: servisBilgi.yukumluluk },
+                servisBilgi.servisTipi && { e: 'Servis tipi', d: servisBilgi.servisTipi },
+                servisBilgi.cihazTuru && { e: 'Cihaz', d: servisBilgi.cihazTuru },
+                servisBilgi.lokasyon && { e: 'Lokasyon', d: servisBilgi.lokasyon },
+                servisBilgi.atananKullaniciAd && { e: 'Teknisyen', d: servisBilgi.atananKullaniciAd },
+              ].filter(Boolean).map(({ e, d }) => (
+                <span key={e} style={{
+                  font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-secondary)',
+                  background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)', padding: '3px 8px', whiteSpace: 'nowrap',
+                }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>{e}: </span>{d}
+                </span>
+              ))}
+            </div>
+            {servisBilgi.aciklama && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ font: '600 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  Talep / arıza
+                </div>
+                <div style={{ font: '400 12.5px/19px var(--font-sans)', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                  {servisBilgi.aciklama}
+                </div>
+              </div>
+            )}
+            {servisBilgi.cozumAciklamasi ? (
+              <div>
+                <div style={{ font: '600 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  Teknisyenin çözümü
+                </div>
+                <div style={{ font: '400 12.5px/19px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                  {servisBilgi.cozumAciklamasi}
+                </div>
+              </div>
+            ) : (
+              <div style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--warning)' }}>
+                Çözüm açıklaması girilmemiş — ne yapıldığını teyit etmeden tutar onaylamayın.
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <div style={baslikSt}>Kalemler ({(talep.kalemler || []).length})</div>
