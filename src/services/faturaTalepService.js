@@ -14,6 +14,7 @@ import { smsGonderVeLogla } from './smsLogService'
 import { satisEkle } from './satisService'
 import { musteriGetir } from './musteriService'
 import { formEnvanterKalemleri } from './servisMalzemeService'
+import { proformaHesapla, kalemPayload, kalemleriDogrula, tutarDegistiMi } from '../lib/proformaKalem'
 
 export const FATURA_TALEP_DURUM = {
   BEKLIYOR:    'bekliyor',
@@ -482,6 +483,89 @@ export const bedelsizIsaretiniKaldir = async (talepId) => {
     .single()
   if (error) { console.error('[bedelsizIsaretiniKaldir]', error.message); return { _hata: error.message } }
   return toCamel(data)
+}
+
+// ---------- Kalem / tutar düzeltme (mig 283) ----------
+
+const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
+const paraMetni = (n, pb) =>
+  `${PARA_SEMBOL[pb] || '₺'}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/**
+ * PROFORMA KALEMLERİNİ DÜZELT (mig 283).
+ *
+ * Neden var: teknisyen servis faturasının kalemlerini mobilden fiyatlıyor.
+ * Fatura yetkilisi rakamı yanlış bulduğunda tek çıkışı proformayı REDDETMEK ve
+ * teknisyene geri göndermekti — teknisyen sahadayken yarım gün kayıp.
+ *
+ * ⚠️ `ilk_genel_toplam` BURADAN YAZILMAZ: DB trigger'ı doldurur ve korur, aksi
+ * hâlde iki sekmeden arka arkaya düzeltme teknisyenin ilk rakamını siler.
+ */
+export const proformaKalemleriGuncelle = async ({ talep, kalemler, kullanici }) => {
+  if (talep?.durum !== 'bekliyor') {
+    return { _hata: 'Yalnızca bekleyen proformanın kalemleri düzeltilebilir.' }
+  }
+  // Ekranla AYNI kapılar — biri "kaydet" derken diğeri reddetmesin
+  const hatalar = kalemleriDogrula(kalemler)
+  if (hatalar.length) return { _hata: hatalar.join(' ') }
+
+  const temiz = kalemler.map(kalemPayload)
+  const h = proformaHesapla(temiz)
+  const onceki = Number(talep.genelToplam) || 0
+
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({
+      kalemler: temiz,
+      ara_toplam: h.araToplam,
+      kdv_toplam: h.kdvToplam,
+      genel_toplam: h.genelToplam,
+      // Bedel girilen iş bedelsiz olamaz — iki durum bir arada tutarsız
+      // (`bedelsizKapat` de tutar > 0'ı zaten reddediyor).
+      bedelsiz: false,
+      bedelsiz_sebep: null,
+      kalem_duzenleyen_id: kullanici?.id ?? null,
+      kalem_duzenleyen_ad: kullanici?.ad ?? '',
+      kalem_duzenleme_tarihi: new Date().toISOString(),
+    })
+    .eq('id', talep.id)
+    .eq('durum', 'bekliyor')   // başka sekmede kesilmiş/reddedilmiş olabilir
+    .select()
+    .single()
+  if (error) { console.error('[proformaKalemleriGuncelle]', error.message); return { _hata: error.message } }
+
+  const guncel = toCamel(data)
+  if (tutarDegistiMi(onceki, guncel.genelToplam)) {
+    await kalemDuzeltmeBildir({ talep: guncel, onceki, kullanici })
+  }
+  return guncel
+}
+
+/**
+ * Tutarı giren kişiye haber ver. Sessiz düzeltme, sahada "ben 5.000 yazmıştım"
+ * tartışmasını doğurur; rakamı değiştiren belli olsun.
+ *
+ * ⚠️ Link ALICININ açabildiği sayfaya gitmeli: teknisyen /fatura-talepleri'ni
+ * göremez (fatura yetkisi kapısı), kaynak servise/siparişe yönlendiriyoruz.
+ */
+async function kalemDuzeltmeBildir({ talep, onceki, kullanici }) {
+  try {
+    const alici = talep.talepEdenId
+    if (!alici || String(alici) === String(kullanici?.id)) return
+    const pb = talep.paraBirimi || 'TL'
+    const link = talep.servisTalepId ? `/servis-talepleri/${talep.servisTalepId}`
+      : talep.siparisId ? `/siparisler/${talep.siparisId}`
+      : '/fatura-talepleri'
+    await cokluBildirimEkle([alici], {
+      baslik: `Proforma tutarı güncellendi — ${talep.talepNo}`,
+      mesaj: `${talep.firmaAdi} · ${paraMetni(onceki, pb)} → ${paraMetni(talep.genelToplam, pb)} · ${kullanici?.ad || 'Muhasebe'}`,
+      tip: 'uyari',
+      link,
+      meta: { kaynak: 'fatura_talebi', talep_id: talep.id, olay: 'kalem_duzeltme' },
+    })
+  } catch (e) {
+    console.warn('[proformaKalem] bildirim gönderilemedi:', e?.message)
+  }
 }
 
 // Fatura kesilince adminlere bildir ("Fatura bizim bilgimiz olmalı")

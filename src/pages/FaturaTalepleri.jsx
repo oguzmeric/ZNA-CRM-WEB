@@ -4,10 +4,11 @@
 // (Abdullah + adminler) gerçek faturayı keser, numarasını girer ve PDF'ini
 // yükler. satislar kaydı YALNIZ burada oluşur — talep aşaması ciroya sızmaz.
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Receipt, FileUp, ExternalLink, CheckCircle2, XCircle, RotateCcw, Clock, Send, Printer, X,
+  Pencil, Plus, Trash2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -30,8 +31,11 @@ import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
   faturaIcinServisBilgisi, bedelsizKapat, bedelsizIsaretiniKaldir, bedelsizIsaretle,
   faturaDosyaUrl, irsaliyeKaydet, faturaPdfDegistir, faturaPdfSil, irsaliyeSil,
-  faturaYetkisi, FATURA_TALEP_DURUM_META,
+  faturaYetkisi, proformaKalemleriGuncelle, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
+import {
+  proformaHesapla, kalemleriDogrula, kalemiFormaAl, bosKalem,
+} from '../lib/proformaKalem'
 
 // Sayfa "Proforma Fatura" (2026-07-15 terim düzeltmesi: numarasız ön fatura =
 // proforma). DB tarafı değişmedi — tablo fatura_talepleri, numara FTL- kalır.
@@ -44,6 +48,9 @@ const SEKMELER = [
 const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
 const fmtPara = (n, pb) => `${PARA_SEMBOL[pb] || '₺'}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
+const fmtTarihSaat = (t) => t
+  ? new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : '—'
 const bugun = () => new Date().toISOString().slice(0, 10)
 
 export default function FaturaTalepleri() {
@@ -240,6 +247,195 @@ export default function FaturaTalepleri() {
 
 const hucre = { padding: '10px 12px', borderBottom: '1px solid var(--border-default)' }
 
+// Yürürlükteki oranlar + %18 (2023 öncesi belgelerde ve eski tekliflerde var)
+const KDV_ORANLARI = [0, 1, 10, 18, 20]
+
+/**
+ * PROFORMA KALEM DÜZENLEYİCİ (mig 283).
+ *
+ * Fatura yetkilisi, teknisyenin mobilden girdiği fiyatları kesim öncesi
+ * düzeltir. Eskiden tek yol proformayı REDDEDİP teknisyene geri göndermekti.
+ *
+ * ⚠️ Dosya seviyesinde tanımlı: `TalepDetay` içinde tanımlansaydı her tuşa
+ * basışta yeni bir bileşen tipi doğar, input'lar odağını ve içeriğini kaybederdi.
+ */
+function KalemDuzenleyici({ talep, kullanici, paraBirimi, onIptal, onKaydedildi, toast }) {
+  const [satirlar, setSatirlar] = useState(() => {
+    const mevcut = (talep.kalemler || []).map(kalemiFormaAl)
+    return mevcut.length ? mevcut : [bosKalem()]
+  })
+  const [mesgul, setMesgul] = useState(false)
+  const kilit = useRef(false)   // ⚠️ setState asenkron; çift tıklama iki UPDATE atar
+
+  const hesap = useMemo(() => proformaHesapla(satirlar), [satirlar])
+  const hatalar = useMemo(() => kalemleriDogrula(satirlar), [satirlar])
+  const oncekiToplam = Number(talep.genelToplam) || 0
+  const fark = hesap.genelToplam - oncekiToplam
+
+  const alanDegistir = (i, alan, deger) =>
+    setSatirlar(prev => prev.map((s, j) => (j === i ? { ...s, [alan]: deger } : s)))
+  const satirSil = (i) => setSatirlar(prev => prev.filter((_, j) => j !== i))
+  const satirEkle = () => setSatirlar(prev => [...prev, bosKalem()])
+
+  const kaydet = async () => {
+    if (kilit.current) return
+    kilit.current = true
+    setMesgul(true)
+    try {
+      const sonuc = await proformaKalemleriGuncelle({ talep, kalemler: satirlar, kullanici })
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success(
+        fark === 0
+          ? 'Kalemler güncellendi.'
+          : `Tutar ${fmtPara(oncekiToplam, paraBirimi)} → ${fmtPara(hesap.genelToplam, paraBirimi)} olarak düzeltildi.`
+      )
+      onKaydedildi()
+    } finally {
+      kilit.current = false
+      setMesgul(false)
+    }
+  }
+
+  return (
+    <div style={{
+      border: '1px solid var(--brand-primary)', borderRadius: 'var(--radius-md)',
+      padding: 12, background: 'var(--surface-sunken)',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12.5px/18px var(--font-sans)', minWidth: 720 }}>
+          <thead>
+            <tr style={{ color: 'var(--text-tertiary)', textAlign: 'left', font: '600 11px/16px var(--font-sans)' }}>
+              <th style={{ ...miniHucre, width: 96 }}>Kod</th>
+              <th style={miniHucre}>Ürün / Hizmet *</th>
+              <th style={{ ...miniHucre, width: 68, textAlign: 'right' }}>Miktar</th>
+              <th style={{ ...miniHucre, width: 74 }}>Birim</th>
+              <th style={{ ...miniHucre, width: 108, textAlign: 'right' }}>Birim Fiyat</th>
+              <th style={{ ...miniHucre, width: 62, textAlign: 'right' }}>İsk %</th>
+              <th style={{ ...miniHucre, width: 82 }}>KDV</th>
+              <th style={{ ...miniHucre, width: 104, textAlign: 'right' }}>Toplam</th>
+              <th style={{ ...miniHucre, width: 34 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {satirlar.map((s, i) => {
+              const h = hesap.satirlar[i] || { toplam: 0 }
+              const adsiz = !String(s.urunAdi || '').trim()
+              return (
+                <tr key={i}>
+                  <td style={miniHucre}>
+                    <Input value={s.stokKodu} onChange={e => alanDegistir(i, 'stokKodu', e.target.value)}
+                      placeholder="—" style={girisSt} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Input value={s.urunAdi} onChange={e => alanDegistir(i, 'urunAdi', e.target.value)}
+                      placeholder="Ör. Kamera değişimi"
+                      style={{ ...girisSt, ...(adsiz ? { borderColor: 'var(--warning)' } : null) }} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Input inputMode="decimal" value={s.miktar} onChange={e => alanDegistir(i, 'miktar', e.target.value)}
+                      style={{ ...girisSt, textAlign: 'right' }} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Input value={s.birim} onChange={e => alanDegistir(i, 'birim', e.target.value)}
+                      placeholder="Adet" style={girisSt} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Input inputMode="decimal" value={s.birimFiyat} onChange={e => alanDegistir(i, 'birimFiyat', e.target.value)}
+                      placeholder="0,00" style={{ ...girisSt, textAlign: 'right' }} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Input inputMode="decimal" value={s.iskontoOran} onChange={e => alanDegistir(i, 'iskontoOran', e.target.value)}
+                      style={{ ...girisSt, textAlign: 'right' }} />
+                  </td>
+                  <td style={miniHucre}>
+                    <Select value={String(s.kdvOran)} onChange={e => alanDegistir(i, 'kdvOran', e.target.value)}
+                      style={girisSt}>
+                      {KDV_ORANLARI.map(o => <option key={o} value={String(o)}>%{o}</option>)}
+                    </Select>
+                  </td>
+                  <td className="tabular-nums" style={{ ...miniHucre, textAlign: 'right', fontWeight: 600 }}>
+                    {fmtPara(h.toplam, paraBirimi)}
+                  </td>
+                  <td style={{ ...miniHucre, textAlign: 'right' }}>
+                    <button type="button" aria-label="Satırı sil" onClick={() => satirSil(i)}
+                      style={{
+                        width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'transparent', border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+                      }}>
+                      <Trash2 size={12} strokeWidth={1.5} />
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <Button variant="tertiary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.5} />} onClick={satirEkle}>
+          Satır ekle
+        </Button>
+      </div>
+
+      {/* Canlı toplam — yazdıkça hesaplanır, "12.000" gibi girişin nasıl
+          yorumlandığını kullanıcı buradan görür. */}
+      <div style={{
+        marginTop: 12, padding: '10px 14px', borderRadius: 'var(--radius-md)',
+        background: 'var(--surface-default)', border: '1px solid var(--border-default)',
+      }}>
+        {[['Ara toplam', hesap.araToplam], ['KDV', hesap.kdvToplam]].map(([k, v]) => (
+          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', font: '400 12.5px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
+            <span>{k}</span><span className="tabular-nums">{fmtPara(v, paraBirimi)}</span>
+          </div>
+        ))}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+          borderTop: '1px solid var(--border-default)', marginTop: 4, paddingTop: 4,
+          font: '700 16px/24px var(--font-sans)',
+        }}>
+          <span>Genel toplam</span>
+          <span className="tabular-nums">{fmtPara(hesap.genelToplam, paraBirimi)}</span>
+        </div>
+        {/* Neyi değiştirdiğini kaydetmeden önce görsün */}
+        {fark !== 0 && (
+          <div style={{
+            font: '500 11.5px/17px var(--font-sans)', marginTop: 4, textAlign: 'right',
+            color: fark > 0 ? 'var(--success)' : 'var(--warning)',
+          }}>
+            {oncekiToplam > 0
+              ? `Önceki: ${fmtPara(oncekiToplam, paraBirimi)} · fark ${fark > 0 ? '+' : '−'}${fmtPara(Math.abs(fark), paraBirimi)}`
+              : 'Bu proformada tutar ilk kez giriliyor'}
+          </div>
+        )}
+      </div>
+
+      {hatalar.length > 0 && (
+        <ul style={{
+          margin: '10px 0 0', paddingLeft: 18,
+          font: '400 12px/18px var(--font-sans)', color: 'var(--warning)',
+        }}>
+          {hatalar.map(h => <li key={h}>{h}</li>)}
+        </ul>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <Button variant="primary" onClick={kaydet} disabled={mesgul || hatalar.length > 0}
+          iconLeft={<CheckCircle2 size={14} strokeWidth={1.5} />}>
+          {mesgul ? 'Kaydediliyor…' : 'Kalemleri Kaydet'}
+        </Button>
+        <Button variant="secondary" onClick={onIptal} disabled={mesgul}>Vazgeç</Button>
+      </div>
+      <p className="t-caption" style={{ margin: '8px 0 0', color: 'var(--text-tertiary)' }}>
+        Düzeltme kaydedilir ve tutarı giren kişiye bildirilir; teknisyenin girdiği ilk tutar kayıtta saklanır.
+      </p>
+    </div>
+  )
+}
+
+const girisSt = { width: '100%', padding: '5px 7px', font: '400 12.5px/18px var(--font-sans)' }
+
 function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, navigate, toast, confirm }) {
   const { bildirimEkle } = useBildirim()
   const [faturaNo, setFaturaNo] = useState(talep.faturaNo || '')
@@ -254,6 +450,7 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
   const [irsaliyeDosya, setIrsaliyeDosya] = useState(null)
   const [redAcik, setRedAcik] = useState(false)
   const [redNedeni, setRedNedeni] = useState('')
+  const [kalemDuzenle, setKalemDuzenle] = useState(false)
   const [mesgul, setMesgul] = useState(false)
   const [gonderAcik, setGonderAcik] = useState(false)
   const dosyaRef = useRef(null)
@@ -630,7 +827,42 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
         )}
 
         <div>
-          <div style={baslikSt}>Kalemler ({(talep.kalemler || []).length})</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div style={baslikSt}>Kalemler ({(talep.kalemler || []).length})</div>
+            {/* Yetkili tutarı yanlış bulursa REDDETMEK zorunda kalmasın (mig 283).
+                Bedelsiz proformada gizli: orada tutar zaten alınmıyor, önce
+                "Bedelsiz değil, faturalanacak" denmesi gerekir. */}
+            {bekliyor && !talep.bedelsiz && !kalemDuzenle && (
+              <Button variant="tertiary" size="sm" disabled={mesgul}
+                iconLeft={<Pencil size={13} strokeWidth={1.5} />}
+                onClick={() => setKalemDuzenle(true)}>
+                {(talep.kalemler || []).length ? 'Kalemleri Düzenle' : 'Kalem Ekle'}
+              </Button>
+            )}
+          </div>
+
+          {/* Düzeltme izi — "ben 5.000 yazmıştım" tartışmasının hakemi */}
+          {talep.kalemDuzenleyenAd && !kalemDuzenle && (
+            <div style={{
+              font: '400 11.5px/17px var(--font-sans)', color: 'var(--text-tertiary)',
+              marginBottom: 8, marginTop: -2,
+            }}>
+              Kalemler düzeltildi · <strong style={{ color: 'var(--text-secondary)' }}>{talep.kalemDuzenleyenAd}</strong>
+              {' · '}{fmtTarihSaat(talep.kalemDuzenlemeTarihi)}
+              {Number(talep.ilkGenelToplam) > 0 && ` · ilk tutar ${fmtPara(talep.ilkGenelToplam, talep.paraBirimi)}`}
+            </div>
+          )}
+
+          {kalemDuzenle ? (
+            <KalemDuzenleyici
+              talep={talep}
+              kullanici={kullanici}
+              paraBirimi={talep.paraBirimi}
+              toast={toast}
+              onIptal={() => setKalemDuzenle(false)}
+              onKaydedildi={() => { setKalemDuzenle(false); onTamamlandi() }}
+            />
+          ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 12.5px/18px var(--font-sans)' }}>
               <thead>
@@ -669,6 +901,7 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
               </tbody>
             </table>
           </div>
+          )}
         </div>
 
         {/* ---- BEDELSİZ KAPATMA (mig 282) ----
