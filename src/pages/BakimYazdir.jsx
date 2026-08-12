@@ -8,21 +8,18 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import znaBanner from '../assets/servis-formu/zna-banner.png'
 import anadolunetLogo from '../assets/servis-formu/anadolunet-logo.jpeg'
+import { FIRMA_KUNYE } from '../lib/kurumsalKunye'
 
 // Servis formu şablonuyla AYNI kurumsal kimlik (ServisFormu.jsx ile hizalı)
 const SIRKET_BILGI = {
   zna: {
     bannerSrc: znaBanner, bannerYukseklik: 90, label: 'ZNA Teknoloji',
-    firmaAdi: 'ZNA TEKNOLOJİ BİLİŞİM HİZMETLERİ SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
-    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
-    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    ...FIRMA_KUNYE.zna,   // firmaAdi / adres / iletisim → lib/kurumsalKunye
     accent: '#16365D', accentBg: '#DCE6F1',
   },
   anadolunet: {
     bannerSrc: anadolunetLogo, bannerYukseklik: 80, label: 'Anadolunet',
-    firmaAdi: 'ANADOLUNET DİJİTAL YAPI A.Ş.',
-    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
-    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    ...FIRMA_KUNYE.anadolunet,   // firmaAdi / adres / iletisim → lib/kurumsalKunye
     accent: '#1A1A1A', accentBg: '#F0F0F0',
   },
 }

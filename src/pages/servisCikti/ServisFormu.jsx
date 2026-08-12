@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from 'react'
 import znaBanner from '../../assets/servis-formu/zna-banner.png'
 import anadolunetLogo from '../../assets/servis-formu/anadolunet-logo.jpeg'
 import { kucukGorsel } from '../../lib/gorselUrl'
+import { FIRMA_KUNYE } from '../../lib/kurumsalKunye'
 
 // A4 genisligi CSS px cinsinden (210mm @96dpi). Telefonda olcegi bundan hesaplariz.
 const A4_PX = 794
@@ -26,9 +27,7 @@ const SIRKET_BILGI = {
     // altındaki tam genişlik tablolarla hizasız duruyordu (11.08 geri bildirimi).
     bannerYukseklik: 112,
     showText: false,           // ZNA banner zaten "SERVIS RAPORU" yazisi iceriyor
-    firmaAdi: 'ZNA TEKNOLOJİ BİLİŞİM HİZMETLERİ SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
-    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
-    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    ...FIRMA_KUNYE.zna,   // firmaAdi / adres / iletisim → lib/kurumsalKunye
     accent: '#16365D',
     accentBg: '#DCE6F1',
   },
@@ -38,9 +37,7 @@ const SIRKET_BILGI = {
     // boğardı. Tavan 92px: oranı korunur, ortalanır, altındaki başlıkla dengeli.
     bannerYukseklik: 92,
     showText: true,            // Anadolunet logosunda 'SERVIS RAPORU' yok — yazi ekle
-    firmaAdi: 'ANADOLUNET DİJİTAL YAPI A.Ş.',
-    adres: 'İ.O.S.B. KERESTECİLER SANAYİ SİTESİ 3B BLOK KAT:3 NO:3 BAŞAKŞEHİR/İSTANBUL',
-    iletisim: 'İLETİŞİM: (212) 549-9494 · FAX: (212) 671-7454',
+    ...FIRMA_KUNYE.anadolunet,   // firmaAdi / adres / iletisim → lib/kurumsalKunye
     accent: '#1A1A1A',
     accentBg: '#F0F0F0',
   },
