@@ -262,8 +262,9 @@ export default function MesaiRaporu() {
       Ünvan: r.unvan,
       'Gün Sayısı': r.gunSayisi,
       [girisBaslik]: kirilim === 'gunluk' ? saatGoster(r.ilkGiris) : ortSaat(r.ortGirisDk),
+      // Ekranla aynı kural: açık kayıt varsa çıkış kesinleşmemiştir (bkz. tablo)
       [cikisBaslik]: kirilim === 'gunluk'
-        ? (r.sonCikis ? saatGoster(r.sonCikis) : 'devam ediyor')
+        ? ((r.devam === 0 && r.sonCikis) ? saatGoster(r.sonCikis) : 'devam ediyor')
         : ortSaat(r.ortCikisDk),
       // Normal ve fazla mesai farklı ücretlendirildiği için ayrı sütun.
       // Değerler GERÇEK SÜRE (Excel gün kesri) — sayfa yazılırken [h]:mm
@@ -466,9 +467,15 @@ export default function MesaiRaporu() {
                   <TD className="tabular-nums">
                     {kirilim === 'gunluk' ? saatGoster(r.ilkGiris) : ortSaat(r.ortGirisDk)}
                   </TD>
+                  {/* ⚠️ Açık kayıt varken ÇIKIŞ SAATİ GÖSTERİLMEZ (12.08).
+                      Emin Erdem 20 sn arayla iki kez başlatmış; ilki "Yeni giriş
+                      için otomatik kapatıldı" ile kapanmış, ikincisi açık kalmıştı.
+                      Rapor çıkışı KAPANMIŞ kayıttan, süreyi AÇIK kayıttan alınca
+                      satır kendi kendisiyle çelişiyordu: "Çıkış 08:27" ama süre
+                      işlemeye devam. Çıkış ancak TÜM kayıtlar kapandığında kesin. */}
                   <TD className="tabular-nums">
                     {kirilim !== 'gunluk' ? ortSaat(r.ortCikisDk)
-                      : r.sonCikis ? saatGoster(r.sonCikis) : (
+                      : (r.devam === 0 && r.sonCikis) ? saatGoster(r.sonCikis) : (
                       <span style={{ color: '#f59e0b' }} title="Mesai hâlâ açık — 18:30'da otomatik kapanır">açık</span>
                     )}
                   </TD>
