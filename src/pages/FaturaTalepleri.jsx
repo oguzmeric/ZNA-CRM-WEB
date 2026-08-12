@@ -747,11 +747,33 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 </Button>
               </div>
             </div>
-            {tutarYok && (
-              <p className="t-caption" style={{ margin: '6px 0 0', fontWeight: 600 }}>
-                Genel toplam: {fmtPara(sayiCoz(araTutar) + sayiCoz(kdvTutar), talep.paraBirimi)} — kesilen faturayla birebir aynı olmalı.
-              </p>
-            )}
+            {/* Canlı genel toplam — eskiden soluk tek satırdı ve kullanıcı
+                tutarı nereye gireceğini bulamıyordu (12.08 geri bildirimi).
+                Artık girildikçe büyüyen belirgin bir kutu. */}
+            {tutarYok && (() => {
+              const canliToplam = sayiCoz(araTutar) + sayiCoz(kdvTutar)
+              const bos = !(canliToplam > 0)
+              return (
+                <div style={{
+                  marginTop: 10, padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                  background: bos ? 'var(--warning-soft)' : 'var(--success-soft)',
+                  border: `1px solid ${bos ? 'var(--warning)' : 'var(--success)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+                }}>
+                  <span style={{ font: '600 12.5px/18px var(--font-sans)', color: bos ? 'var(--warning)' : 'var(--success)' }}>
+                    {bos
+                      ? 'Faturanın tutarını yukarıdaki "Ara Toplam" ve "KDV Tutarı" alanlarına girin'
+                      : 'Genel toplam — kesilen faturayla birebir aynı olmalı'}
+                  </span>
+                  <span style={{
+                    font: '800 18px/24px var(--font-sans)', fontVariantNumeric: 'tabular-nums',
+                    color: bos ? 'var(--text-tertiary)' : 'var(--success)',
+                  }}>
+                    {fmtPara(canliToplam, talep.paraBirimi)}
+                  </span>
+                </div>
+              )
+            })()}
             <p className="t-caption" style={{ margin: '6px 0 0', color: 'var(--text-tertiary)' }}>
               Gerçek fatura muhasebe / e-arşiv sisteminde kesilir — buraya o faturanın
               PDF'ini yükleyin. CRM'de saklanır ve "Müşteriye Gönder" bu dosyayı iletir.
