@@ -27,7 +27,26 @@ export default function ProformaYazdir() {
   const ps = talep.paraBirimi === 'USD' ? '$' : talep.paraBirimi === 'EUR' ? '€' : '₺'
   const tarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
-  const kalemler = talep.kalemler || []
+  // ── BAKIM KAPSAMI / BEDELSİZ (mig 282) ──
+  // Bakım anlaşmalı işte bedel alınmaz ve çoğu zaman malzeme de kullanılmaz →
+  // belge KALEMSİZ ve ₺0,00 basılıyordu, müşteriye giden çıktı bomboş
+  // görünüyordu (FTL-2026-000040 geri bildirimi). Artık:
+  //   • kalem yoksa hizmetin kendisi TEK SATIR olarak yazılır
+  //   • fiyat sütunlarında rakam yerine "—", toplamda "BEDELSİZ"
+  //   • belgenin başında neden bedel alınmadığı açıkça yazar
+  const bedelsiz = !!talep.bedelsiz
+  const hamKalemler = talep.kalemler || []
+  // "Servis: OTOPARK KURULUM" → "OTOPARK KURULUM"
+  const isTanimi = String(talep.konu || '').replace(/^Servis:\s*/i, '').trim()
+  const kalemler = (bedelsiz && hamKalemler.length === 0)
+    ? [{
+      urunAdi: isTanimi
+        ? `Bakım Anlaşması Kapsamında Servis ve Bakım Hizmeti — ${isTanimi}`
+        : 'Bakım Anlaşması Kapsamında Servis ve Bakım Hizmeti',
+      aciklama: 'Sözleşme kapsamında ifa edilmiştir; bedel tahsil edilmemiştir.',
+      miktar: 1, birim: 'Hizmet', birimFiyat: 0, kdvOran: 0, satirToplam: 0,
+    }]
+    : hamKalemler
   const kdvGruplari = {}
   kalemler.forEach((k) => {
     const oran = k.kdvOran ?? 20
@@ -69,7 +88,8 @@ export default function ProformaYazdir() {
         <button onClick={() => window.close()} style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✕ Kapat</button>
       </div>
 
-      <div className="filigran"><span>PROFORMA</span></div>
+      {/* Bedelsizde filigran da bunu söylesin — belge tek bakışta ayırt edilsin */}
+      <div className="filigran"><span>{bedelsiz ? 'BEDELSİZ' : 'PROFORMA'}</span></div>
 
       <div className="sayfa icerik">
         {/* Üst şerit: logo + belge kimliği */}
@@ -85,6 +105,21 @@ export default function ProformaYazdir() {
             <p style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>Düzenleme: {tarih(talep.olusturmaTarih)}</p>
           </div>
         </div>
+
+        {/* Bakım kapsamı bandı — müşteri neden bedel görmediğini BELGEDEN anlasın */}
+        {bedelsiz && (
+          <div style={{ background: '#eff6ff', border: `1px solid ${MAVI}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+            <p style={{ fontSize: 12, color: MAVI, fontWeight: 800, letterSpacing: 0.3 }}>
+              BAKIM ANLAŞMASI KAPSAMINDA BEDELSİZ HİZMET
+            </p>
+            <p style={{ fontSize: 10.5, color: '#1e3a5f', marginTop: 4, lineHeight: 1.55 }}>
+              İşbu belgeye konu servis ve bakım hizmeti, firmamız ile
+              <strong> {talep.firmaAdi || 'müşterimiz'} </strong>
+              arasında yürürlükte bulunan bakım anlaşması kapsamında ifa edilmiş olup,
+              hizmet karşılığında herhangi bir bedel tahsil edilmemiştir.
+            </p>
+          </div>
+        )}
 
         {/* Uyarı bandı — proforma resmî belge değildir */}
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: 18 }}>
@@ -152,20 +187,38 @@ export default function ProformaYazdir() {
                 <td>
                   <span style={{ fontWeight: 600 }}>{k.urunAdi}</span>
                   {k.stokKodu && <span style={{ color: '#94a3b8', fontSize: 10.5 }}> · {k.stokKodu}</span>}
+                  {k.aciklama && (
+                    <div style={{ color: '#64748b', fontSize: 10.5, marginTop: 2 }}>{k.aciklama}</div>
+                  )}
                 </td>
                 <td className="r">{k.miktar} {k.birim}</td>
-                <td className="r">{ps}{fmt(k.birimFiyat)}</td>
+                {/* Bedelsiz belgede rakam basmak yanıltıcı olur — "—" yazılır */}
+                <td className="r">{bedelsiz ? '—' : `${ps}${fmt(k.birimFiyat)}`}</td>
                 {kalemler.some(x => (x.iskontoOran || 0) > 0) && (
                   <td className="r">{k.iskontoOran ? `%${k.iskontoOran}` : '—'}</td>
                 )}
-                <td className="r">%{k.kdvOran ?? 20}</td>
-                <td className="r" style={{ fontWeight: 700 }}>{ps}{fmt(k.satirToplam)}</td>
+                <td className="r">{bedelsiz ? '—' : `%${k.kdvOran ?? 20}`}</td>
+                <td className="r" style={{ fontWeight: 700 }}>
+                  {bedelsiz ? '—' : `${ps}${fmt(k.satirToplam)}`}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Toplamlar */}
+        {/* Toplamlar — bedelsizde ₺0,00 yerine tek satır "BEDELSİZ" */}
+        {bedelsiz ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 22 }}>
+            <div style={{ width: 300, background: '#eff6ff', border: `2px solid ${MAVI}`, borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, color: MAVI }}>
+                <span>GENEL TOPLAM</span><span>BEDELSİZ</span>
+              </div>
+              <p style={{ fontSize: 10.5, color: '#1e3a5f', marginTop: 6, lineHeight: 1.5 }}>
+                Bakım anlaşması kapsamında ifa edilmiştir; bedel tahsil edilmemiştir.
+              </p>
+            </div>
+          </div>
+        ) : (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 22 }}>
           <div style={{ width: 300, background: ACIK, borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: '#475569' }}>
@@ -186,6 +239,7 @@ export default function ProformaYazdir() {
             )}
           </div>
         </div>
+        )}
 
         {/* Alt bilgi */}
         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
