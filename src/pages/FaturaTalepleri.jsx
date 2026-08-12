@@ -201,13 +201,22 @@ export default function FaturaTalepleri() {
                       {/* Bakım kapsamındaki iş ₺0,00 diye "eksik" görünmesin —
                           bedel alınmadığı açıkça yazılır (mig 282). */}
                       <td className="tabular-nums" style={{ ...hucre, fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'right' }}>
-                        {t.bedelsiz
-                          ? (
-                            <span title={t.bedelsizSebep || 'Bakım anlaşması kapsamında'}>
-                              <Badge tone="bilgi">BEDELSİZ</Badge>
-                            </span>
-                          )
-                          : fmtPara(t.genelToplam, t.paraBirimi)}
+                        {/* ⚠️ ₺0,00 "bedava" demek; tutarı GİRİLMEMİŞ proformada
+                            rakam basmak yanıltıyor. Üç ayrı durum var. */}
+                        {t.bedelsiz ? (
+                          <span title={t.bedelsizSebep || 'Bakım anlaşması kapsamında'}>
+                            <Badge tone="bilgi">BEDELSİZ</Badge>
+                          </span>
+                        ) : Number(t.genelToplam) > 0 ? (
+                          fmtPara(t.genelToplam, t.paraBirimi)
+                        ) : (
+                          <span
+                            title="Tutar henüz girilmedi — fatura kesilirken girilecek"
+                            style={{ font: '500 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}
+                          >
+                            tutar girilmedi
+                          </span>
+                        )}
                       </td>
                       <td style={hucre}>{t.talepEdenAd || '—'}</td>
                       <td style={{ ...hucre, whiteSpace: 'nowrap' }}>{fmtTarih(t.talepTarihi)}</td>
@@ -238,6 +247,7 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
   const [odemeSekli, setOdemeSekli] = useState(talep.odemeSekli || '')
   // Servis kaynaklı proforma 0 TL açılır — tutarı muhasebe kesim anında girer
   const tutarYok = !(Number(talep.genelToplam) > 0)
+  const tutarGirilmis = !tutarYok
   const [araTutar, setAraTutar] = useState('')
   const [kdvTutar, setKdvTutar] = useState('')
   const [dosya, setDosya] = useState(null)
@@ -528,14 +538,20 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 {' '}Kesilen faturanın tutarını aşağıdaki <strong>Kesilen Fatura</strong> bölümünde gireceksiniz.
               </div>
             )}
+            {/* Aynı kural detayda da geçerli: tutarsız proformada ₺0,00 basma */}
             <div style={{ background: 'var(--surface-sunken)', borderRadius: 8, padding: '10px 12px' }}>
-              {[['Ara toplam', talep.araToplam], ['KDV', talep.kdvToplam]].map(([k, v]) => (
+              {tutarGirilmis && [['Ara toplam', talep.araToplam], ['KDV', talep.kdvToplam]].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', font: '400 12.5px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
                   <span>{k}</span><span>{fmtPara(v, talep.paraBirimi)}</span>
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', font: '700 15px/24px var(--font-sans)', borderTop: '1px solid var(--border-default)', marginTop: 4, paddingTop: 4 }}>
-                <span>Fatura Tutarı</span><span>{fmtPara(talep.genelToplam, talep.paraBirimi)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', font: '700 15px/24px var(--font-sans)', borderTop: tutarGirilmis ? '1px solid var(--border-default)' : 'none', marginTop: tutarGirilmis ? 4 : 0, paddingTop: tutarGirilmis ? 4 : 0 }}>
+                <span>Fatura Tutarı</span>
+                <span style={!tutarGirilmis ? { font: '600 12.5px/24px var(--font-sans)', color: talep.bedelsiz ? 'var(--info)' : 'var(--text-tertiary)' } : undefined}>
+                  {talep.bedelsiz ? 'BEDELSİZ'
+                    : tutarGirilmis ? fmtPara(talep.genelToplam, talep.paraBirimi)
+                    : 'tutar girilmedi'}
+                </span>
               </div>
               {talep.odemeSekli && (
                 <div style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
