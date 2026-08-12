@@ -15,6 +15,31 @@ const sayi = (v) => {
   return Number.isFinite(n) ? n : 0
 }
 
+// "12.000" / "1.250.000" — noktayla ayrılmış TAM üçlü gruplar: TR yazımında
+// binlik ayracı. "1250.50" ve "0.5" bu kalıba uymaz, ondalık kalır.
+const TR_BINLIK = /^-?\d{1,3}(\.\d{3})+$/
+
+/**
+ * Kullanıcının YAZDIĞI metni sayıya çevirir — ekrandan gelen ham girdi için.
+ * "1.250,50" · "1250,50" · "1250.50" aynı tutardır.
+ *
+ * ⚠️ Yukarıdaki `sayi()` düz `Number()`; DB'den gelen sayısal değerler için.
+ * Virgüllü metni NaN→0 yapar, o yüzden ekran girdisi ÖNCE buradan geçmeli.
+ *
+ * ⚠️ "12.000" TUZAĞI: düz `parseFloat` bunu 12 okur. Fatura tutarında 12 TL ile
+ * 12.000 TL arasındaki fark bir yazım tercihine bırakılamaz.
+ */
+export const sayiCoz = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+  const s = String(v ?? '').trim()
+  if (!s) return 0
+  const ham = s.includes(',') ? s.replace(/\./g, '').replace(',', '.')
+    : TR_BINLIK.test(s) ? s.replace(/\./g, '')
+    : s
+  const n = parseFloat(ham)
+  return Number.isFinite(n) ? n : 0
+}
+
 // Kuruşa yuvarlama. Belgede gösterilen her tutar yuvarlanmış hâliyle toplanır;
 // aksi hâlde müşteri belgeyi hesap makinesiyle kontrol ettiğinde tutmaz —
 // eski çıktıda "brüt 5.852,50 − iskonto 27,63 = ara 5.824,88" yazıyordu (1 kuruş

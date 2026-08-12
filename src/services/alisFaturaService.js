@@ -9,8 +9,13 @@
 
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
+import { sayiCoz } from '../lib/teklifHesap'
 
 const BUCKET = 'alis-fatura-belge'
+
+// ⚠️ Tutarlar ekrandan METİN gelir. Düz `Number("1.429,50")` NaN üretir ve
+// `|| 0` ile sessizce sıfıra düşerdi — TR yazımını `sayiCoz` çözer.
+const tutar = (v) => (v === '' || v == null ? null : sayiCoz(v))
 
 /**
  * Tedarikçi cari kartlarının kod desenleri (musteriler tablosunda; ayrı bir
@@ -136,9 +141,9 @@ export const alisFaturaEkle = async ({ siparis, tedarikci, form, file, kullanici
     fatura_tarihi: form.faturaTarihi || null,
     ettn: form.ettn?.trim() || null,
     para_birimi: form.paraBirimi || 'TL',
-    ara_toplam: form.araToplam === '' || form.araToplam == null ? null : Number(form.araToplam),
-    kdv_toplam: form.kdvToplam === '' || form.kdvToplam == null ? null : Number(form.kdvToplam),
-    genel_toplam: Number(form.genelToplam) || 0,
+    ara_toplam: tutar(form.araToplam),
+    kdv_toplam: tutar(form.kdvToplam),
+    genel_toplam: sayiCoz(form.genelToplam),
     aciklama: form.aciklama?.trim() || null,
     dosya_yol: yol,
     dosya_ad: file.name,
@@ -189,9 +194,9 @@ export const alisFaturaDuzenle = async ({ kayit, tedarikci, form, file }) => {
     fatura_no: form.faturaNo.trim(),
     fatura_tarihi: form.faturaTarihi || null,
     para_birimi: form.paraBirimi || 'TL',
-    ara_toplam: form.araToplam === '' || form.araToplam == null ? null : Number(form.araToplam),
-    kdv_toplam: form.kdvToplam === '' || form.kdvToplam == null ? null : Number(form.kdvToplam),
-    genel_toplam: Number(form.genelToplam) || 0,
+    ara_toplam: tutar(form.araToplam),
+    kdv_toplam: tutar(form.kdvToplam),
+    genel_toplam: sayiCoz(form.genelToplam),
     aciklama: form.aciklama?.trim() || null,
   }
   if (yeniYol) { patch.dosya_yol = yeniYol; patch.dosya_ad = file.name }

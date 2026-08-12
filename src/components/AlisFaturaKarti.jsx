@@ -15,6 +15,11 @@ import {
   alisFaturalariGetir, alisFaturaEkle, alisFaturaDuzenle, alisFaturaSil, alisFaturaDosyaUrl,
   tedarikciAra, tedarikToplami,
 } from '../services/alisFaturaService'
+import { sayiCoz } from '../lib/teklifHesap'
+import {
+  KDV_ORANLARI, ORAN_ELLE, tutarAlaniYazildi, oranDegistirildi,
+  ucluTutarli, ucluSapmasi, oraniTahminEt,
+} from '../lib/tutarUclusu'
 
 const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
 const fmtPara = (n, pb = 'TL') =>
@@ -194,8 +199,40 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
   const [serbest, setSerbest] = useState(() => !!mevcut && !mevcut.tedarikciMusteriId)
   const [dosya, setDosya] = useState(null)
   const [mesgul, setMesgul] = useState(false)
+  // Kayıtlı faturayı açarken oran tutarlardan geri okunur; standart bir orana
+  // oturmuyorsa "elle" — yanlış oran göstermek, kullanıcı bir alana dokunduğu
+  // anda doğru tutarları bozardı.
+  const [kdvOran, setKdvOran] = useState(() =>
+    mevcut ? oraniTahminEt(mevcut.araToplam, mevcut.kdvToplam) : 20)
 
   const alan = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  /** Bir tutar alanına yazıldı — kural `lib/tutarUclusu` içinde, saf ve testli */
+  const tutarYaz = (hangi, deger) => {
+    const s = tutarAlaniYazildi({
+      hangi, deger,
+      araToplam: form.araToplam, kdvToplam: form.kdvToplam, oran: kdvOran,
+    })
+    setForm(f => ({ ...f, araToplam: s.araToplam, kdvToplam: s.kdvToplam, genelToplam: s.genelToplam }))
+    if (s.oran !== kdvOran) setKdvOran(s.oran)
+  }
+
+  const oranDegistir = (yeni) => {
+    const oran = yeni === ORAN_ELLE ? ORAN_ELLE : Number(yeni)
+    setKdvOran(oran)
+    const s = oranDegistirildi({ yeniOran: oran, araToplam: form.araToplam, genelToplam: form.genelToplam })
+    if (s) setForm(f => ({ ...f, ...s }))
+  }
+
+  // Üç rakam birbirini tutuyor mu? (kalem yuvarlamasından 1-2 kuruş normal)
+  const tutarUyari = (() => {
+    const dolu = sayiCoz(form.araToplam) > 0 || sayiCoz(form.kdvToplam) > 0
+    if (!dolu || !(sayiCoz(form.genelToplam) > 0)) return null
+    if (ucluTutarli(form.araToplam, form.kdvToplam, form.genelToplam)) return null
+    const sapma = ucluSapmasi(form.araToplam, form.kdvToplam, form.genelToplam)
+    return `Mal/hizmet + KDV = ${fmtPara(sayiCoz(form.araToplam) + sayiCoz(form.kdvToplam), form.paraBirimi)}, `
+      + `ödenecek tutar ${fmtPara(form.genelToplam, form.paraBirimi)} — ${fmtPara(Math.abs(sapma), form.paraBirimi)} fark var.`
+  })()
 
   // Tedarikçi arama — yazarken gecikmeli sorgu
   useEffect(() => {
@@ -331,22 +368,64 @@ function AlisFaturaModal({ siparis, kullanici, mevcut, onKapat, onKaydedildi }) 
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          <div>
-            <Label>Mal/hizmet toplamı</Label>
-            <Input type="number" step="0.01" value={form.araToplam}
-              onChange={e => alan('araToplam', e.target.value)} placeholder="1429,50" />
+        {/* ---- Tutarlar: hangi rakamı biliyorsan onu yaz, diğerleri hesaplansın ----
+            Belgeye göre bazen matrah, bazen yalnız ödenecek tutar öne çıkar.
+            Üçünü de elle doldurmak yavaştı ve aritmetik hatası fark edilmiyordu. */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+            <Label style={{ margin: 0 }}>Tutarlar</Label>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>KDV oranı</span>
+              <select value={String(kdvOran)} onChange={e => oranDegistir(e.target.value)}
+                style={{
+                  height: 30, borderRadius: 'var(--radius-md)', padding: '0 8px',
+                  border: '1px solid var(--border-default)', background: 'var(--surface-card)',
+                  color: 'var(--text-primary)', font: '400 12.5px/1 var(--font-sans)',
+                }}>
+                {KDV_ORANLARI.map(o => <option key={o} value={String(o)}>%{o}</option>)}
+                <option value={ORAN_ELLE}>Karışık / elle</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <Label>KDV</Label>
-            <Input type="number" step="0.01" value={form.kdvToplam}
-              onChange={e => alan('kdvToplam', e.target.value)} placeholder="285,90" />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            <div>
+              <Label>Mal/hizmet toplamı</Label>
+              <Input inputMode="decimal" value={form.araToplam}
+                onChange={e => tutarYaz('ara', e.target.value)} placeholder="1.429,50" />
+            </div>
+            <div>
+              <Label>KDV</Label>
+              <Input inputMode="decimal" value={form.kdvToplam}
+                onChange={e => tutarYaz('kdv', e.target.value)} placeholder="285,90" />
+            </div>
+            <div>
+              <Label>Ödenecek tutar *</Label>
+              <Input inputMode="decimal" value={form.genelToplam}
+                onChange={e => tutarYaz('genel', e.target.value)} placeholder="1.715,40" />
+            </div>
           </div>
-          <div>
-            <Label>Ödenecek tutar *</Label>
-            <Input type="number" step="0.01" value={form.genelToplam}
-              onChange={e => alan('genelToplam', e.target.value)} placeholder="1715,40" />
-          </div>
+
+          {/* Yazılan üç rakam birbirini tutmalı — kimse fark etmiyordu */}
+          {tutarUyari && (
+            <div style={{
+              marginTop: 6, padding: '6px 10px', borderRadius: 'var(--radius-md)',
+              background: 'var(--warning-soft)', border: '1px solid var(--warning)',
+              color: 'var(--warning)', font: '400 11.5px/17px var(--font-sans)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap',
+            }}>
+              <span>{tutarUyari}</span>
+              <Button variant="ghost" size="sm" onClick={() => tutarYaz('ara', form.araToplam)}>
+                Orana göre düzelt
+              </Button>
+            </div>
+          )}
+          {kdvOran !== ORAN_ELLE && !tutarUyari && (
+            <div style={{ marginTop: 5, fontSize: 11.5, color: 'var(--text-tertiary)' }}>
+              Bir alana yazın, kalan ikisi %{kdvOran} üzerinden hesaplanır. Karışık oranlı
+              faturada "Karışık / elle" seçin.
+            </div>
+          )}
         </div>
 
         <div>

@@ -12,34 +12,11 @@
 // `kdvOran` kullanır, `teklifHesap` ise `iskonto`/`kdv`. Çeviri burada yapılır —
 // iki şemayı ekranın içinde karıştırmak sessiz sıfırlama üretir.
 
-import { teklifHesapla, r2 } from './teklifHesap'
+import { teklifHesapla, r2, sayiCoz } from './teklifHesap'
 
-// "12.000" / "1.250.000" — noktayla ayrılmış TAM üçlü gruplar. TR yazımında bu
-// binlik ayracıdır. "1250.50" ve "0.5" bu kalıba UYMAZ, ondalık kalır.
-const TR_BINLIK = /^-?\d{1,3}(\.\d{3})+$/
-
-/**
- * Kullanıcının yazdığı metni sayıya çevirir. TR klavye gerçeği: "1.250,50",
- * "1250,50" ve "1250.50" aynı tutardır.
- *
- * ⚠️ `teklifHesap.sayi` düz `Number()` — virgüllü girişi NaN→0 yapar. Ekrandan
- * gelen ham string bu yüzden ÖNCE burada çözülür.
- *
- * ⚠️ "12.000" TUZAĞI: düz `parseFloat` bunu 12 okur. Fatura tutarında 12 TL ile
- * 12.000 TL arasındaki fark bir yazım tercihine bırakılamaz — noktalar tam üçlü
- * grup oluşturuyorsa binlik ayracı sayılır. Yorumun doğru olduğunu kullanıcı
- * ekrandaki canlı toplamdan görür.
- */
-export const sayiCoz = (v) => {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
-  const s = String(v ?? '').trim()
-  if (!s) return 0
-  const ham = s.includes(',') ? s.replace(/\./g, '').replace(',', '.')
-    : TR_BINLIK.test(s) ? s.replace(/\./g, '')
-    : s
-  const n = parseFloat(ham)
-  return Number.isFinite(n) ? n : 0
-}
+// Ekran girdisi çözücü `teklifHesap`'ta — tedarikçi fatura modalı da aynı
+// kuralı kullanıyor, iki kopya "12.000" tuzağını iki farklı yerde çözerdi.
+export { sayiCoz }
 
 // KDV: boş bırakılırsa %20, açıkça 0 yazılırsa 0 (`|| 20` kalıbı 0'ı yutuyordu)
 const kdvCoz = (v) => (v === null || v === undefined || v === '' ? 20 : sayiCoz(v))
