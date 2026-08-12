@@ -402,6 +402,64 @@ export const faturayiKaydet = async ({ talep, faturaNo, faturaTarihi, dosya, irs
   return kesilen
 }
 
+/**
+ * BEDELSİZ KAPATMA (mig 282) — bakım anlaşması kapsamındaki iş.
+ *
+ * Neden ayrı fonksiyon: `faturayiKaydet` fatura numarası ve 0'dan büyük tutar
+ * ŞART koşuyor (0 TL ciro kaydını engellemek için, FTL-25 olayı). Bakım
+ * kapsamındaki işte bedel alınmadığı için o kapıdan geçemiyordu ve proformalar
+ * kuyrukta asılı kalıyordu (canlıda 12 kayıt).
+ *
+ * ⚠️ `satislar` kaydı OLUŞTURULMAZ — kullanıcı kararı (12.08.2026): bedelsiz iş
+ * ciroya girmemeli. Bu yüzden `satis_id` boş kalır, `fatura_no` boş kalır.
+ * Kayıt "faturalandi" durumuna geçer ama `bedelsiz=true` ile ayırt edilir.
+ */
+export const bedelsizKapat = async ({ talep, kullanici, sebep }) => {
+  if (talep?.durum !== 'bekliyor') {
+    return { _hata: 'Yalnızca bekleyen proforma bedelsiz kapatılabilir.' }
+  }
+  if (Number(talep?.genelToplam) > 0) {
+    return { _hata: 'Bu proformada tutar girilmiş. Bedelsiz kapatmak için önce tutarı sıfırlayın.' }
+  }
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({
+      durum: 'faturalandi',
+      bedelsiz: true,
+      bedelsiz_sebep: (sebep || '').trim() || BEDELSIZ_SEBEP_VARSAYILAN,
+      // Bedel yok: fatura numarası, PDF ve satış kaydı DA yok.
+      fatura_no: null,
+      satis_id: null,
+      fatura_tarihi: new Date().toISOString().slice(0, 10),
+      faturalayan_id: kullanici?.id ?? null,
+      faturalayan_ad: kullanici?.ad ?? '',
+      faturalama_tarihi: new Date().toISOString(),
+      red_nedeni: null,
+    })
+    .eq('id', talep.id)
+    .eq('durum', 'bekliyor')   // yarış koruması: iki sekmeden aynı anda kapatma
+    .select()
+    .single()
+  if (error) { console.error('[bedelsizKapat]', error.message); return { _hata: error.message } }
+
+  const kapanan = toCamel(data)
+  await talepEdeneBildir(kapanan, 'faturalandi')
+  return kapanan
+}
+
+/** Bedelsiz işaretini kaldır — iş aslında ücretliyse normal kesime döner. */
+export const bedelsizIsaretiniKaldir = async (talepId) => {
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ bedelsiz: false, bedelsiz_sebep: null })
+    .eq('id', talepId)
+    .eq('durum', 'bekliyor')
+    .select()
+    .single()
+  if (error) { console.error('[bedelsizIsaretiniKaldir]', error.message); return { _hata: error.message } }
+  return toCamel(data)
+}
+
 // Fatura kesilince adminlere bildir ("Fatura bizim bilgimiz olmalı")
 async function adminlereFaturaKesildiBildir(talep) {
   try {
@@ -535,6 +593,16 @@ export const tekliftenTalep = (teklif, musteri, kullanici) => {
  * muhasebe NE faturalanacağını görsün (FTL-2026-000025: bomboş proforma
  * "hata" sanılmıştı).
  */
+/** Bakım kapsamı = servisin yükümlülüğü "bakım". Tek yerde tanımlı. */
+export const bakimKapsamiMi = (servis) =>
+  String(servis?.yukumluluk || '').trim().toLocaleLowerCase('tr') === 'bakim'
+
+export const BEDELSIZ_SEBEP_VARSAYILAN = 'Bakım anlaşması kapsamında'
+
+const bakimBedelsizAlanlari = (servis) => (bakimKapsamiMi(servis)
+  ? { bedelsiz: true, bedelsizSebep: BEDELSIZ_SEBEP_VARSAYILAN }
+  : { bedelsiz: false, bedelsizSebep: null })
+
 export const servistenTalep = (servis, musteri, kullanici, not = '', malzemeler = []) => ({
   servisTalepId: servis.id ? Number(servis.id) : null,
   teklifId: null,
@@ -550,6 +618,11 @@ export const servistenTalep = (servis, musteri, kullanici, not = '', malzemeler 
   konu: servis.konu ? `Servis: ${servis.konu}` : 'Servis faturası',
   paraBirimi: 'TL',
   dovizKuru: null,
+  // BAKIM KAPSAMI (mig 282): yükümlülüğü "bakım" olan işte bedel alınmaz.
+  // Proforma bedelsiz açılır; fatura yetkilisi kesim anında kaldırabilir.
+  // ⚠️ Sözleşme tablosuna BAKILMIYOR — orada tek aktif bakım sözleşmesi var,
+  // bakım servisi verilen diğer firmalar kayıtlı değil (bkz. mig 282 notu).
+  ...bakimBedelsizAlanlari(servis),
   // Serviste kullanılan malzemeler — fiyatsız anlık görüntü (fiyat muhasebede)
   kalemler: (malzemeler || []).map(m => ({
     stokKodu: m.stokKodu || '',

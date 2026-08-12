@@ -28,7 +28,7 @@ import {
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
-  faturaIcinServisBilgisi,
+  faturaIcinServisBilgisi, bedelsizKapat, bedelsizIsaretiniKaldir,
   faturaDosyaUrl, irsaliyeKaydet, faturaPdfDegistir, faturaPdfSil, irsaliyeSil,
   faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
@@ -198,7 +198,17 @@ export default function FaturaTalepleri() {
                       <td style={hucre}><CodeBadge>{t.talepNo}</CodeBadge></td>
                       <td style={{ ...hucre, fontWeight: 500 }}>{t.firmaAdi}</td>
                       <td style={hucre}>{t.teklifNo || '—'}</td>
-                      <td className="tabular-nums" style={{ ...hucre, fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'right' }}>{fmtPara(t.genelToplam, t.paraBirimi)}</td>
+                      {/* Bakım kapsamındaki iş ₺0,00 diye "eksik" görünmesin —
+                          bedel alınmadığı açıkça yazılır (mig 282). */}
+                      <td className="tabular-nums" style={{ ...hucre, fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                        {t.bedelsiz
+                          ? (
+                            <span title={t.bedelsizSebep || 'Bakım anlaşması kapsamında'}>
+                              <Badge tone="bilgi">BEDELSİZ</Badge>
+                            </span>
+                          )
+                          : fmtPara(t.genelToplam, t.paraBirimi)}
+                      </td>
                       <td style={hucre}>{t.talepEdenAd || '—'}</td>
                       <td style={{ ...hucre, whiteSpace: 'nowrap' }}>{fmtTarih(t.talepTarihi)}</td>
                       {sekme === 'faturalandi' && <td style={hucre}><CodeBadge>{t.faturaNo}</CodeBadge></td>}
@@ -290,6 +300,35 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
     } finally {
       setMesgul(false)
     }
+  }
+
+  // Bakım kapsamında bedelsiz kapatma — fatura no/tutar istemez, ciro kaydı yok
+  const bedelsizOnayla = async () => {
+    const onay = await confirm({
+      baslik: 'Bakım Kapsamında Kapat',
+      mesaj: `${talep.talepNo} · ${talep.firmaAdi}\n\n`
+        + `Bu iş "${talep.bedelsizSebep || 'Bakım anlaşması kapsamında'}" olarak kapatılacak. `
+        + 'Fatura numarası girilmeyecek ve satış/ciro kaydı OLUŞMAYACAK. Devam edilsin mi?',
+      onayMetin: 'Bedelsiz kapat', iptalMetin: 'Vazgeç',
+    })
+    if (!onay) return
+    setMesgul(true)
+    try {
+      const sonuc = await bedelsizKapat({ talep, kullanici })
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success(`${talep.talepNo} bakım kapsamında kapatıldı — ciro kaydı oluşmadı.`)
+      onTamamlandi()
+    } finally { setMesgul(false) }
+  }
+
+  const bedelsizKaldir = async () => {
+    setMesgul(true)
+    try {
+      const sonuc = await bedelsizIsaretiniKaldir(talep.id)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('Bedelsiz işareti kaldırıldı — normal fatura kesimi açıldı.')
+      onTamamlandi()
+    } finally { setMesgul(false) }
   }
 
   const reddet = async () => {
@@ -605,8 +644,38 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
           </div>
         </div>
 
+        {/* ---- BEDELSİZ KAPATMA (mig 282) ----
+            Bakım anlaşması kapsamındaki işte bedel alınmaz. Fatura numarası ve
+            tutar İSTENMEZ, satış/ciro kaydı OLUŞMAZ. Eskiden bu proformalar
+            0 TL olduğu için kesilemiyor, kuyrukta asılı kalıyordu (12 kayıt). */}
+        {bekliyor && talep.bedelsiz && (
+          <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14 }}>
+            <div style={baslikSt}>Bakım Kapsamı — Bedelsiz</div>
+            <div style={{
+              background: 'var(--info-soft)', border: '1px solid var(--info)',
+              borderRadius: 'var(--radius-md)', padding: 12, marginBottom: 12,
+            }}>
+              <div style={{ font: '600 13px/19px var(--font-sans)', color: 'var(--info)' }}>
+                Bu iş {talep.bedelsizSebep || 'bakım anlaşması kapsamında'} — bedel alınmıyor.
+              </div>
+              <div style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)', marginTop: 4 }}>
+                Kapattığınızda fatura numarası ve tutar istenmez, satış kaydı oluşmaz.
+                Bu iş ücretliyse önce bedelsiz işaretini kaldırın.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button onClick={bedelsizOnayla} disabled={mesgul}>
+                <CheckCircle2 size={15} /> Bakım kapsamında kapat
+              </Button>
+              <Button variant="ghost" onClick={bedelsizKaldir} disabled={mesgul}>
+                Bedelsiz değil, faturalanacak
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* ---- Faturalama ---- */}
-        {bekliyor && (
+        {bekliyor && !talep.bedelsiz && (
           <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14 }}>
             <div style={baslikSt}>Kesilen Fatura</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
