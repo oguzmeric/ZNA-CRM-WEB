@@ -67,9 +67,19 @@ export default function ProformaYazdir() {
           thead { display: table-header-group; }
           tr { page-break-inside: avoid; }
         }
-        .sayfa { max-width: 800px; margin: 0 auto; padding: 28px; position: relative; }
+        /* Sayfa dikey flex: alt bilgi (duzenleme tarihi + ust cizgisi) icerik
+           kisa kalsa bile SAYFANIN DIBINE oturur — eskiden toplam blogunun
+           hemen altinda, sayfanin ortasinda asili duruyordu (12.08).
+           Ayni desen ServisFormu'nda da kullaniliyor. */
+        .sayfa { max-width: 800px; margin: 0 auto; padding: 28px; position: relative;
+          display: flex; flex-direction: column; }
+        .alt-bilgi { margin-top: auto; padding-top: 18px; }
         /* ekranda sabit Yazdir/Kapat butonlari basliga binmesin; ciktida bosluk yok */
-        @media screen { .sayfa { margin-top: 56px; } }
+        @media screen { .sayfa { margin-top: 56px; min-height: calc(100vh - 56px); } }
+        /* A4 yuksekligi eksi @page marjlari (297 - 14 - 16). box-sizing:border-box
+           oldugu icin 28px padding bu yukseklige DAHIL — tasma olmaz.
+           ⚠️ padding'e DOKUNMA: sifirlanirsa icerik sayfa kenarina yapisir. */
+        @media print { .sayfa { min-height: 267mm; } }
         table { width: 100%; border-collapse: collapse; }
         .kalem th { background: ${MAVI}; color: #fff; font-size: 10.5px; font-weight: 700;
           text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; text-align: left; }
@@ -246,7 +256,7 @@ export default function ProformaYazdir() {
             • "Düzenleyen: <personel adı>" müşteriye giden belgede iç personel
               ismi demek — kurum adına düzenlenir, kişi adına değil.
             • Fiyat/stok şartı BEDELSİZ belgede anlamsız: ortada bedel yok. */}
-        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+        <div className="alt-bilgi" style={{ borderTop: '1px solid #e2e8f0' }}>
           {!bedelsiz && (
             <p style={{ fontSize: 10, color: '#94a3b8' }}>
               Fiyatlar belirtilen para birimindedir; aksi kararlaştırılmadıkça KDV dahildir
