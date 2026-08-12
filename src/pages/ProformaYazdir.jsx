@@ -241,17 +241,21 @@ export default function ProformaYazdir() {
         </div>
         )}
 
-        {/* Alt bilgi */}
-        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
+        {/* Alt bilgi — 12.08 sadeleştirildi (kullanıcı: "bu yazılara gerek var mı?")
+            • Belge no ÜST ŞERİTTE zaten var; altta tekrarı gürültüydü.
+            • "Düzenleyen: <personel adı>" müşteriye giden belgede iç personel
+              ismi demek — kurum adına düzenlenir, kişi adına değil.
+            • Fiyat/stok şartı BEDELSİZ belgede anlamsız: ortada bedel yok. */}
+        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+          {!bedelsiz && (
             <p style={{ fontSize: 10, color: '#94a3b8' }}>
-              Düzenleyen: {talep.talepEdenAd || '—'} · {tarih(talep.olusturmaTarih)}
+              Fiyatlar belirtilen para birimindedir; aksi kararlaştırılmadıkça KDV dahildir
+              ve stok durumuna bağlı olarak değişebilir.
             </p>
-            <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-              Fiyatlar belirtilen para birimindedir; aksi kararlaştırılmadıkça KDV dahildir ve stok durumuna bağlı olarak değişebilir.
-            </p>
-          </div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: MAVI }}>{talep.talepNo}</p>
+          )}
+          <p style={{ fontSize: 10, color: '#94a3b8', marginTop: bedelsiz ? 0 : 2 }}>
+            Düzenleme tarihi: {tarih(talep.olusturmaTarih)}
+          </p>
         </div>
       </div>
     </>
