@@ -447,6 +447,30 @@ export const bedelsizKapat = async ({ talep, kullanici, sebep }) => {
   return kapanan
 }
 
+/**
+ * Bedelsiz olarak İŞARETLE — kaldırma işleminin geri alması.
+ * ⚠️ Bu yol olmadan işaret tek yönlüydü: yanlışlıkla "faturalanacak" denince
+ * geri dönmek için veritabanına girmek gerekiyordu (12.08 canlı vaka:
+ * FTL-2026-000037/38). Tutar girilmişse engellenir — o iş artık ücretlidir.
+ */
+export const bedelsizIsaretle = async (talepId, sebep) => {
+  const { data: mevcut } = await supabase
+    .from('fatura_talepleri').select('genel_toplam, durum').eq('id', talepId).maybeSingle()
+  if (mevcut?.durum !== 'bekliyor') return { _hata: 'Yalnızca bekleyen proforma işaretlenebilir.' }
+  if (Number(mevcut?.genel_toplam) > 0) {
+    return { _hata: 'Bu proformada tutar girilmiş. Bedelsiz yapmak için önce tutarı temizleyin.' }
+  }
+  const { data, error } = await supabase
+    .from('fatura_talepleri')
+    .update({ bedelsiz: true, bedelsiz_sebep: (sebep || '').trim() || BEDELSIZ_SEBEP_VARSAYILAN })
+    .eq('id', talepId)
+    .eq('durum', 'bekliyor')
+    .select()
+    .single()
+  if (error) { console.error('[bedelsizIsaretle]', error.message); return { _hata: error.message } }
+  return toCamel(data)
+}
+
 /** Bedelsiz işaretini kaldır — iş aslında ücretliyse normal kesime döner. */
 export const bedelsizIsaretiniKaldir = async (talepId) => {
   const { data, error } = await supabase

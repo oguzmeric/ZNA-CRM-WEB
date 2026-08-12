@@ -28,7 +28,7 @@ import {
 import { ODEME_TIPLERI_SS } from '../lib/satisSozlesmeMaddeleri'
 import {
   faturaTalepleriGetir, faturayiKaydet, faturaTalebiReddet, faturaTalebiGeriAl,
-  faturaIcinServisBilgisi, bedelsizKapat, bedelsizIsaretiniKaldir,
+  faturaIcinServisBilgisi, bedelsizKapat, bedelsizIsaretiniKaldir, bedelsizIsaretle,
   faturaDosyaUrl, irsaliyeKaydet, faturaPdfDegistir, faturaPdfSil, irsaliyeSil,
   faturaYetkisi, FATURA_TALEP_DURUM_META,
 } from '../services/faturaTalepService'
@@ -337,6 +337,17 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
       const sonuc = await bedelsizIsaretiniKaldir(talep.id)
       if (sonuc?._hata) { toast.error(sonuc._hata); return }
       toast.success('Bedelsiz işareti kaldırıldı — normal fatura kesimi açıldı.')
+      onTamamlandi()
+    } finally { setMesgul(false) }
+  }
+
+  // Geri alma yolu — bkz. bedelsizIsaretle (tek yönlü işaret sorunu, 12.08)
+  const bedelsizYap = async () => {
+    setMesgul(true)
+    try {
+      const sonuc = await bedelsizIsaretle(talep.id)
+      if (sonuc?._hata) { toast.error(sonuc._hata); return }
+      toast.success('Bakım kapsamı (bedelsiz) olarak işaretlendi.')
       onTamamlandi()
     } finally { setMesgul(false) }
   }
@@ -687,6 +698,9 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                 Bedelsiz değil, faturalanacak
               </Button>
             </div>
+            <p className="t-caption" style={{ margin: '8px 0 0', color: 'var(--text-tertiary)' }}>
+              "Bedelsiz değil" dersen tutar alanları açılır; oradan tekrar bakım kapsamına alabilirsin.
+            </p>
           </div>
         )}
 
@@ -799,6 +813,13 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
                     iconLeft={<XCircle size={14} strokeWidth={1.5} />}>
                     Proformayı Reddet
                   </Button>
+                  {/* Geri dönüş yolu: tutar girilmemiş bir işin aslında bakım
+                      kapsamında olduğu sonradan anlaşılabilir (12.08 vakası). */}
+                  {tutarYok && (
+                    <Button variant="ghost" onClick={bedelsizYap} disabled={mesgul}>
+                      Bakım kapsamı (bedelsiz) yap
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
