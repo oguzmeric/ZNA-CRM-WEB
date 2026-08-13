@@ -1,10 +1,8 @@
 import { useState, useRef, useMemo } from 'react'
 import { Input } from './ui'
-
-const trNormalize = (s = '') =>
-  String(s).toLocaleLowerCase('tr')
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+// Normalizasyon ortak modülde: lokasyon seçicisi de aynı kuralı kullanıyor,
+// iki kopya zamanla ayrışırdı (aynı arama farklı sonuç verirdi).
+import { trNormalize } from '../lib/trArama'
 
 // CustomSelect görsel diliyle uyumlu, serbest metin girişi + öneri dropdown.
 // allowNew=true → yazılan metin listede yoksa altta "+ ... ekle" satırı çıkar.

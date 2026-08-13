@@ -16,6 +16,7 @@ import {
 import { Button, Card, Input, Select, Textarea, Label } from '../components/ui'
 import ComboBox from '../components/ComboBox'
 import CokluSelect from '../components/CokluSelect'
+import LokasyonSecici from '../components/LokasyonSecici'
 
 const ONCELIKLER = [
   { id: 'dusuk', ad: 'Düşük' },
@@ -172,10 +173,24 @@ export default function YeniTopluBakim() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <Label>Lokasyon (opsiyonel)</Label>
-              <Select value={form.lokasyonId ?? ''} onChange={set('lokasyonId')} disabled={!form.musteriId}>
-                <option value="">{form.musteriId ? (lokasyonlar.length ? '— Lokasyonsuz (müşteri geneli) —' : 'Lokasyon yok — müşteri geneli') : 'Önce müşteri seçin'}</option>
-                {lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.ad}</option>)}
-              </Select>
+              {/* Düz açılır kutu 83 lokasyonlu müşteride kaydırmalı arama
+                  gerektiriyordu ve uzun adlar kırpılınca ayırt edilemiyordu
+                  (12.08 kullanıcı geri bildirimi). Aramalı seçici: ad + adres
+                  üzerinden arar, satırları kırpmaz. */}
+              <LokasyonSecici
+                lokasyonlar={lokasyonlar}
+                value={form.lokasyonId}
+                onChange={(id) => setForm((f) => ({ ...f, lokasyonId: id }))}
+                disabled={!form.musteriId || lokasyonlar.length === 0}
+                placeholder={!form.musteriId ? 'Önce müşteri seçin'
+                  : lokasyonlar.length === 0 ? 'Lokasyon yok — müşteri geneli'
+                  : `Lokasyon ara ve seç… (${lokasyonlar.length})`}
+                // Adres çoğu kayıtta boş; lokasyondaki sistemler daha ayırt edici
+                ipucuVer={(l) => l.adres
+                  || (l.bulunanSistemler?.length
+                    ? l.bulunanSistemler.map((s) => kalemBilgi(s).isim).join(', ')
+                    : '')}
+              />
               {seciliLokasyon?.bulunanSistemler?.length > 0 && (
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
                   Lokasyonda bulunan: {seciliLokasyon.bulunanSistemler.map((s) => kalemBilgi(s).isim).join(', ')}
