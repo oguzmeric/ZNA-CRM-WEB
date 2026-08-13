@@ -19,8 +19,9 @@ import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
-  Button, Input, Textarea, Label, Card, Badge, EmptyState, TarihSaatSecici,
+  Button, Input, Textarea, Label, Card, Badge, EmptyState, TarihSaatSecici, Select,
 } from '../../components/ui'
+import { aktifKonulariGetir } from '../../services/servisKonuService'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
 
@@ -41,6 +42,9 @@ export default function YeniTalep() {
   // Auto-scroll için ref'ler — müşteri tür seçince devamına bakmadan bırakmasın
   const altKategoriRef = useRef(null)
   const devamButonRef = useRef(null)
+  // Konu başlıkları sabit listeden (mig 285) — RLS müşteri tipine de okuma verir
+  const [konular, setKonular] = useState([])
+  useEffect(() => { aktifKonulariGetir().then(d => setKonular(d || [])) }, [])
 
   // Tür değişince alt kategori bölümüne yumuşakça kaydır
   useEffect(() => {
@@ -491,12 +495,16 @@ export default function YeniTalep() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <Label required>Konu başlığı</Label>
-                  <Input
+                  {/* SABİT LİSTE (mig 285) — müşteri de aynı 13 başlıktan seçer,
+                      raporlar baştan temiz gelir. Detay Açıklama'ya yazılır. */}
+                  <Select
                     value={form.konu}
                     onChange={e => guncelle('konu', e.target.value)}
-                    placeholder="Talebinizi kısaca özetleyin"
                     style={hata.konu ? { borderColor: 'var(--danger)' } : {}}
-                  />
+                  >
+                    <option value="">Konu seçin…</option>
+                    {konular.map(k => <option key={k.id} value={k.ad}>{k.ad}</option>)}
+                  </Select>
                   {hata.konu && <p style={{ color: 'var(--danger)', font: '500 11px/16px var(--font-sans)', marginTop: 4 }}>{hata.konu}</p>}
                 </div>
 

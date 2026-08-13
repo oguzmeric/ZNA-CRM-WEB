@@ -13,6 +13,7 @@ import CustomSelect from '../components/CustomSelect'
 import CokluSelect from '../components/CokluSelect'
 import ServisMalzemePlanCard from '../components/ServisMalzemePlanCard'
 import { servisMalzemeEkle } from '../services/servisMalzemeService'
+import { aktifKonulariGetir } from '../services/servisKonuService'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
 } from '../components/ui'
@@ -55,9 +56,12 @@ export default function YeniServisTalebi() {
   // talep oluşunca servis_malzemeleri'ne 'planlanan' olarak aktarılır
   const [malzemeTaslak, setMalzemeTaslak] = useState([])
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
+  // Konu başlıkları sabit listeden (mig 285) — admin Servis Talepleri'nden yönetir
+  const [konular, setKonular] = useState([])
 
   useEffect(() => {
     musterileriGetir().then(d => setMusteriler(d || []))
+    aktifKonulariGetir().then(d => setKonular(d || []))
   }, [])
 
   const teknisyenler = (kullanicilar || []).filter(k => k.tip !== 'musteri')
@@ -269,11 +273,21 @@ export default function YeniServisTalebi() {
 
         <div style={{ marginBottom: 16 }}>
           <Label required>Konu / Başlık</Label>
-          <Input
+          {/* SABİT LİSTE (mig 285): serbest metin kapandı. Konu, rapora
+              ariza_kodu olarak kopyalanıyor ve kategorize edilemiyordu —
+              raporlarda upuzun açıklamalar kolon başlığı olmuştu. Detay
+              aşağıdaki Açıklama alanına yazılır. */}
+          <CustomSelect
             value={form.konu}
             onChange={e => setForm(p => ({ ...p, konu: e.target.value }))}
-            placeholder="Kısa özet — örn: Lobby NVR ekranında görüntü yok"
-          />
+          >
+            <option value="">Konu seçin…</option>
+            {konular.map(k => <option key={k.id} value={k.ad}>{k.ad}</option>)}
+            {/* Eski taslak/düzenlemeden gelen listede olmayan değer kaybolmasın */}
+            {form.konu && !konular.some(k => k.ad === form.konu) && (
+              <option value={form.konu}>{form.konu}</option>
+            )}
+          </CustomSelect>
         </div>
 
         <div style={{ marginBottom: 16 }}>

@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import Sayfalama from '../components/Sayfalama'
+import ServisKonuYonetimModal from '../components/ServisKonuYonetimModal'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
 } from '../components/ui'
@@ -28,6 +29,7 @@ const DURUM_TONE = {
 
 export default function ServisTalepleri() {
   const { kullanici } = useAuth()
+  const [konuYonetimAcik, setKonuYonetimAcik] = useState(false)
   const { talepler, talepSil, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   // Talebi OLUŞTURAN kişi — ayrı kolonu yok, durum geçmişinin ilk kaydından
   // okunur. ⚠️ Anahtar adı web/mobil'de farklı yazılmış: web `kullaniciAd`,
@@ -162,6 +164,7 @@ export default function ServisTalepleri() {
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
+      <ServisKonuYonetimModal acik={konuYonetimAcik} onKapat={() => setKonuYonetimAcik(false)} />
       {/* Header — kompakt tek satır */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -171,6 +174,12 @@ export default function ServisTalepleri() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {/* Konu başlıkları sabit liste (mig 285) — yönetim yalnız admin */}
+          {kullanici?.rol === 'admin' && (
+            <Button variant="tertiary" size="sm" onClick={() => setKonuYonetimAcik(true)}>
+              Konu Başlıkları
+            </Button>
+          )}
           <Button
             variant="primary"
             size="sm"
