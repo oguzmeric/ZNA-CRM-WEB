@@ -148,3 +148,24 @@ export const kdvSatirlari = (h) =>
   Object.entries(h.kdvKirilimi)
     .sort((a, b) => Number(b[0]) - Number(a[0]))
     .map(([oran, tutar]) => ({ etiket: `KDV %${oranMetni(oran)}`, tutar }))
+
+// ---------- Dövizli belgede TL karşılığı (13.08.2026) ----------
+//
+// Devlet kuruluşları dövizli teklifi TL karşılığıyla ister. Karşılıklar
+// BİLGİ değeridir: belgenin resmi tutarı döviz cinsindendir, kur beyan edilir.
+// Üç çıktı şablonu da BURADAN beslenir — formül şablonlara kopyalanmaz
+// (kopyalanan formül PDF ≠ Excel vakasının kök nedeniydi).
+
+/** Çıktıda TL karşılığı gösterilsin mi — tek koşul kaynağı */
+export const tlKarsiligiGoster = (teklif) =>
+  teklif?.paraBirimi && teklif.paraBirimi !== 'TL' && sayi(teklif.dovizKuru) > 0
+
+/** Tek tutarın TL karşılığı — kuruşa yuvarlı */
+export const tlKarsilik = (n, kur) => r2(sayi(n) * sayi(kur))
+
+/**
+ * Kur beyan cümlesi. Kur en çok 4 ondalıkla basılır (TCMB kurları 4 hanelidir;
+ * `maximumFractionDigits` yazılmazsa Intl 3'e sabitler — bilinen tuzak).
+ */
+export const kurBeyani = (paraBirimi, kur) =>
+  `1 ${paraBirimi} = ${sayi(kur).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL kuru esas alınmıştır. TL karşılıkları bilgi amaçlıdır.`
