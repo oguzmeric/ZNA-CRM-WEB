@@ -8,7 +8,6 @@
 import { TRASSIR_KARSILAMA, ZNA_HAKKINDA, HIZMETLERIMIZ, ZNA_FIRMA } from '../../lib/teklifTemplates'
 import {
   teklifHesapla, kdvSatirlari, iskontoEtiketi, satirIskontoMetni, oranMetni, tutarMetni, r2,
-  tlKarsiligiGoster, tlKarsilik, kurBeyani,
 } from '../../lib/teklifHesap'
 
 // Antetli kağıt footer'ı — her içerik sayfasının altına gelir (kapak hariç)
@@ -43,9 +42,6 @@ const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
 export default function TrassirCikti({ teklif, pacal = false }) {
   const paraSembol = teklif.paraBirimi === 'USD' ? '$' : teklif.paraBirimi === 'EUR' ? '€' : '₺'
-  // Dövizli teklifte TL karşılığı (13.08) — devlet kuruluşları TL ister
-  const tlGoster = tlKarsiligiGoster(teklif)
-  const kur = Number(teklif.dovizKuru) || 0
   const fmt = tutarMetni
 
   const h = teklifHesapla(teklif)
@@ -183,7 +179,7 @@ export default function TrassirCikti({ teklif, pacal = false }) {
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>PROJE BEDELİ</span>
               {/* Paçalda kalem fiyatı gösterilmediği için iskonto oranı da basılmaz —
                   bedelin kendisi iskontolu tutardır. */}
-              <span style={{ fontSize: 20, fontWeight: 800 }}>{paraSembol}{fmt(r2(araToplam - h.genelIskontoTutar))}{tlGoster && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, opacity: 0.9, textAlign: 'right' }}>TL karşılığı ₺{fmt(tlKarsilik(r2(araToplam - h.genelIskontoTutar), kur))}</span>}</span>
+              <span style={{ fontSize: 20, fontWeight: 800 }}>{paraSembol}{fmt(r2(araToplam - h.genelIskontoTutar))}</span>
             </div>
           </>
         ) : (
@@ -196,7 +192,6 @@ export default function TrassirCikti({ teklif, pacal = false }) {
                 <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: iskKolon ? '14%' : '15%' }}>Birim Fiyat</th>
                 {iskKolon && <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '9%' }}>İskonto</th>}
                 <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: iskKolon ? '16%' : '17%' }}>Toplam Fiyat</th>
-                {tlGoster && <th style={{ padding: 8, textAlign: 'right', border: '1px solid #0176D3', width: '14%' }}>Toplam (TL)</th>}
               </tr>
             </thead>
             <tbody>
@@ -214,9 +209,6 @@ export default function TrassirCikti({ teklif, pacal = false }) {
                       </td>
                     )}
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(hs.net)}</td>
-                    {tlGoster && (
-                      <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 700, color: '#0f766e' }}>₺{fmt(tlKarsilik(hs.net, kur))}</td>
-                    )}
                   </tr>
                 )
               })}
@@ -250,19 +242,6 @@ export default function TrassirCikti({ teklif, pacal = false }) {
                 <td style={{ padding: 8, paddingRight: 16, borderTop: '2px solid #0176D3' }}>Genel Toplam :</td>
                 <td style={{ textAlign: 'right', padding: 8, borderTop: '2px solid #0176D3' }}>{paraSembol}{fmt(genelToplam)}</td>
               </tr>
-              {tlGoster && (
-                <>
-                  <tr style={{ fontWeight: 700, color: '#0f766e' }}>
-                    <td style={{ padding: 6, paddingRight: 16 }}>TL Karşılığı :</td>
-                    <td style={{ textAlign: 'right', padding: 6 }}>₺{fmt(tlKarsilik(genelToplam, kur))}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2} style={{ padding: '2px 6px', fontSize: 9.5, color: '#94a3b8', fontWeight: 400 }}>
-                      {kurBeyani(teklif.paraBirimi, kur)}
-                    </td>
-                  </tr>
-                </>
-              )}
             </tbody>
           </table>
         </div>

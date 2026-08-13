@@ -12,6 +12,7 @@ import KarelCikti from './teklifCikti/KarelCikti'
 import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
 import { dosyayiKaydet } from '../lib/dosyaIndir'
 import { tipCoz } from '../lib/teklifTemplates'
+import { teklifiTlyeCevir, oranMetni } from '../lib/teklifHesap'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -37,6 +38,7 @@ export default function TeklifYazdir() {
   const [seciliTip, setSeciliTip] = useState(null)
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
   const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
+  const [tlGoster, setTlGoster] = useState(false)
   const ciktiRef = useRef(null)
   const sonLogRef = useRef(0) // buton + beforeprint çift log olmasın
 
@@ -87,6 +89,13 @@ export default function TeklifYazdir() {
 
   const { baseTip, pacal } = tipCoz(seciliTip)
   const Cikti = ciktiMap[baseTip] || StandartCikti
+
+  // "₺ TL Göster" (13.08): dövizli teklifin çıktısı TAMAMEN TL basılır — iki
+  // para birimi yan yana gösterilmez (çift kolonlu ilk deneme kafa karıştırdı,
+  // geri alındı). Kayıt değişmez; dönüşüm yalnız görüntülenen kopyada.
+  const dovizli = teklif.paraBirimi && teklif.paraBirimi !== 'TL'
+  const kurVar = Number(teklif.dovizKuru) > 0
+  const gosterilen = tlGoster && dovizli && kurVar ? teklifiTlyeCevir(teklif) : teklif
 
   // PDF'i direkt indir — html2canvas + jsPDF, dialog acmaz.
   // Cikti elementini off-screen container'a klonla (print CSS bypass icin),
@@ -202,9 +211,12 @@ export default function TeklifYazdir() {
   const excelIndir = async () => {
     setExcelYukleniyor(true)
     try {
+      // ⚠️ Excel EKRANDAKİ görünümü indirir: TL modundayken TL, değilken döviz.
+      // PDF ile Excel'in ayrışması bilinen bir vakaydı (TEK-0672) — ikisi de
+      // aynı `gosterilen` nesnesinden beslenir.
       const { teklifiExcelOlarakIndir } = await import('../lib/teklifExport')
       // Anlık seçilen tipi kullan (kayıttaki tip yerine)
-      await teklifiExcelOlarakIndir({ ...teklif, teklifTipi: seciliTip })
+      await teklifiExcelOlarakIndir({ ...gosterilen, teklifTipi: seciliTip })
     } catch (err) {
       console.error('[Excel indir]', err)
       alert('Excel üretilirken hata: ' + (err?.message || 'bilinmeyen'))
@@ -278,6 +290,30 @@ export default function TeklifYazdir() {
               </button>
             ))}
           </div>
+          {/* Dövizli teklifte belgeyi TAMAMEN TL basma anahtarı (13.08).
+              Kur teklif kartından gelir; girilmemişse düğme pasif. */}
+          {dovizli && (
+            <button
+              onClick={() => kurVar && setTlGoster(v => !v)}
+              disabled={!kurVar}
+              title={kurVar
+                ? (tlGoster
+                  ? `${teklif.paraBirimi} olarak göster`
+                  : `Tüm tutarları TL bas (kur: ${oranMetni(teklif.dovizKuru)})`)
+                : 'Teklif kartında döviz kuru girilmemiş — önce teklifi düzenleyip kuru girin.'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', fontSize: 12.5, fontWeight: 700,
+                color: tlGoster ? '#fff' : kurVar ? '#0f766e' : '#94a3b8',
+                background: tlGoster ? '#0f766e' : '#fff',
+                border: `1px solid ${tlGoster ? '#0f766e' : kurVar ? '#0f766e' : '#e2e8f0'}`,
+                borderRadius: 6, cursor: kurVar ? 'pointer' : 'not-allowed',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tlGoster ? `${teklif.paraBirimi === 'EUR' ? '€' : '$'} ${teklif.paraBirimi} Göster` : '₺ TL Göster'}
+            </button>
+          )}
         </div>
 
         {/* Sağ: Aksiyonlar */}
@@ -349,7 +385,19 @@ export default function TeklifYazdir() {
           kapatıyor ama kullanıcı sağ tık → "Çevir" derse tutarlar/başlıklar
           bozulabiliyor — belge gövdesi ayrıca işaretli. */}
       <div ref={ciktiRef} translate="no" className="notranslate" style={{ position: 'relative' }}>
-        <Cikti teklif={teklif} pacal={pacal} />
+        <Cikti teklif={gosterilen} pacal={pacal} />
+        {/* TL modunda kur ibaresi — belge tek para birimi basar, hangi kurla
+            çevrildiği tek satırla beyan edilir (ciktiRef içinde: yazdırma ve
+            PDF indirmede de görünür) */}
+        {tlGoster && dovizli && kurVar && (
+          <div style={{
+            maxWidth: 794, margin: '0 auto', padding: '0 24px 4px',
+            font: '400 8.5pt/1.4 Arial, sans-serif', color: '#94a3b8',
+            textAlign: 'center', background: '#fff',
+          }}>
+            Tutarlar 1 {teklif.paraBirimi} = {oranMetni(teklif.dovizKuru)} TL kuru esas alınarak TL olarak düzenlenmiştir.
+          </div>
+        )}
         {onaysiz && <TaslakFiligran />}
         {/* İzlenebilirlik damgası: dışarıda görülen çıktının kaynağı belli olsun (mig 158 loguyla eş) */}
         <div style={{

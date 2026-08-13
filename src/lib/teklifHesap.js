@@ -149,23 +149,27 @@ export const kdvSatirlari = (h) =>
     .sort((a, b) => Number(b[0]) - Number(a[0]))
     .map(([oran, tutar]) => ({ etiket: `KDV %${oranMetni(oran)}`, tutar }))
 
-// ---------- Dövizli belgede TL karşılığı (13.08.2026) ----------
-//
-// Devlet kuruluşları dövizli teklifi TL karşılığıyla ister. Karşılıklar
-// BİLGİ değeridir: belgenin resmi tutarı döviz cinsindendir, kur beyan edilir.
-// Üç çıktı şablonu da BURADAN beslenir — formül şablonlara kopyalanmaz
-// (kopyalanan formül PDF ≠ Excel vakasının kök nedeniydi).
-
-/** Çıktıda TL karşılığı gösterilsin mi — tek koşul kaynağı */
-export const tlKarsiligiGoster = (teklif) =>
-  teklif?.paraBirimi && teklif.paraBirimi !== 'TL' && sayi(teklif.dovizKuru) > 0
-
-/** Tek tutarın TL karşılığı — kuruşa yuvarlı */
-export const tlKarsilik = (n, kur) => r2(sayi(n) * sayi(kur))
-
 /**
- * Kur beyan cümlesi. Kur en çok 4 ondalıkla basılır (TCMB kurları 4 hanelidir;
- * `maximumFractionDigits` yazılmazsa Intl 3'e sabitler — bilinen tuzak).
+ * Dövizli teklifin TL GÖRÜNÜMÜ (13.08.2026): devlet kuruluşları teklifi TL
+ * ister. Çıktı ekranındaki "₺ TL Göster" düğmesi bu dönüşümü kullanır —
+ * belge TAMAMEN TL basılır, iki para birimi YAN YANA GÖSTERİLMEZ (kullanıcı
+ * kararı: çift gösterim "saçma bir durum" yaratıyordu, geri alındı).
+ *
+ * Kayda dokunmaz: teklif veritabanında döviz olarak kalır, dönüşüm yalnız
+ * görüntülenen kopyada yapılır. Kalıcı TL teklifi istenirse Kopyala → "TL
+ * teklifine çevir" yolu kullanılır.
  */
-export const kurBeyani = (paraBirimi, kur) =>
-  `1 ${paraBirimi} = ${sayi(kur).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL kuru esas alınmıştır. TL karşılıkları bilgi amaçlıdır.`
+export const teklifiTlyeCevir = (teklif) => {
+  const kur = sayi(teklif?.dovizKuru)
+  if (!(kur > 0) || teklif?.paraBirimi === 'TL') return teklif
+  return {
+    ...teklif,
+    paraBirimi: 'TL',
+    satirlar: (teklif.satirlar || []).map(s => ({
+      ...s,
+      birimFiyat: r2(sayi(s.birimFiyat) * kur),
+      // Alış fiyatı da çevrilir — Excel'e sızarsa USD alış / TL satış karışmasın
+      ...(sayi(s.alisFiyat) > 0 ? { alisFiyat: r2(sayi(s.alisFiyat) * kur) } : {}),
+    })),
+  }
+}

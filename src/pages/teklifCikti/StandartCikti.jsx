@@ -3,7 +3,6 @@
 
 import {
   teklifHesapla, kdvSatirlari, iskontoEtiketi, satirIskontoMetni, oranMetni, tutarMetni, r2,
-  tlKarsiligiGoster, tlKarsilik, kurBeyani,
 } from '../../lib/teklifHesap'
 
 export default function StandartCikti({ teklif, pacal = false }) {
@@ -11,10 +10,6 @@ export default function StandartCikti({ teklif, pacal = false }) {
   const { araToplam, genelToplam } = h
   const paraSembol = teklif.paraBirimi === 'USD' ? '$' : teklif.paraBirimi === 'EUR' ? '€' : '₺'
   const fmt = tutarMetni
-  // Dövizli teklifte TL karşılığı (13.08): devlet kuruluşları TL ister.
-  // Kur beyan edilir; karşılıklar bilgi değeridir, resmi tutar döviz kalır.
-  const tlGoster = tlKarsiligiGoster(teklif)
-  const kur = Number(teklif.dovizKuru) || 0
 
   return (
     <>
@@ -125,7 +120,7 @@ export default function StandartCikti({ teklif, pacal = false }) {
             <div className="bedel-serit" style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               gap: 16, background: '#0176D3', color: '#fff',
-              padding: '14px 20px', marginBottom: tlGoster ? 8 : 20,
+              padding: '14px 20px', marginBottom: 20,
               borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
             }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>PROJE BEDELİ</span>
@@ -133,28 +128,19 @@ export default function StandartCikti({ teklif, pacal = false }) {
                   bedelin kendisi iskontolu tutardır. */}
               <span style={{ fontSize: 22, fontWeight: 800 }}>{paraSembol}{fmt(r2(araToplam - h.genelIskontoTutar))}</span>
             </div>
-            {tlGoster && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '0 20px', marginBottom: 20 }}>
-                <span style={{ fontSize: 9.5, color: '#94a3b8' }}>{kurBeyani(teklif.paraBirimi, kur)}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f766e', whiteSpace: 'nowrap' }}>
-                  TL karşılığı ₺{fmt(tlKarsilik(r2(araToplam - h.genelIskontoTutar), kur))}
-                </span>
-              </div>
-            )}
           </>
         ) : (
-          /* DETAYLI — dövizli teklifte satır toplamının TL karşılığı ek kolon */
+          /* DETAYLI — mevcut hâli */
           <table style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
             <colgroup>
               <col style={{ width: '4%' }} />
               <col />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: tlGoster ? '11%' : '12%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '12%' }} />
               <col style={{ width: '6%' }} />
               <col style={{ width: '7%' }} />
-              <col style={{ width: tlGoster ? '11%' : '12%' }} />
-              {tlGoster && <col style={{ width: '13%' }} />}
+              <col style={{ width: '12%' }} />
             </colgroup>
             <thead>
               <tr>
@@ -166,7 +152,6 @@ export default function StandartCikti({ teklif, pacal = false }) {
                 <th style={{ textAlign: 'right' }}>İsk%</th>
                 <th style={{ textAlign: 'right' }}>KDV%</th>
                 <th style={{ textAlign: 'right' }}>Toplam</th>
-                {tlGoster && <th style={{ textAlign: 'right' }}>Toplam (TL)</th>}
               </tr>
             </thead>
             <tbody>
@@ -185,9 +170,6 @@ export default function StandartCikti({ teklif, pacal = false }) {
                     </td>
                     <td style={{ textAlign: 'right' }}>%{oranMetni(hs.kdvOran)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{paraSembol}{fmt(hs.toplam)}</td>
-                    {tlGoster && (
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0f766e' }}>₺{fmt(tlKarsilik(hs.toplam, kur))}</td>
-                    )}
                   </tr>
                 )
               })}
@@ -217,16 +199,6 @@ export default function StandartCikti({ teklif, pacal = false }) {
             <div style={{ borderTop: '2px solid #0176D3', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, color: '#0176D3' }}>
               <span>GENEL TOPLAM</span><span>{paraSembol}{fmt(genelToplam)}</span>
             </div>
-            {tlGoster && (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: '1px dashed #cbd5e1', fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
-                  <span>TL KARŞILIĞI</span><span>₺{fmt(tlKarsilik(genelToplam, kur))}</span>
-                </div>
-                <p style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 6, lineHeight: 1.5 }}>
-                  {kurBeyani(teklif.paraBirimi, kur)}
-                </p>
-              </>
-            )}
           </div>
         </div>
 
