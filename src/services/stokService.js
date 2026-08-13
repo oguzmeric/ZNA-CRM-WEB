@@ -501,6 +501,11 @@ export const SN_SILME_SEBEPLERI = [
 ]
 
 // Bir SN'i SOFT SİL — silindi=true, geri getirilebilir + audit trail
+//
+// ⚠️ İDEMPOTENT (13.08.2026): UPDATE yalnız `silindi=false` satırla eşleşir.
+// Eskiden ikinci çağrı (çift tıklama / iki sekme) zaten silinmiş kayda YİNE
+// geçiyor ve İKİNCİ bir çıkış hareketi yazıyordu — hareket defteri düşümsüz
+// şişiyordu. Aynı yarış deseni teklifte 7 mükerrer üretmişti (mig 280).
 export const snSil = async (id, sebepBilgi = {}) => {
   const { sebep = 'diger', not = '' } = sebepBilgi
   const sebepObj = SN_SILME_SEBEPLERI.find(s => s.id === sebep) || SN_SILME_SEBEPLERI[SN_SILME_SEBEPLERI.length - 1]
@@ -515,9 +520,12 @@ export const snSil = async (id, sebepBilgi = {}) => {
       silen_kullanici_id: kullaniciId,
     })
     .eq('id', id)
+    .eq('silindi', false)   // yarış kapısı: ikinci çağrı 0 satır etkiler
     .select()
-    .single()
+    .maybeSingle()
   if (error) { console.error('snSil:', error.message); throw error }
+  // Kayıt zaten silinmişse İKİNCİ hareket YAZILMAZ; ilk çağrının sonucu geçerli.
+  if (!kalem) return { zatenSilinmis: true }
   // Cikis hareketi ekle (audit)
   if (kalem?.stok_kodu) {
     const aciklama = [
@@ -537,6 +545,8 @@ export const snSil = async (id, sebepBilgi = {}) => {
 }
 
 // Silinen bir SN'i geri getir — silindi=false, aktif olur
+// İDEMPOTENT: yalnız silinmiş satırla eşleşir; ikinci çağrı ikinci bir
+// GİRİŞ hareketi yazamaz (yazsaydı stok düşümsüz şişerdi).
 export const snGeriGetir = async (id) => {
   const { data: kalem, error } = await supabase.from('stok_kalemleri')
     .update({
@@ -547,9 +557,11 @@ export const snGeriGetir = async (id) => {
       silen_kullanici_id: null,
     })
     .eq('id', id)
+    .eq('silindi', true)   // yarış kapısı
     .select()
-    .single()
+    .maybeSingle()
   if (error) { console.error('snGeriGetir:', error.message); throw new Error(stokHataMesaji(error)) }
+  if (!kalem) return { zatenAktif: true }
   if (kalem?.stok_kodu) {
     await hareketEkle({
       stokKodu: kalem.stok_kodu,
