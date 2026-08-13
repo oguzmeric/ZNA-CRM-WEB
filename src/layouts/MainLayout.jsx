@@ -194,6 +194,9 @@ const menuItems = [
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
       { id: 'musteri_talepleri', isim: 'Müşteri Talepleri', yol: '/servis-talepleri?kaynak=musteri' },
       { id: 'servis_raporlari', isim: 'Servis Raporları',   yol: '/servis-raporlari' },
+      // Sahaya takılı cihazların toplu görünümü (13.08) — eskiden tek yol
+      // müşteri detayındaki bölümdü, müşteri müşteri gezmek gerekiyordu
+      { id: 'saha_cihazlari',   isim: 'Saha Cihazları',      yol: '/saha-cihazlari' },
       { id: 'memnuniyet',       isim: 'Müşteri Memnuniyeti', yol: '/memnuniyet' },
     ],
   },

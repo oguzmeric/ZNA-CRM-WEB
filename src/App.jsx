@@ -77,6 +77,7 @@ const ServisTalepleri = lazy(() => import('./pages/ServisTalepleri'))
 const ServisTalepDetay = lazy(() => import('./pages/ServisTalepDetay'))
 const YeniServisTalebi = lazy(() => import('./pages/YeniServisTalebi'))
 const ServisRaporlari = lazy(() => import('./pages/ServisRaporlari'))
+const SahaCihazlari = lazy(() => import('./pages/SahaCihazlari'))
 const Kargolar = lazy(() => import('./pages/Kargolar'))
 const KargoDetay = lazy(() => import('./pages/KargoDetay'))
 const Takvim = lazy(() => import('./pages/Takvim'))
@@ -478,6 +479,7 @@ function App() {
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />
           <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />
           <Route path="/servis-raporlari" element={<ServisRaporlari />} />
+          <Route path="/saha-cihazlari" element={<SahaCihazlari />} />
           <Route path="/dokuman-merkezi" element={<DokumanMerkezi />} />
           <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
           <Route path="/izin-bordro" element={<IzinBordro />} />
