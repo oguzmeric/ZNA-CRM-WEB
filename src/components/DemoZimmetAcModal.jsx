@@ -13,6 +13,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
+import LokasyonSecici from './LokasyonSecici'
 
 const SURE_PRESETLERI = [7, 14, 30]
 const ekleGun = (gun) => {
@@ -159,12 +160,14 @@ export default function DemoZimmetAcModal({ acik, cihaz, onKapat, onZimmetAcildi
         {lokasyonlar.length > 0 && (
           <div>
             <Label>Lokasyon</Label>
-            <Select value={lokasyonId} onChange={e => setLokasyonId(e.target.value)}>
-              <option value="">Lokasyon yok</option>
-              {lokasyonlar.map(l => (
-                <option key={l.id} value={l.id}>{l.ad}</option>
-              ))}
-            </Select>
+            {/* Aramalı seçici (13.08) — bakım/keşif formlarıyla aynı desen */}
+            <LokasyonSecici
+              lokasyonlar={lokasyonlar}
+              value={lokasyonId || null}
+              onChange={(id) => setLokasyonId(id ?? '')}
+              bosEtiket="— Lokasyon yok —"
+              placeholder={`Lokasyon ara ve seç… (${lokasyonlar.length})`}
+            />
           </div>
         )}
 

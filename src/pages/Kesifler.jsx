@@ -12,6 +12,7 @@ import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
 import { trContains } from '../lib/trSearch'
+import LokasyonSecici from '../components/LokasyonSecici'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, EmptyState, Modal, SegmentedControl,
@@ -259,12 +260,16 @@ function YeniKesifModal({ musteriler, kullanici, onKapat, onOlusturuldu }) {
             <Label>Alt lokasyon</Label>
             {lokasyonlar.length > 0 ? (
               <>
-                <CustomSelect value={lokasyonId} onChange={e => lokasyonSec(e.target.value)}>
-                  <option value="">Lokasyon seç… (yoksa boş bırak)</option>
-                  {lokasyonlar.map(l => (
-                    <option key={l.id} value={l.id}>{l.ad}</option>
-                  ))}
-                </CustomSelect>
+                {/* Aramalı seçici (13.08): Başakşehir Belediyesi'nde 83 lokasyon
+                    var ve adlar aynı kelimeyle başlıyor — düz açılır kutuda
+                    kaydırarak aranıyordu. Bakım formuyla aynı desen. */}
+                <LokasyonSecici
+                  lokasyonlar={lokasyonlar}
+                  value={lokasyonId || null}
+                  onChange={(id) => lokasyonSec(id ?? '')}
+                  bosEtiket="— Lokasyon yok (boş bırak) —"
+                  placeholder={`Lokasyon ara ve seç… (${lokasyonlar.length})`}
+                />
                 <p className="t-caption" style={{ marginTop: 6 }}>
                   Seçersen bu keşif, müşteri detayında o lokasyonun dökümünde görünür.
                 </p>

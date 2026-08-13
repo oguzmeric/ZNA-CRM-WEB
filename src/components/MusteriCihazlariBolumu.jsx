@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from './CustomSelect'
+import LokasyonSecici from './LokasyonSecici'
 import { Button, Input, Textarea, Label, Card, CardTitle, EmptyState } from './ui'
 import {
   CIHAZ_DURUMLARI, musteriCihazlariGetir, cihazEkle, cihazGuncelle,
@@ -33,6 +34,8 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
   const [cihazlar, setCihazlar] = useState([])
   const [secili, setSecili] = useState(null)          // detay modal cihazı
   const [form, setForm] = useState(null)              // yeni/düzenle formu (null = kapalı)
+  // Lokasyon: kayıtlı listeden mi seçiliyor yoksa elle mi yazılıyor (13.08)
+  const [manuelLokasyon, setManuelLokasyon] = useState(false)
   const [duzenleId, setDuzenleId] = useState(null)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [sifreGoster, setSifreGoster] = useState(false)
@@ -77,9 +80,13 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
         durum: cihaz.durum || 'aktif', arizaNedeni: cihaz.arizaNedeni || '', notlar: cihaz.notlar || '',
       })
       setDuzenleId(cihaz.id)
+      // Mevcut lokasyon kayıtlı listede yoksa elle yazılmıştır — seçici o
+      // değeri gösteremez, manuel modda açılmalı ki değer kaybolmasın.
+      setManuelLokasyon(!!cihaz.lokasyon && !lokasyonlar.some(l => l.ad === cihaz.lokasyon))
     } else {
       setForm({ ...bosForm })
       setDuzenleId(null)
+      setManuelLokasyon(false)
     }
     setSecili(null)
   }
@@ -247,20 +254,40 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
             </div>
             <div>
               <Label>Lokasyon</Label>
-              {lokasyonlar.length > 0 ? (
-                <CustomSelect
-                  value={lokasyonlar.some(l => l.ad === form.lokasyon) ? form.lokasyon : (form.lokasyon ? '__m__' : '')}
-                  onChange={e => setForm({ ...form, lokasyon: e.target.value === '__m__' ? '' : e.target.value })}
-                >
-                  <option value="">Lokasyon seç…</option>
-                  {lokasyonlar.map(l => <option key={l.id} value={l.ad}>{l.ad}</option>)}
-                  <option value="__m__">+ Manuel yaz…</option>
-                </CustomSelect>
+              {/* Aramalı seçici (13.08) — 83 lokasyonlu müşteride kaydırarak
+                  aranıyordu. ⚠️ Bu ekran lokasyonu ID ile DEĞİL METİN ile
+                  tutuyor (cihaz kaydındaki `lokasyon` alanı serbest metin ve
+                  kayıtlı listede olmayan yerler de yazılabiliyor). Seçiciden
+                  gelen id burada ADA çevrilir; elle yazma yolu korunur. */}
+              {lokasyonlar.length > 0 && !manuelLokasyon ? (
+                <>
+                  <LokasyonSecici
+                    lokasyonlar={lokasyonlar}
+                    value={lokasyonlar.find(l => l.ad === form.lokasyon)?.id ?? null}
+                    onChange={(id) => setForm({
+                      ...form,
+                      lokasyon: id
+                        ? (lokasyonlar.find(l => String(l.id) === String(id))?.ad || '')
+                        : '',
+                    })}
+                    bosEtiket="— Lokasyon seçilmedi —"
+                    placeholder={`Lokasyon ara ve seç… (${lokasyonlar.length})`}
+                  />
+                  <button type="button" onClick={() => setManuelLokasyon(true)}
+                    style={serbestBtn}>
+                    Listede yok, elle yaz
+                  </button>
+                </>
               ) : (
-                <Input value={form.lokasyon} onChange={e => setForm({ ...form, lokasyon: e.target.value })} placeholder="Merkez Bina…" />
-              )}
-              {lokasyonlar.length > 0 && !lokasyonlar.some(l => l.ad === form.lokasyon) && (
-                <Input value={form.lokasyon} onChange={e => setForm({ ...form, lokasyon: e.target.value })} placeholder="Manuel lokasyon…" style={{ marginTop: 6 }} />
+                <>
+                  <Input value={form.lokasyon} onChange={e => setForm({ ...form, lokasyon: e.target.value })}
+                    placeholder="Merkez Bina…" />
+                  {lokasyonlar.length > 0 && (
+                    <button type="button" onClick={() => setManuelLokasyon(false)} style={serbestBtn}>
+                      Kayıtlı lokasyonlardan seç
+                    </button>
+                  )}
+                </>
               )}
             </div>
             <div>
@@ -473,4 +500,10 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
       )}
     </Card>
   )
+}
+
+const serbestBtn = {
+  marginTop: 6, padding: 0, background: 'transparent', border: 'none',
+  color: 'var(--brand-primary)', cursor: 'pointer',
+  font: '500 11.5px/16px var(--font-sans)',
 }
