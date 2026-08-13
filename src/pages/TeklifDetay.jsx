@@ -30,7 +30,7 @@ import { ciktiLoglariGetir, ISLEM_ISIMLERI } from '../services/teklifCiktiLogSer
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
 import {
-  teklifHesapla, satirHesapla, kdvSatirlari, iskontoEtiketi, oranMetni, tutarMetni,
+  teklifHesapla, satirHesapla, kdvSatirlari, iskontoEtiketi, oranMetni, tutarMetni, sayiCoz,
 } from '../lib/teklifHesap'
 import { tekliftenDurum, TEKLIF_DURUM, TEKLIF_DURUM_META, sonrakiDurumlar, durumdanDbAlanlar, GONDERIME_UYGUN_DURUMLAR, paylasimdanIleriDurum } from '../lib/teklifDurumlari'
 import { satislariGetir } from '../services/satisService'
@@ -87,7 +87,7 @@ const bosUrun = {
 
 // Kopyalama fiyat ayarı — saf fonksiyon (modal önizlemesi + kopyalama aynı hesabı kullanır)
 const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
-const kopyaSatirlariHesapla = (satirlar, { mod, yuzde }) =>
+const kopyaSatirlariHesapla = (satirlar, { mod, yuzde, kur }) =>
   (satirlar || []).map(s => {
     const yeni = { ...s, id: crypto.randomUUID() }
     const oran = 1 + (Number(yuzde) || 0) / 100
@@ -96,6 +96,14 @@ const kopyaSatirlariHesapla = (satirlar, { mod, yuzde }) =>
     } else if (mod === 'kar' && Number(s.alisFiyat) > 0) {
       yeni.birimFiyat = r2(Number(s.alisFiyat) * oran)
       yeni.katsayi = r2(oran) // Alış Katsayısı modalı da yeni oranı hatırlasın
+    } else if (mod === 'kur') {
+      // TL'ye çevirme (13.08): devlet kuruluşları dövizli teklifi TL ister.
+      // ⚠️ ALIŞ FİYATI DA AYNI KURLA çevrilir — çevrilmezse USD alış / TL satış
+      // karışır ve kâr yüzdesi 40 kat şişer (alış=maliyet dersi). Katsayı
+      // satış/alış ORANI olduğu için kur çarpımından etkilenmez, dokunulmaz.
+      const k = Number(kur) || 0
+      yeni.birimFiyat = r2((Number(s.birimFiyat) || 0) * k)
+      if (Number(s.alisFiyat) > 0) yeni.alisFiyat = r2(Number(s.alisFiyat) * k)
     }
     return yeni
   })
@@ -353,7 +361,8 @@ function TeklifDetay() {
         konu: onDoldurum?.konu || '',
         odemeSecenegi: onDoldurum?.odemeSecenegi || 'Peşin',
         paraBirimi: onDoldurum?.paraBirimi || 'TL',
-        dovizKuru: '',
+        // TL'ye çevrilmiş kopyada kullanılan kur belgede iz bıraksın diye taşınır
+        dovizKuru: onDoldurum?.dovizKuru || '',
         onayDurumu: 'takipte',
         gorusmeId: onDoldurum?.gorusmeId || '',
         aciklama: onDoldurum?.aciklama || '',
@@ -877,11 +886,14 @@ function TeklifDetay() {
   // mekanizması useState initializer'da (sadece MOUNT'ta) okunduğu için aynı
   // component'te route param değişimi yetmez — full reload ile temiz mount alırız.
   // Kopyala — fiyat ayarıyla (KopyalaModal'dan çağrılır).
-  // ayar: { mod: 'birebir' | 'zam' | 'kar', yuzde: number }
+  // ayar: { mod: 'birebir' | 'zam' | 'kar' | 'kur', yuzde: number, kur: number }
   //   zam → tüm birim fiyatlara % uygula (negatif = indirim)
   //   kar → alış fiyatı olan satırlarda birimFiyat = alışFiyat × (1 + %/100)
+  //   kur → dövizli teklifi TL'ye çevir (13.08: devlet kuruluşu TL istiyor);
+  //         kopya TL olarak açılır, kullanılan kur dovizKuru alanında iz bırakır
   const teklifKopyala = (ayar = { mod: 'birebir', yuzde: 0 }) => {
     const satirlar = kopyaSatirlariHesapla(form.satirlar, ayar)
+    const kurModu = ayar.mod === 'kur'
     localStorage.setItem('teklif_on_doldurum', JSON.stringify({
       __ts: Date.now(),
       musteriId: form.musteriId,
@@ -891,7 +903,8 @@ function TeklifDetay() {
       aciklama: form.aciklama,
       satirlar,
       teklifTipi: form.teklifTipi,
-      paraBirimi: form.paraBirimi,
+      paraBirimi: kurModu ? 'TL' : form.paraBirimi,
+      dovizKuru: kurModu ? Number(ayar.kur) || '' : '',
       odemeSecenegi: form.odemeSecenegi,
       genelIskonto: form.genelIskonto,
     }))
@@ -2829,6 +2842,8 @@ function TeklifDetay() {
           satirlar={form.satirlar}
           genelIskonto={form.genelIskonto}
           paraSembol={paraBirimi?.sembol || ''}
+          paraBirimi={form.paraBirimi}
+          dovizKuru={form.dovizKuru}
           onKapat={() => setKopyalaModalAcik(false)}
           onKopyala={(ayar) => { setKopyalaModalAcik(false); teklifKopyala(ayar) }}
         />
@@ -2946,16 +2961,21 @@ function TeklifDetay() {
 // Personel onaylayacak kisiye 1000 karaktere kadar not birakabilir.
 // Kopyalama seçenekleri — birebir / satış fiyatına % / alış üzerinden kâr %
 // Canlı önizleme: mevcut genel toplam → yeni genel toplam.
-function KopyalaModal({ satirlar, genelIskonto, paraSembol, onKapat, onKopyala }) {
+function KopyalaModal({ satirlar, genelIskonto, paraSembol, paraBirimi, dovizKuru, onKapat, onKopyala }) {
   const [mod, setMod] = useState('birebir')
   const [yuzde, setYuzde] = useState(20)
+  // Kur varsayılanı teklifin kendi kuru — yoksa kullanıcı girer.
+  // ⚠️ Güncel kuru İNTERNETTEN ÇEKMİYORUZ: resmi teklifte kur beyan edilen
+  // değerdir, kullanıcı hangi günün/kurumun kurunu kullanacağına kendisi karar verir.
+  const [kur, setKur] = useState(Number(dovizKuru) > 0 ? String(dovizKuru) : '')
 
   const alisliSatirSayisi = (satirlar || []).filter(s => Number(s.alisFiyat) > 0).length
   const mevcutToplam = satirlardanGenelToplam(satirlar, genelIskonto)
-  const yeniSatirlar = kopyaSatirlariHesapla(satirlar, { mod, yuzde })
+  const yeniSatirlar = kopyaSatirlariHesapla(satirlar, { mod, yuzde, kur: sayiCoz(kur) })
   const yeniToplam = satirlardanGenelToplam(yeniSatirlar, genelIskonto)
-  const fmt = (n) => `${paraSembol}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+  const fmt = (n, sembol = paraSembol) => `${sembol}${(Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
 
+  const dovizli = paraBirimi && paraBirimi !== 'TL'
   const SECENEKLER = [
     ['birebir', 'Birebir kopyala', 'Fiyatlar aynen taşınır.'],
     ['zam', 'Satış fiyatlarına % uygula', 'Tüm birim fiyatlar girilen oranda artar (eksi değer = indirim).'],
@@ -2963,7 +2983,11 @@ function KopyalaModal({ satirlar, genelIskonto, paraSembol, onKapat, onKopyala }
       alisliSatirSayisi
         ? `Birim fiyat = alış fiyatı × (1 + %). ${alisliSatirSayisi}/${(satirlar || []).length} satırda alış fiyatı var; olmayanlar aynı kalır.`
         : 'Bu teklifin satırlarında alış fiyatı kayıtlı değil — bu mod fiyatları değiştirmez.'],
+    // Yalnız dövizli teklifte: devlet kuruluşları teklifi TL ister (13.08)
+    ...(dovizli ? [['kur', 'TL teklifine çevir (kur ile)',
+      `Tüm fiyatlar girilen kurla çarpılır, kopya TL teklifi olarak açılır. Orijinal ${paraBirimi} teklif değişmez.`]] : []),
   ]
+  const kurGecersiz = mod === 'kur' && !(sayiCoz(kur) > 0)
 
   return (
     <Modal open onClose={onKapat} title="Teklifi Kopyala" width={520}>
@@ -2988,15 +3012,30 @@ function KopyalaModal({ satirlar, genelIskonto, paraSembol, onKapat, onKopyala }
         {mod !== 'birebir' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 140 }}>
-              <Label>{mod === 'zam' ? 'Artış oranı (%)' : 'Kâr oranı (%)'}</Label>
-              <Input type="number" step="0.5" className="sayi-sade" value={yuzde}
-                onChange={e => setYuzde(e.target.value)} placeholder="20" />
+              {mod === 'kur' ? (
+                <>
+                  <Label required>Kur ({paraBirimi}/TL)</Label>
+                  {/* TR ondalık serbest: "41,35" de "41.35" de geçerli */}
+                  <Input inputMode="decimal" className="sayi-sade" value={kur}
+                    onChange={e => setKur(e.target.value)} placeholder="Ör. 41,35" />
+                </>
+              ) : (
+                <>
+                  <Label>{mod === 'zam' ? 'Artış oranı (%)' : 'Kâr oranı (%)'}</Label>
+                  <Input type="number" step="0.5" className="sayi-sade" value={yuzde}
+                    onChange={e => setYuzde(e.target.value)} placeholder="20" />
+                </>
+              )}
             </div>
             <div style={{ flex: 1, background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '10px 12px', font: '400 12.5px/19px var(--font-sans)', color: 'var(--text-secondary)' }}>
               Genel toplam (KDV dahil):<br />
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(mevcutToplam)}</span>
               {' → '}
-              <strong style={{ color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(yeniToplam)}</strong>
+              <strong style={{ color: 'var(--brand-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {mod === 'kur'
+                  ? (kurGecersiz ? 'kur girin' : fmt(yeniToplam, '₺'))
+                  : fmt(yeniToplam)}
+              </strong>
             </div>
           </div>
         )}
@@ -3004,7 +3043,8 @@ function KopyalaModal({ satirlar, genelIskonto, paraSembol, onKapat, onKopyala }
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <Button variant="ghost" onClick={onKapat}>Vazgeç</Button>
           <Button variant="primary" iconLeft={<Copy size={14} strokeWidth={1.5} />}
-            onClick={() => onKopyala({ mod, yuzde: Number(yuzde) || 0 })}>
+            disabled={kurGecersiz}
+            onClick={() => onKopyala({ mod, yuzde: Number(yuzde) || 0, kur: sayiCoz(kur) })}>
             Kopyala ve Aç
           </Button>
         </div>
