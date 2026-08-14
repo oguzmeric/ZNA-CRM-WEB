@@ -26,6 +26,22 @@ function Barkod({ deger, height = 40 }) {
 }
 
 /**
+ * SN yazısının puntosu — uzun numara tek satırda kalsın diye.
+ * Rulo (40mm) dar olduğu için eşikler orada daha erken devreye girer;
+ * A4 hücresi (63mm) geniş, orada yalnız çok uzun numaralarda küçülür.
+ */
+function snPunto(seriNo, ruloModu) {
+  const n = `SN: ${seriNo || ''}`.length
+  if (ruloModu) {
+    if (n > 22) return { fontSize: '6pt' }
+    if (n > 18) return { fontSize: '7pt' }
+    return undefined            // CSS'teki 8pt
+  }
+  if (n > 26) return { fontSize: '8pt' }
+  return undefined              // CSS'teki 10pt
+}
+
+/**
  * @param {'barkod'|'sn'} duzen
  *   'barkod' (varsayılan): marka / model / CODE128 / SN — stok-depo etiketi.
  *   'sn' (14.08 kullanıcı kararı): ÜSTTE "SN: <numara>", ALTTA dikey çizgili
@@ -35,6 +51,10 @@ function Barkod({ deger, height = 40 }) {
 export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir, duzen = 'barkod' }) {
   const snDuzen = duzen === 'sn'
   const { toast } = useToast()
+  // Kağıt seçimi (14.08): A4 etiket sayfası (24 etiket) VEYA NIIMBOT 40×20 rulo
+  // (etiket başına bir sayfa). Rulo modu yalnız SN düzeninde anlamlı.
+  const [kagit, setKagit] = useState('a4')   // 'a4' | 'rulo'
+  const ruloModu = snDuzen && kagit === 'rulo'
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
   const hicbiri = () => setSeciliIdler(new Set())
@@ -68,13 +88,35 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             <div>
               <h3 style={{ margin: 0, fontSize: 18 }}>Toplu Barkod Etiket</h3>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                {marka} · {stokKodu} · {seciliKalemler.length}/{kalemler.length} seçili · A4 · 3×8 grid = 24 etiket/sayfa
+                {marka} · {stokKodu} · {seciliKalemler.length}/{kalemler.length} seçili ·{' '}
+                {ruloModu ? 'NIIMBOT 40×20 mm rulo · her etiket ayrı' : 'A4 · 3×8 grid = 24 etiket/sayfa'}
               </div>
             </div>
             <button onClick={onKapat} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
               <X size={18} strokeWidth={1.5} />
             </button>
           </div>
+
+          {/* Kağıt seçimi — yalnız SN düzeninde (bağımsız SN etiketleri) */}
+          {snDuzen && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginRight: 2 }}>Kağıt:</span>
+              {[
+                { id: 'a4', etiket: 'A4 etiket sayfası (24 adet)' },
+                { id: 'rulo', etiket: 'NIIMBOT rulo 40×20 mm' },
+              ].map(s => (
+                <button key={s.id} type="button" onClick={() => setKagit(s.id)}
+                  style={{
+                    fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                    background: kagit === s.id ? 'rgba(59,130,246,0.12)' : 'transparent',
+                    border: `1px solid ${kagit === s.id ? 'rgba(59,130,246,0.45)' : 'var(--border-default)'}`,
+                    color: kagit === s.id ? '#3b82f6' : 'var(--text-secondary)',
+                  }}>
+                  {s.etiket}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <Button variant="secondary" size="sm" onClick={tumu}>Tümünü Seç</Button>
@@ -109,19 +151,28 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
           </div>
 
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>
-            💡 Yazdır'a basınca tarayıcının yazdır önizlemesi açılır. Kağıt tipini <strong>A4</strong>, kenar boşluğunu <strong>Yok/Minimum</strong> seç. Etiket kağıdı da bu grid ile uyumlu.
+            {ruloModu ? (
+              <>💡 Yazdır'a basınca yazdır önizlemesi açılır. Yazıcı olarak <strong>NIIMBOT</strong>'u,
+              kenar boşluğunu <strong>Yok</strong> seç. Her seri no ayrı etikete basılır
+              ({seciliKalemler.length} etiket).</>
+            ) : (
+              <>💡 Yazdır'a basınca tarayıcının yazdır önizlemesi açılır. Kağıt tipini <strong>A4</strong>,
+              kenar boşluğunu <strong>Yok/Minimum</strong> seç. Etiket kağıdı da bu grid ile uyumlu.</>
+            )}
           </div>
         </div>
       </div>
 
       {/* Yazdırılacak katman — normalde gizli, print sırasında görünür */}
-      <div className="etiket-yazdir-alani">
+      <div className={`etiket-yazdir-alani${ruloModu ? ' etiket-rulo-modu' : ''}`}>
         <div className="etiket-grid">
           {seciliKalemler.map(k => (snDuzen ? (
             // ÜSTTE "SN: numara", ALTTA dikey çizgili barkod — başka bilgi yok
             // (kullanıcı kararı 14.08; cihazların fabrika etiketiyle aynı düzen)
             <div key={k.id} className="etiket-hucre etiket-hucre-sn">
-              <div className="etiket-sn-ust">SN: {k.seriNo}</div>
+              {/* Uzun seri no 40mm etikette iki satıra sarıp taşırabiliyor —
+                  uzunluğa göre punto düşürülür (CSS içerik uzunluğunu bilemez). */}
+              <div className="etiket-sn-ust" style={snPunto(k.seriNo, ruloModu)}>SN: {k.seriNo}</div>
               <div className="etiket-barkod-sn"><Barkod deger={k.seriNo} height={44} /></div>
             </div>
           ) : (
@@ -238,8 +289,55 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             height: 14mm !important;
             shape-rendering: crispEdges;  /* çizgiler keskin kalsın */
           }
+
+          /* ── NIIMBOT RULO 40×20 mm (14.08 kullanıcı kararı) ──────────────
+             Rulo etiketleri ÖNCEDEN KESİLMİŞ: her etiket ayrı "sayfa" olmalı,
+             yoksa yazıcı ikinci etiketi ilkinin üstüne bindirir.
+             ÖLÇÜ: barkodumuz 123 modül; 203 dpi'de modül başına 2 nokta
+             (0,25 mm) için 31 mm gerekir. 40 mm etikette 34 mm'ye basıyoruz —
+             iki yanda ~3 mm sessiz alan kalıyor, telefon kamerası okuyor. */
+        }
+
+        @media print {
+          .etiket-rulo-modu .etiket-grid {
+            display: block;
+          }
+          .etiket-rulo-modu .etiket-hucre {
+            width: 40mm;
+            height: 20mm;
+            border: none;              /* rulo zaten kesik — çerçeve gereksiz */
+            padding: 1.5mm 2mm;
+            gap: 1mm;
+            page-break-after: always;  /* HER ETİKET AYRI SAYFA */
+            break-after: page;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          .etiket-rulo-modu .etiket-hucre:last-child {
+            page-break-after: auto;
+            break-after: auto;         /* son etiketten sonra boş sayfa çıkmasın */
+          }
+          .etiket-rulo-modu .etiket-sn-ust {
+            font-size: 8pt;
+            line-height: 1.1;
+          }
+          .etiket-rulo-modu .etiket-barkod-sn svg {
+            max-width: 34mm;
+            height: 10mm !important;
+          }
         }
       `}</style>
+
+      {/* @page sınıfla hedeflenemez — rulo modunda sayfa ölçüsünü AYRI bir blok
+          ezer (sonra gelen kural kazanır). A4 modunda bu blok hiç basılmaz. */}
+      {ruloModu && <style>{`
+        @media print {
+          @page { size: 40mm 20mm; margin: 0; }
+          html, body { width: 40mm; }
+        }
+      `}</style>}
     </>,
     document.body,
   )
