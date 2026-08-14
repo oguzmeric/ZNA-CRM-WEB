@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
-import QRCode from 'qrcode'
 import { Printer, X, Square, CheckSquare } from 'lucide-react'
 import { Button } from './ui'
 import { useToast } from '../context/ToastContext'
@@ -26,43 +25,15 @@ function Barkod({ deger, height = 40 }) {
   return <svg ref={ref} />
 }
 
-// SN → QR (SVG string). Kare olduğu için küçük etikete barkoddan iyi sığar ve
-// telefon kamerası açıyı düzeltebildiği için saha okumasında daha toleranslı.
-// errorCorrectionLevel 'M': etiket kısmen çizilse/kirlense de okunur.
-function QrKod({ deger, kenar = 26 }) {
-  // { deger, svg } birlikte tutulur: effect'te senkron setState yapmadan
-  // "bu svg hangi değere ait" sorusunu cevaplar (eslint set-state-in-effect).
-  const [uretilen, setUretilen] = useState({ deger: null, svg: '' })
-  useEffect(() => {
-    if (!deger) return
-    let iptal = false
-    QRCode.toString(String(deger), {
-      type: 'svg', errorCorrectionLevel: 'M', margin: 0,
-    })
-      .then(s => { if (!iptal) setUretilen({ deger, svg: s }) })
-      .catch(e => console.warn('[QrKod]', deger, e?.message))
-    return () => { iptal = true }
-  }, [deger])
-  // Değer değiştiyse ESKİ QR'ı gösterme — yanlış etiket basılmasın.
-  const svg = uretilen.deger === deger ? uretilen.svg : ''
-  if (!svg) return null
-  return (
-    <div
-      className="etiket-qr-kutu"
-      style={{ width: kenar, height: kenar }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  )
-}
-
 /**
- * @param {'barkod'|'qr'} duzen
+ * @param {'barkod'|'sn'} duzen
  *   'barkod' (varsayılan): marka / model / CODE128 / SN — stok-depo etiketi.
- *   'qr' (14.08 kullanıcı kararı): ÜSTTE "SN: <numara>", ALTTA QR. Bağımsız SN
- *   etiketlerinde kullanılır; sahada telefonla okutmak için sade tutuldu.
+ *   'sn' (14.08 kullanıcı kararı): ÜSTTE "SN: <numara>", ALTTA dikey çizgili
+ *   CODE128 barkod. Cihaz üstündeki fabrika etiketlerinin düzeniyle aynı —
+ *   saha ekibi aynı tarayıcıyla okutuyor.
  */
 export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir, duzen = 'barkod' }) {
-  const qrDuzen = duzen === 'qr'
+  const snDuzen = duzen === 'sn'
   const { toast } = useToast()
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
@@ -146,11 +117,12 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
       {/* Yazdırılacak katman — normalde gizli, print sırasında görünür */}
       <div className="etiket-yazdir-alani">
         <div className="etiket-grid">
-          {seciliKalemler.map(k => (qrDuzen ? (
-            // ÜSTTE SN, ALTTA QR — başka bilgi yok (kullanıcı kararı 14.08)
-            <div key={k.id} className="etiket-hucre etiket-hucre-qr">
+          {seciliKalemler.map(k => (snDuzen ? (
+            // ÜSTTE "SN: numara", ALTTA dikey çizgili barkod — başka bilgi yok
+            // (kullanıcı kararı 14.08; cihazların fabrika etiketiyle aynı düzen)
+            <div key={k.id} className="etiket-hucre etiket-hucre-sn">
               <div className="etiket-sn-ust">SN: {k.seriNo}</div>
-              <QrKod deger={k.seriNo} />
+              <div className="etiket-barkod-sn"><Barkod deger={k.seriNo} height={44} /></div>
             </div>
           ) : (
             <div key={k.id} className="etiket-hucre">
@@ -236,18 +208,18 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             letter-spacing: 0.5px;
           }
 
-          /* ── QR DÜZENİ (14.08): üstte SN yazısı, altta QR ──────────────
-             Hücre yüksekliği grid'den (33mm) geliyor; QR kalan alana
-             sığacak sabit ölçüde. QR'ı yüzde ile büyütmüyoruz — yazıcı
-             ölçeklemesinde bulanıklaşıp okunmaz hale gelebiliyor. */
-          .etiket-hucre-qr {
-            justify-content: flex-start;
+          /* ── SN DÜZENİ (14.08): üstte "SN: numara", altta barkod ────────
+             Cihazların fabrika etiketiyle aynı görünüm. Barkod, hücre
+             genişliğini doldurur; yüksekliği sabit tutulur ki yazıcı
+             ölçeklemesinde çizgiler birbirine girmesin. */
+          .etiket-hucre-sn {
+            justify-content: center;
             gap: 1.5mm;
             padding: 2mm;
           }
           .etiket-sn-ust {
             font-family: 'Courier New', monospace;
-            font-size: 9pt;
+            font-size: 10pt;
             font-weight: 700;
             letter-spacing: 0.3px;
             line-height: 1.15;
@@ -255,15 +227,16 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             word-break: break-all;
             max-width: 100%;
           }
-          .etiket-qr-kutu {
-            width: 20mm !important;
-            height: 20mm !important;
+          .etiket-barkod-sn {
+            width: 100%;
+            display: flex;
+            justify-content: center;
           }
-          .etiket-qr-kutu svg {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
-            shape-rendering: crispEdges;  /* QR kareleri keskin kalsın */
+          .etiket-barkod-sn svg {
+            width: 100%;
+            max-width: 52mm;
+            height: 14mm !important;
+            shape-rendering: crispEdges;  /* çizgiler keskin kalsın */
           }
         }
       `}</style>

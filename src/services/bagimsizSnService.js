@@ -5,7 +5,8 @@
 //     atomik). Format TİRESİZ: ZNA00000001.
 //   • 'elle'     — cihazın KENDİ seri numarası elle girilir; sahada etiketi
 //     silinmiş/okunmaz olmuş cihazın etiketini yeniden basmak için.
-// Etiket ofiste basılır: üstte "SN: <numara>", altta QR (BarkodEtiketYazdir duzen="qr").
+// Etiket ofiste basılır: üstte "SN: <numara>", altta CODE128 barkod
+// (BarkodEtiketYazdir duzen="sn").
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 

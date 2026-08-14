@@ -142,7 +142,7 @@ export default function BagimsizSnEtiketleri() {
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
             Seri numarası olmayan ürünler için <strong>ZNA…</strong> seri no üret; etiketi
             silinmiş cihazın kendi numarasını <strong>elle</strong> gir. Etiket üstte SN,
-            altta QR olarak basılır. Sahadan (mobil servis) üretilenler de buraya düşer.
+            altta barkod olarak basılır. Sahadan (mobil servis) üretilenler de buraya düşer.
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -236,7 +236,7 @@ export default function BagimsizSnEtiketleri() {
           kalemler={yazdirKalemleri}
           marka="ZNA"
           stokKodu=""
-          duzen="qr"          /* üstte "SN: …", altta QR — 14.08 kararı */
+          duzen="sn"          /* üstte "SN: …", altta dikey çizgili barkod — 14.08 kararı */
           onKapat={() => setYazdirAcik(false)}
           onYazdir={basildiIsaretle}
         />
