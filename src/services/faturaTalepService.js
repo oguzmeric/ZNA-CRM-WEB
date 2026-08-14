@@ -13,6 +13,7 @@ import { cokluBildirimEkle } from './bildirimService'
 import { smsGonderVeLogla } from './smsLogService'
 import { satisEkle } from './satisService'
 import { musteriGetir } from './musteriService'
+import { lokasyonAdiGetir } from './musteriLokasyonService'
 import { formEnvanterKalemleri } from './servisMalzemeService'
 import { proformaHesapla, kalemPayload, kalemleriDogrula, tutarDegistiMi } from '../lib/proformaKalem'
 
@@ -830,10 +831,16 @@ export const siparistenTalep = (siparis, kalemler, musteri, kullanici, not = '')
     yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
     vergiNo: musteri?.vergiNo || '',
     vergiDairesi: musteri?.vergiDairesi || '',
-    adres: [musteri?.adres, musteri?.sehir].filter(Boolean).join(' · '),
+    // Şube (mig 286): fatura_talepleri'nde ayrı lokasyon kolonu yok, bu yüzden
+    // anlık görüntüye adresin başına yazılır — faturayı kesen kişi hangi şube
+    // için kesildiğini siparişe geri dönmeden görsün.
+    adres: [siparis.lokasyonAd, musteri?.adres, musteri?.sehir].filter(Boolean).join(' · '),
     telefon: musteri?.telefon || '',
     email: musteri?.email || '',
-    konu: siparis.konu ? `Sipariş: ${siparis.konu}` : `Sipariş ${siparis.siparisNo || ''}`.trim(),
+    konu: [
+      siparis.konu ? `Sipariş: ${siparis.konu}` : `Sipariş ${siparis.siparisNo || ''}`.trim(),
+      siparis.lokasyonAd || null,
+    ].filter(Boolean).join(' · '),
     paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
     dovizKuru: Number(siparis.dovizKuru) || null,
     kalemler: fKalemler,
@@ -860,8 +867,13 @@ export const siparistenFaturaTalebiAc = async ({ siparis, kalemler, kullanici, n
     .maybeSingle()
   if (mevcut) return { _hata: `Bu siparişe zaten açık bir proforma var (${mevcut.talep_no}).` }
 
-  const musteri = siparis.musteriId ? await musteriGetir(siparis.musteriId).catch(() => null) : null
-  const payload = siparistenTalep(siparis, kalemler, musteri, kullanici, not)
+  // Şube adı burada çözülür (çağıranın geçirmesine güvenmeyiz — proforma her
+  // yerden açılabilir); id→ad köprüsü tek yerden geçsin.
+  const [musteri, lokasyonAd] = await Promise.all([
+    siparis.musteriId ? musteriGetir(siparis.musteriId).catch(() => null) : Promise.resolve(null),
+    siparis.lokasyonId ? lokasyonAdiGetir(siparis.lokasyonId).catch(() => '') : Promise.resolve(''),
+  ])
+  const payload = siparistenTalep({ ...siparis, lokasyonAd }, kalemler, musteri, kullanici, not)
   let kayit
   try {
     kayit = await faturaTalebiEkle(payload)

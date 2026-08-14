@@ -86,8 +86,10 @@ export default function LokasyonSecici({
   }
 
   if (disabled) {
+    // Seçili değer pasifken de GÖRÜNÜR kalmalı: kaydetme sırasında kutu
+    // boşalıp placeholder'a düşünce kullanıcı ne seçtiğini kaybediyordu.
     return (
-      <Input value="" readOnly disabled placeholder={placeholder}
+      <Input value={secili?.ad || ''} readOnly disabled placeholder={placeholder}
         style={{ cursor: 'not-allowed' }} />
     )
   }

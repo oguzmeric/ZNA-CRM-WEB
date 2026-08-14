@@ -8,6 +8,7 @@ import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam,
 } from '../services/siparisService'
 import { musteriGetir } from '../services/musteriService'
+import { lokasyonAdiGetir } from '../services/musteriLokasyonService'
 import { gorusmeGetir } from '../services/gorusmeService'
 import { dosyayiKaydet } from '../lib/dosyaIndir'
 
@@ -34,6 +35,8 @@ export default function SiparisYazdir() {
   const [kalemler, setKalemler] = useState([])
   const [musteri, setMusteri] = useState(null)
   const [gorusme, setGorusme] = useState(null)
+  // Şube adı (mig 286) — belgeye basılır
+  const [lokasyonAd, setLokasyonAd] = useState('')
   const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
   const ciktiRef = useRef(null)
 
@@ -42,14 +45,16 @@ export default function SiparisYazdir() {
       const s = await siparisGetir(id)
       if (!s) return
       setSiparis(s)
-      const [k, m, g] = await Promise.all([
+      const [k, m, g, lok] = await Promise.all([
         kalemleriGetir(s.id),
         s.musteriId ? musteriGetir(s.musteriId) : Promise.resolve(null),
         s.gorusmeId ? gorusmeGetir(s.gorusmeId) : Promise.resolve(null),
+        s.lokasyonId ? lokasyonAdiGetir(s.lokasyonId) : Promise.resolve(''),
       ])
       setKalemler(k || [])
       setMusteri(m)
       setGorusme(g)
+      setLokasyonAd(lok || '')
     })()
   }, [id])
 
@@ -249,6 +254,13 @@ export default function SiparisYazdir() {
                 )}
                 {musteri?.telefon && <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>Tel: {musteri.telefon}</div>}
                 {musteri?.eposta && <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>E-posta: {musteri.eposta}</div>}
+                {/* Şube (mig 286) — çok lokasyonlu firmalarda belge tek başına
+                    okunduğunda hangi şubeye ait olduğu belli olsun. */}
+                {lokasyonAd && (
+                  <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontWeight: 600 }}>
+                    Lokasyon: {lokasyonAd}
+                  </div>
+                )}
               </div>
 
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>

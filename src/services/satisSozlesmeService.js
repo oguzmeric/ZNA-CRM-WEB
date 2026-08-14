@@ -499,6 +499,8 @@ export const tekliftenForm = (teklif, gorusmeNo) => {
 }
 
 // Sipariş → sözleşme form alanları
+// `siparis.lokasyonAd` verilirse sözleşmenin Lokasyon alanına düşer (mig 286);
+// sözleşme metni bu satırı zaten basıyordu, kaynak eksikti.
 export const siparistenForm = (siparis, kalemler, musteri) => {
   const urunListesi = (kalemler || []).map(k => ({
     stokKodu: k.stokKodu || '',
@@ -517,6 +519,7 @@ export const siparistenForm = (siparis, kalemler, musteri) => {
     yetkiliAdi: [musteri?.ad, musteri?.soyad].filter(Boolean).join(' '),
     telefon: musteri?.telefon || '', email: musteri?.email || '',
     isinKonusu: siparis.konu || '',
+    lokasyon: siparis.lokasyonAd || '',
     paraBirimi: ['TL', 'USD', 'EUR'].includes(siparis.paraBirimi) ? siparis.paraBirimi : 'TL',
     anaToplam: anaToplamCoz(siparis.genelToplam, urunListesi),
     urunListesi,

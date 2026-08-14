@@ -163,6 +163,27 @@ export const siparisGuncelle = async (id, payload) => {
   return toCamel(data)
 }
 
+/**
+ * Siparişin lokasyonunu (şubesini) ayarlar — mig 286.
+ *
+ * Neden ayrı fonksiyon: `siparisGuncelle` hatayı yutup null döndürüyor. Burada
+ * DB tarafında "lokasyon bu müşteriye ait değil" trigger'ı var; o reddi sessizce
+ * yutmak, kullanıcının seçimi kaydolmuş sanmasına yol açardı.
+ * @param {number} id sipariş id
+ * @param {number|null} lokasyonId null = lokasyon bağını kaldır
+ */
+export const siparisLokasyonGuncelle = async (id, lokasyonId) => {
+  const { data, error } = await supabase
+    .from('siparisler')
+    .update({ lokasyon_id: lokasyonId ?? null })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  invalidate('siparisler:list', `siparis:${id}`)
+  return toCamel(data)
+}
+
 export const siparisSil = async (id) => {
   const { error } = await supabase.from('siparisler').delete().eq('id', id)
   if (error) { console.error('siparisSil hata:', error.message); return false }

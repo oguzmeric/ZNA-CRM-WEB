@@ -36,6 +36,40 @@ const trAsciify = (s) => String(s || '')
  * Sipariş onaylandı → ön siparişi oluşturana bildirim + SMS.
  * Best-effort — telefon yoksa veya SMS fail olursa akış bozulmaz.
  */
+/**
+ * Yeni siparişin lokasyonunu (şubesini) kaynak zincirinden türetir — mig 286.
+ *
+ * Adaylar öncelik sırasıyla verilir (ön sipariş → görüşme). İlk dolu olan seçilir
+ * ama ÖNCE müşteri eşleşmesi doğrulanır: `siparisler` üzerindeki trigger, lokasyonun
+ * müşterisi siparişin müşterisinden farklıysa INSERT'i reddeder. Aynı firmanın
+ * birden fazla müşteri kartı olabildiği ve müşteri kimi zaman firma adından
+ * bulanık çözüldüğü için (aşağıdaki iki fonksiyona bak) zincirden gelen lokasyon
+ * BAŞKA bir karta bağlı olabilir. Öyle bir durumda lokasyonu sessizce düşürürüz:
+ * lokasyonsuz sipariş kabul edilebilir, oluşmayan sipariş değil.
+ */
+async function lokasyonTuret(musteriId, adaylar = []) {
+  if (!musteriId) return null
+  // Adaylar SIRAYLA denenir: ilki müşteri doğrulamasından geçmezse ikinciye
+  // düşülür. (Önce yalnız ilk dolu aday deneniyordu; ön siparişin lokasyonu
+  // başka bir karta bağlıysa görüşmedeki geçerli lokasyon da boşa düşüyordu.)
+  for (const ham of adaylar) {
+    const aday = ham == null ? null : Number(ham)
+    if (!aday) continue
+    const { data, error } = await supabase
+      .from('musteri_lokasyonlari')
+      .select('musteri_id')
+      .eq('id', aday)
+      .maybeSingle()
+    if (error) {
+      // Sipariş oluşmasını ENGELLEMEYİZ; ama sessizce kaybolmasın diye iz bırak.
+      console.warn('[lokasyonTuret] lokasyon okunamadı:', error.message)
+      return null
+    }
+    if (Number(data?.musteri_id) === Number(musteriId)) return aday
+  }
+  return null
+}
+
 async function siparisOnaylandiBildir({ siparisNo, onSiparisId, olusturanId, onaylayanAd, firmaAdi, gorusmeId, musteriId }) {
   if (!olusturanId) return
   try {
@@ -224,9 +258,21 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
     )
   }
 
+  // Lokasyon (şube): teklifte lokasyon alanı YOK — kaynak görüşmeden türetilir.
+  // Tedarikçi faturası eşleştirmesinde hangi şube olduğu görünsün diye (mig 286).
+  let gorusmeLokasyonId = null
+  if (teklif.gorusme_id) {
+    const { data: g, error: eG } = await supabase
+      .from('gorusmeler').select('lokasyon_id').eq('id', teklif.gorusme_id).maybeSingle()
+    if (eG) console.warn('[teklif→sipariş] görüşme lokasyonu okunamadı:', eG.message)
+    gorusmeLokasyonId = g?.lokasyon_id ?? null
+  }
+  const lokasyonId = await lokasyonTuret(musteriId, [gorusmeLokasyonId])
+
   // siparisler INSERT
   const payload = {
     musteri_id: musteriId,
+    lokasyon_id: lokasyonId,
     gorusme_id: teklif.gorusme_id,
     kaynak_tipi: 'teklif',
     teklif_id: teklifId,
@@ -432,14 +478,23 @@ export async function onSiparisiOnayla(onSiparisId, {
   // Zincir: ön sipariş → görüşme.musteri_id → firma adı birebir eşleşmesi.
   let musteriId = os.musteri_id
   let gorusmeFirma = null
-  if (!musteriId && os.gorusme_id) {
+  let gorusmeLokasyonId = null
+  // Görüşme, müşteri çözümü için yalnız musteri_id boşken çekiliyordu; lokasyon
+  // (mig 286) her durumda gerekli olduğu için koşul kaldırıldı — ön siparişte
+  // lokasyon yoksa görüşmedekine düşeriz.
+  if (os.gorusme_id) {
+    const musteriBastaBostu = !musteriId
     const { data: g } = await supabase
       .from('gorusmeler')
-      .select('musteri_id, firma_adi')
+      .select('musteri_id, firma_adi, lokasyon_id')
       .eq('id', os.gorusme_id)
       .maybeSingle()
-    if (g?.musteri_id) musteriId = Number(g.musteri_id) || null
-    gorusmeFirma = g?.firma_adi || null
+    if (musteriBastaBostu && g?.musteri_id) musteriId = Number(g.musteri_id) || null
+    // firma adı YALNIZ müşteri çözülemediğinde görüşmeden alınır: müşteri kartı
+    // varken görüşmedeki serbest yazım ("basaksehir bld") bildirimde resmi adın
+    // önüne geçmemeli — eski davranış buydu, koşul gevşerken korunuyor.
+    if (musteriBastaBostu) gorusmeFirma = g?.firma_adi || null
+    gorusmeLokasyonId = g?.lokasyon_id ?? null
   }
   if (!musteriId && gorusmeFirma) {
     const { data: adaylar } = await supabase
@@ -482,9 +537,17 @@ export async function onSiparisiOnayla(onSiparisId, {
   }, 0)
   const genelToplam = araToplam - genelIskontoTutar + kdvToplam
 
+  // Lokasyon (şube, mig 286): ön siparişin kendi lokasyonu > görüşmeninki.
+  const lokasyonId = await lokasyonTuret(musteriId, [os.lokasyon_id, gorusmeLokasyonId])
+
   // siparisler INSERT
   const payload = {
-    musteri_id: os.musteri_id,
+    // ⚠️ `os.musteri_id` DEĞİL, yukarıda çözümlenen `musteriId`: ön siparişte
+    // müşteri boşken görüşmeden/firma adından çözülen değer buraya taşınmıyordu,
+    // insert NOT NULL ihlaliyle patlıyordu (self-heal DB'yi güncelliyor ama
+    // bellekteki `os` nesnesini değil).
+    musteri_id: musteriId,
+    lokasyon_id: lokasyonId,
     gorusme_id: os.gorusme_id,
     kaynak_tipi: 'on_siparis',
     on_siparis_id: onSiparisId,

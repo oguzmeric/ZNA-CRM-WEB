@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Package, FileText, ShoppingCart, Building2, Calendar, Plus } from 'lucide-react'
+import { Search, Package, FileText, ShoppingCart, Building2, Calendar, Plus, MapPin } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { Card, Button, Badge, EmptyState, Input } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
@@ -41,6 +42,10 @@ export default function Siparisler() {
   const [liste, setListe] = useState([])
   const [musteriler, setMusteriler] = useState([])
   const [gorusmeMap, setGorusmeMap] = useState(new Map())
+  // lokasyon id → ad (mig 286). Sipariş listesinde şube rozeti + aramada kullanılır.
+  const [lokasyonMap, setLokasyonMap] = useState(new Map())
+  // müşteri id → şube sayısı; yalnız ÇOK şubeli firmada "lokasyon eksik" denir
+  const [subeSayisi, setSubeSayisi] = useState(new Map())
   const [yukleniyor, setYukleniyor] = useState(true)
   const [sekme, setSekme] = useState('aktif')
   const [arama, setArama] = useState('')
@@ -61,6 +66,24 @@ export default function Siparisler() {
         const gm = new Map()
         ;(gs || []).forEach(g => gm.set(g.id, g))
         setGorusmeMap(gm)
+        // Lokasyon adları + müşteri başına şube sayısı tek sorguda: şube sayısı
+        // "bu siparişte lokasyon eksik mi" uyarısı için gerekli (tek şubeli
+        // firmada eksiklik diye bir şey yok, uyarı gösterilmemeli).
+        // Sorgu YALNIZ listedeki müşterilerle sınırlı — tüm tabloyu çekmek
+        // PostgREST satır tavanına takılıp sessizce kırpılabilir, o zaman hem
+        // rozet kaybolur hem yanlış "Lokasyon seçilmedi" uyarısı çıkardı.
+        const musteriIdler = [...new Set((s || []).map(x => x.musteriId).filter(Boolean))]
+        const { data: loklar } = musteriIdler.length
+          ? await supabase.from('musteri_lokasyonlari')
+              .select('id, ad, musteri_id').in('musteri_id', musteriIdler)
+          : { data: [] }
+        const adMap = new Map(), sayimMap = new Map()
+        ;(loklar || []).forEach(l => {
+          adMap.set(l.id, l.ad)
+          sayimMap.set(l.musteri_id, (sayimMap.get(l.musteri_id) || 0) + 1)
+        })
+        setLokasyonMap(adMap)
+        setSubeSayisi(sayimMap)
       } catch (e) {
         console.error('[siparisler]', e)
       } finally { setYukleniyor(false) }
@@ -91,13 +114,15 @@ export default function Siparisler() {
       if (musteriFiltreIdler && !musteriFiltreIdler.has(Number(s.musteriId))) return false
       if (q) {
         const musteri = musteriMap.get(s.musteriId)
-        const alan = [s.siparisNo, s.konu, s.notlar, musteri?.firma, musteri?.ad]
+        // Lokasyon adı da aranır: "Turkuaz Kayaşehir" gibi şube bazlı arama
+        // tedarikçi faturasını eşleştirirken işe yarıyor (14.08).
+        const alan = [s.siparisNo, s.konu, s.notlar, musteri?.firma, musteri?.ad, lokasyonMap.get(s.lokasyonId)]
           .filter(Boolean).join(' ').toLocaleLowerCase('tr')
         if (!alan.includes(q)) return false
       }
       return true
     })
-  }, [liste, sekme, arama, kaynakFiltre, musteriFiltreIdler, musteriMap])
+  }, [liste, sekme, arama, kaynakFiltre, musteriFiltreIdler, musteriMap, lokasyonMap])
 
   const musteriFiltreObj = musteriFiltre ? musteriMap.get(Number(musteriFiltre)) : null
 
@@ -224,7 +249,7 @@ export default function Siparisler() {
         <div style={{ position: 'relative', flex: '1 1 300px' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
           <Input
-            placeholder="Sipariş no, konu, müşteri ara..."
+            placeholder="Sipariş no, konu, müşteri, lokasyon ara..."
             value={arama}
             onChange={e => setArama(e.target.value)}
             style={{ paddingLeft: 32 }}
@@ -291,6 +316,30 @@ export default function Siparisler() {
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
                     <Building2 size={11} style={{ display: 'inline', verticalAlign: -1, marginRight: 4 }} />
                     {musteri?.firma || musteri?.ad || '—'}
+                    {/* Lokasyon (şube) — mig 286. Çok şubeli firmalarda hangi şube
+                        olduğu listede de görünsün; fatura eşleştirmesi genelde
+                        buradaki sipariş no aramasıyla başlıyor. */}
+                    {lokasyonMap.get(s.lokasyonId) ? (
+                      <span style={{
+                        marginLeft: 6, fontSize: 11, fontWeight: 600, color: '#7c3aed',
+                        background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.25)',
+                        borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap',
+                      }}>
+                        <MapPin size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />
+                        {lokasyonMap.get(s.lokasyonId)}
+                      </span>
+                    ) : (subeSayisi.get(s.musteriId) || 0) > 1 && s.durum !== 'iptal' ? (
+                      // Çok şubeli firmada boş lokasyon — faturayı eşleştirirken
+                      // takılınan yer burası, sessiz geçmiyoruz.
+                      <span style={{
+                        marginLeft: 6, fontSize: 11, fontWeight: 600, color: '#b45309',
+                        background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)',
+                        borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap',
+                      }}>
+                        <MapPin size={10} style={{ display: 'inline', verticalAlign: -1, marginRight: 3 }} />
+                        Lokasyon seçilmedi
+                      </span>
+                    ) : null}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {s.konu && <>{s.konu} · </>}

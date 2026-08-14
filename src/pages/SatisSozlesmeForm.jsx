@@ -20,6 +20,7 @@ import BelgeOnizlemeModal from '../components/BelgeOnizlemeModal'
 import { teklifleriGetir, teklifGetir } from '../services/teklifService'
 import { siparisGetir, kalemleriGetir } from '../services/siparisService'
 import { musteriGetir, musterileriGetir } from '../services/musteriService'
+import { lokasyonAdiGetir } from '../services/musteriLokasyonService'
 import { gorusmeGetir, gorusmeleriGetir } from '../services/gorusmeService'
 import {
   satisSozlesmeGetir, satisSozlesmeEkle, satisSozlesmeGuncelle, hesapVeIcerikHazirla,
@@ -259,7 +260,9 @@ export default function SatisSozlesmeForm() {
       const t = (teklifler || []).find(x => Number(x.id) === Number(sip.teklifId))
       if (t) ek.teklifNo = t.teklifNo || ''
     }
-    const veri = siparistenForm(sip, kalemler, musteri)
+    // Şube adı (mig 286) — sözleşmenin Lokasyon alanına düşsün
+    const lokasyonAd = sip.lokasyonId ? await lokasyonAdiGetir(sip.lokasyonId).catch(() => '') : ''
+    const veri = siparistenForm({ ...sip, lokasyonAd }, kalemler, musteri)
     // Firma künyesi (vergi no / vergi dairesi / adres / firma tipi) müşteri kartında
     const kunye = musteridenKunye(musteri)
     setForm(f => ({ ...f, ...kunye, ...veri, ...ek }))

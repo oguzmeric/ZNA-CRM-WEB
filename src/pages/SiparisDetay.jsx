@@ -3,12 +3,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
-import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench, Receipt } from 'lucide-react'
+import { ArrowLeft, FileText, ShoppingCart, Building2, User, Calendar, Package, ExternalLink, Printer, XCircle, AlertTriangle, CheckCircle2, Wrench, Receipt, MapPin } from 'lucide-react'
 import { Card, CardTitle, Button, Badge, EmptyState, Textarea, Input, Label, Modal } from '../components/ui'
 import {
   siparisGetir, kalemleriGetir, SIPARIS_DURUMLARI, kalemAraToplam, kalemlerToplam, siparisIptalEt,
-  siparisTamamla, siparisServisBagla,
+  siparisTamamla, siparisServisBagla, siparisLokasyonGuncelle,
 } from '../services/siparisService'
+import LokasyonSecici from '../components/LokasyonSecici'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { siparistenMontajServisi, montajSorumlusuGetir, servisTalebiBildirimGonder } from '../services/servisService'
 import { siparistenFaturaTalebiAc, siparisFaturaTalebiGetir } from '../services/faturaTalepService'
 import { useConfirm } from '../context/ConfirmContext'
@@ -63,6 +65,11 @@ export default function SiparisDetay() {
   const [faturaModalAcik, setFaturaModalAcik] = useState(false)
   const [faturaNot, setFaturaNot] = useState('')
   const [faturaMesgul, setFaturaMesgul] = useState(false)
+  // Lokasyon (şube) — mig 286. Tedarikçi faturası eşleştirilirken siparişin
+  // hangi şubeye ait olduğu görünsün diye.
+  const [lokasyonlar, setLokasyonlar] = useState([])
+  const [lokasyonDuzenle, setLokasyonDuzenle] = useState(false)
+  const [lokasyonMesgul, setLokasyonMesgul] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -81,6 +88,14 @@ export default function SiparisDetay() {
         setGorusme(g)
         // Fatura talebi rozeti (best-effort)
         siparisFaturaTalebiGetir(s.id).then(setFaturaTalebi).catch(() => {})
+        // Müşterinin lokasyonları (şubeleri) — seçici ve ad çözümü için
+        if (s.musteriId) {
+          musteriLokasyonlariniGetir(s.musteriId)
+            .then(l => setLokasyonlar(l || []))
+            // Sessiz yutma yok: liste boş kalırsa ekran şubeli siparişi
+            // "lokasyonsuz" gösterir, nedenini bilmek gerekir.
+            .catch(e => console.warn('[siparis detay] lokasyonlar alınamadı:', e?.message))
+        }
       } catch (e) {
         console.error('[siparis detay]', e)
       } finally { setYukleniyor(false) }
@@ -88,6 +103,39 @@ export default function SiparisDetay() {
   }, [id])
 
   const toplam = useMemo(() => kalemlerToplam(kalemler, siparis?.genelIskonto), [kalemler, siparis?.genelIskonto])
+
+  const seciliLokasyon = useMemo(
+    () => lokasyonlar.find(l => String(l.id) === String(siparis?.lokasyonId)) || null,
+    [lokasyonlar, siparis?.lokasyonId]
+  )
+
+  // Montaj servisine giden lokasyon METNİ: şube adı + adres. Adres, şubenin
+  // kendi adresinden gelmiyorsa müşteri kartından alınır — teknisyen sahada
+  // yalnız "ALTINŞEHİR SPOR PARKI" görüp adressiz kalmasın.
+  const montajLokasyonMetni = useMemo(() => {
+    if (!seciliLokasyon) return musteri?.adres || ''
+    const adres = seciliLokasyon.adres || musteri?.adres || ''
+    return adres ? `${seciliLokasyon.ad} — ${adres}` : seciliLokasyon.ad
+  }, [seciliLokasyon, musteri?.adres])
+
+  // Lokasyon seçimi anında kaydedilir (ayrı "Kaydet" düğmesi yok — tek alanlık
+  // seçim için fazladan adım olurdu). DB'de "lokasyon bu müşteriye ait değil"
+  // trigger'ı var; reddi yutmayıp kullanıcıya gösteriyoruz.
+  const lokasyonKaydet = async (yeniId) => {
+    if (String(yeniId ?? '') === String(siparis?.lokasyonId ?? '')) { setLokasyonDuzenle(false); return }
+    setLokasyonMesgul(true)
+    try {
+      const g = await siparisLokasyonGuncelle(siparis.id, yeniId ?? null)
+      setSiparis(s => ({ ...s, lokasyonId: g?.lokasyonId ?? null }))
+      setLokasyonDuzenle(false)
+      const ad = lokasyonlar.find(l => String(l.id) === String(yeniId))?.ad
+      toast.success(ad ? `Lokasyon güncellendi: ${ad}` : 'Lokasyon bağı kaldırıldı.')
+    } catch (e) {
+      toast.error('Lokasyon kaydedilemedi: ' + (e?.message || 'hata'))
+    } finally {
+      setLokasyonMesgul(false)
+    }
+  }
 
   if (yukleniyor) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
   if (!siparis) return (
@@ -154,7 +202,11 @@ export default function SiparisDetay() {
     setMesgul(true)
     try {
       const talep = await siparistenMontajServisi({
-        siparis: { ...siparis, firmaAdi: musteri?.firma || '', lokasyon: musteri?.adres || '' },
+        // Servis talepleri lokasyonu METİN tutar, sipariş ID — köprü burada.
+        // ⚠️ Şube ADI adresin YERİNE geçmez: teknisyenin gideceği yeri bilmesi
+        // gerek. Şubenin kendi adresi varsa o, yoksa müşteri kartının adresi
+        // ada eklenir (servis_talepleri'nde ayrı adres kolonu yok).
+        siparis: { ...siparis, firmaAdi: musteri?.firma || '', lokasyon: montajLokasyonMetni },
         kalemler,
         atanan: montajModal.atanan,
         planliTarih: montajModal.planliTarih || null,
@@ -392,6 +444,73 @@ export default function SiparisDetay() {
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{musteri?.firma || musteri?.ad || '—'}</div>
             {musteri?.ad && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{musteri.ad}</div>}
             {musteri?.telefon && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{musteri.telefon}</div>}
+
+            {/* LOKASYON (şube) — mig 286.
+                Tedarikçi faturası sipariş numarasıyla eşleştirilirken çok şubeli
+                firmalarda hangi şube olduğu belli olmuyordu (14.08 kullanıcı).
+                Lokasyonu olmayan müşteride bölüm hiç görünmez — gereksiz alan
+                göstermeyelim. */}
+            {(lokasyonlar.length > 0 || siparis.lokasyonId) && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 4, letterSpacing: 0.3 }}>
+                  LOKASYON
+                </div>
+
+                {!lokasyonDuzenle ? (
+                  <>
+                    {seciliLokasyon ? (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <MapPin size={13} style={{ marginTop: 2, flexShrink: 0, color: 'var(--text-tertiary)' }} />
+                        <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>
+                          {seciliLokasyon.ad}
+                          {seciliLokasyon.adres && (
+                            <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                              {seciliLokasyon.adres}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : lokasyonlar.length > 1 ? (
+                      // Uyarı YALNIZ çok şubeli firmada: tek şubelide seçilecek
+                      // ikinci bir şey yok, "1 lokasyonu var" demek yanlış alarm
+                      // olurdu (liste ekranı da aynı kapıyı kullanıyor).
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+                        color: '#b45309', background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.35)', borderRadius: 6, padding: '6px 8px',
+                      }}>
+                        <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                        <span>Lokasyon seçilmedi — bu firmanın {lokasyonlar.length} lokasyonu var</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>—</div>
+                    )}
+                    {/* İptal edilmiş siparişte diğer eylemler gibi lokasyon da
+                        salt okunur — kapanmış kayda düzeltme daveti çıkmasın. */}
+                    {siparis.durum !== 'iptal' && lokasyonlar.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setLokasyonDuzenle(true)} style={{ marginTop: 6 }}>
+                        {seciliLokasyon ? 'Lokasyonu değiştir' : 'Lokasyon seç'}
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <LokasyonSecici
+                      lokasyonlar={lokasyonlar}
+                      value={siparis.lokasyonId ?? null}
+                      onChange={lokasyonKaydet}
+                      disabled={lokasyonMesgul}
+                      bosEtiket="— Lokasyon belirtilmedi —"
+                      ipucuVer={(l) => l.adres || null}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => setLokasyonDuzenle(false)} style={{ marginTop: 6 }}>
+                      Kapat
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+
             {musteri && (
               <Button variant="ghost" size="sm" onClick={() => navigate(`/musteriler/${musteri.id}`)} style={{ marginTop: 8 }}>
                 Müşteri Kartı →
@@ -402,7 +521,7 @@ export default function SiparisDetay() {
           {/* Tedarikçi (alış) faturaları — mig 249.
               DİKKAT: buradaki faturalar bize KESİLEN faturalardır; yukarıdaki
               "Müşteriye Fatura Kesilecek" butonu ise GİDEN proformayı açar. */}
-          <AlisFaturaKarti siparis={siparis} />
+          <AlisFaturaKarti siparis={siparis} lokasyonAd={seciliLokasyon?.ad || ''} />
 
           {/* Onay bilgileri */}
           <Card style={{ padding: 16 }}>

@@ -5,7 +5,7 @@
 // İkisi karışmasın diye başlıkta ve butonda "Tedarikçi" kelimesi zorunlu.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Truck, Upload, FileText, Trash2, Search, Plus, Pencil } from 'lucide-react'
+import { Truck, Upload, FileText, Trash2, Search, Plus, Pencil, MapPin } from 'lucide-react'
 import { Card, CardTitle, Button, Badge, Input, Label, Textarea, Modal } from './ui'
 import BelgeOnizlemeModal from './BelgeOnizlemeModal'
 import { useToast } from '../context/ToastContext'
@@ -31,7 +31,7 @@ const BOS_FORM = {
   paraBirimi: 'TL', araToplam: '', kdvToplam: '', genelToplam: '', aciklama: '',
 }
 
-export default function AlisFaturaKarti({ siparis }) {
+export default function AlisFaturaKarti({ siparis, lokasyonAd = '' }) {
   const { toast } = useToast()
   const { confirm } = useConfirm()
   const { kullanici } = useAuth()
@@ -90,6 +90,21 @@ export default function AlisFaturaKarti({ siparis }) {
         <p style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--text-tertiary)', margin: '0 0 10px' }}>
           Bu siparişi karşılamak için tedarikçiden alınan mal/hizmetin <strong>bize kesilen</strong> faturaları.
         </p>
+
+        {/* Şube künyesi (mig 286) — gelen fatura sipariş numarasıyla eşleştirilirken
+            "bu hangi şube?" sorusu buradan cevaplanıyor. Sipariş detayında müşteri
+            kartında da yazar ama fatura yüklerken göz burada oluyor. */}
+        {lokasyonAd && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10,
+            fontSize: 12, fontWeight: 600, color: '#7c3aed',
+            background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.22)',
+            borderRadius: 6, padding: '5px 8px',
+          }}>
+            <MapPin size={12} style={{ flexShrink: 0 }} />
+            <span>{lokasyonAd}</span>
+          </div>
+        )}
 
         {yukleniyor ? (
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
