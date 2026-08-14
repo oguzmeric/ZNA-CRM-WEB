@@ -180,7 +180,7 @@ export async function imzaYukle(file, teklifId) {
  * ARTIK: onaydan sonra siparisler + siparis_kalemleri tablosuna INSERT eder.
  * ZNA-SIP-YYYY-NNNNNN no otomatik atanır (DB trigger).
  */
-export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUrl, onayGerekcesi = '' }) {
+export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUrl, onayGerekcesi = '', lokasyonId = null }) {
   const onay = {
     durum: 'onayli',
     onaylayan_id: onaylayanId,
@@ -196,6 +196,7 @@ export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUr
   const siparisNo = await tekliftenSiparisiOlustur(teklifId, {
     onaylayanId, onaylayanAd, imzaUrl,
     notlar: onayGerekcesi || null,
+    lokasyonId,
   })
 
   // 2) Sipariş başarıyla oluştu — teklifi işaretle
@@ -218,7 +219,7 @@ export async function siparisOnayla(teklifId, { onaylayanId, onaylayanAd, imzaUr
  * - siparis_kalemleri INSERT (teklif.satirlar jsonb'sinden mapping)
  * Zaten aynı teklifId için aktif sipariş varsa yeni INSERT yapmaz (idempotent).
  */
-export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylayanAd, imzaUrl, notlar }) {
+export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylayanAd, imzaUrl, notlar, lokasyonId = null }) {
   // Idempotent kontrol
   const { data: mevcut } = await supabase
     .from('siparisler')
@@ -258,21 +259,21 @@ export async function tekliftenSiparisiOlustur(teklifId, { onaylayanId, onaylaya
     )
   }
 
-  // Lokasyon (şube): teklifte lokasyon alanı YOK — kaynak görüşmeden türetilir.
-  // Tedarikçi faturası eşleştirmesinde hangi şube olduğu görünsün diye (mig 286).
+  // Lokasyon (şube): teklifte lokasyon alanı YOK. Onay ekranında ELLE seçilmişse
+  // o kazanır; seçilmemişse kaynak görüşmeden türetilir (mig 286).
   let gorusmeLokasyonId = null
-  if (teklif.gorusme_id) {
+  if (!lokasyonId && teklif.gorusme_id) {
     const { data: g, error: eG } = await supabase
       .from('gorusmeler').select('lokasyon_id').eq('id', teklif.gorusme_id).maybeSingle()
     if (eG) console.warn('[teklif→sipariş] görüşme lokasyonu okunamadı:', eG.message)
     gorusmeLokasyonId = g?.lokasyon_id ?? null
   }
-  const lokasyonId = await lokasyonTuret(musteriId, [gorusmeLokasyonId])
+  const secilenLokasyon = await lokasyonTuret(musteriId, [lokasyonId, gorusmeLokasyonId])
 
   // siparisler INSERT
   const payload = {
     musteri_id: musteriId,
-    lokasyon_id: lokasyonId,
+    lokasyon_id: secilenLokasyon,
     gorusme_id: teklif.gorusme_id,
     kaynak_tipi: 'teklif',
     teklif_id: teklifId,
@@ -453,6 +454,7 @@ export async function onSiparisiOnayla(onSiparisId, {
   paraBirimi = 'TL',
   dovizKuru = 1,
   genelIskonto = 0,
+  lokasyonId = null,        // onay ekranında elle seçilen şube (mig 286)
 }) {
   // Idempotent kontrol
   const { data: mevcut } = await supabase
@@ -537,8 +539,9 @@ export async function onSiparisiOnayla(onSiparisId, {
   }, 0)
   const genelToplam = araToplam - genelIskontoTutar + kdvToplam
 
-  // Lokasyon (şube, mig 286): ön siparişin kendi lokasyonu > görüşmeninki.
-  const lokasyonId = await lokasyonTuret(musteriId, [os.lokasyon_id, gorusmeLokasyonId])
+  // Lokasyon (şube, mig 286): onayda ELLE seçilen > ön siparişin kendi
+  // lokasyonu > görüşmeninki. Hepsi müşteri eşleşmesinden geçer.
+  const secilenLokasyon = await lokasyonTuret(musteriId, [lokasyonId, os.lokasyon_id, gorusmeLokasyonId])
 
   // siparisler INSERT
   const payload = {
@@ -547,7 +550,7 @@ export async function onSiparisiOnayla(onSiparisId, {
     // insert NOT NULL ihlaliyle patlıyordu (self-heal DB'yi güncelliyor ama
     // bellekteki `os` nesnesini değil).
     musteri_id: musteriId,
-    lokasyon_id: lokasyonId,
+    lokasyon_id: secilenLokasyon,
     gorusme_id: os.gorusme_id,
     kaynak_tipi: 'on_siparis',
     on_siparis_id: onSiparisId,

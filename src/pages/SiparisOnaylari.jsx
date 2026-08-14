@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle2, XCircle, Clock, FileText, Upload, X, Image as ImageIcon,
-  Building2, User as UserIcon, Calendar, Receipt, Plus,
+  Building2, User as UserIcon, Calendar, Receipt, Plus, MapPin,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -25,7 +25,64 @@ import { gorusmeleriGetir } from '../services/gorusmeService'
 import TeklifKalemTablosu, { toplamHesapla } from '../components/TeklifKalemTablosu'
 import YeniOnSiparisWizard from '../components/YeniOnSiparisWizard'
 import OnSiparisModal from '../components/OnSiparisModal'
+import LokasyonSecici from '../components/LokasyonSecici'
+import { musteriLokasyonlariniGetir } from '../services/musteriLokasyonService'
 import { useDovizKuru } from '../hooks/useDovizKuru'
+
+/**
+ * Onay anında şube (lokasyon) seçimi — mig 286.
+ *
+ * Neden burada: siparişin lokasyonu kaynak zincirinden (ön sipariş → görüşme)
+ * türetiliyor ama zincirin doluluğu düşük (canlıda 48 siparişin 8'i). Onaylayan
+ * kişi şubeyi o an biliyor; sonradan sipariş detayından düzeltmek yerine burada
+ * girsin. Boş bırakmak serbest — onayı bloklamıyoruz, sipariş detayında da
+ * seçilebiliyor.
+ *
+ * ⚠️ Dosya seviyesinde tanımlı: panel bileşeninin içine konursa her render'da
+ * yeniden oluşur ve seçim state'i sıfırlanır.
+ */
+function OnayLokasyonSecici({ musteriId, value, onChange, disabled }) {
+  const [lokasyonlar, setLokasyonlar] = useState([])
+
+  useEffect(() => {
+    if (!musteriId) return
+    let iptal = false
+    musteriLokasyonlariniGetir(musteriId)
+      .then(l => { if (!iptal) setLokasyonlar(l || []) })
+      .catch(e => console.warn('[onay lokasyon]', e?.message))
+    return () => { iptal = true }
+  }, [musteriId])
+
+  // Müşterinin kayıtlı şubesi yoksa seçilecek bir şey de yok — alanı hiç açma.
+  if (!musteriId || lokasyonlar.length === 0) return null
+
+  const cokSubeli = lokasyonlar.length > 1
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <MapPin size={13} style={{ color: 'var(--text-tertiary)' }} />
+        <strong style={{ font: '700 12px/16px var(--font-sans)' }}>Lokasyon (şube)</strong>
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          {cokSubeli ? `${lokasyonlar.length} şube` : 'tek şube'}
+        </span>
+      </div>
+      <LokasyonSecici
+        lokasyonlar={lokasyonlar}
+        value={value ?? null}
+        onChange={onChange}
+        disabled={disabled}
+        bosEtiket="— Lokasyon belirtilmedi —"
+        ipucuVer={(l) => l.adres || null}
+      />
+      {cokSubeli && !value && (
+        <div style={{ fontSize: 11.5, color: '#b45309', marginTop: 5 }}>
+          Seçilmezse sipariş lokasyonsuz açılır; tedarikçi faturası eşleştirmesinde
+          hangi şube olduğu görünmez. Sipariş detayından sonra da seçilebilir.
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Teklifin genel toplamı DB'de yoksa satırlardan hesapla
 function gerçekToplam(t) {
@@ -434,6 +491,7 @@ function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi
   const [onayGerekcesi, setOnayGerekcesi] = useState('')
   const [calisiyor, setCalisiyor] = useState(false)
   const [hata, setHata] = useState(null)
+  const [lokasyonId, setLokasyonId] = useState(null)   // onayda seçilen şube (mig 286)
 
   const s = t.siparisOnayi || {}
   const profilImzasi = kullanici?.imza  // profilde yuklenmis imza
@@ -472,6 +530,7 @@ function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi
         onaylayanAd: kullanici.ad,
         imzaUrl: url,
         onayGerekcesi: onayGerekcesi.trim(),
+        lokasyonId,
       })
       onTamamlandi()
     } catch (e) {
@@ -769,6 +828,15 @@ function DetayPaneli({ teklif: t, sekme, izleme = false, kullanici, onTamamlandi
             )}
           </div>
 
+          {/* Şube seçimi (mig 286) — onaylayan kişi hangi lokasyon olduğunu
+              o an biliyor; sipariş lokasyonlu doğsun. */}
+          <OnayLokasyonSecici
+            musteriId={t.musteriId}
+            value={lokasyonId}
+            onChange={setLokasyonId}
+            disabled={calisiyor}
+          />
+
           {/* Gerekce zorunlu — ust yetkili degilse */}
           {gerekceZorunlu && (
             <div style={{
@@ -883,6 +951,9 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
   const [hata, setHata] = useState(null)
   const [kalemler, setKalemler] = useState([])
   const [yukleniyorKalem, setYukleniyorKalem] = useState(true)
+  // Şube (mig 286): ön siparişin kendi lokasyonu varsa ön-dolu başlar.
+  // Sunucu yine de müşteri eşleşmesini doğrular; tutmazsa sessizce düşer.
+  const [lokasyonId, setLokasyonId] = useState(os.lokasyonId ?? null)
   const [genelIskonto, setGenelIskonto] = useState(0)
   const [paraBirimi, setParaBirimi] = useState('TL')
   const { kurlar, yukleniyor: kurYukleniyor, kurCek } = useDovizKuru()
@@ -977,6 +1048,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
         paraBirimi,
         dovizKuru: aktifKur || 1,
         genelIskonto: 0,
+        lokasyonId,
       })
       alert(`Sipariş oluştu: ${siparisNo}`)
       onTamamlandi()
@@ -1302,6 +1374,15 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
             )}
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={imzaSec} />
           </div>
+
+          {/* Şube seçimi (mig 286) — ön siparişin kendi lokasyonu varsa
+              aşağıda ön-dolu gelir, yoksa burada seçilir. */}
+          <OnayLokasyonSecici
+            musteriId={os.musteriId}
+            value={lokasyonId}
+            onChange={setLokasyonId}
+            disabled={calisiyor}
+          />
 
           {/* Gerekçe */}
           <div style={{ marginBottom: 12 }}>
