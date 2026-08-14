@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
 import { Printer, X, Square, CheckSquare } from 'lucide-react'
 import { Button } from './ui'
 import { useToast } from '../context/ToastContext'
@@ -25,7 +26,43 @@ function Barkod({ deger, height = 40 }) {
   return <svg ref={ref} />
 }
 
-export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir }) {
+// SN → QR (SVG string). Kare olduğu için küçük etikete barkoddan iyi sığar ve
+// telefon kamerası açıyı düzeltebildiği için saha okumasında daha toleranslı.
+// errorCorrectionLevel 'M': etiket kısmen çizilse/kirlense de okunur.
+function QrKod({ deger, kenar = 26 }) {
+  // { deger, svg } birlikte tutulur: effect'te senkron setState yapmadan
+  // "bu svg hangi değere ait" sorusunu cevaplar (eslint set-state-in-effect).
+  const [uretilen, setUretilen] = useState({ deger: null, svg: '' })
+  useEffect(() => {
+    if (!deger) return
+    let iptal = false
+    QRCode.toString(String(deger), {
+      type: 'svg', errorCorrectionLevel: 'M', margin: 0,
+    })
+      .then(s => { if (!iptal) setUretilen({ deger, svg: s }) })
+      .catch(e => console.warn('[QrKod]', deger, e?.message))
+    return () => { iptal = true }
+  }, [deger])
+  // Değer değiştiyse ESKİ QR'ı gösterme — yanlış etiket basılmasın.
+  const svg = uretilen.deger === deger ? uretilen.svg : ''
+  if (!svg) return null
+  return (
+    <div
+      className="etiket-qr-kutu"
+      style={{ width: kenar, height: kenar }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
+
+/**
+ * @param {'barkod'|'qr'} duzen
+ *   'barkod' (varsayılan): marka / model / CODE128 / SN — stok-depo etiketi.
+ *   'qr' (14.08 kullanıcı kararı): ÜSTTE "SN: <numara>", ALTTA QR. Bağımsız SN
+ *   etiketlerinde kullanılır; sahada telefonla okutmak için sade tutuldu.
+ */
+export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir, duzen = 'barkod' }) {
+  const qrDuzen = duzen === 'qr'
   const { toast } = useToast()
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
@@ -109,14 +146,20 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
       {/* Yazdırılacak katman — normalde gizli, print sırasında görünür */}
       <div className="etiket-yazdir-alani">
         <div className="etiket-grid">
-          {seciliKalemler.map(k => (
+          {seciliKalemler.map(k => (qrDuzen ? (
+            // ÜSTTE SN, ALTTA QR — başka bilgi yok (kullanıcı kararı 14.08)
+            <div key={k.id} className="etiket-hucre etiket-hucre-qr">
+              <div className="etiket-sn-ust">SN: {k.seriNo}</div>
+              <QrKod deger={k.seriNo} />
+            </div>
+          ) : (
             <div key={k.id} className="etiket-hucre">
               <div className="etiket-marka">{marka || k.marka || 'ZNA'}</div>
               <div className="etiket-model">{k.model || stokKodu}</div>
               <div className="etiket-barkod"><Barkod deger={k.seriNo} height={38} /></div>
               <div className="etiket-sn">{k.seriNo}</div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
@@ -191,6 +234,36 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             font-size: 8pt;
             font-weight: 600;
             letter-spacing: 0.5px;
+          }
+
+          /* ── QR DÜZENİ (14.08): üstte SN yazısı, altta QR ──────────────
+             Hücre yüksekliği grid'den (33mm) geliyor; QR kalan alana
+             sığacak sabit ölçüde. QR'ı yüzde ile büyütmüyoruz — yazıcı
+             ölçeklemesinde bulanıklaşıp okunmaz hale gelebiliyor. */
+          .etiket-hucre-qr {
+            justify-content: flex-start;
+            gap: 1.5mm;
+            padding: 2mm;
+          }
+          .etiket-sn-ust {
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            line-height: 1.15;
+            /* Uzun SN'ler (cihazın kendi seri no'su) taşmasın, sarsın */
+            word-break: break-all;
+            max-width: 100%;
+          }
+          .etiket-qr-kutu {
+            width: 20mm !important;
+            height: 20mm !important;
+          }
+          .etiket-qr-kutu svg {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            shape-rendering: crispEdges;  /* QR kareleri keskin kalsın */
           }
         }
       `}</style>

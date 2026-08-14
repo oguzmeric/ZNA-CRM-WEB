@@ -1,7 +1,11 @@
-// Bağımsız (dahili) SN üretimi + etiket kuyruğu (mig 220).
+// Bağımsız (dahili) SN üretimi + etiket kuyruğu (mig 220, mig 288).
 //
-// Sahada SN'siz ürünlere ZNA- ön ekli benzersiz SN üretilir (DB sequence, atomik);
-// müşteri cihaz envanterine bağlanır; etiket ofiste A4 3×8 barkod sayfasıyla basılır.
+// İKİ KAYNAK (mig 288):
+//   • 'uretilen' — SN'siz ürüne ZNA ön ekli benzersiz SN üretilir (DB sequence,
+//     atomik). Format TİRESİZ: ZNA00000001.
+//   • 'elle'     — cihazın KENDİ seri numarası elle girilir; sahada etiketi
+//     silinmiş/okunmaz olmuş cihazın etiketini yeniden basmak için.
+// Etiket ofiste basılır: üstte "SN: <numara>", altta QR (BarkodEtiketYazdir duzen="qr").
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel } from '../lib/mapper'
 
@@ -16,6 +20,29 @@ export const bagimsizSnUret = async ({ urunAdi, stokKodu, musteriId, servisTalep
     p_olusturan_ad: kullanici?.ad ?? null,
   })
   if (error) { console.error('[bagimsizSnUret]', error.message); return { hata: error.message } }
+  return { kayit: toCamel(data) }
+}
+
+/**
+ * ELLE seri no ekle — cihazın kendi SN'si (mig 288).
+ *
+ * Etiketi silinmiş cihazın numarası okunup girilir, etiket yeniden basılır.
+ * Aynı SN ikinci kez girilirse HATA VERMEZ: kayıt korunur, "basıldı" işareti
+ * sıfırlanır → yeniden basım kuyruğuna girer (etiket tekrar silinebilir).
+ */
+export const bagimsizSnElleEkle = async ({ seriNo, urunAdi, stokKodu, musteriId, servisTalepId, kullanici } = {}) => {
+  const temiz = String(seriNo || '').trim()
+  if (!temiz) return { hata: 'Seri numarası boş olamaz.' }
+  const { data, error } = await supabase.rpc('bagimsiz_sn_elle_ekle', {
+    p_seri_no: temiz,
+    p_urun_adi: urunAdi || null,
+    p_stok_kodu: stokKodu || null,
+    p_musteri_id: musteriId || null,
+    p_servis_talep_id: servisTalepId || null,
+    p_olusturan_id: kullanici?.id ?? null,
+    p_olusturan_ad: kullanici?.ad ?? null,
+  })
+  if (error) { console.error('[bagimsizSnElleEkle]', error.message); return { hata: error.message } }
   return { kayit: toCamel(data) }
 }
 

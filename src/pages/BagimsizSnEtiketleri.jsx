@@ -2,9 +2,9 @@
 // Burada "Yeni SN Üret" ile kod oluştur (ofis) VEYA sahadan (mobil servis) üretilenler
 // düşer → basılmamışları seç → A4 3×8 barkod motoruyla (BarkodEtiketYazdir) bas → yapıştır.
 import { useEffect, useState, useMemo } from 'react'
-import { Tags, Printer, Square, CheckSquare, RefreshCw, Plus, Trash2 } from 'lucide-react'
+import { Tags, Printer, Square, CheckSquare, RefreshCw, Plus, Trash2, Keyboard } from 'lucide-react'
 import {
-  etiketKuyruguGetir, etiketBasildiIsaretle, bagimsizSnUret, bagimsizSnSil,
+  etiketKuyruguGetir, etiketBasildiIsaretle, bagimsizSnUret, bagimsizSnSil, bagimsizSnElleEkle,
 } from '../services/bagimsizSnService'
 import { Card, Badge, EmptyState, Button, CodeBadge, SegmentedControl, Modal, Input, Label } from '../components/ui'
 import BarkodEtiketYazdir from '../components/BarkodEtiketYazdir'
@@ -29,6 +29,11 @@ export default function BagimsizSnEtiketleri() {
   const [uretAd, setUretAd] = useState('')
   const [uretAdet, setUretAdet] = useState('1')
   const [uretiliyor, setUretiliyor] = useState(false)
+  // Elle SN girişi (mig 288) — cihazın kendi numarası, etiketi silinmişse
+  const [elleAcik, setElleAcik] = useState(false)
+  const [elleSn, setElleSn] = useState('')
+  const [elleAd, setElleAd] = useState('')
+  const [elleKaydediliyor, setElleKaydediliyor] = useState(false)
 
   const yenile = () => {
     setYukleniyor(true)
@@ -106,6 +111,24 @@ export default function BagimsizSnEtiketleri() {
     } finally { setUretiliyor(false) }
   }
 
+  // Elle girilen SN'yi kuyruğa al. Aynı numara daha önce girildiyse DB tarafı
+  // hata vermez, "basıldı" işaretini sıfırlayıp yeniden basıma açar.
+  const elleEkle = async () => {
+    const sn = elleSn.trim()
+    if (!sn) return
+    setElleKaydediliyor(true)
+    try {
+      const sonuc = await bagimsizSnElleEkle({ seriNo: sn, urunAdi: elleAd.trim() || null, kullanici })
+      if (sonuc?.hata) { toast.error(sonuc.hata); return }
+      toast.success(`${sn} etiket kuyruğuna eklendi.`)
+      setElleAcik(false); setElleSn(''); setElleAd('')
+      setGorunum('bekleyen')
+      yenile()
+    } catch (e) {
+      toast.error(e?.message || 'Eklenemedi.')
+    } finally { setElleKaydediliyor(false) }
+  }
+
   if (yukleniyor) return <SkeletonList />
 
   return (
@@ -117,13 +140,18 @@ export default function BagimsizSnEtiketleri() {
             <h1 className="t-h2" style={{ margin: 0 }}>Bağımsız SN Etiketleri</h1>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-            Seri numarası olmayan ürünler için ZNA- seri no üret, A4 3×8 barkod sayfası
-            olarak bas, cihazın üstüne yapıştır. Sahadan (mobil servis) üretilenler de buraya düşer.
+            Seri numarası olmayan ürünler için <strong>ZNA…</strong> seri no üret; etiketi
+            silinmiş cihazın kendi numarasını <strong>elle</strong> gir. Etiket üstte SN,
+            altta QR olarak basılır. Sahadan (mobil servis) üretilenler de buraya düşer.
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" size="sm" iconLeft={<RefreshCw size={13} strokeWidth={1.5} />} onClick={yenile}>
             Yenile
+          </Button>
+          {/* Etiketi silinmiş cihazın KENDİ numarası (mig 288) */}
+          <Button variant="secondary" size="sm" iconLeft={<Keyboard size={14} strokeWidth={1.5} />} onClick={() => setElleAcik(true)}>
+            Elle SN Gir
           </Button>
           <Button variant="primary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setUretAcik(true)}>
             Yeni SN Üret
@@ -178,7 +206,17 @@ export default function BagimsizSnEtiketleri() {
                     : <Square size={18} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
                   <CodeBadge>{r.seriNo}</CodeBadge>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ font: '500 13px/18px var(--font-sans)' }}>{r.urunAdi || r.stokKodu || 'İsimsiz ürün'}</div>
+                    <div style={{ font: '500 13px/18px var(--font-sans)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {r.urunAdi || r.stokKodu || 'İsimsiz ürün'}
+                      {/* Cihazın kendi numarası mı, biz mi ürettik (mig 288) */}
+                      {r.kaynak === 'elle' && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                          color: '#7c3aed', background: 'rgba(124,58,237,0.10)',
+                          border: '1px solid rgba(124,58,237,0.25)', borderRadius: 4, padding: '1px 5px',
+                        }}>ELLE</span>
+                      )}
+                    </div>
                     <div className="t-caption" style={{ color: 'var(--text-tertiary)' }}>
                       {r.olusturanAd || '—'} · {tarihFmt(r.olusturmaTarih)}
                     </div>
@@ -198,10 +236,47 @@ export default function BagimsizSnEtiketleri() {
           kalemler={yazdirKalemleri}
           marka="ZNA"
           stokKodu=""
+          duzen="qr"          /* üstte "SN: …", altta QR — 14.08 kararı */
           onKapat={() => setYazdirAcik(false)}
           onYazdir={basildiIsaretle}
         />
       )}
+
+      {/* Elle SN gir — cihazın KENDİ seri numarası (etiketi silinmiş/okunmaz).
+          Aynı numara ikinci kez girilirse hata değil, yeniden basım kuyruğuna girer. */}
+      <Modal
+        open={elleAcik}
+        onClose={() => !elleKaydediliyor && setElleAcik(false)}
+        title="Elle Seri No Gir"
+        width={460}
+        footer={
+          <>
+            <Button variant="tertiary" size="sm" onClick={() => setElleAcik(false)} disabled={elleKaydediliyor}>Vazgeç</Button>
+            <Button variant="primary" size="sm" onClick={elleEkle} disabled={elleKaydediliyor || !elleSn.trim()}
+              iconLeft={<Keyboard size={14} strokeWidth={1.5} />}>
+              {elleKaydediliyor ? 'Ekleniyor…' : 'Kuyruğa Ekle'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: 0 }}>
+            Cihazın <strong>kendi seri numarasını</strong> yaz — etiketi silinmiş/okunmaz
+            olduğunda yeniden basmak için. Sistem yeni numara üretmez, yazdığın numara basılır.
+          </p>
+          <div>
+            <Label>Seri No <span style={{ color: '#DC2626' }}>*</span></Label>
+            <Input value={elleSn} onChange={e => setElleSn(e.target.value)}
+              placeholder="Ör. T81910230427" autoFocus
+              style={{ fontFamily: 'monospace' }}
+              onKeyDown={e => { if (e.key === 'Enter' && elleSn.trim()) elleEkle() }} />
+          </div>
+          <div>
+            <Label>Ürün / Cihaz Adı (opsiyonel)</Label>
+            <Input value={elleAd} onChange={e => setElleAd(e.target.value)} placeholder="Ör. 5MP Kamera" />
+          </div>
+        </div>
+      </Modal>
 
       {/* Yeni SN üret (ofis) — ürün adı + adet; her biri ZNA-... alır */}
       <Modal
@@ -221,7 +296,7 @@ export default function BagimsizSnEtiketleri() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: 0 }}>
-            Seri numarası olmayan ürün için benzersiz <strong>ZNA-…</strong> kod üretilir.
+            Seri numarası olmayan ürün için benzersiz <strong>ZNA…</strong> kod üretilir.
             Ürün adı isteğe bağlı (boş bırakırsan sadece kod basılır, sonra cihaza atarsın).
           </p>
           <div>
