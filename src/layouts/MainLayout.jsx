@@ -18,7 +18,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
-  Landmark, Archive, ShieldCheck,
+  Landmark, Archive, ShieldCheck, Search, SlidersHorizontal,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -29,15 +29,18 @@ import GlobalBarkodAra from '../components/GlobalBarkodAra'
 import { kritikSeviyeSayisi } from '../services/depoService'
 import { Avatar } from '../components/ui'
 import { useMenuSiralama } from '../hooks/useMenuSiralama'
+import { trContains } from '../lib/trSearch'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// Drag-drop wrapper — bir menu satirini sortable hale getirir, sag tarafa
-// kucuk grip handle ekler. Default opacity 0.3 (her zaman gozukur), hover 1.
-// Drag sadece grip'ten baslar — buton tikla/aç/kapat etkilesimleri aynen calisir.
-function SortableSatir({ id, children }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+// Drag-drop wrapper — bir menu satirini sortable hale getirir.
+//
+// ⚠️ Grip YALNIZ duzen modunda gorunur (14.08). Eskiden her satirda surekli
+// %40 opaklikta duruyordu; kurumsal urunde duzenleme afordansi surekli ekranda
+// olmaz — "prototip" hissi verir. Duzen modu disinda satir tamamen normal.
+function SortableSatir({ id, children, duzenModu }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !duzenModu })
   return (
     <div
       ref={setNodeRef}
@@ -49,34 +52,56 @@ function SortableSatir({ id, children }) {
         zIndex: isDragging ? 10 : 'auto',
         background: isDragging ? 'rgba(255,255,255,0.06)' : 'transparent',
         borderRadius: 6,
-        paddingRight: 20,           // grip icin sag bosluk — chevron/badge ile cakismasin
+        paddingRight: duzenModu ? 20 : 0,   // grip icin sag bosluk — yalniz duzen modunda
       }}
       className="menu-satir"
     >
       {children}
-      {/* Grip — sag kenarda paddingRight bolgesi icinde */}
-      <span
-        {...attributes}
-        {...listeners}
-        title="Sürükle ile sırala"
-        style={{
-          position: 'absolute',
-          right: 2, top: 6,
-          width: 16, height: 22,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'grab',
-          color: '#fff',
-          opacity: 0.4,
-          transition: 'opacity 0.12s, background 0.12s',
-          borderRadius: 4,
-          touchAction: 'none',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'transparent' }}
-      >
-        <GripVertical size={13} strokeWidth={2} />
-      </span>
+      {duzenModu && (
+        <span
+          {...attributes}
+          {...listeners}
+          title="Sürükle ile sırala"
+          style={{
+            position: 'absolute',
+            right: 2, top: 4,
+            width: 16, height: 20,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'grab',
+            color: '#fff',
+            opacity: 0.55,
+            transition: 'opacity 0.12s, background 0.12s',
+            borderRadius: 4,
+            touchAction: 'none',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.55'; e.currentTarget.style.background = 'transparent' }}
+        >
+          <GripVertical size={13} strokeWidth={2} />
+        </span>
+      )}
     </div>
+  )
+}
+
+// Sidebar rozeti — tek bicim, tek yerde. Grup/ust baslik/alt madde ayni gorunur.
+function MenuRozet({ sayi, nabiz, baslik }) {
+  if (!sayi) return null
+  return (
+    <span
+      title={baslik}
+      style={{
+        minWidth: 17, height: 16, padding: '0 5px',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 'var(--radius-pill)',
+        background: 'var(--danger)', color: '#fff',
+        font: '700 10px/1 var(--font-sans)',
+        flexShrink: 0,
+        animation: nabiz ? 'nabizYansin 1.6s ease-in-out infinite' : undefined,
+      }}
+    >
+      {sayi > 99 ? '99+' : sayi}
+    </span>
   )
 }
 
@@ -322,7 +347,8 @@ function MainLayout({ children }) {
   const _servisTalepBildirimleri = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi')
   const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
   const musteriTalepOkunmamis  = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
-  const servisTalebiOkunmamis  = personelTalepOkunmamis + musteriTalepOkunmamis
+  // Not: ikisinin toplamı ayrıca tutulmuyor — 'Servis' üst başlığı kapalıyken
+  // rozeti alt maddelerden toplayan ortak ogeRozetToplam() hesaplıyor.
   // Görev bildirimleri (atama + yorum + @etiket) — Görevler menüsünde sayı rozeti.
   // link '/gorevler/...' olan her okunmamış bildirim modüle sayılır (mention'lar dahil).
   const gorevBildirimleri = (bildirimler || []).filter(b =>
@@ -361,20 +387,53 @@ function MainLayout({ children }) {
     location.pathname.startsWith('/musteri') || location.pathname.startsWith('/firma')
   )
 
-  // Grup kapalı/açık state — localStorage'da kalıcı. Varsayılan: hepsi açık.
-  const [grupKapali, setGrupKapali] = useState(() => {
+  // Grup açık/kapalı — localStorage'da kalıcı, ELLE yapılan seçimleri tutar.
+  //
+  // ⚠️ VARSAYILAN DEĞİŞTİ (14.08): eskiden "hepsi açık" idi, 45 satırlık liste
+  // taşıyordu; kullanıcılar hepsini kapatınca da menü tamamen bilgisiz kalıyordu
+  // (bekleyen iş rozetleri kapalı grubun içinde kayboluyordu). Yeni kural:
+  // AKTİF SAYFANIN GRUBU AÇIK, diğerleri kapalı. Kullanıcı elle açar/kapatırsa
+  // tercihi kaydedilir ve varsayılanı ezer.
+  //
+  // Eski 'sidebarGrupKapali' anahtarı BİLEREK okunmuyor: ters semantikte (kapalı=true)
+  // ve çoğu kullanıcıda "hepsi kapalı" yazılı — taşınsa herkes boş menüyle açardı.
+  const [grupDurum, setGrupDurum] = useState(() => {
     try {
-      const raw = localStorage.getItem('sidebarGrupKapali')
+      const raw = localStorage.getItem('sidebarGrupDurum')
       return raw ? JSON.parse(raw) : {}
     } catch { return {} }
   })
-  const grupToggle = (id) => {
-    setGrupKapali(prev => {
-      const yeni = { ...prev, [id]: !prev[id] }
-      try { localStorage.setItem('sidebarGrupKapali', JSON.stringify(yeni)) } catch {}
+  const grupToggle = (id, suAndaAcik) => {
+    setGrupDurum(prev => {
+      const yeni = { ...prev, [id]: !suAndaAcik }
+      try { localStorage.setItem('sidebarGrupDurum', JSON.stringify(yeni)) } catch { /* kota/gizli mod — menü yine çalışır */ }
       return yeni
     })
   }
+  // Grubun elle seçimini SİL → "aktif grup açık" varsayılanına döner.
+  // Aramayla bir sayfaya gidildiğinde kullanılır: kullanıcı o grubu daha önce
+  // kapatmışsa, gittiği sayfa yine görünmez kalırdı.
+  const grupVarsayilanaDon = (id) => {
+    setGrupDurum(prev => {
+      if (!(id in prev)) return prev
+      const yeni = { ...prev }
+      delete yeni[id]
+      try { localStorage.setItem('sidebarGrupDurum', JSON.stringify(yeni)) } catch { /* kota/gizli mod — menü yine çalışır */ }
+      return yeni
+    })
+  }
+
+  // Menü araması — 45 sayfada doğru grubu hatırlamak zorunda kalmamak için.
+  // Doluyken gruplar gizlenir, düz sonuç listesi çıkar.
+  //
+  // ⚠️ Ctrl+K kısayolu BİLEREK YOK: o kombinasyon App.jsx'teki Komut Paleti'nin
+  // (müşteri/görev/teklif/stok KAYDI arar). İkisi farklı iş yapar — palet KAYIT
+  // bulur, buradaki arama EKRAN bulur; aynı tuşa bağlanırsa ikisi de tetiklenir.
+  const [menuAra, setMenuAra] = useState('')
+  const menuAraRef = useRef(null)
+
+  // Menü düzenleme modu — sürükle-bırak tutamakları YALNIZ burada görünür.
+  const [duzenModu, setDuzenModu] = useState(false)
   const [stokAcik, setStokAcik] = useState(location.pathname.startsWith('/stok'))
   const [teklifAcik, setTeklifAcik] = useState(
     location.pathname.startsWith('/teklif') || location.pathname.startsWith('/satis') || location.pathname.startsWith('/kesif')
@@ -567,6 +626,19 @@ function MainLayout({ children }) {
     if (id === 'tedarik_surecleri') setTedarikAcik(!tedarikAcik)
   }
 
+  // Alt menüyü AÇ (toggle değil) — arama sonucundan bir alt sayfaya gidilince
+  // üst başlığı da açar. Bu state'ler yalnız ilk yüklemede location'a bakıyor;
+  // açılmazsa gidilen sayfa menüde görünmez, kullanıcı "nerede olduğunu" kaybeder.
+  const menuAc = (id) => {
+    if (id === 'stok') setStokAcik(true)
+    if (id === 'satislar') setTeklifAcik(true)
+    if (id === 'musteriler') setMusteriAcik(true)
+    if (id === 'raporlar') setRaporlarAcik(true)
+    if (id === 'servis') setServisAcik(true)
+    if (id === 'onaylar') setOnaylarAcik(true)
+    if (id === 'tedarik_surecleri') setTedarikAcik(true)
+  }
+
   const sayfaBasligi = () => {
     if (location.pathname === '/dashboard') return 'Panel'
     if (location.pathname === '/musteriler') return 'Müşteriler'
@@ -634,22 +706,95 @@ function MainLayout({ children }) {
 
   const profilFoto = localStorage.getItem(`profil_foto_${kullanici?.id}`)
 
+  // ─────────── Sidebar rozetleri — TEK KAYNAK ───────────
+  // Rozet sayısı menü id'sinden okunur; böylece aynı sayı hem alt maddede, hem
+  // (kapalıyken) üst başlıkta, hem (grup kapalıyken) grup etiketinde gösterilebilir.
+  // ⚠️ Eskiden her rozet kendi render dalına gömülüydü: grup kapatılınca bekleyen
+  // iş TAMAMEN görünmez oluyordu. Toplama mantığı bu kaybı kapatır.
+  const rozetSayisi = (id) => {
+    if (id === 'servis_talepleri') return personelTalepOkunmamis
+    if (id === 'musteri_talepleri') return musteriTalepOkunmamis
+    if (id === 'stok-kritik') return kritikStokSayi
+    if (id === 'gorevler') return gorevOkunmamis
+    if (id === 'gorusmeler') return gorusmeOkunmamis
+    if (id === 'chat') return okunmamis
+    return 0
+  }
+  // Dikkat çekmesi gereken (nabız atan) rozetler — bildirim kaynaklı olanlar.
+  const nabizliRozet = (id) => id === 'gorevler' || id === 'gorusmeler'
+  const ogeRozetToplam = (item) =>
+    rozetSayisi(item.id) + (item.altMenu || []).reduce((t, a) => t + rozetSayisi(a.id), 0)
+
+  // grupIK: İK yetkilisinde öğe farklı gruba düşer (İzin & Bordro → Yönetim).
+  // Filtre aşaması statik m.grup ile çalıştığı için burada, RENDER'da uygulanır.
+  const ikYetkiliMi = ikGorebilirMi(kullanici)
+  const etkinGrup = (m) => (ikYetkiliMi && m.grupIK) ? m.grupIK : (m.grup || 'gunluk')
+
+  // Aktif sayfanın menü öğesi — en UZUN yol eşleşmesi kazanır ('/stok-hareketleri'
+  // düz startsWith ile '/stok'a da uyar, kısa olan yanlış grubu açardı).
+  const aktifOge = (() => {
+    let enIyi = null
+    for (const m of gorunenMenu) {
+      const yollar = m.altMenu ? m.altMenu.map(a => a.yol) : (m.yol ? [m.yol] : [])
+      for (const ham of yollar) {
+        if (!ham) continue
+        const p = ham.split('?')[0]
+        const eslesti = p === '/dashboard'
+          ? location.pathname === '/dashboard'
+          : (location.pathname === p || location.pathname.startsWith(p + '/'))
+        if (eslesti && (!enIyi || p.length > enIyi.uzunluk)) enIyi = { item: m, uzunluk: p.length }
+      }
+    }
+    return enIyi?.item || null
+  })()
+  // ⚠️ Menüde KARŞILIĞI OLMAYAN sayfalar var (/profil, /bildirimler, davet ekranları…).
+  // Fallback olmazsa oralarda hiçbir grup "aktif" sayılmaz ve menü tamamen kapalı
+  // açılırdı — tam da düzeltmeye çalıştığımız boş-menü hali. İlk gruba düşülür.
+  const aktifGrupId = aktifOge ? etkinGrup(aktifOge) : (GRUPLAR[0]?.id ?? null)
+
+  // Grup açık mı: kullanıcının elle seçimi varsa o, yoksa "aktif grup açık".
+  // Düzen modunda HEPSİ açık — kapalı gruptaki öğe sürüklenemez.
+  const grupAcikMi = (gid) =>
+    duzenModu ? true : (gid in grupDurum ? grupDurum[gid] : gid === aktifGrupId)
+
+  // Arama sonuçları — düz liste, hiyerarşi yok. Üst başlık adı da metne dahil
+  // ("Stok › Kritik Seviye"), böylece hem "stok" hem "kritik" aynı sonucu bulur.
+  const aramaSonuclari = (() => {
+    const q = menuAra.trim()
+    if (!q) return null
+    const adaylar = []
+    for (const m of gorunenMenu) {
+      if (m.altMenu) {
+        for (const a of m.altMenu) adaylar.push({ id: `${m.id}__${a.id}`, rozetId: a.id, ad: `${m.isim} › ${a.isim}`, yol: a.yol, item: m })
+      } else if (m.yol) {
+        adaylar.push({ id: m.id, rozetId: m.id, ad: m.isim, yol: m.yol, item: m })
+      }
+    }
+    return adaylar.filter(a => trContains(a.ad, q)).slice(0, 12)
+  })()
+
+  // Arama sonucuna git: sayfaya geç + grubu ve üst başlığı AÇ, aramayı temizle.
+  // Sadece navigate edilse hedef sayfa kapalı bir grubun/başlığın içinde kalır.
+  const aramaGit = (s) => {
+    grupVarsayilanaDon(etkinGrup(s.item))
+    menuAc(s.item.id)
+    navigate(s.yol)
+    setMenuAra('')
+  }
+
   // Grup başlıklarını menu listesine entrilaştır — item map'i içinde header vs item ayrımı yapılır.
   // useMenuSiralama tarafından döndürülen siparişi bozmadan grup bazında sıralar.
   const menuEntries = (() => {
-    // grupIK: İK yetkilisinde öğe farklı gruba düşer (İzin & Bordro → Yönetim).
-    // Filtre aşaması statik m.grup ile çalıştığı için burada, RENDER'da uygulanır.
-    const ikYetkili = ikGorebilirMi(kullanici)
-    const etkinGrup = (m) => (ikYetkili && m.grupIK) ? m.grupIK : (m.grup || 'gunluk')
     const gruplu = GRUPLAR.map(g => ({
       grup: g,
       items: gorunenMenu.filter(m => etkinGrup(m) === g.id),
     })).filter(g => g.items.length > 0)
     const result = []
     gruplu.forEach(g => {
-      const kapali = !!grupKapali[g.grup.id]
-      result.push({ type: 'header', id: `__hdr_${g.grup.id}`, grupId: g.grup.id, baslik: g.grup.baslik, kapali })
-      if (!kapali) g.items.forEach(item => result.push({ type: 'item', id: item.id, data: item }))
+      const acik = grupAcikMi(g.grup.id)
+      const rozet = g.items.reduce((t, m) => t + ogeRozetToplam(m), 0)
+      result.push({ type: 'header', id: `__hdr_${g.grup.id}`, grupId: g.grup.id, baslik: g.grup.baslik, acik, rozet })
+      if (acik) g.items.forEach(item => result.push({ type: 'item', id: item.id, data: item }))
     })
     return result
   })()
@@ -772,8 +917,132 @@ function MainLayout({ children }) {
           )}
         </div>
 
+        {/* Menü arama + düzenleme düğmesi */}
+        <div style={{ padding: '10px 10px 6px', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{
+            flex: 1, minWidth: 0,
+            display: 'flex', alignItems: 'center', gap: 7, padding: '0 8px', height: 30,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--border-on-dark)',
+            borderRadius: 'var(--radius-sm)',
+          }}>
+            <Search size={13} strokeWidth={1.8} style={{ color: 'var(--text-on-dark-muted)', flexShrink: 0 }} />
+            <input
+              ref={menuAraRef}
+              value={menuAra}
+              onChange={e => setMenuAra(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setMenuAra(''); e.currentTarget.blur() }
+                // Enter → ilk sonuca git (arama kutusundan elini çekmeden)
+                if (e.key === 'Enter' && aramaSonuclari?.length) {
+                  aramaGit(aramaSonuclari[0]); e.currentTarget.blur()
+                }
+              }}
+              placeholder="Menüde ara"
+              aria-label="Menüde ara"
+              style={{
+                flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none',
+                color: 'var(--text-on-dark)', font: '400 12px/16px var(--font-sans)',
+              }}
+            />
+            {menuAra ? (
+              <button
+                onClick={() => { setMenuAra(''); menuAraRef.current?.focus() }}
+                title="Aramayı temizle"
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-on-dark-muted)', display: 'inline-flex', flexShrink: 0 }}
+              >
+                <X size={13} strokeWidth={2} />
+              </button>
+            ) : null}
+          </div>
+          <button
+            onClick={() => { setDuzenModu(d => !d); setMenuAra('') }}
+            title={duzenModu ? 'Menü düzenlemeyi bitir' : 'Menüyü düzenle (sıralama)'}
+            aria-pressed={duzenModu}
+            style={{
+              width: 30, height: 30, flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: duzenModu ? 'var(--brand-primary)' : 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--border-on-dark)',
+              borderRadius: 'var(--radius-sm)',
+              color: duzenModu ? '#fff' : 'var(--text-on-dark-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <SlidersHorizontal size={14} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        {duzenModu && (
+          <div style={{
+            margin: '0 10px 6px', padding: '7px 9px',
+            background: 'rgba(30,90,168,0.16)',
+            border: '1px solid rgba(30,90,168,0.45)',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          }}>
+            <span style={{ flex: 1, minWidth: 96, color: 'var(--text-on-dark)', font: '400 11px/15px var(--font-sans)' }}>
+              Satırları sürükleyerek sıralayın
+            </span>
+            {ozellestirildiMi && (
+              <button
+                onClick={menuSifirla}
+                style={{
+                  background: 'transparent', border: '1px solid var(--border-on-dark)',
+                  borderRadius: 'var(--radius-sm)', color: 'var(--text-on-dark-muted)',
+                  font: '400 11px/14px var(--font-sans)', padding: '3px 7px', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <RotateCcw size={10} strokeWidth={1.8} />Sıfırla
+              </button>
+            )}
+            <button
+              onClick={() => setDuzenModu(false)}
+              style={{
+                background: 'var(--brand-primary)', border: 'none',
+                borderRadius: 'var(--radius-sm)', color: '#fff',
+                font: '500 11px/14px var(--font-sans)', padding: '4px 10px', cursor: 'pointer',
+              }}
+            >
+              Bitti
+            </button>
+          </div>
+        )}
+
         {/* Nav */}
-        <nav aria-label="Ana menü" style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav aria-label="Ana menü" style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {aramaSonuclari ? (
+            aramaSonuclari.length === 0 ? (
+              <div style={{ padding: '14px 10px', color: 'var(--text-on-dark-muted)', font: '400 12px/17px var(--font-sans)' }}>
+                “{menuAra}” için sonuç yok.
+              </div>
+            ) : aramaSonuclari.map(s => {
+              const aktif = location.pathname === s.yol.split('?')[0]
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => aramaGit(s)}
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '6px 10px', paddingLeft: 8,
+                    borderRadius: 'var(--radius-sm)',
+                    background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
+                    color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
+                    border: 'none', borderLeft: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                    cursor: 'pointer', font: '400 13px/17px var(--font-sans)',
+                  }}
+                  onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
+                  onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
+                >
+                  <s.item.Icon size={16} strokeWidth={1.6} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.ad}</span>
+                  <MenuRozet sayi={rozetSayisi(s.rozetId)} />
+                </button>
+              )
+            })
+          ) : (
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={dragSonu}>
           <SortableContext items={gorunenMenu.map(m => m.id)} strategy={verticalListSortingStrategy}>
           {menuEntries.map((entry, entryIdx) => {
@@ -782,40 +1051,40 @@ function MainLayout({ children }) {
                 <button
                   key={entry.id}
                   type="button"
-                  onClick={() => grupToggle(entry.grupId)}
-                  aria-expanded={!entry.kapali}
+                  onClick={() => grupToggle(entry.grupId, entry.acik)}
+                  aria-expanded={entry.acik}
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    gap: 8, width: '100%',
-                    padding: entryIdx === 0 ? '2px 12px 4px' : '18px 12px 4px',
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                    padding: entryIdx === 0 ? '4px 10px 3px' : '13px 10px 3px',
                     background: 'transparent', border: 'none',
-                    // Başlık etiketi bir tık belirgin (2026-07-19 istek): daha açık renk,
-                    // tam opak marka çubuğu, görünür ayraç — ama alt öğelerden yine ayrışır
-                    color: '#cbd5e1',
                     cursor: 'pointer', textAlign: 'left',
                   }}
-                  title={entry.kapali ? 'Grubu aç' : 'Grubu kapat'}
+                  title={entry.acik ? 'Grubu kapat' : 'Grubu aç'}
                 >
+                  {/* Grup etiketi GERİ ÇEKİLDİ (14.08): eskiden 800 ağırlık + marka
+                      çubuğu + ayraç çizgisi ile ekranın en baskın elemanıydı —
+                      tıklanamayan bir etiket, tıklanan sayfa adlarını bastırıyordu.
+                      ⚠️ CSS uppercase KULLANMA: i→I yapar (FILO), Türkçe İ kaybolur. */}
                   <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1,
-                    font: '800 13px/18px var(--font-sans)',
-                    // CSS uppercase KULLANMA: i→I yapar (FILO), Türkçe İ kaybolur.
-                    letterSpacing: '0.12em',
-                    paddingBottom: 3,
+                    flex: 1, minWidth: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    color: 'rgba(230,236,242,0.42)',
+                    font: '600 11px/15px var(--font-sans)',
+                    letterSpacing: '0.07em',
                   }}>
-                    <span style={{
-                      width: 3.5, height: 14, borderRadius: 2, flexShrink: 0,
-                      background: 'var(--brand-primary)',
-                    }} />
                     {entry.baslik.toLocaleUpperCase('tr')}
-                    <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.14)' }} />
                   </span>
+                  {/* Grup kapalıyken bekleyen iş SAYISI etikete taşınır — yoksa
+                      kapalı grubun içindeki rozetler tamamen görünmez olurdu. */}
+                  {!entry.acik && (
+                    <MenuRozet sayi={entry.rozet} baslik={`${entry.baslik}: ${entry.rozet} bekleyen`} />
+                  )}
                   <ChevronRight
-                    size={12}
-                    strokeWidth={2.2}
+                    size={11}
+                    strokeWidth={2}
                     style={{
-                      color: 'rgba(203, 213, 225, 0.8)',
-                      transform: entry.kapali ? 'rotate(0deg)' : 'rotate(90deg)',
+                      color: 'rgba(230,236,242,0.3)',
+                      transform: entry.acik ? 'rotate(90deg)' : 'rotate(0deg)',
                       transition: 'transform 160ms ease',
                       flexShrink: 0,
                     }}
@@ -827,45 +1096,41 @@ function MainLayout({ children }) {
             if (item.altMenu) {
               const altAktif = item.altMenu.some(a => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
               const acik = menuAcik(item.id)
+              const kapaliAltRozet = item.altMenu.reduce((t, a) => t + rozetSayisi(a.id), 0)
               return (
-                <SortableSatir id={item.id} key={item.id}>
+                <SortableSatir id={item.id} key={item.id} duzenModu={duzenModu}>
                 <div>
                   <button
                     onClick={() => menuToggle(item.id)}
                     style={{
                       width: '100%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 12px',
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '6px 10px',
                       borderRadius: 'var(--radius-sm)',
                       background: altAktif ? 'var(--surface-sidebar-active)' : 'transparent',
                       color: altAktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
                       border: 'none',
-                      borderLeft: `3px solid ${altAktif ? 'var(--brand-primary)' : 'transparent'}`,
-                      paddingLeft: 9,
+                      borderLeft: `2px solid ${altAktif ? 'var(--brand-primary)' : 'transparent'}`,
+                      paddingLeft: 8,
                       cursor: 'pointer',
-                      font: altAktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
+                      textAlign: 'left',
+                      font: altAktif ? '500 13px/17px var(--font-sans)' : '400 13px/17px var(--font-sans)',
                       transition: 'background 120ms, color 120ms',
                     }}
                     onMouseEnter={e => { if (!altAktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
                     onMouseLeave={e => { if (!altAktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
                   >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                      <item.Icon size={18} strokeWidth={1.5} />
-                      {item.isim}
-                      {/* Parent kapalıyken bile farkına vatsın diye 'Servis' başlığında kırmızı nokta */}
-                      {item.id === 'servis' && servisTalebiOkunmamis > 0 && !acik && (
-                        <span style={{
-                          display: 'inline-block',
-                          width: 7, height: 7, borderRadius: '50%',
-                          background: '#dc2626',
-                          boxShadow: '0 0 0 2px var(--surface-sidebar, transparent)',
-                        }} title={`${servisTalebiOkunmamis} yeni servis talebi`} />
-                      )}
-                    </span>
-                    {acik ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}
+                    <item.Icon size={16} strokeWidth={1.6} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.isim}</span>
+                    {/* Kapalıyken alt maddelerin rozetleri üst başlığa toplanır —
+                        eskiden yalnız 'Servis'te kırmızı nokta vardı, sayı yoktu. */}
+                    {!acik && <MenuRozet sayi={kapaliAltRozet} />}
+                    {acik
+                      ? <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.6 }} />
+                      : <ChevronRight size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.6 }} />}
                   </button>
                   {acik && (
-                    <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, marginBottom: 4 }}>
+                    <div style={{ marginLeft: 25, borderLeft: '1px solid var(--border-on-dark)', paddingLeft: 6, display: 'flex', flexDirection: 'column', marginTop: 1, marginBottom: 2 }}>
                       {item.altMenu.map(alt => {
                         // alt.yol query string icerebilir (orn /servis-talepleri?kaynak=musteri).
                         // pathname ve search'i ayri kontrol et.
@@ -880,14 +1145,7 @@ function MainLayout({ children }) {
                                 const [p2, q2] = a2.yol.split('?')
                                 return p2 === altPath && location.search.replace(/^\?/, '') === q2
                               }))
-                        // Kaynak bazli rozet: personel → Servis Talepleri, musteri → Musteri Talepleri
-                        const rozetSayi =
-                          alt.id === 'servis_talepleri'   ? personelTalepOkunmamis :
-                          alt.id === 'musteri_talepleri'  ? musteriTalepOkunmamis  :
-                          alt.id === 'stok-kritik'        ? kritikStokSayi         : 0
-                        const rozet = rozetSayi > 0
-                          ? (rozetSayi > 99 ? '99+' : String(rozetSayi))
-                          : null
+                        // Rozet kaynağı tek yerde: rozetSayisi() (personel/müşteri talebi, kritik stok…)
                         return (
                           <button
                             key={alt.id}
@@ -895,32 +1153,20 @@ function MainLayout({ children }) {
                             style={{
                               width: '100%', textAlign: 'left',
                               display: 'flex', alignItems: 'center', gap: 8,
-                              padding: '8px 12px',
+                              padding: '5px 8px',
                               borderRadius: 'var(--radius-sm)',
                               background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
                               color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
                               border: 'none',
+                              borderLeft: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
                               cursor: 'pointer',
-                              font: aktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
+                              font: aktif ? '500 13px/17px var(--font-sans)' : '400 13px/17px var(--font-sans)',
                             }}
                             onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
                             onMouseLeave={e => { if (!aktif) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-on-dark-muted)' } }}
                           >
-                            <span style={{ flex: 1 }}>{alt.isim}</span>
-                            {rozet && (
-                              <span style={{
-                                minWidth: 20, height: 18,
-                                padding: '0 6px',
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                borderRadius: 9,
-                                background: '#dc2626',
-                                color: '#fff',
-                                font: '700 10px/1 var(--font-sans)',
-                                letterSpacing: '.02em',
-                              }}>
-                                {rozet}
-                              </span>
-                            )}
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alt.isim}</span>
+                            <MenuRozet sayi={rozetSayisi(alt.id)} />
                           </button>
                         )
                       })}
@@ -934,21 +1180,21 @@ function MainLayout({ children }) {
             const aktif = location.pathname === item.yol ||
               (item.yol !== '/dashboard' && location.pathname.startsWith(item.yol))
             return (
-              <SortableSatir id={item.id} key={item.id}>
+              <SortableSatir id={item.id} key={item.id} duzenModu={duzenModu}>
               <button
                 onClick={() => navigate(item.yol)}
                 style={{
                   width: '100%',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px',
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '6px 10px',
                   borderRadius: 'var(--radius-sm)',
                   background: aktif ? 'var(--surface-sidebar-active)' : 'transparent',
                   color: aktif ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
                   border: 'none',
-                  borderLeft: `3px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
-                  paddingLeft: 9,
+                  borderLeft: `2px solid ${aktif ? 'var(--brand-primary)' : 'transparent'}`,
+                  paddingLeft: 8,
                   cursor: 'pointer',
-                  font: aktif ? '500 14px/20px var(--font-sans)' : '400 14px/20px var(--font-sans)',
+                  font: aktif ? '500 13px/17px var(--font-sans)' : '400 13px/17px var(--font-sans)',
                   transition: 'background 120ms, color 120ms',
                 }}
                 onMouseEnter={e => { if (!aktif) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-on-dark)' } }}
@@ -956,75 +1202,22 @@ function MainLayout({ children }) {
                 aria-current={aktif ? 'page' : undefined}
               >
                 {item.id === 'trassir'
-                  ? <img src="/trassirlogo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                  : <item.Icon size={18} strokeWidth={1.5} />}
-                <span style={{ flex: 1, textAlign: 'left' }}>{item.isim}</span>
-                {item.id === 'chat' && okunmamis > 0 && (
-                  <span style={{
-                    minWidth: 18, height: 18, padding: '0 5px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'var(--danger)', color: '#fff',
-                    fontSize: 11, fontWeight: 600,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {okunmamis}
-                  </span>
-                )}
-                {item.id === 'gorevler' && gorevOkunmamis > 0 && (
-                  <span
-                    title={`${gorevOkunmamis} yeni görev bildirimi (atama / yorum / etiket)`}
-                    style={{
-                      minWidth: 18, height: 18, padding: '0 5px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'var(--danger)', color: '#fff',
-                      fontSize: 11, fontWeight: 700,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      animation: 'nabizYansin 1.6s ease-in-out infinite',
-                    }}
-                  >
-                    {gorevOkunmamis > 99 ? '99+' : gorevOkunmamis}
-                  </span>
-                )}
-                {item.id === 'gorusmeler' && gorusmeOkunmamis > 0 && (
-                  <span
-                    title={`${gorusmeOkunmamis} yeni görüşme bildirimi (yorum / etiket)`}
-                    style={{
-                      minWidth: 18, height: 18, padding: '0 5px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'var(--danger)', color: '#fff',
-                      fontSize: 11, fontWeight: 700,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      animation: 'nabizYansin 1.6s ease-in-out infinite',
-                    }}
-                  >
-                    {gorusmeOkunmamis > 99 ? '99+' : gorusmeOkunmamis}
-                  </span>
-                )}
+                  ? <img src="/trassirlogo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                  : <item.Icon size={16} strokeWidth={1.6} style={{ flexShrink: 0 }} />}
+                <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.isim}</span>
+                <MenuRozet
+                  sayi={rozetSayisi(item.id)}
+                  nabiz={nabizliRozet(item.id)}
+                  baslik={item.id === 'gorevler' ? `${gorevOkunmamis} yeni görev bildirimi (atama / yorum / etiket)`
+                        : item.id === 'gorusmeler' ? `${gorusmeOkunmamis} yeni görüşme bildirimi (yorum / etiket)`
+                        : undefined}
+                />
               </button>
               </SortableSatir>
             )
           })}
           </SortableContext>
           </DndContext>
-
-          {ozellestirildiMi && (
-            <button
-              onClick={menuSifirla}
-              title="Menü sıralamasını sıfırla"
-              style={{
-                marginTop: 10, padding: '6px 8px',
-                background: 'transparent',
-                border: '1px dashed var(--border-on-dark)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-on-dark-muted)',
-                font: '400 11px/14px var(--font-sans)',
-                cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-              }}
-            >
-              <RotateCcw size={11} strokeWidth={1.5} />
-              Sıralamayı sıfırla
-            </button>
           )}
         </nav>
 
