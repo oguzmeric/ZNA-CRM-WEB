@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Trash2, ArrowUpRight, ArrowDownLeft, Phone, MapPin, AlertTriangle,
   Check, Pencil, Package, Send, ExternalLink, Copy,
@@ -121,8 +122,9 @@ export default function KargoDetay() {
 
       {/* Geri + Sil */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        {/* Akıllı geri: bildirimden/servisten gelindiyse oraya döner (geriDon) */}
         <button
-          onClick={() => navigate('/kargolar')}
+          onClick={() => geriDon(navigate, '/kargolar')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', padding: 0, cursor: 'pointer',

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Boxes, ArrowDownToLine, Clock, Wrench, Trash2, Pencil,
   Printer, Send, Upload, FileCheck, FileWarning, FileText, ExternalLink,
@@ -158,7 +159,9 @@ export default function DemoCihazDetay() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1024, margin: '0 auto' }}>
-      <Button variant="ghost" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/demolar')}>
+      {/* Akıllı geri: Müşteri Detayı'ndaki "Müşterideki Demolar"dan gelindiyse
+          müşteriye döner; doğrudan URL ile gelindiyse listeye düşer. */}
+      <Button variant="ghost" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/demolar')}>
         Demolar
       </Button>
 

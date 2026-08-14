@@ -383,10 +383,6 @@ function MainLayout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname.startsWith('/stok')])
 
-  const [musteriAcik, setMusteriAcik] = useState(
-    location.pathname.startsWith('/musteri') || location.pathname.startsWith('/firma')
-  )
-
   // Grup açık/kapalı — localStorage'da kalıcı, ELLE yapılan seçimleri tutar.
   //
   // ⚠️ VARSAYILAN DEĞİŞTİ (14.08): eskiden "hepsi açık" idi, 45 satırlık liste
@@ -434,22 +430,15 @@ function MainLayout({ children }) {
 
   // Menü düzenleme modu — sürükle-bırak tutamakları YALNIZ burada görünür.
   const [duzenModu, setDuzenModu] = useState(false)
-  const [stokAcik, setStokAcik] = useState(location.pathname.startsWith('/stok'))
-  const [teklifAcik, setTeklifAcik] = useState(
-    location.pathname.startsWith('/teklif') || location.pathname.startsWith('/satis') || location.pathname.startsWith('/kesif')
-  )
-  const [raporlarAcik, setRaporlarAcik] = useState(
-    location.pathname.startsWith('/raporlar') || location.pathname.startsWith('/rapor-')
-  )
-  const [servisAcik, setServisAcik] = useState(
-    location.pathname.startsWith('/servis') || location.pathname.startsWith('/memnuniyet')
-  )
-  const [onaylarAcik, setOnaylarAcik] = useState(
-    location.pathname.startsWith('/teklif-onaylari')
-  )
-  const [tedarikAcik, setTedarikAcik] = useState(
-    location.pathname.startsWith('/siparis-onaylari') || location.pathname.startsWith('/siparisler')
-  )
+  // Alt menü açık/kapalı — gruplarla AYNI mantık: kullanıcının elle seçimi varsa
+  // o geçerli, yoksa "içinde bulunduğun sayfanın başlığı açık".
+  //
+  // ⚠️ Eskiden yedi ayrı state vardı (stokAcik, servisAcik…) ve hepsi YALNIZ
+  // mount'ta location'a bakıyordu. MainLayout tüm oturum boyunca mount kaldığı
+  // için, uygulama içinde bir alt sayfaya gidildiğinde (panelden link, bildirim,
+  // arama) başlık KAPALI kalıyordu: kullanıcı hangi sayfada olduğunu menüde
+  // göremiyor, kardeş sayfalara geçemiyordu.
+  const [altDurum, setAltDurum] = useState({})
   const [cikisYapiliyor, setCikisYapiliyor] = useState(false)
   const [durumMenuAcik, setDurumMenuAcik] = useState(false)
   const [bildirimPanelAcik, setBildirimPanelAcik] = useState(false)
@@ -605,39 +594,20 @@ function MainLayout({ children }) {
     yenidenSirala(newOrder)
   }
 
-  const menuAcik = (id) => {
-    if (id === 'stok') return stokAcik
-    if (id === 'satislar') return teklifAcik
-    if (id === 'musteriler') return musteriAcik
-    if (id === 'raporlar') return raporlarAcik
-    if (id === 'servis') return servisAcik
-    if (id === 'onaylar') return onaylarAcik
-    if (id === 'tedarik_surecleri') return tedarikAcik
-    return false
-  }
+  // altAktif: bu başlığın alt sayfalarından biri şu an açık mı (render'da hesaplanır)
+  const menuAcik = (id, altAktif) => (id in altDurum ? altDurum[id] : !!altAktif)
 
-  const menuToggle = (id) => {
-    if (id === 'stok') setStokAcik(!stokAcik)
-    if (id === 'satislar') setTeklifAcik(!teklifAcik)
-    if (id === 'musteriler') setMusteriAcik(!musteriAcik)
-    if (id === 'raporlar') setRaporlarAcik(!raporlarAcik)
-    if (id === 'servis') setServisAcik(!servisAcik)
-    if (id === 'onaylar') setOnaylarAcik(!onaylarAcik)
-    if (id === 'tedarik_surecleri') setTedarikAcik(!tedarikAcik)
-  }
+  const menuToggle = (id, suAndaAcik) => setAltDurum(p => ({ ...p, [id]: !suAndaAcik }))
 
-  // Alt menüyü AÇ (toggle değil) — arama sonucundan bir alt sayfaya gidilince
-  // üst başlığı da açar. Bu state'ler yalnız ilk yüklemede location'a bakıyor;
-  // açılmazsa gidilen sayfa menüde görünmez, kullanıcı "nerede olduğunu" kaybeder.
-  const menuAc = (id) => {
-    if (id === 'stok') setStokAcik(true)
-    if (id === 'satislar') setTeklifAcik(true)
-    if (id === 'musteriler') setMusteriAcik(true)
-    if (id === 'raporlar') setRaporlarAcik(true)
-    if (id === 'servis') setServisAcik(true)
-    if (id === 'onaylar') setOnaylarAcik(true)
-    if (id === 'tedarik_surecleri') setTedarikAcik(true)
-  }
+  // Elle seçimi SİL → "aktif başlık açık" varsayılanına döner. Arama sonucundan
+  // bir alt sayfaya gidilince kullanılır: kullanıcı o başlığı daha önce kapatmış
+  // olsa bile gittiği sayfa menüde görünür.
+  const menuAc = (id) => setAltDurum(p => {
+    if (!(id in p)) return p
+    const yeni = { ...p }
+    delete yeni[id]
+    return yeni
+  })
 
   const sayfaBasligi = () => {
     if (location.pathname === '/dashboard') return 'Panel'
@@ -1095,13 +1065,13 @@ function MainLayout({ children }) {
             const item = entry.data
             if (item.altMenu) {
               const altAktif = item.altMenu.some(a => location.pathname === a.yol || location.pathname.startsWith(a.yol + '/'))
-              const acik = menuAcik(item.id)
+              const acik = menuAcik(item.id, altAktif)
               const kapaliAltRozet = item.altMenu.reduce((t, a) => t + rozetSayisi(a.id), 0)
               return (
                 <SortableSatir id={item.id} key={item.id} duzenModu={duzenModu}>
                 <div>
                   <button
-                    onClick={() => menuToggle(item.id)}
+                    onClick={() => menuToggle(item.id, acik)}
                     style={{
                       width: '100%',
                       display: 'flex', alignItems: 'center', gap: 9,
