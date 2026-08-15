@@ -20,8 +20,14 @@ const KILIT_BITIS_DK     = 19 * 60        // 19:00
 // FAZLA MESAİ (mig 252): 19:00 ve sonrasında başlatılan çalışma ayrı ücretlendirilir.
 // Tip SUNUCUDA belirlenir — istemciden gelen değere güvenilmez, aksi halde
 // normal mesai fazla gösterilip fazladan ödeme doğabilirdi.
+//
+// ⚠️ HAFTA SONU = SAATİ NE OLURSA OLSUN 'fazla' (kullanıcı kararı 15.08).
+// Bu, 14.08'deki "hafta sonu hafta içiyle aynı işlensin" kararının YERİNİ ALDI.
+// Gerekçe: hafta sonu çalışması normal mesai saatinin dışında, ayrı
+// ücretlendirilecek. Hafta içi kuralı DEĞİŞMEDİ (19:00 öncesi normal).
 const FAZLA_MESAI_BASLANGIC_DK = 19 * 60  // 19:00
-const mesaiTipi = (dk: number) => (dk >= FAZLA_MESAI_BASLANGIC_DK ? 'fazla' : 'normal')
+const mesaiTipi = (dk: number, haftaSonu: boolean) =>
+  (haftaSonu || dk >= FAZLA_MESAI_BASLANGIC_DK ? 'fazla' : 'normal')
 
 function istanbulDakika(d = new Date()): number {
   const bicim = new Intl.DateTimeFormat('en-GB', {
@@ -32,11 +38,13 @@ function istanbulDakika(d = new Date()): number {
   return saat * 60 + dakika
 }
 
-// HAFTA SONU = hafta içi ile AYNI işleme (kullanıcı kararı 14.08, revize):
-// kayıt normal mesai olarak açılır ve AYNI ücretle işlenir — 'ekstra/fazla'
-// etiketi YOK, 18:30 cron'u hafta içi gibi kapatır (bitiş 18:00), 19:00+
-// başlatılan yine 'fazla' kuralına girer. Hafta sonunun TEK farkı: QR
-// istenmez ve mesafe eşiği uygulanmaz (ofis kapalı, personel sahada).
+// HAFTA SONU (15.08 kararı — 14.08'deki "aynı işlensin" kararının yerini aldı):
+//   • Tip her saat 'fazla' (yukarıdaki mesaiTipi)
+//   • QR istenmez, mesafe eşiği uygulanmaz (ofis kapalı, personel sahada)
+//   • Elle "Bitir" ile kapatılır; gün içinde birden çok kayıt açılabilir,
+//     süreler toplanır (mesai_aktif_tek yalnız AYNI ANDA tek açık kayda izin verir)
+//   • 18:30 cron'u yedek olarak duruyor: kapatmayı unutan kayıt sonsuza dek
+//     açık kalmasın (14.08 kararı, bilerek korundu)
 function istanbulHaftaSonuMu(d = new Date()): boolean {
   const gun = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Istanbul', weekday: 'short',
@@ -150,17 +158,19 @@ Deno.serve(async (req) => {
 
     // `suAn` kilit kontrolünde hesaplandı — aynı anı kullan ki 18:59'da başlayan
     // istek araya giren saniyelerle 'fazla' olarak etiketlenmesin.
-    // Tip hafta sonu dahil TEK kuralla belirlenir: 19:00 öncesi normal,
-    // sonrası fazla. Hafta sonu kaydı raporda hafta içinden AYIRT EDİLMEZ
-    // (aynı ücret — 'ekstra' etiketi kafa karıştırıyordu, 14.08 kararı).
-    const tip = mesaiTipi(suAn)
+    // İKİ KURAL (15.08): hafta sonu → her saat 'fazla'; hafta içi → 19:00 öncesi
+    // 'normal', sonrası 'fazla'.
+    const tip = mesaiTipi(suAn, haftaSonu)
     // Hafta sonu "ofis dışı" notu YAZILMAZ: ofis kapalı, herkes zaten dışarıda —
-    // işaret anlam taşımaz ve kayıtları hafta içinden ayrıştırırdı (14.08 kararı:
-    // ayırt edilmesin). Mesafe her durumda giris_mesafe_m kolonuna yazılır.
+    // işaret anlam taşımaz. Mesafe her durumda giris_mesafe_m kolonuna yazılır.
     const uzakNot = !haftaSonu && mesafe !== null && mesafe > tolerans ? ` · ofis dışı: ${mesafe}m` : ''
-    const notMetni = tip === 'fazla'
-      ? (uzakNot ? `Fazla mesai${uzakNot}` : null)
-      : (uzakNot ? `Ofis dışı: ${mesafe}m` : null)
+    // Not metni hafta sonunu AYIRT EDER: bordroya bakan kişi 'fazla' kaydın
+    // akşam mesaisinden mi hafta sonundan mı geldiğini görsün.
+    const notMetni = haftaSonu
+      ? 'Hafta sonu mesaisi'
+      : tip === 'fazla'
+        ? (uzakNot ? `Fazla mesai${uzakNot}` : null)
+        : (uzakNot ? `Ofis dışı: ${mesafe}m` : null)
     const { data: yeni, error } = await svc.from('mesai_kayitlari').insert({
       kullanici_id: kul.id,
       giris_lat: lat, giris_lng: lng, giris_mesafe_m: mesafe,

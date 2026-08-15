@@ -19,10 +19,19 @@ import {
   mesaiKaydiEkle, mesaiKaydiDuzelt, mesaiKaydiSil, isodanForm,
 } from '../services/mesaiDuzeltmeService'
 
-// Model kuralı: 19:00 öncesi başlayan normal, 19:00+ fazla mesai (mig 252).
-// Formda ÖNERİ olarak uygulanır; yönetici elle değiştirebilir.
+// Model kuralı (15.08): HAFTA SONU her saat fazla; hafta içi 19:00+ fazla.
+// Sunucudaki mesai-giris ile aynı kural — formda ÖNERİ olarak uygulanır,
+// yönetici elle değiştirebilir.
 const FAZLA_ESIK_SAAT = 19
+const haftaSonuMu = (girisForm) => {
+  const g = /^(\d{4}-\d{2}-\d{2})/.exec(girisForm || '')
+  if (!g) return false
+  // Tarih string'i yerel gün olarak okunur; gün numarası 0=Paz, 6=Cmt.
+  const d = new Date(`${g[1]}T12:00:00`)
+  return !isNaN(d) && (d.getDay() === 0 || d.getDay() === 6)
+}
 const tipOner = (girisForm) => {
+  if (haftaSonuMu(girisForm)) return 'fazla'
   const m = /T(\d{2}):/.exec(girisForm || '')
   return m && Number(m[1]) >= FAZLA_ESIK_SAAT ? 'fazla' : 'normal'
 }
@@ -248,7 +257,9 @@ export default function MesaiDuzeltModal({ open, onClose, kayit, personeller = [
             </CustomSelect>
             {!tipElle && form.giris && (
               <div style={{ marginTop: 4, font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-                Giriş saatinden önerildi ({FAZLA_ESIK_SAAT}:00 sonrası fazla).
+                {haftaSonuMu(form.giris)
+                  ? 'Hafta sonu — fazla mesai önerildi.'
+                  : `Giriş saatinden önerildi (${FAZLA_ESIK_SAAT}:00 sonrası fazla).`}
               </div>
             )}
           </div>

@@ -3,8 +3,9 @@
 // Menü adı 01.08'de "Mesai Raporu"ndan değişti: halk dilinde "mesai" fazla
 // çalışmayı anlatıyor, oysa bu sayfa normal + fazla çalışmanın ikisini de tutar.
 //
-// FAZLA MESAİ (mig 252): 19:00 sonrası başlatılan kayıt tip='fazla' işaretlenir,
-// 18:30 cron'u ona dokunmaz, personel elle bitirir (yedek: 02:00 cron).
+// FAZLA MESAİ — İKİ KURAL (15.08): HAFTA SONU (Cmt/Paz) başlatılan çalışma
+// saati ne olursa olsun tip='fazla'; hafta içi ise 19:00 sonrası başlayan.
+// Personel elle bitirir (yedek: 18:30 / 02:00 cron).
 // Raporda normal ve fazla süre AYRI sütun — ayrı ücretlendirildiği için.
 //
 // Erişim: Abdullah (İK modülü) + Ali + Oğuz + Ferdi — mesaiRaporuGorebilirMi.
@@ -380,9 +381,12 @@ export default function MesaiRaporu() {
       </div>
       <p style={{ font: '400 12.5px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
         QR ile mesai başlatan saha ekiplerinin çalışma saatleri. Devam eden mesailerde
-        süre <strong>şu ana kadar</strong> hesaplanır ve <strong style={{ color: '#f59e0b' }}>+</strong> ile
+        süre <strong>şu ana kadar</strong> hesaplanır ve <strong style={{ color: 'var(--warning)' }}>+</strong> ile
         işaretlenir; 18:30'daki otomatik kapanışta bitiş <strong>18:00</strong> olarak yazılır
         (18:00–18:30 arası fazla mesai karar tamponudur, süreye sayılmaz).
+        <br />
+        <strong>Fazla mesai:</strong> hafta sonu çalışmasının tamamı + hafta içi 19:00'dan
+        sonra başlatılan çalışma. Ayrı sütunda toplanır, ayrı ücretlendirilir.
       </p>
 
       {/* Filtreler */}
@@ -444,7 +448,7 @@ export default function MesaiRaporu() {
           },
           {
             ikon: <Moon size={15} />, etiket: 'FAZLA MESAİ', deger: kpi.fazlaSaat,
-            ipucu: `19:00'dan sonra başlatılan çalışma — ${kpi.fazlaKisi} personel, ${kpi.fazlaKayit} kayıt. Ayrı ücretlendirilir.`,
+            ipucu: `Hafta sonu çalışmasının tamamı + hafta içi 19:00 sonrası başlatılan çalışma — ${kpi.fazlaKisi} personel, ${kpi.fazlaKayit} kayıt. Ayrı ücretlendirilir.`,
             vurgu: kpi.fazlaKayit > 0 ? '#f59e0b' : undefined,
           },
           { ikon: <CalendarClock size={15} />, etiket: 'DEVAM EDEN', deger: kpi.devam },
@@ -499,8 +503,8 @@ export default function MesaiRaporu() {
                 <TH title={kirilim === 'gunluk' ? 'Mesainin bitiş saati (otomatik kapanışta 18:00 yazılır)' : 'Dönemdeki normal mesai bitişlerinin ortalama saati'}>
                   {kirilim === 'gunluk' ? 'Çıkış' : 'Ort. Çıkış'}
                 </TH>
-                <TH title="19:00 öncesi başlayan normal çalışma">Normal</TH>
-                <TH title="19:00 sonrası başlayan, ayrı ücretlendirilen çalışma">Fazla Mesai</TH>
+                <TH title="Hafta içi 19:00 öncesi başlayan normal çalışma">Normal</TH>
+                <TH title="Ayrı ücretlendirilen çalışma: hafta sonunun tamamı + hafta içi 19:00 sonrası">Fazla Mesai</TH>
                 <TH>Toplam</TH>
                 <TH>Günlük Ort.</TH>
                 {/* "Kayıt" tek başına neyi saydığını söylemiyordu */}
