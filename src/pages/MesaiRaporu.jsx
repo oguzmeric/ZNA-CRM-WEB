@@ -18,13 +18,18 @@
 // bu satırlar 'devam ediyor' rozetiyle ayrıca işaretleniyor.
 
 import { useState, useEffect, useMemo } from 'react'
-import { CalendarClock, Download, Users, Clock, CalendarDays, Moon } from 'lucide-react'
+import { CalendarClock, Download, Users, Clock, CalendarDays, Moon, Plus, Pencil, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import { Button, Card, Input, Label, Badge, EmptyState, Table, THead, TBody, TR, TH, TD } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { Button, Card, Input, Label, Badge, EmptyState, SearchInput, Table, THead, TBody, TR, TH, TD } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import { mesaiKayitDakika as kayitDakika } from '../lib/mesaiSure'
+import { ikGorebilirMi } from '../lib/ikYetki'
+import MesaiDuzeltModal from '../components/MesaiDuzeltModal'
+import { mesaiDuzeltmeleriGetir } from '../services/mesaiDuzeltmeService'
+import { trContains } from '../lib/trSearch'
 
 const iso = (d) => d.toISOString().slice(0, 10)
 const bugun = () => iso(new Date())
@@ -114,6 +119,11 @@ const sureBicimle = (ws, basliklar) => {
 
 export default function MesaiRaporu() {
   const { toast } = useToast()
+  const { kullanici } = useAuth()
+  // Görüntüleme yetkisi Ferdi'yi de kapsar (mesaiYetki), DÜZELTME yetkisi daha
+  // dar: yalnız 'ik_yonetim' modülü — Ali, Oğuz, Abdullah. Sunucu tarafı asıl
+  // kapı (mig 291 ik_yetkili()); buradaki kontrol sadece arayüzü sadeleştirir.
+  const duzeltebilir = ikGorebilirMi(kullanici)
   const [aralikId, setAralikId] = useState('buhafta')
   const [baslangic, setBaslangic] = useState(iso(haftaBasi()))
   const [bitis, setBitis] = useState(bugun())
@@ -124,6 +134,17 @@ export default function MesaiRaporu() {
   const [yukleniyor, setYukleniyor] = useState(true)
   // Devam eden mesailerin süresi sayfa açıkken donmasın — dakika başı tazele.
   const [simdi, setSimdi] = useState(() => Date.now())
+
+  // ── Düzeltme (mig 291) ────────────────────────────────────────────────────
+  const [kayitlarAcik, setKayitlarAcik] = useState(false)
+  const [kayitAra, setKayitAra] = useState('')
+  const [duzeltAcik, setDuzeltAcik] = useState(false)
+  const [duzeltKayit, setDuzeltKayit] = useState(null)
+  const [duzeltmeSayisi, setDuzeltmeSayisi] = useState({})   // mesai_id → adet
+  // ⚠️ Kaydettikten sonra listeyi tazelemek için sayaç. Fetch'i useCallback'e
+  // çıkarıp effect dizisine koymak, memoize edilmemiş bir bağımlılıkta sonsuz
+  // döngü riski taşıyor (14.08 idle vakası) — düz sayaç bu riski taşımaz.
+  const [tazeleSayac, setTazeleSayac] = useState(0)
 
   useEffect(() => {
     const sayac = setInterval(() => setSimdi(Date.now()), 60000)
@@ -149,7 +170,25 @@ export default function MesaiRaporu() {
       setKayitlar(data || [])
       setYukleniyor(false)
     })
-  }, [baslangic, bitis, personelId])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [baslangic, bitis, personelId, tazeleSayac])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hangi kayıtlar elle düzeltilmiş? Rapor satırında rozet göstermek için.
+  // Yalnız düzeltme yetkisi olanlar sorgular — denetim defteri RLS'i zaten
+  // reddederdi, boşuna 403 üretmeyelim.
+  useEffect(() => {
+    let iptal = false
+    // Yetkisizde/boş listede id dizisi boş gider; servis boş diziyi sorgusuz
+    // döner. setState'i koşulsuz olarak promise içinde çağırıyoruz — effect
+    // gövdesinde senkron setState zincirleme render tetikliyor.
+    const idler = duzeltebilir ? kayitlar.map(k => k.id) : []
+    mesaiDuzeltmeleriGetir(idler).then(satirlar => {
+      if (iptal) return
+      const sayim = {}
+      for (const s of satirlar) sayim[s.mesai_id] = (sayim[s.mesai_id] || 0) + 1
+      setDuzeltmeSayisi(sayim)
+    })
+    return () => { iptal = true }
+  }, [kayitlar, duzeltebilir])
 
   const aralikSec = (id) => {
     const a = HAZIR_ARALIKLAR.find(x => x.id === id)
@@ -321,6 +360,17 @@ export default function MesaiRaporu() {
     XLSX.writeFile(wb, `mesai-raporu-${kirilimAd}-${baslangic}_${bitis}.xlsx`)
     toast?.success?.('Excel indirildi.')
   }
+
+  // Ham kayıt listesi (düzeltme bölümü). Sorgu zaten tarih + personel ile
+  // daraltılmış; buradaki arama ad/not içinde geçen kelimeye göre süzer.
+  const kayitListesi = useMemo(() => {
+    const ara = kayitAra.trim()
+    if (!ara) return kayitlar
+    return kayitlar.filter(k =>
+      trContains(k.kullanicilar?.ad || '', ara) || trContains(k.not_ || '', ara))
+  }, [kayitlar, kayitAra])
+
+  const duzeltmeyiAc = (kayit) => { setDuzeltKayit(kayit); setDuzeltAcik(true) }
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
@@ -516,6 +566,163 @@ export default function MesaiRaporu() {
           </Table>
         )}
       </Card>
+
+      {/* ── MESAİ KAYITLARI (düzeltme) ─────────────────────────────────────────
+          Özet tablosu kişi × dönem toplar; düzeltme TEK KAYDA yapılır, o yüzden
+          ham satırlar burada. Katlanabilir — sayfanın asıl işi rapor okumak. */}
+      <Card padding={0} style={{ marginTop: 16 }}>
+        <div style={{
+          padding: '14px 20px', borderBottom: kayitlarAcik ? '1px solid var(--border-default)' : 'none',
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        }}>
+          <button
+            onClick={() => setKayitlarAcik(a => !a)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none',
+              padding: 0, cursor: 'pointer', color: 'var(--text-primary)', flex: '1 1 auto', textAlign: 'left',
+            }}
+          >
+            {kayitlarAcik ? <ChevronDown size={16} strokeWidth={2} /> : <ChevronRight size={16} strokeWidth={2} />}
+            <h3 style={{ margin: 0, font: '600 15px/20px var(--font-sans)' }}>Mesai Kayıtları</h3>
+            <span className="tabular-nums" style={{ font: '500 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+              ({kayitlar.length} kayıt)
+            </span>
+            {!kayitlarAcik && duzeltebilir && (
+              <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                — saat düzeltmek veya eksik kayıt eklemek için açın
+              </span>
+            )}
+          </button>
+          {duzeltebilir && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => { setKayitlarAcik(true); duzeltmeyiAc(null) }}
+              iconLeft={<Plus size={14} strokeWidth={1.8} />}
+            >
+              Kayıt Ekle
+            </Button>
+          )}
+        </div>
+
+        {kayitlarAcik && (
+          <>
+            <div style={{ padding: '12px 20px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <SearchInput
+                value={kayitAra}
+                onChange={e => setKayitAra(e.target.value)}
+                placeholder="Personel adı veya not içinde ara…"
+                style={{ flex: '1 1 260px', maxWidth: 340 }}
+              />
+              {!duzeltebilir && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                  <ShieldCheck size={14} strokeWidth={1.6} />
+                  Düzeltme yetkisi İK yöneticilerindedir.
+                </span>
+              )}
+            </div>
+
+            {yukleniyor ? (
+              <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Yükleniyor…</div>
+            ) : kayitListesi.length === 0 ? (
+              <div style={{ padding: 28 }}>
+                <EmptyState
+                  icon={<Clock size={22} strokeWidth={1.5} />}
+                  title={kayitAra ? 'Aramaya uyan kayıt yok' : 'Bu aralıkta mesai kaydı yok'}
+                  description={kayitAra ? 'Arama kelimesini değiştirin.' : 'Tarih aralığını genişletin veya yeni kayıt ekleyin.'}
+                />
+              </div>
+            ) : (
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Tarih</TH>
+                    <TH>Personel</TH>
+                    <TH>Giriş</TH>
+                    <TH>Çıkış</TH>
+                    <TH>Süre</TH>
+                    <TH>Tür</TH>
+                    <TH>Not</TH>
+                    {duzeltebilir && <TH style={{ textAlign: 'right' }}>İşlem</TH>}
+                  </TR>
+                </THead>
+                <TBody>
+                  {kayitListesi.map(k => {
+                    const acik = !k.cikis_zamani
+                    const duzeltmeAdet = duzeltmeSayisi[k.id] || 0
+                    return (
+                      <TR key={k.id}>
+                        <TD style={{ whiteSpace: 'nowrap' }}>
+                          {new Date(k.giris_zamani).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', weekday: 'short' })}
+                        </TD>
+                        <TD style={{ fontWeight: 600 }}>{k.kullanicilar?.ad || `#${k.kullanici_id}`}</TD>
+                        <TD className="tabular-nums">{saatGoster(k.giris_zamani)}</TD>
+                        <TD className="tabular-nums">
+                          {acik
+                            ? <Badge tone="beklemede" title="Çıkış yapılmadı — 18:30'da otomatik kapanır">açık</Badge>
+                            : saatGoster(k.cikis_zamani)}
+                        </TD>
+                        {/* Açık kayıtta süre ANLIK — kesin değil, '+' ile işaretli */}
+                        <TD className="tabular-nums" style={{ fontWeight: 600 }}>
+                          {saatBicim(kayitDakika(k, simdi))}
+                          {acik && <span style={{ marginLeft: 3, color: 'var(--warning)' }} title="Şu ana kadar geçen süre">+</span>}
+                        </TD>
+                        <TD>
+                          {k.tip === 'fazla'
+                            ? <Badge tone="uyari">fazla</Badge>
+                            : <span style={{ color: 'var(--text-tertiary)' }}>normal</span>}
+                        </TD>
+                        <TD style={{ color: 'var(--text-tertiary)', maxWidth: 260 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={k.not_ || ''}>
+                              {k.not_ || '—'}
+                            </span>
+                            {duzeltmeAdet > 0 && (
+                              <Badge
+                                tone="bilgi"
+                                title={`Bu kayıt ${duzeltmeAdet} kez elle düzeltildi. Sebep ve eski değerler denetim defterinde.`}
+                                style={{ flexShrink: 0 }}
+                              >
+                                elle düzeltildi{duzeltmeAdet > 1 ? ` ×${duzeltmeAdet}` : ''}
+                              </Badge>
+                            )}
+                          </div>
+                        </TD>
+                        {duzeltebilir && (
+                          <TD style={{ textAlign: 'right' }}>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => duzeltmeyiAc(k)}
+                              iconLeft={<Pencil size={13} strokeWidth={1.6} />}
+                            >
+                              Düzelt
+                            </Button>
+                          </TD>
+                        )}
+                      </TR>
+                    )
+                  })}
+                </TBody>
+              </Table>
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* ⚠️ key + koşullu mount BİLEREK: modal formunu "prop değişti → state
+          sıfırla" effect'iyle değil, React'in kendi remount'uyla tazeliyoruz.
+          Başka kayda tıklanınca form da, girilen sebep de sıfırdan başlar. */}
+      {duzeltAcik && (
+        <MesaiDuzeltModal
+          key={duzeltKayit?.id || 'yeni'}
+          open
+          kayit={duzeltKayit}
+          personeller={personeller}
+          onClose={() => { setDuzeltAcik(false); setDuzeltKayit(null) }}
+          onKaydedildi={() => setTazeleSayac(n => n + 1)}
+        />
+      )}
     </div>
   )
 }
