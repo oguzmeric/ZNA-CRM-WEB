@@ -9,6 +9,7 @@ import {
   ArrowLeft, FileSignature, Lock, Unlock, Printer, Send, FileUp, ExternalLink,
   Eye, CheckCircle2, XCircle, AlertTriangle, Calculator, Plus, Trash2, Wallet,
 } from 'lucide-react'
+import { guvenliBelgeHtml } from '../lib/guvenliHtml'
 import { Button, Card, Badge, Input, Label, Textarea, Modal } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import { SkeletonList } from '../components/Skeleton'
@@ -1452,7 +1453,7 @@ export default function SatisSozlesmeForm() {
                 position:fixed'ler static'e çevriliyordu: önizleme düzgün
                 görünüyor ama yazdırma bozuk çıkıyordu (madde kayması) — hata
                 tam da bu yüzden fark edilmiyordu. */}
-            <div dangerouslySetInnerHTML={{ __html: ssBelgeGoster(icerikHtml()) }} />
+            <div dangerouslySetInnerHTML={{ __html: guvenliBelgeHtml(ssBelgeGoster(icerikHtml())) }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
             <Button variant="secondary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={yazdir}>Yazdır / PDF</Button>

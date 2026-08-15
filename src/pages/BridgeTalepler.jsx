@@ -12,6 +12,7 @@ import {
   CRM_DURUM,
 } from '../services/bridgeService'
 import { Button, Card, EmptyState, Select } from '../components/ui'
+import { guvenliMetinHtml } from '../lib/guvenliHtml'
 
 const SEKMELER = [
   { id: 'tumu', isim: 'Tümü' },
@@ -227,7 +228,8 @@ function TalepDetayModal({ talep, personel, onKapat, onTriyaj }) {
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>{talep.subject || '(konu yok)'}</div>
             {talep.content && (
               talep.contentIsHtml
-                ? <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }} dangerouslySetInnerHTML={{ __html: talep.content }} />
+                // ⚠️ ÜÇÜNCÜ TARAF HTML (belediye API'si) — sanitize ZORUNLU
+                ? <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }} dangerouslySetInnerHTML={{ __html: guvenliMetinHtml(talep.content) }} />
                 : <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, whiteSpace: 'pre-wrap' }}>{talep.content}</div>
             )}
           </div>

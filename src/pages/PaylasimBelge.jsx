@@ -22,6 +22,7 @@ import ServisFormu   from './servisCikti/ServisFormu'
 import DemoTutanak   from './demoCikti/DemoTutanak'
 import { bayiBelgeHtml } from '../lib/bayiSozlesmeBelge'
 import { ssBelgeGoster } from '../lib/satisSozlesmeMaddeleri'
+import { guvenliBelgeHtml } from '../lib/guvenliHtml'
 import { tipCoz } from '../lib/teklifTemplates'
 
 const ciktiMap = {
@@ -550,7 +551,7 @@ function SatisSozlesmeGorunum({ belge }) {
         {/* İçerik CRM'in kendi ürettiği HTML — güvenli.
             ssBelgeGoster: eski kayıtların yazdırmada bozulan gömülü stilini
             gösterim anında onarır; içeriğe dokunmaz. */}
-        <div dangerouslySetInnerHTML={{ __html: ssBelgeGoster(belge.uretilenIcerik) || '<p>Sözleşme içeriği bulunamadı.</p>' }} />
+        <div dangerouslySetInnerHTML={{ __html: guvenliBelgeHtml(ssBelgeGoster(belge.uretilenIcerik)) || '<p>Sözleşme içeriği bulunamadı.</p>' }} />
       </div>
     </div>
   )
@@ -613,7 +614,7 @@ function BayiSozlesmeGorunum({ belge }) {
       <div style={{ maxWidth: 794, margin: '0 auto', padding: '24px 40px 48px' }}>
         {/* İçerik CRM'in kendi ürettiği metinden biçimlendirilir — güvenli */}
         <div dangerouslySetInnerHTML={{
-          __html: bayiBelgeHtml(belge.uretilenIcerik, { sozlesmeNo: belge.sozlesmeNo }),
+          __html: guvenliBelgeHtml(bayiBelgeHtml(belge.uretilenIcerik, { sozlesmeNo: belge.sozlesmeNo })),
         }} />
       </div>
     </div>

@@ -10,6 +10,7 @@ import CustomSelect from './CustomSelect'
 import BelgeOnizlemeModal from './BelgeOnizlemeModal'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
+import { guvenliBelgeHtml } from '../lib/guvenliHtml'
 import { belgePaylas } from '../services/belgePaylasimService'
 import {
   SOZLESME_VARSAYILANLARI, SOZLESME_DURUMLARI, ODEME_TIPLERI, TEMINAT_TIPLERI,
@@ -354,9 +355,10 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
           maxHeight: '56vh', overflow: 'auto', background: '#fff',
           border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '20px 28px',
         }}>
-          {/* İçerik CRM'in kendi ürettiği metinden biçimlendirilir — güvenli */}
+          {/* İçerik CRM'in kendi şablonundan üretilir, ama içine kullanıcı
+              girdisi (firma adı, madde metni) giriyor → yine de sanitize. */}
           <div dangerouslySetInnerHTML={{
-            __html: bayiBelgeHtml(sozlesme.uretilenIcerik, { sozlesmeNo: sozlesme.sozlesmeNo }),
+            __html: guvenliBelgeHtml(bayiBelgeHtml(sozlesme.uretilenIcerik, { sozlesmeNo: sozlesme.sozlesmeNo })),
           }} />
         </div>
 
