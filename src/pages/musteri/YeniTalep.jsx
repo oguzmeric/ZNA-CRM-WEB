@@ -57,20 +57,23 @@ export default function YeniTalep() {
   const [konular, setKonular] = useState([])
   useEffect(() => { aktifKonulariGetir().then(d => setKonular(d || [])) }, [])
 
-  // Tür değişince alt kategori bölümüne yumuşakça kaydır
+  // Tür değişince alt kategori bölümüne kaydır.
+  // ⚠️ block:'nearest' — 'center' zaten görünen bölümü bile ekranın ortasına
+  //    çekiyor, sayfa sebepsiz oynuyordu ("ileri geri kaydırma" şikâyeti).
+  //    'nearest' yalnız hedef görünmüyorsa kaydırır.
   useEffect(() => {
     if (adim !== 1 || !form.anaTur) return
     const t = setTimeout(() => {
-      altKategoriRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      altKategoriRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }, 200)
     return () => clearTimeout(t)
   }, [form.anaTur, adim])
 
-  // Alt kategori seçilince devam butonuna kaydır
+  // Alt kategori seçilince devam butonuna kaydır (yine yalnız görünmüyorsa)
   useEffect(() => {
     if (adim !== 1 || !form.altKategori) return
     const t = setTimeout(() => {
-      devamButonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      devamButonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }, 200)
     return () => clearTimeout(t)
   }, [form.altKategori, adim])
@@ -86,6 +89,11 @@ export default function YeniTalep() {
     ? PORTAL_TURLERI.filter(t => izinliTurler.includes(t.id))
     : PORTAL_TURLERI
   const filtreliTurler = izinliPortalTurleri.length > 0 ? izinliPortalTurleri : PORTAL_TURLERI
+
+  // Tür ızgarası yalnız seçim yapılmamışken (veya "Değiştir" denince) açık durur.
+  // Seçimden sonra katlanır ki alt kategori listesi ekranın üstünde kalsın.
+  const [turDegistir, setTurDegistir] = useState(false)
+  const turKartlariGoster = !form.anaTur || turDegistir
 
   useEffect(() => {
     const tur = searchParams.get('tur')
@@ -254,7 +262,12 @@ export default function YeniTalep() {
               <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 22px' }}>
                 Oluşturmak istediğiniz talebin türünü belirleyin.
               </p>
-              {/* Yerleşim .tur-izgara'da (index.css): 3 sütun, son satır ortalı */}
+              {/* Yerleşim .tur-izgara'da (index.css): 3 sütun, son satır ortalı.
+                  ⚠️ Tür seçilince ızgara KATLANIR (aşağıdaki özet şeridine döner) —
+                  aksi hâlde alt kategori listesi ekranın altına düşüyor ve müşteri
+                  seçim yapmak için sürekli aşağı-yukarı kaydırmak zorunda kalıyordu
+                  (ölçüldü: 820px ekranda sayfa 1098px'e çıkıyordu). */}
+              {turKartlariGoster && (
               <div className="tur-izgara" style={{ marginBottom: 16 }}>
                 {filtreliTurler.map((tur, i) => {
                   const secili = form.anaTur === tur.id
@@ -264,7 +277,7 @@ export default function YeniTalep() {
                   return (
                     <button
                       key={tur.id}
-                      onClick={() => guncelle('anaTur', tur.id)}
+                      onClick={() => { guncelle('anaTur', tur.id); setTurDegistir(false) }}
                       onMouseEnter={(e) => {
                         if (secili) return
                         e.currentTarget.style.borderColor = tur.renk
@@ -351,8 +364,10 @@ export default function YeniTalep() {
                   )
                 })}
               </div>
+              )}
 
-              {/* Footer indicator — "Seçilen tür: X" */}
+              {/* Seçilen tür özet şeridi — ızgara katlıyken tek satır yer kaplar.
+                  "Değiştir" ızgarayı geri açar; seçim yapılınca tekrar katlanır. */}
               {form.anaTur && (() => {
                 const seciliTur = filtreliTurler.find(t => t.id === form.anaTur)
                 if (!seciliTur) return null
@@ -373,6 +388,18 @@ export default function YeniTalep() {
                       background: seciliTur.renk,
                     }} />
                     Seçilen tür: <b style={{ fontWeight: 700 }}>{seciliTur.isim}</b>
+                    {!turKartlariGoster && (
+                      <button
+                        onClick={() => setTurDegistir(true)}
+                        style={{
+                          background: 'none', border: 'none', padding: 0, marginLeft: 4,
+                          color: 'inherit', font: '600 12px/16px var(--font-sans)',
+                          textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        Değiştir
+                      </button>
+                    )}
                   </div>
                 )
               })()}
