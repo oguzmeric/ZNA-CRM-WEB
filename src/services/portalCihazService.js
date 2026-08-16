@@ -12,11 +12,13 @@ import { supabase } from '../lib/supabase'
 import { arrayToCamel } from '../lib/mapper'
 
 // Müşteriye gösterilen durum etiketleri — ham değerler depo diliyle yazılmış
+// ⚠️ 'arizada' da geçerli bir durum (sn_ariza_isaretle_atomik ikisini de yazar)
 export const CIHAZ_DURUMLARI = {
-  sahada:         { etiket: 'Kullanımda',        tone: 'basarili' },
-  teknisyende:    { etiket: 'Teknisyende',       tone: 'beklemede' },
+  sahada:         { etiket: 'Kullanımda',         tone: 'basarili' },
+  teknisyende:    { etiket: 'Teknisyende',        tone: 'beklemede' },
   arizali_depoda: { etiket: 'Arızalı — serviste', tone: 'kayip' },
-  depoda:         { etiket: 'Depoda',            tone: 'neutral' },
+  arizada:        { etiket: 'Arızalı — serviste', tone: 'kayip' },
+  depoda:         { etiket: 'Depoda',             tone: 'neutral' },
 }
 
 export const portalCihazlariGetir = async () => {
