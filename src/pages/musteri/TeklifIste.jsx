@@ -2,16 +2,96 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, FileText, Package, Search, ShoppingCart, X, Plus, Minus,
-  CheckCircle2, Check,
+  CheckCircle2, Check, ChevronRight, LayoutGrid,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { katalogUrunleriniGetir } from '../../services/stokService'
+import { kategorileriGetir } from '../../services/stokKategoriService'
 import { musteriTalepEkle } from '../../services/teklifService'
 import CustomSelect from '../../components/CustomSelect'
 import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, EmptyState, Modal,
 } from '../../components/ui'
+
+// ── Marka normalizasyonu ────────────────────────────────────────────────────
+// Katalogda aynı marka iki yazımla duruyor: "Hikvision" 122 + "HIKVISION" 95,
+// "DAHUA" 279 + "Dahua" 31. Filtrede tek satır görünmeli.
+// ⚠️ Türkçe İ/I tuzağı: toUpperCase() 'i' harfini 'İ' yapar ve eşleşmeyi bozar
+//    ([[reference_turkce_i_tuzagi]]) — anahtar üretirken 'en-US' locale ŞART.
+const markaAnahtar = (m) => (m || '').trim().toLocaleLowerCase('en-US')
+// Gösterimde en yaygın yazımı kullan (HIKVISION 95 < Hikvision 122 → "Hikvision")
+
+// Kategori ağacındaki bir düğümün kendisi + tüm alt dalları
+const dalIdleri = (kategoriler, id) => {
+  const sonuc = new Set([id])
+  let buldu = true
+  while (buldu) {
+    buldu = false
+    for (const k of kategoriler) {
+      if (k.ustId != null && sonuc.has(k.ustId) && !sonuc.has(k.id)) {
+        sonuc.add(k.id); buldu = true
+      }
+    }
+  }
+  return sonuc
+}
+
+// ⚠️ Dosya seviyesinde tanımlı — bileşen içinde tanımlansaydı her render'da
+//    yeniden yaratılıp açık/kapalı durumu sıfırlanırdı ([[feedback_buyuk_liste_ui]]).
+function KategoriDugumu({ dugum, seciliId, acikSet, onSec, onAcKapa, derinlik = 0 }) {
+  const acik = acikSet.has(dugum.id)
+  const secili = seciliId === dugum.id
+  const cocukVar = dugum.cocuklar.length > 0
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: `5px 8px 5px ${8 + derinlik * 12}px`,
+          borderRadius: 'var(--radius-sm)',
+          background: secili ? 'var(--brand-primary-soft)' : 'transparent',
+          cursor: 'pointer',
+        }}
+        onClick={() => onSec(dugum.id)}
+      >
+        {cocukVar ? (
+          <button
+            type="button"
+            aria-label={acik ? 'Daralt' : 'Genişlet'}
+            onClick={e => { e.stopPropagation(); onAcKapa(dugum.id) }}
+            style={{
+              display: 'grid', placeItems: 'center', width: 16, height: 16,
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              color: 'var(--text-tertiary)', flexShrink: 0,
+            }}
+          >
+            <ChevronRight size={13} strokeWidth={2}
+              style={{ transform: acik ? 'rotate(90deg)' : 'none', transition: 'transform 150ms' }} />
+          </button>
+        ) : <span style={{ width: 16, flexShrink: 0 }} />}
+        <span style={{
+          flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          font: secili ? '600 12.5px/17px var(--font-sans)' : '400 12.5px/17px var(--font-sans)',
+          color: secili ? 'var(--brand-primary)' : 'var(--text-secondary)',
+        }}>
+          {dugum.ad}
+        </span>
+        <span style={{
+          font: '400 11px/15px var(--font-sans)',
+          color: secili ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+          fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+        }}>
+          {dugum.toplamAdet}
+        </span>
+      </div>
+      {acik && dugum.cocuklar.map(c => (
+        <KategoriDugumu key={c.id} dugum={c} seciliId={seciliId} acikSet={acikSet}
+          onSec={onSec} onAcKapa={onAcKapa} derinlik={derinlik + 1} />
+      ))}
+    </div>
+  )
+}
 
 export default function TeklifIste() {
   const { kullanici } = useAuth()
@@ -23,7 +103,10 @@ export default function TeklifIste() {
   const [katalogUrunler, setKatalogUrunler] = useState([])
   const [katalogYukleniyor, setKatalogYukleniyor] = useState(true)
   const [arama, setArama] = useState('')
-  const [seciliGrup, setSeciliGrup] = useState('hepsi')
+  const [kategoriler, setKategoriler] = useState([])
+  const [seciliKategori, setSeciliKategori] = useState(null)   // null = tüm ürünler
+  const [acikKategoriler, setAcikKategoriler] = useState(new Set())
+  const [seciliMarka, setSeciliMarka] = useState('hepsi')
   const [sepet, setSepet] = useState([])
   const [aciklama, setAciklama] = useState('')
   const [butce, setButce] = useState('')
@@ -36,21 +119,104 @@ export default function TeklifIste() {
 
   useEffect(() => {
     katalogUrunleriniGetir().then(d => { setKatalogUrunler(d || []); setKatalogYukleniyor(false) })
+    kategorileriGetir()
+      .then(d => setKategoriler(d || []))
+      .catch(e => console.warn('[TeklifIste] kategoriler alınamadı:', e?.message))
   }, [])
 
-  const gruplar = useMemo(
-    () => [...new Set(katalogUrunler.map(u => u.grupKodu).filter(Boolean))].sort(),
-    [katalogUrunler]
+  // Kategori ağacı + her düğümün ALT DALLAR DAHİL ürün sayısı
+  const kategoriAgaci = useMemo(() => {
+    if (kategoriler.length === 0) return []
+    const dogrudan = new Map()
+    for (const u of katalogUrunler) {
+      if (u.kategoriId == null) continue
+      dogrudan.set(u.kategoriId, (dogrudan.get(u.kategoriId) || 0) + 1)
+    }
+    const dugumler = new Map(kategoriler.map(k => ({ ...k, cocuklar: [] })).map(k => [k.id, k]))
+    const kokler = []
+    for (const k of dugumler.values()) {
+      const ust = k.ustId != null ? dugumler.get(k.ustId) : null
+      if (ust) ust.cocuklar.push(k); else kokler.push(k)
+    }
+    const topla = (d) => {
+      d.toplamAdet = (dogrudan.get(d.id) || 0) + d.cocuklar.reduce((t, c) => t + topla(c), 0)
+      d.cocuklar.sort((a, b) => b.toplamAdet - a.toplamAdet)
+      return d.toplamAdet
+    }
+    kokler.forEach(topla)
+    // Boş dalları gizle — müşteri tıklayıp boş sayfa görmesin
+    const ayikla = (liste) => liste
+      .filter(d => d.toplamAdet > 0)
+      .map(d => ({ ...d, cocuklar: ayikla(d.cocuklar) }))
+    return ayikla(kokler).sort((a, b) => b.toplamAdet - a.toplamAdet)
+  }, [kategoriler, katalogUrunler])
+
+  // Seçili kategori + tüm alt dalları
+  const kategoriKapsami = useMemo(
+    () => (seciliKategori == null ? null : dalIdleri(kategoriler, seciliKategori)),
+    [kategoriler, seciliKategori]
   )
 
-  const filtreliUrunler = useMemo(() =>
-    katalogUrunler.filter(u => {
-      const aramaUygun = !arama || `${u.stokAdi} ${u.marka} ${u.stokKodu}`.toLowerCase().includes(arama.toLowerCase())
-      const grupUygun = seciliGrup === 'hepsi' || u.grupKodu === seciliGrup
-      return aramaUygun && grupUygun
-    }),
-    [katalogUrunler, arama, seciliGrup]
+  // Kategoriye göre süzülmüş küme — marka listesi BUNUN üstünden çıkar ki
+  // "IP Kamera" seçiliyken alakasız markalar listede görünmesin.
+  const kategoriliUrunler = useMemo(
+    () => (kategoriKapsami ? katalogUrunler.filter(u => kategoriKapsami.has(u.kategoriId)) : katalogUrunler),
+    [katalogUrunler, kategoriKapsami]
   )
+
+  const markalar = useMemo(() => {
+    const harita = new Map()   // anahtar → { etiket, adet, yazimlar }
+    for (const u of kategoriliUrunler) {
+      const ham = (u.marka || '').trim()
+      if (!ham) continue
+      const a = markaAnahtar(ham)
+      const v = harita.get(a) || { adet: 0, yazimlar: new Map() }
+      v.adet++
+      v.yazimlar.set(ham, (v.yazimlar.get(ham) || 0) + 1)
+      harita.set(a, v)
+    }
+    return [...harita.entries()]
+      .map(([anahtar, v]) => ({
+        anahtar, adet: v.adet,
+        // en çok kullanılan yazımı etiket yap (HIKVISION 95 < Hikvision 122)
+        etiket: [...v.yazimlar.entries()].sort((x, y) => y[1] - x[1])[0][0],
+      }))
+      .sort((a, b) => b.adet - a.adet || a.etiket.localeCompare(b.etiket, 'tr'))
+  }, [kategoriliUrunler])
+
+  const filtreliUrunler = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr')
+    return kategoriliUrunler.filter(u => {
+      const aramaUygun = !q ||
+        `${u.stokAdi || ''} ${u.marka || ''} ${u.stokKodu || ''}`.toLocaleLowerCase('tr').includes(q)
+      const markaUygun = seciliMarka === 'hepsi' || markaAnahtar(u.marka) === seciliMarka
+      return aramaUygun && markaUygun
+    })
+  }, [kategoriliUrunler, arama, seciliMarka])
+
+  // Kategori değişince o kategoride olmayan marka seçili kalmasın (boş liste tuzağı)
+  const markaGecerli = seciliMarka === 'hepsi' || markalar.some(m => m.anahtar === seciliMarka)
+  const etkinMarka = markaGecerli ? seciliMarka : 'hepsi'
+
+  const seciliKategoriAdi = seciliKategori == null
+    ? null : kategoriler.find(k => k.id === seciliKategori)?.ad
+  const filtreVar = seciliKategori != null || etkinMarka !== 'hepsi' || arama.trim() !== ''
+
+  const filtreleriTemizle = () => {
+    setSeciliKategori(null); setSeciliMarka('hepsi'); setArama('')
+  }
+
+  const kategoriAcKapa = (id) => setAcikKategoriler(prev => {
+    const y = new Set(prev)
+    if (y.has(id)) y.delete(id); else y.add(id)
+    return y
+  })
+
+  // Kategoriye tıklayınca hem seç hem dalı aç (ikinci tık seçimi kaldırır)
+  const kategoriSec = (id) => {
+    setSeciliKategori(prev => (prev === id ? null : id))
+    setAcikKategoriler(prev => new Set(prev).add(id))
+  }
 
   const sepeteEkle = (urun) => {
     setSepet(prev => {
@@ -123,7 +289,7 @@ export default function TeklifIste() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: 16, maxWidth: 1480, margin: '0 auto' }}>
 
       {/* Geri + başlık TEK SATIR — dikey yer kazanmak için (bkz. YeniTalep) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -166,20 +332,105 @@ export default function TeklifIste() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'flex-start' }}>
-        {/* Sol: Katalog */}
-        <div>
-          {/* Arama + filter */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <SearchInput value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün ara…" />
+      <div style={{ display: 'grid', gridTemplateColumns: '208px 1fr 320px', gap: 16, alignItems: 'flex-start' }}>
+
+        {/* SOL: kategori ağacı — alışveriş sitesi düzeni */}
+        <Card padding={0}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '10px 12px', borderBottom: '1px solid var(--border-default)',
+            font: '600 12px/16px var(--font-sans)', color: 'var(--text-secondary)',
+            letterSpacing: '.02em', textTransform: 'uppercase',
+          }}>
+            <LayoutGrid size={13} strokeWidth={1.8} /> Kategoriler
+          </div>
+          <div style={{ padding: 6, maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
+            {/* Tüm ürünler */}
+            <div
+              onClick={() => setSeciliKategori(null)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                background: seciliKategori == null ? 'var(--brand-primary-soft)' : 'transparent',
+              }}
+            >
+              <span style={{ width: 16, flexShrink: 0 }} />
+              <span style={{
+                flex: 1,
+                font: seciliKategori == null ? '600 12.5px/17px var(--font-sans)' : '400 12.5px/17px var(--font-sans)',
+                color: seciliKategori == null ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              }}>
+                Tüm ürünler
+              </span>
+              <span style={{
+                font: '400 11px/15px var(--font-sans)', fontVariantNumeric: 'tabular-nums',
+                color: seciliKategori == null ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+              }}>
+                {katalogUrunler.length}
+              </span>
             </div>
-            <div style={{ minWidth: 200 }}>
-              <CustomSelect value={seciliGrup} onChange={e => setSeciliGrup(e.target.value)}>
-                <option value="hepsi">Tüm kategoriler</option>
-                {gruplar.map(g => <option key={g} value={g}>{g}</option>)}
+
+            {kategoriAgaci.map(k => (
+              <KategoriDugumu
+                key={k.id}
+                dugum={k}
+                seciliId={seciliKategori}
+                acikSet={acikKategoriler}
+                onSec={kategoriSec}
+                onAcKapa={kategoriAcKapa}
+              />
+            ))}
+
+            {kategoriAgaci.length === 0 && !katalogYukleniyor && (
+              <p className="t-caption" style={{ padding: '8px 10px', margin: 0 }}>
+                Kategori tanımlı değil.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        {/* ORTA: Katalog */}
+        <div style={{ minWidth: 0 }}>
+          {/* Arama + marka */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <SearchInput value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün adı, model veya kod ara…" />
+            </div>
+            <div style={{ minWidth: 190 }}>
+              <CustomSelect value={etkinMarka} onChange={e => setSeciliMarka(e.target.value)}>
+                <option value="hepsi">Tüm markalar ({kategoriliUrunler.length})</option>
+                {markalar.map(m => (
+                  <option key={m.anahtar} value={m.anahtar}>{m.etiket} ({m.adet})</option>
+                ))}
               </CustomSelect>
             </div>
+          </div>
+
+          {/* Aktif filtre şeridi + sonuç sayısı */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10,
+            font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+          }}>
+            <span><b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{filtreliUrunler.length}</b> ürün</span>
+            {seciliKategoriAdi && (
+              <Badge tone="brand">{seciliKategoriAdi}</Badge>
+            )}
+            {etkinMarka !== 'hepsi' && (
+              <Badge tone="neutral">{markalar.find(m => m.anahtar === etkinMarka)?.etiket}</Badge>
+            )}
+            {filtreVar && (
+              <button
+                type="button"
+                onClick={filtreleriTemizle}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)',
+                }}
+              >
+                <X size={12} strokeWidth={2} /> Filtreleri temizle
+              </button>
+            )}
           </div>
 
           {katalogYukleniyor ? (
@@ -195,7 +446,9 @@ export default function TeklifIste() {
           ) : filtreliUrunler.length === 0 ? (
             <EmptyState
               icon={<Package size={32} strokeWidth={1.5} />}
-              title={arama ? 'Arama sonucu bulunamadı' : 'Katalogda ürün bulunamadı'}
+              title={filtreVar ? 'Bu filtrelerle ürün bulunamadı' : 'Katalogda ürün bulunamadı'}
+              description={filtreVar ? 'Kategori veya marka seçimini genişletmeyi deneyin.' : undefined}
+              action={filtreVar ? <Button variant="secondary" onClick={filtreleriTemizle}>Filtreleri temizle</Button> : undefined}
             />
           ) : (
             /* ⚠️ Katalog KENDİ İÇİNDE kayar — ürün sayısı arttıkça sayfanın tamamı

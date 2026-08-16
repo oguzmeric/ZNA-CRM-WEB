@@ -210,13 +210,21 @@ export const aileEkle = async (ad) => {
   return toCamel(data)
 }
 
+// Müşteri portalı ürün kataloğu.
+// ⚠️ Kaynak `portal_katalog` GÖRÜNÜMÜ (mig 296) — ham `stok_urunler` DEĞİL:
+//    • ham tablonun RLS'i is_staff() istiyor, portal müşterisi okuyamıyor
+//      (mig 293 sonrası ölçüldü: 0 satır → katalog boş görünüyordu)
+//    • ham tabloda alis_fiyat / birim_fiyat / tedarikci / stok_miktari var;
+//      satırı müşteriye açmak bu kolonları da açardı. Görünüm yalnız güvenli
+//      kolonları taşır. Yeni kolon eklenirken bu kural korunmalı.
+//    • katalogda_goster + aktif süzgeci görünümün İÇİNDE (mig 151 kuralı).
+// ⚠️ kategori_id ŞART — kategori ağacı bunun üstünde kuruluyor. grup_kodu
+//    2.432 üründen yalnız 2'sinde dolu, kategori_id ise 2.325'inde.
 export const katalogUrunleriniGetir = async () => {
   const data = await pagedFetch((off, size) =>
     supabase
-      .from('stok_urunler')
-      .select('id, stok_kodu, stok_adi, marka, grup_kodu, birim, aciklama, gorsel_url, katalogda_goster')
-      .eq('katalogda_goster', true)
-      .eq('aktif', true)   // pasif ürün müşteri kataloğunda görünmez (mig 151)
+      .from('portal_katalog')
+      .select('id, stok_kodu, stok_adi, marka, grup_kodu, kategori_id, birim, aciklama, gorsel_url')
       .order('stok_adi')
       .order('id')
       .range(off, off + size - 1)
