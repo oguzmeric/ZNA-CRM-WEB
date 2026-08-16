@@ -418,8 +418,9 @@ export default function MusteriDashboard() {
   const kullaniciAd = kullanici?.ad || 'Değerli müşterimiz'
   const bugun = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
+  // ⚠️ padding BURADA — MusteriLayout'un <main>'i artık boşluk vermiyor (çift padding'di)
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Banner */}
       <section

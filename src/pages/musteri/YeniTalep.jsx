@@ -208,7 +208,7 @@ export default function YeniTalep() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Geri dön
       </button>
       <h1 className="t-h1">Yeni Talep Oluştur</h1>
-      <p className="t-caption" style={{ marginTop: 4, marginBottom: 20 }}>
+      <p className="t-caption" style={{ marginTop: 4, marginBottom: 12 }}>
         Talebinizi aşağıdaki formu doldurarak iletebilirsiniz.
       </p>
 
@@ -253,13 +253,13 @@ export default function YeniTalep() {
           })}
         </div>
 
-        <div style={{ padding: 28 }}>
+        <div style={{ padding: '22px 24px' }}>
 
           {/* ADIM 1 */}
           {adim === 1 && (
             <div>
               <h2 className="t-h2" style={{ marginBottom: 4 }}>Talep Türünü Seçin</h2>
-              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 22px' }}>
+              <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 14px' }}>
                 Oluşturmak istediğiniz talebin türünü belirleyin.
               </p>
               {/* Yerleşim .tur-izgara'da (index.css): 3 sütun, son satır ortalı.

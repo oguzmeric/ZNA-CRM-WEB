@@ -421,7 +421,11 @@ export default function MusteriLayout({ children }) {
         </header>
 
         {/* İçerik alanı */}
-        <main style={{ flex: 1, padding: 24 }}>
+        {/* ⚠️ padding YOK — portal sayfalarının hepsi kendi kök padding'ini veriyor
+            (YeniTalep/TeklifIste/Taleplerim 24, MusteriTalepDetay 16/20, Dashboard 24).
+            Burada da 24 verilince her sayfada 48px dikey + 48px yatay ÇİFT boşluk
+            oluşuyordu; 56px sticky header ile birlikte form ekrana sığmıyordu. */}
+        <main style={{ flex: 1 }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
