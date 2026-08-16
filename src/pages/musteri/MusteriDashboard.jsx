@@ -89,17 +89,17 @@ function KPIKarti({ sayi, baslik, Icon, borderColor, chipBg, chipFg, onClick }) 
         border: `1px solid ${hover ? 'var(--border-strong, #d0d5dd)' : 'var(--border-default)'}`,
         borderLeft: `3px solid ${borderColor}`,
         borderRadius: 'var(--radius-md)',
-        padding: '14px 16px 14px 16px',
+        padding: '10px 14px',
         textAlign: 'left',
         cursor: 'pointer',
         overflow: 'hidden',
         transition: 'border-color 120ms',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span
           style={{
-            width: 28, height: 28, borderRadius: 6,
+            width: 26, height: 26, borderRadius: 6,
             background: chipBg, color: chipFg,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}
@@ -107,10 +107,10 @@ function KPIKarti({ sayi, baslik, Icon, borderColor, chipBg, chipFg, onClick }) 
           <Icon size={15} strokeWidth={1.8} />
         </span>
       </div>
-      <div style={{ font: '500 24px/28px var(--font-sans)', color: bos ? 'var(--text-muted, var(--text-tertiary))' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ font: '500 22px/26px var(--font-sans)', color: bos ? 'var(--text-muted, var(--text-tertiary))' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
         <CountUp value={sayi} />
       </div>
-      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+      <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
         {baslik}
       </div>
     </motion.button>
@@ -420,7 +420,7 @@ export default function MusteriDashboard() {
 
   // ⚠️ padding BURADA — MusteriLayout'un <main>'i artık boşluk vermiyor (çift padding'di)
   return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ padding: 16, maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* Banner */}
       <section
@@ -429,7 +429,7 @@ export default function MusteriDashboard() {
           background: PORTAL_BLUE[600],
           color: '#fff',
           borderRadius: 'var(--radius-lg)',
-          padding: '18px 22px',
+          padding: '13px 20px',
           overflow: 'hidden',
         }}
       >
@@ -447,7 +447,7 @@ export default function MusteriDashboard() {
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ font: '400 12px/16px var(--font-sans)', opacity: 0.8 }}>Hoş geldiniz,</div>
-            <div style={{ font: '500 20px/26px var(--font-sans)', marginTop: 2 }}>{kullaniciAd}</div>
+            <div style={{ font: '500 18px/24px var(--font-sans)', marginTop: 1 }}>{kullaniciAd}</div>
             <div style={{ font: '400 12px/16px var(--font-sans)', opacity: 0.75, marginTop: 4 }}>
               {bugun}{kullanici?.firmaAdi ? ` · ${kullanici.firmaAdi}` : ''}
             </div>
@@ -524,11 +524,11 @@ export default function MusteriDashboard() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-          gap: 16,
+          gap: 12,
         }}
       >
         {/* Sol kolon */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
           {/* Hizmet Performansı */}
           <div
@@ -542,7 +542,7 @@ export default function MusteriDashboard() {
             <div style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Hizmet Performansı
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
               {/* Ort. çözüm süresi */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <span
@@ -640,17 +640,17 @@ export default function MusteriDashboard() {
             </div>
 
             {sonTalepler.length === 0 ? (
-              <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <div style={{ padding: '16px 16px 18px', textAlign: 'center' }}>
                 <div
                   aria-hidden="true"
                   style={{
-                    width: 48, height: 48, borderRadius: '50%',
+                    width: 38, height: 38, borderRadius: '50%',
                     background: PORTAL_BLUE[50], color: PORTAL_BLUE[600],
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 10,
+                    marginBottom: 8,
                   }}
                 >
-                  <Inbox size={22} strokeWidth={1.6} />
+                  <Inbox size={18} strokeWidth={1.6} />
                 </div>
                 <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>Henüz talep oluşturmadınız</div>
                 <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4, marginBottom: 12 }}>
@@ -777,7 +777,7 @@ export default function MusteriDashboard() {
         </div>
 
         {/* Sağ kolon */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
           {/* Temsilci / Bize ulaşın */}
           <div

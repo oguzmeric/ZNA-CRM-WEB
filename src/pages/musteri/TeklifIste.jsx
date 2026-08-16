@@ -140,7 +140,7 @@ export default function TeklifIste() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Geri dön
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <div>
           <h1 className="t-h1">Teklif İste</h1>
           <p className="t-caption" style={{ marginTop: 4 }}>
@@ -200,7 +200,12 @@ export default function TeklifIste() {
               title={arama ? 'Arama sonucu bulunamadı' : 'Katalogda ürün bulunamadı'}
             />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+            /* ⚠️ Katalog KENDİ İÇİNDE kayar — ürün sayısı arttıkça sayfanın tamamı
+               uzayıp sağdaki teklif formunu ekrandan düşürüyordu. */
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10,
+              maxHeight: 'calc(100vh - 300px)', minHeight: 240, overflowY: 'auto', paddingRight: 4,
+            }}>
               {filtreliUrunler.map(urun => {
                 const secili = sepetteMi(urun.id)
                 return (
