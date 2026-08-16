@@ -259,7 +259,7 @@ export function SozlesmeGoruntuleModal({ sozlesme, firma, sablonlar, kullanici, 
   const yazdir = () => {
     const w = window.open('', '_blank', 'width=900,height=1000')
     if (!w) { toast.error('Açılır pencere engellendi.'); return }
-    w.document.write(bayiSozlesmeYazdirSayfasi(sozlesme.uretilenIcerik, {
+    w.document.write(bayiSozlesmeYazdirSayfasi(guvenliBelgeHtml(sozlesme.uretilenIcerik), {
       sozlesmeNo: sozlesme.sozlesmeNo, origin: window.location.origin,
     }))
     w.document.close()
