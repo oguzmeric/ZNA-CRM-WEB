@@ -5,7 +5,7 @@ import {
   LogIn, LogOut, FileText, Clock, CheckCircle2, PauseCircle, PlayCircle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { ANA_TURLER } from '../context/ServisTalebiContext'
+import { ANA_TURLER, PORTAL_TURLERI } from '../context/ServisTalebiContext'
 import { supabase } from '../lib/supabase'
 import { musterileriGetir } from '../services/musteriService'
 import { kullaniciSifreSifirla, onayBekleyenleriGetir, kullaniciOnayla, kullaniciReddet, kullaniciAskiyaAl, kullaniciAskidanCikar } from '../services/kullaniciService'
@@ -1285,8 +1285,10 @@ export default function KullaniciYonetimi() {
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <Label>İzin verilen talep türleri <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(boş bırakılırsa tüm türler açık)</span></Label>
+                    {/* ⚠️ PORTAL_TURLERI — bakım/kurulum portalda seçilemiyor, izin listesinde
+                        göstermek "izin verdim ama müşteride çıkmıyor" tutarsızlığı yaratırdı */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
-                      {ANA_TURLER.map(tur => {
+                      {PORTAL_TURLERI.map(tur => {
                         const secili = form.izinliTurler.includes(tur.id)
                         return (
                           <label

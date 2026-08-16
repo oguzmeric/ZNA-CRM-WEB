@@ -14,15 +14,24 @@ import { useAuth } from './AuthContext'
 
 const ServisTalebiContext = createContext(null)
 
+// ⚠️ `portal: false` = müşteri bu türü PORTALDAN AÇAMAZ, ama tür listede KALIR.
+// Silmiyoruz çünkü:
+//   • 'kurulum' 22, 'bakim' 4 mevcut talebin rozeti/rengi/ismi buradan okunuyor
+//   • iç akışlar hâlâ bu türde talep üretiyor — KesifDetay (keşif→kurulum),
+//     SiparisDetay (sipariş→kurulum), servisService, toplu bakım otomasyonu
+// Portal formu PORTAL_TURLERI'ni kullanır (15.08 kararı).
 export const ANA_TURLER = [
   { id: 'ariza', isim: 'Arıza', ikon: '🔧', renk: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
   { id: 'talep', isim: 'Talep', ikon: '📋', renk: '#0176D3', bg: 'rgba(1,118,211,0.1)' },
   { id: 'kesif', isim: 'Keşif', ikon: '🔍', renk: '#014486', bg: 'rgba(1,68,134,0.1)' },
-  { id: 'bakim', isim: 'Bakım', ikon: '🛠️', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { id: 'kurulum', isim: 'Kurulum', ikon: '🔩', renk: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+  { id: 'bakim', isim: 'Bakım', ikon: '🛠️', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)', portal: false },
+  { id: 'kurulum', isim: 'Kurulum', ikon: '🔩', renk: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', portal: false },
   { id: 'teklif', isim: 'Teklif', ikon: '💼', renk: '#10b981', bg: 'rgba(16,185,129,0.1)' },
   { id: 'egitim', isim: 'Eğitim', ikon: '🎓', renk: '#06b6d4', bg: 'rgba(6,182,212,0.1)' },
 ]
+
+// Müşteri portalında seçilebilen türler — Arıza · Talep · Keşif · Teklif · Eğitim
+export const PORTAL_TURLERI = ANA_TURLER.filter(t => t.portal !== false)
 
 export const ALT_KATEGORILER = {
   ariza: [
@@ -532,6 +541,7 @@ export function ServisTalebiProvider({ children }) {
         musteriTalepleri,
         bekleyenSayisi,
         ANA_TURLER,
+        PORTAL_TURLERI,
         ALT_KATEGORILER,
         ACILIYET_SEVIYELERI,
         DURUM_LISTESI,

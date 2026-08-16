@@ -171,6 +171,29 @@ input.sayi-sade::-webkit-outer-spin-button,
 input.sayi-sade::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.sayi-sade { -moz-appearance: textfield; appearance: textfield; }
 
+/* ── Portal "Talep Türünü Seçin" kart ızgarası ──
+   Satır başına 3 kart; eksik kalan SON SATIR ortalanır (5 tür → 3 + 2 piramit).
+   Hile: 6 sütunluk grid kurulur, her kart 2 sütun kaplar; son satırın ilk kartına
+   JSX'ten `--tur-kaydir` verilerek yarım kart kaydırma yapılır. Böylece kartların
+   hepsi TAM EŞİT genişlikte kalır (flex + justify-content ile satırlar arası
+   genişlik farkı oluşuyordu).
+   ⚠️ grid-column inline style'da DEĞİL burada tanımlı — inline olsaydı aşağıdaki
+   medya sorgularını ezer, dar ekranda kartlar okunmaz hâle gelirdi. */
+.tur-izgara {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+.tur-izgara > button { grid-column: var(--tur-kaydir, auto) / span 2; }
+
+@media (max-width: 699px) {
+  .tur-izgara { grid-template-columns: repeat(2, 1fr); }
+  .tur-izgara > button { grid-column: auto / span 1; }
+}
+@media (max-width: 479px) {
+  .tur-izgara { grid-template-columns: 1fr; }
+}
+
 /* Sohbet — mesaj silme butonu yalnız satırın üstüne gelince görünsün.
    Her balonun yanında sürekli çöp kutusu durması gürültü yaratıyordu. */
 .chat-sil-btn { opacity: 0; transition: opacity 120ms; }

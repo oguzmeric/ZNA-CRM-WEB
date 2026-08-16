@@ -3,17 +3,28 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Check, ChevronRight, CheckCircle2, ClipboardList,
   Paperclip, Upload, FileText, Image as ImageIcon, X,
-  AlertTriangle, MessageSquare, Search, Wrench, Briefcase, GraduationCap,
+  AlertTriangle, MessageSquare, Search, Briefcase, GraduationCap,
 } from 'lucide-react'
 
-// Talep türü için lucide icon + kısa açıklama (müşterinin doğru türü seçmesi için)
+// Talep türü için lucide icon + kısa açıklama (müşterinin doğru türü seçmesi için).
+// ⚠️ 'bakim' ve 'kurulum' burada YOK — portalda seçilemiyor (PORTAL_TURLERI).
 const TUR_META = {
   ariza:  { Ikon: AlertTriangle,  aciklama: 'Mevcut bir sorun ya da kesinti bildirimi' },
   talep:  { Ikon: MessageSquare,  aciklama: 'Yeni bir hizmet veya iş isteği' },
   kesif:  { Ikon: Search,         aciklama: 'Yerinde inceleme ve durum tespiti' },
-  bakim:  { Ikon: Wrench,         aciklama: 'Periyodik veya planlı bakım hizmeti' },
   teklif: { Ikon: Briefcase,      aciklama: 'Fiyat veya hizmet teklifi talebi' },
   egitim: { Ikon: GraduationCap,  aciklama: 'Kullanım veya bilgilendirme eğitimi' },
+}
+
+// Kart ızgarası satır başına 3 kart (.tur-izgara, index.css). Eksik kalan son
+// satır ortalanır: 5 tür → 3 üstte + 2 altta ortalı.
+const SATIR_SUTUN = 3
+// Son satırın ilk kartına verilecek başlangıç sütunu (6 sütunluk gridde).
+// 5 kart → son satırda 2 kart → 1 sütun kaydır → 2. sütundan başlar.
+const kaydirmaSutunu = (adet) => {
+  const sonSatir = adet % SATIR_SUTUN
+  if (sonSatir === 0) return null           // satırlar tam dolu, kaydırma yok
+  return { ilkIndex: adet - sonSatir, sutun: (SATIR_SUTUN - sonSatir) + 1 }
 }
 import { useAuth } from '../../context/AuthContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
@@ -32,7 +43,7 @@ const bosForm = {
 
 export default function YeniTalep() {
   const { kullanici } = useAuth()
-  const { talepOlustur, dosyaYukle, ANA_TURLER, ALT_KATEGORILER, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const { talepOlustur, dosyaYukle, ANA_TURLER, PORTAL_TURLERI, ALT_KATEGORILER, ACILIYET_SEVIYELERI } = useServisTalebi()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ ...bosForm, ilgiliKisi: kullanici?.ad || '' })
@@ -67,10 +78,14 @@ export default function YeniTalep() {
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [gonderHata, setGonderHata] = useState('')
 
+  // Portalda seçilebilen türler (bakım/kurulum hariç), üstüne müşteriye özel izin filtresi.
+  // ⚠️ Kişiye özel izin listesi yalnız bakım/kurulum içeriyorsa filtre boş kalır —
+  //    o durumda müşteri hiç talep açamaz hâle gelmesin diye tüm portal türlerine düşülür.
   const izinliTurler = kullanici?.izinliTurler
-  const filtreliTurler = izinliTurler && izinliTurler.length > 0
-    ? ANA_TURLER.filter(t => izinliTurler.includes(t.id))
-    : ANA_TURLER
+  const izinliPortalTurleri = izinliTurler && izinliTurler.length > 0
+    ? PORTAL_TURLERI.filter(t => izinliTurler.includes(t.id))
+    : PORTAL_TURLERI
+  const filtreliTurler = izinliPortalTurleri.length > 0 ? izinliPortalTurleri : PORTAL_TURLERI
 
   useEffect(() => {
     const tur = searchParams.get('tur')
@@ -239,11 +254,13 @@ export default function YeniTalep() {
               <p style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 22px' }}>
                 Oluşturmak istediğiniz talebin türünü belirleyin.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
-                {filtreliTurler.map(tur => {
+              {/* Yerleşim .tur-izgara'da (index.css): 3 sütun, son satır ortalı */}
+              <div className="tur-izgara" style={{ marginBottom: 16 }}>
+                {filtreliTurler.map((tur, i) => {
                   const secili = form.anaTur === tur.id
                   const meta = TUR_META[tur.id] || { Ikon: ClipboardList, aciklama: '' }
                   const Ikon = meta.Ikon
+                  const kaydir = kaydirmaSutunu(filtreliTurler.length)
                   return (
                     <button
                       key={tur.id}
@@ -266,6 +283,8 @@ export default function YeniTalep() {
                       }}
                       style={{
                         position: 'relative',
+                        // Son satırı ortalayan kaydırma — grid-column'un kendisi CSS'te
+                        '--tur-kaydir': kaydir && i === kaydir.ilkIndex ? kaydir.sutun : undefined,
                         padding: '22px 18px 20px',
                         borderRadius: 14,
                         background: secili ? `color-mix(in srgb, ${tur.renk} 5%, var(--surface-card))` : 'var(--surface-card)',
@@ -320,10 +339,11 @@ export default function YeniTalep() {
                         {tur.isim}
                       </div>
 
-                      {/* Açıklama */}
+                      {/* Açıklama — minHeight 2 satırlık: kart yükseklikleri satırdan satıra oynamasın */}
                       <div style={{
                         font: '400 12.5px/17px var(--font-sans)',
                         color: 'var(--text-tertiary)',
+                        minHeight: 34,
                       }}>
                         {meta.aciklama}
                       </div>

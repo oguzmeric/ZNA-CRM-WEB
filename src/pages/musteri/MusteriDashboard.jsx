@@ -267,7 +267,7 @@ function tarihFormat(tarih) {
 
 export default function MusteriDashboard() {
   const { kullanici } = useAuth()
-  const { musteriTalepleri, ANA_TURLER } = useServisTalebi()
+  const { musteriTalepleri, ANA_TURLER, PORTAL_TURLERI } = useServisTalebi()
   const navigate = useNavigate()
 
   const [musteriKaydi, setMusteriKaydi] = useState(null)
@@ -289,7 +289,11 @@ export default function MusteriDashboard() {
 
   const izinliTurler = kullanici?.izinliTurler
   const izinliSet = izinliTurler && izinliTurler.length > 0 ? new Set(izinliTurler) : null
-  const izinli = tid => !izinliSet || izinliSet.has(tid)
+  // ⚠️ İki kapı birden: tür portalda AÇIK olmalı (bakım/kurulum kapalı) VE kişiye
+  //    özel izin listesi varsa oradan da geçmeli. Yalnız kişisel izne bakılsaydı
+  //    "Bakım planla" kısayolu görünmeye devam eder, tıklanınca boş adımda kalırdı.
+  const portalTurSeti = new Set(PORTAL_TURLERI.map(t => t.id))
+  const izinli = tid => portalTurSeti.has(tid) && (!izinliSet || izinliSet.has(tid))
 
   // Kategoriler — olusturmaTarihi kayıtta yok olabilir, guvenlik için filtrelenir
   const acik       = talepler.filter(t => t.durum === 'bekliyor')
