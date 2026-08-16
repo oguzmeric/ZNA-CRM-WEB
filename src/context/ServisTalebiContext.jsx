@@ -10,6 +10,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { gorevGuncelle } from '../services/gorevService'
 import { toCamel } from '../lib/mapper'
+import { useAuth } from './AuthContext'
 
 const ServisTalebiContext = createContext(null)
 
@@ -134,13 +135,27 @@ function talepNoUret(talepler) {
 }
 
 export function ServisTalebiProvider({ children }) {
+  const { kullanici } = useAuth()
   const [talepler, setTalepler] = useState([])
 
   // Senkron sorunu — sadece mount'ta yüklüyordu, başka kullanıcı talep oluşturunca
   // listede görünmüyordu. Realtime INSERT subscription + sekme focus dönüşünde refetch.
+  //
+  // ⚠️ OTURUM KAPISI (15.08): Eskiden bağımlılık dizisi boştu ve `kullanici`
+  // kontrolü yoktu → provider LOGIN SAYFASINDA da sorgu atıyordu. Oturum yokken
+  // anon rolünün bu tabloda yetkisi olmadığı için her açılışta
+  // "permission denied for table servis_talepleri" + 401 düşüyordu; üstelik
+  // `.catch` olmadığı için "Uncaught (in promise)" olarak patlıyordu.
+  // Artık oturum açılınca çalışır, çıkışta liste temizlenir.
   useEffect(() => {
+    // Çıkışta listeyi boşalt — sonraki kullanıcı bir an öncekinin verisini
+    // görmesin (AuthContext'teki setKullanicilar([]) ile aynı gerekçe).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!kullanici) { setTalepler([]); return }
     let iptal = false
-    const ilkYukle = () => servisTalepleriniGetir().then(d => { if (!iptal) setTalepler(d) })
+    const ilkYukle = () => servisTalepleriniGetir()
+      .then(d => { if (!iptal) setTalepler(d) })
+      .catch(e => { if (!iptal) console.warn('[ServisTalebiContext] talepler alınamadı:', e.message) })
     ilkYukle()
 
     // Realtime — başka istemci yeni talep eklediğinde anında listemize ekle
@@ -176,7 +191,7 @@ export function ServisTalebiProvider({ children }) {
       try { supabase.removeChannel(channel) } catch {}
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [kullanici])
 
   const talepOlustur = async (formData, kullanici) => {
     if (!kullanici?.musteriId) {

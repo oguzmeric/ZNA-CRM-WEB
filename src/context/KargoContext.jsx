@@ -7,6 +7,7 @@ import {
 } from '../services/kargoService'
 import { supabase } from '../lib/supabase'
 import { toCamel } from '../lib/mapper'
+import { useAuth } from './AuthContext'
 
 const KargoContext = createContext(null)
 
@@ -55,6 +56,7 @@ function kargoNoUret(kargolar) {
 }
 
 export function KargoProvider({ children }) {
+  const { kullanici } = useAuth()
   const [kargolar, setKargolar] = useState([])
 
   // Senkron — başka kullanıcı kargo oluşturup/güncellerse anında yansısın.
@@ -67,7 +69,13 @@ export function KargoProvider({ children }) {
   //     paralel fetch'ler yaris etmesin)
   //   * bos array guard — pagedFetch hatasi partial/bos return ederse mevcut
   //     kargolar silinmesin
+  // ⚠️ OTURUM KAPISI (15.08): Provider oturum yokken de sorgu atıyordu →
+  // login sayfasında "permission denied for table kargolar" + 401.
+  // Anon rolünün bu tabloda yetkisi yok; oturum açılınca çalışmalı.
   useEffect(() => {
+    // Çıkışta listeyi boşalt — sonraki kullanıcı öncekinin kargolarını görmesin.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!kullanici) { setKargolar([]); return }
     let iptal = false
     let sonFetchZamani = 0
     let fetchSayaci = 0
@@ -128,7 +136,7 @@ export function KargoProvider({ children }) {
       try { supabase.removeChannel(channel) } catch {}
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [kullanici])
 
   const kargoOlustur = async (formData, kullanici) => {
     const yeni = {
