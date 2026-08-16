@@ -224,7 +224,7 @@ export const katalogUrunleriniGetir = async () => {
   const data = await pagedFetch((off, size) =>
     supabase
       .from('portal_katalog')
-      .select('id, stok_kodu, stok_adi, marka, grup_kodu, kategori_id, birim, aciklama, gorsel_url')
+      .select('id, stok_kodu, stok_adi, marka, model, grup_kodu, kategori_id, birim, aciklama, gorsel_url')
       .order('stok_adi')
       .order('id')
       .range(off, off + size - 1)

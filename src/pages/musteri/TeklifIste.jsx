@@ -187,8 +187,10 @@ export default function TeklifIste() {
   const filtreliUrunler = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase('tr')
     return kategoriliUrunler.filter(u => {
+      // Arama: ürün adı + marka + MODEL + stok kodu (mig 297 model kolonu)
       const aramaUygun = !q ||
-        `${u.stokAdi || ''} ${u.marka || ''} ${u.stokKodu || ''}`.toLocaleLowerCase('tr').includes(q)
+        `${u.stokAdi || ''} ${u.marka || ''} ${u.model || ''} ${u.stokKodu || ''}`
+          .toLocaleLowerCase('tr').includes(q)
       const markaUygun = seciliMarka === 'hepsi' || markaAnahtar(u.marka) === seciliMarka
       return aramaUygun && markaUygun
     })
@@ -253,6 +255,7 @@ export default function TeklifIste() {
         urunler: sepet.map(s => ({
           isim: s.urun.stokAdi, adet: String(s.adet),
           stokKodu: s.urun.stokKodu, marka: s.urun.marka || '',
+          model: s.urun.model || '',   // mig 297 — teklifi hazırlayan modeli görsün
         })),
         aciklama, butce, iletisimKisi, telefon,
         durum: 'bekliyor',
@@ -519,8 +522,17 @@ export default function TeklifIste() {
                       }}>
                         {urun.stokAdi}
                       </p>
-                      {urun.marka && (
-                        <p className="t-caption" style={{ marginTop: 2 }}>{urun.marka}</p>
+                      {/* Marka · Model (mig 297) — model yoksa yalnız marka */}
+                      {(urun.marka || urun.model) && (
+                        <p className="t-caption" style={{ marginTop: 2, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {urun.marka && <span>{urun.marka}</span>}
+                          {urun.marka && urun.model && <span style={{ opacity: .45 }}>·</span>}
+                          {urun.model && (
+                            <span style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                              {urun.model}
+                            </span>
+                          )}
+                        </p>
                       )}
                       <div style={{ marginTop: 8 }}>
                         {secili ? (
