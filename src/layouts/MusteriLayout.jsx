@@ -260,7 +260,11 @@ export default function MusteriLayout({ children }) {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface-bg)', display: 'flex' }}>
+    // ⚠️ Portal ekrana KİLİTLİ: gövde (body) hiç kaymaz, üst bar ve menü sabit
+    //    durur; içerik uzunsa yalnız <main> kendi içinde kayar. Böylece ekran
+    //    boyutundan bağımsız olarak "sayfa aşağı yukarı gidiyor" hissi bitiyor.
+    //    100dvh (100vh değil) — mobilde adres çubuğu açılıp kapanınca zıplamaz.
+    <div style={{ height: '100dvh', overflow: 'hidden', background: 'var(--surface-bg)', display: 'flex' }}>
 
       {/* Desktop sidebar */}
       <aside
@@ -315,7 +319,7 @@ export default function MusteriLayout({ children }) {
       </AnimatePresence>
 
       {/* Ana kolon */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Topbar */}
         <header
@@ -425,7 +429,7 @@ export default function MusteriLayout({ children }) {
             (YeniTalep/TeklifIste/Taleplerim 24, MusteriTalepDetay 16/20, Dashboard 24).
             Burada da 24 verilince her sayfada 48px dikey + 48px yatay ÇİFT boşluk
             oluşuyordu; 56px sticky header ile birlikte form ekrana sığmıyordu. */}
-        <main style={{ flex: 1 }}>
+        <main style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -191,26 +191,28 @@ export default function YeniTalep() {
   ]
 
   return (
-    <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ padding: 16, maxWidth: 800, margin: '0 auto' }}>
 
-      {/* Geri + başlık */}
-      <button
-        onClick={() => navigate('/musteri-portal')}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
-          marginBottom: 12,
-        }}
-        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
-        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
-      >
-        <ArrowLeft size={14} strokeWidth={1.5} /> Geri dön
-      </button>
-      <h1 className="t-h1">Yeni Talep Oluştur</h1>
-      <p className="t-caption" style={{ marginTop: 4, marginBottom: 12 }}>
-        Talebinizi aşağıdaki formu doldurarak iletebilirsiniz.
-      </p>
+      {/* Geri + başlık TEK SATIR — üç ayrı satır (geri / başlık / açıklama) 88px
+          yiyordu; sihirbazın kendi adım göstergesi zaten ne yapılacağını anlatıyor. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <button
+          onClick={() => navigate('/musteri-portal')}
+          aria-label="Geri dön"
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 28, height: 28, flexShrink: 0,
+            background: 'none', border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer',
+            color: 'var(--text-tertiary)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+        >
+          <ArrowLeft size={15} strokeWidth={1.6} />
+        </button>
+        <h1 className="t-h1" style={{ margin: 0 }}>Yeni Talep Oluştur</h1>
+      </div>
 
       <Card padding={0}>
         {/* Adım göstergesi */}

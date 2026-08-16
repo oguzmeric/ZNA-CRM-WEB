@@ -123,29 +123,27 @@ export default function TeklifIste() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: 16, maxWidth: 1200, margin: '0 auto' }}>
 
-      {/* Header */}
-      <button
-        onClick={() => navigate('/musteri-portal')}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          color: 'var(--text-tertiary)', font: '500 13px/18px var(--font-sans)',
-          marginBottom: 12,
-        }}
-        onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
-        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
-      >
-        <ArrowLeft size={14} strokeWidth={1.5} /> Geri dön
-      </button>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="t-h1">Teklif İste</h1>
-          <p className="t-caption" style={{ marginTop: 4 }}>
-            Ürünleri seçin, miktarlarını belirleyin ve talebinizi gönderin.
-          </p>
+      {/* Geri + başlık TEK SATIR — dikey yer kazanmak için (bkz. YeniTalep) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button
+            onClick={() => navigate('/musteri-portal')}
+            aria-label="Geri dön"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 28, height: 28, flexShrink: 0,
+              background: 'none', border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer',
+              color: 'var(--text-tertiary)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--brand-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+          >
+            <ArrowLeft size={15} strokeWidth={1.6} />
+          </button>
+          <h1 className="t-h1" style={{ margin: 0 }}>Teklif İste</h1>
         </div>
         {datasheetUrl && (
           <a
