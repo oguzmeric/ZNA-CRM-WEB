@@ -5,7 +5,7 @@ import { useNavigate, useLocation, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Inbox, Briefcase, Plus, Settings, LogOut,
-  Search, Bell, Menu, X, ChevronDown,
+  Search, Bell, Menu, X, ChevronDown, HardDrive,
 } from 'lucide-react'
 
 // Mavi tonları — sadece müşteri portalı kapsamında kullanılır.
@@ -229,6 +229,7 @@ export default function MusteriLayout({ children }) {
       <nav aria-label="Portal menüsü" style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
         <SidebarLink to="/musteri-portal" icon={LayoutDashboard} end>Ana panel</SidebarLink>
         <SidebarLink to="/musteri-portal/taleplerim" icon={Inbox} badge={acikTalepler.length}>Taleplerim</SidebarLink>
+        <SidebarLink to="/musteri-portal/cihazlarim" icon={HardDrive}>Cihazlarım</SidebarLink>
         {teklifIzinli && (
           <SidebarLink to="/musteri-portal/teklif-iste" icon={Briefcase}>Teklif iste</SidebarLink>
         )}

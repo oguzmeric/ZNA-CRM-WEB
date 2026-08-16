@@ -96,6 +96,7 @@ const YeniTalep = lazy(() => import('./pages/musteri/YeniTalep'))
 const Taleplerim = lazy(() => import('./pages/musteri/Taleplerim'))
 const MusteriTalepDetay = lazy(() => import('./pages/musteri/MusteriTalepDetay'))
 const TeklifIste = lazy(() => import('./pages/musteri/TeklifIste'))
+const Cihazlarim = lazy(() => import('./pages/musteri/Cihazlarim'))
 const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const ProformaYazdir = lazy(() => import('./pages/ProformaYazdir'))
@@ -405,6 +406,7 @@ function App() {
               <Route path="/musteri-portal/taleplerim" element={<Taleplerim />} />
               <Route path="/musteri-portal/talep/:id" element={<MusteriTalepDetay />} />
               <Route path="/musteri-portal/teklif-iste" element={<TeklifIste />} />
+              <Route path="/musteri-portal/cihazlarim" element={<Cihazlarim />} />
               <Route path="*" element={<Navigate to="/musteri-portal" />} />
             </Routes>
           </Suspense>
