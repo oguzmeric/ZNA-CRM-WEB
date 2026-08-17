@@ -18,7 +18,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
-  Landmark, Archive, ShieldCheck, Search, SlidersHorizontal,
+  Landmark, Archive, ShieldCheck, Search, SlidersHorizontal, Inbox,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -112,6 +112,10 @@ const GRUPLAR = [
   { id: 'satis',     baslik: 'Satış' },
   { id: 'tedarik',   baslik: 'Tedarik Süreçleri' },
   { id: 'operasyon', baslik: 'Operasyon' },
+  // ⭐ 17.08 — Portal 1-2 hafta içinde onlarca firmaya açılıyor (Bayrampaşa ilk).
+  // Müşterinin gönderdiği işler ve portalın kendi yönetimi tek grupta toplanır;
+  // servis ekibinin iç kuyruğuyla karışmaz.
+  { id: 'portal',    baslik: 'Müşteri Portalı' },
   { id: 'bakim',     baslik: 'Bakım' },
   { id: 'filo',      baslik: 'ZNA Filo Yönetimi' },
   { id: 'yonetim',   baslik: 'Yönetim' },
@@ -232,6 +236,14 @@ const menuItems = [
   // Bridge Talepleri — Başakşehir Belediyesi entegrasyonu (Seçenek A: ayrı menü).
   // lucide 'Landmark' ikonu; RLS zaten staff-only, menü tüm personele açık.
   { id: 'bridge_talepleri', isim: 'Bridge Talepleri', Icon: Landmark, yol: '/bridge-talepleri', modul: null, grup: 'operasyon' },
+
+  // ── MÜŞTERİ PORTALI (17.08) ────────────────────────────────────────────────
+  // Portal talepleri BURADA, Servis Talepleri'nde DEĞİL (kullanıcı kararı):
+  // gelen ham taleptir, önce bakılır ve ekibe yönlendirilir. Servis Talepleri
+  // ise zaten işlenmiş/atanmış işin listesi — ikisi karışırsa triyaj bozulur.
+  // ⚠️ Aynı sayfa, farklı kapsam: ?kaynak=musteri. Rozeti de ayrı sayılır.
+  { id: 'portal_talepleri', isim: 'Portal Talepleri', Icon: Inbox, yol: '/servis-talepleri?kaynak=musteri', modul: 'servis_talepleri', grup: 'portal' },
+  { id: 'portal_kullanicilar', isim: 'Portal Kullanıcıları', Icon: Users, yol: '/portal-kullanicilar', modul: 'kullanici_yonetimi', grup: 'portal' },
   // Bakım — Servis'ten TAMAMEN AYRI menü grubu (toplu bakım operasyonu)
   { id: 'bakim_isleri', isim: 'Bakım İşleri', Icon: Wrench, yol: '/bakim-isleri', modul: null, grup: 'bakim' },
   { id: 'mobiltek', isim: 'Araç Takip (Mobiltek)', Icon: Truck, yol: '/mobiltek', modul: 'arac_takip', grup: 'filo' },
@@ -345,13 +357,16 @@ function MainLayout({ children }) {
   const { okunmamis } = useChat()
   const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil,
           topluSil, bildirimSayilari } = useBildirim()
-  // ⭐ 17.08 — TEK ROZET, TEK LİSTE. "Müşteri Talepleri" menü öğesi kalkınca
-  // portalden gelen bildirimler hiçbir rozette görünmeyecekti; Servis Talepleri
-  // listesi artık ikisini de gösterdiği için rozet de ikisini SAYAR.
-  // ⚠️ Kural: rozet, tıklanınca açılan listenin kapsamıyla aynı olmalı —
-  //    bu uyuşmazlık bu projede en sık tekrar eden arayüz hatası.
+  // ⭐ 17.08 — İKİ AYRI KUYRUK, İKİ AYRI ROZET (kullanıcı kararı):
+  // portal talepleri Servis Talepleri listesinde görünmüyor, dolayısıyla onun
+  // rozetine de GİRMEZ. Portal kuyruğunun rozeti "Müşteri Portalı > Portal
+  // Talepleri" öğesindedir.
+  // ⚠️ Kural: rozet, tıklanınca açılan listenin kapsamıyla AYNI olmalı —
+  //    bu uyuşmazlık projede en sık tekrar eden arayüz hatası.
+  // Eski bildirimlerde meta.kaynak yoksa 'personel' kabul edilir.
   const _servisTalepBildirimleri = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi')
-  const servisTalepOkunmamis = _servisTalepBildirimleri.length
+  const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
+  const portalTalepOkunmamis   = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
   // Görev bildirimleri (atama + yorum + @etiket) — Görevler menüsünde sayı rozeti.
   // link '/gorevler/...' olan her okunmamış bildirim modüle sayılır (mention'lar dahil).
   const gorevBildirimleri = (bildirimler || []).filter(b =>
@@ -685,7 +700,8 @@ function MainLayout({ children }) {
   // ⚠️ Eskiden her rozet kendi render dalına gömülüydü: grup kapatılınca bekleyen
   // iş TAMAMEN görünmez oluyordu. Toplama mantığı bu kaybı kapatır.
   const rozetSayisi = (id) => {
-    if (id === 'servis_talepleri') return servisTalepOkunmamis
+    if (id === 'servis_talepleri') return personelTalepOkunmamis
+    if (id === 'portal_talepleri') return portalTalepOkunmamis
     if (id === 'stok-kritik') return kritikStokSayi
     if (id === 'gorevler') return gorevOkunmamis
     if (id === 'gorusmeler') return gorusmeOkunmamis

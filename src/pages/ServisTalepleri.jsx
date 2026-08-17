@@ -47,14 +47,16 @@ export default function ServisTalepleri() {
   const [durumFiltre, setDurumFiltre] = useState('tumu')
   const [turFiltre, setTurFiltre] = useState('tumu')
   const [aciliyetFiltre, setAciliyetFiltre] = useState('tumu')
-  // ⭐ 17.08 — TEK KUYRUK. Eskiden varsayılan 'personel'di: portalden gelen
-  // talepler bu listede GÖRÜNMÜYORDU, ayrı bir "Müşteri Talepleri" menüsünde
-  // duruyordu. Portal onlarca firmaya açılırken bu ikiye bölünme çift takip
-  // ("hangisine baktım?") üretirdi — işi yapan ekip için portalden gelen de
-  // personelden gelen de aynı iştir. Artık hepsi burada, ayrım ROZETLE yapılır.
-  // ⚠️ `?kaynak=musteri` bağlantısı çalışmaya devam ediyor (eski bildirim
-  //    linkleri ve yer imleri kırılmasın).
-  const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'tumu')
+  // ⭐ 17.08 KARARI — İKİ AYRI KUYRUK (kullanıcı):
+  //   "portaldan gelen servis talepleri servis taleplerinde gözükmesine gerek
+  //    yok, rozet ile de gelmesine gerek yok. Müşteri portal menüsü altında
+  //    listelensin, bizler oradan yönlendirme yapabiliriz."
+  // Gerekçe: portal talebi HAM GELEN İŞtir — önce bakılır, sınıflanır, ekibe
+  // yönlendirilir. Servis Talepleri ise zaten işlenmiş/atanmış işin listesi.
+  // İkisini karıştırmak triyajı bozar. Bu yüzden bu sayfa varsayılan olarak
+  // YALNIZ PERSONEL kaynaklı talepleri gösterir; portal kuyruğu
+  // "Müşteri Portalı > Portal Talepleri" menüsündedir (?kaynak=musteri).
+  const [kaynakFiltre, setKaynakFiltre] = useState(() => searchParams.get('kaynak') || 'personel')
   const [gorunum, setGorunum] = useState('liste')
   // Sayfalama — yalnız liste görünümünde. Kanban'da kayıtlar zaten durum
   // sütunlarına dağıldığı için tek sütun nadiren uzuyor.
@@ -64,7 +66,7 @@ export default function ServisTalepleri() {
 
   // URL param degisirse state'i de guncelle (sidebar'dan navigate edince)
   useEffect(() => {
-    const p = searchParams.get('kaynak') || 'tumu'
+    const p = searchParams.get('kaynak') || 'personel'
     if (p !== kaynakFiltre) setKaynakFiltre(p)
   }, [searchParams])
 
@@ -173,18 +175,17 @@ export default function ServisTalepleri() {
       {/* Header — kompakt tek satır */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          {/* Başlık artık kanala göre DEĞİŞMİYOR: liste tek, kanal bir filtre.
-              Daraltma yapıldığında bunu başlık değil, yanındaki etiket söyler. */}
-          <h1 className="t-h2" style={{ margin: 0 }}>Servis Talepleri</h1>
-          {kaynakFiltre !== 'tumu' && (
+          {/* Sayfa iki kuyruğa hizmet ediyor; başlık hangisinde olduğunu söyler.
+              Portal kuyruğu "Müşteri Portalı" menüsünden açılır (?kaynak=musteri). */}
+          <h1 className="t-h2" style={{ margin: 0 }}>
+            {kaynakFiltre === 'musteri' ? 'Portal Talepleri' : 'Servis Talepleri'}
+          </h1>
+          {kaynakFiltre === 'musteri' && (
             <span style={{
-              background: kaynakFiltre === 'musteri' ? 'var(--brand-primary)' : 'var(--surface-sunken)',
-              color: kaynakFiltre === 'musteri' ? '#fff' : 'var(--text-secondary)',
+              background: 'var(--brand-primary)', color: '#fff',
               borderRadius: 5, padding: '2px 7px',
               font: '700 10px/14px var(--font-sans)', letterSpacing: '0.03em',
-            }}>
-              {kaynakFiltre === 'musteri' ? 'YALNIZ PORTAL' : 'YALNIZ PERSONEL'}
-            </span>
+            }}>MÜŞTERİ PORTALI</span>
           )}
           <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
             <span className="tabular-nums">{filtrelenmis.length}</span> gösteriliyor
@@ -325,24 +326,25 @@ export default function ServisTalepleri() {
             <option value="oncelikli">Öncelikli (acil + yüksek)</option>
             {ACILIYET_SEVIYELERI.map(a => <option key={a.id} value={a.id}>{a.isim}</option>)}
           </CustomSelect>
-          {/* KANAL filtresi — talebi kim açtı. Ayrı menü yerine bu filtre var:
-              liste tek kalsın, gerektiğinde daraltılsın (17.08). */}
+          {/* KANAL — kuyruklar ayrı olduğu için bu bir filtre değil, KAPSAM
+              göstergesi. Yine de "hepsini gör" gerekebiliyor (arama/rapor);
+              seçim URL'e yazılır, sayfa paylaşılınca aynı kapsam açılır. */}
           <CustomSelect
             value={kaynakFiltre}
             onChange={e => {
               const v = e.target.value
               setKaynakFiltre(v); setSayfa(1)
-              // URL'i de eşitle: sayfa paylaşılınca/geri dönülünce aynı kapsam
               setSearchParams(prev => {
                 const p = new URLSearchParams(prev)
-                if (v === 'tumu') p.delete('kaynak'); else p.set('kaynak', v)
+                // 'personel' varsayılan olduğu için URL'e yazılmaz
+                if (v === 'personel') p.delete('kaynak'); else p.set('kaynak', v)
                 return p
               }, { replace: true })
             }}
           >
-            <option value="tumu">Tüm Kanallar</option>
-            <option value="musteri">Portal (müşteri açtı)</option>
-            <option value="personel">Personel açtı</option>
+            <option value="personel">Personel talepleri</option>
+            <option value="musteri">Portal talepleri</option>
+            <option value="tumu">Hepsi (personel + portal)</option>
           </CustomSelect>
           {filtreAktif && (
             <Button variant="tertiary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />} onClick={temizle}>
@@ -393,22 +395,7 @@ export default function ServisTalepleri() {
                           onMouseLeave={e => !silOnayAcik && (e.currentTarget.style.background = 'transparent')}
                         >
                           <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <CodeBadge>{talep.talepNo}</CodeBadge>
-                              {/* ⭐ Talep listesi tek kuyruk; kanal ROZETLE ayrılır (17.08).
-                                  Portalden gelen talep müşterinin kendi yazdığıdır —
-                                  dili/eksikleri farklı olabilir, ekip bunu bilerek açsın. */}
-                              {talep.kaynak === 'musteri' && (
-                                <span
-                                  title="Müşteri portalından geldi"
-                                  style={{
-                                    background: 'var(--brand-primary)', color: '#fff',
-                                    borderRadius: 4, padding: '1px 5px',
-                                    font: '800 9px/13px var(--font-sans)', letterSpacing: '0.04em',
-                                  }}
-                                >PORTAL</span>
-                              )}
-                            </span>
+                            <CodeBadge>{talep.talepNo}</CodeBadge>
                           </td>
                           <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 300 }}>
                             <div style={{ font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

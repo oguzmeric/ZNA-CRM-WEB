@@ -78,6 +78,7 @@ const ServisTalepDetay = lazy(() => import('./pages/ServisTalepDetay'))
 const YeniServisTalebi = lazy(() => import('./pages/YeniServisTalebi'))
 const ServisRaporlari = lazy(() => import('./pages/ServisRaporlari'))
 const SahaCihazlari = lazy(() => import('./pages/SahaCihazlari'))
+const PortalKullanicilar = lazy(() => import('./pages/PortalKullanicilar'))
 const Kargolar = lazy(() => import('./pages/Kargolar'))
 const KargoDetay = lazy(() => import('./pages/KargoDetay'))
 const Takvim = lazy(() => import('./pages/Takvim'))
@@ -482,6 +483,8 @@ function App() {
           <Route path="/servis-talepleri/:id" element={<ServisTalepDetay />} />
           <Route path="/servis-raporlari" element={<ServisRaporlari />} />
           <Route path="/saha-cihazlari" element={<SahaCihazlari />} />
+          {/* Müşteri Portalı grubu (17.08) — portal hesaplarının yönetimi */}
+          <Route path="/portal-kullanicilar" element={<PortalKullanicilar />} />
           <Route path="/dokuman-merkezi" element={<DokumanMerkezi />} />
           <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
           <Route path="/izin-bordro" element={<IzinBordro />} />
