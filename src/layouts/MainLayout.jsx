@@ -216,8 +216,11 @@ const menuItems = [
     modul: 'servis_talepleri',
     grup: 'operasyon',
     altMenu: [
+      // ⭐ 17.08 — "Müşteri Talepleri" öğesi KALDIRILDI. Aynı listeyi farklı
+      // filtreyle gösteren ikinci bir menü, portal onlarca firmaya açılırken
+      // çift takip ("hangisine baktım?") üretirdi. Talepler tek kuyrukta;
+      // portalden gelen PORTAL rozetiyle işaretli, kanal filtresi listede.
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
-      { id: 'musteri_talepleri', isim: 'Müşteri Talepleri', yol: '/servis-talepleri?kaynak=musteri' },
       { id: 'servis_raporlari', isim: 'Servis Raporları',   yol: '/servis-raporlari' },
       // Sahaya takılı cihazların toplu görünümü (13.08) — eskiden tek yol
       // müşteri detayındaki bölümdü, müşteri müşteri gezmek gerekiyordu
@@ -342,13 +345,13 @@ function MainLayout({ children }) {
   const { okunmamis } = useChat()
   const { bildirimler, benimBildirimlerim, okunmamisSayisi, bildirimOku, tumunuOku, bildirimSil,
           topluSil, bildirimSayilari } = useBildirim()
-  // Servis talebi rozetleri — kaynak'a göre ayrılır: personel = "Servis Talepleri",
-  // musteri = "Müşteri Talepleri". Eski bildirimlerde meta.kaynak yoksa 'personel' kabul.
+  // ⭐ 17.08 — TEK ROZET, TEK LİSTE. "Müşteri Talepleri" menü öğesi kalkınca
+  // portalden gelen bildirimler hiçbir rozette görünmeyecekti; Servis Talepleri
+  // listesi artık ikisini de gösterdiği için rozet de ikisini SAYAR.
+  // ⚠️ Kural: rozet, tıklanınca açılan listenin kapsamıyla aynı olmalı —
+  //    bu uyuşmazlık bu projede en sık tekrar eden arayüz hatası.
   const _servisTalepBildirimleri = (bildirimler || []).filter(b => !b.okundu && b.tip === 'servis_talebi')
-  const personelTalepOkunmamis = _servisTalepBildirimleri.filter(b => (b.meta?.kaynak || 'personel') !== 'musteri').length
-  const musteriTalepOkunmamis  = _servisTalepBildirimleri.filter(b => b.meta?.kaynak === 'musteri').length
-  // Not: ikisinin toplamı ayrıca tutulmuyor — 'Servis' üst başlığı kapalıyken
-  // rozeti alt maddelerden toplayan ortak ogeRozetToplam() hesaplıyor.
+  const servisTalepOkunmamis = _servisTalepBildirimleri.length
   // Görev bildirimleri (atama + yorum + @etiket) — Görevler menüsünde sayı rozeti.
   // link '/gorevler/...' olan her okunmamış bildirim modüle sayılır (mention'lar dahil).
   const gorevBildirimleri = (bildirimler || []).filter(b =>
@@ -682,8 +685,7 @@ function MainLayout({ children }) {
   // ⚠️ Eskiden her rozet kendi render dalına gömülüydü: grup kapatılınca bekleyen
   // iş TAMAMEN görünmez oluyordu. Toplama mantığı bu kaybı kapatır.
   const rozetSayisi = (id) => {
-    if (id === 'servis_talepleri') return personelTalepOkunmamis
-    if (id === 'musteri_talepleri') return musteriTalepOkunmamis
+    if (id === 'servis_talepleri') return servisTalepOkunmamis
     if (id === 'stok-kritik') return kritikStokSayi
     if (id === 'gorevler') return gorevOkunmamis
     if (id === 'gorusmeler') return gorusmeOkunmamis
