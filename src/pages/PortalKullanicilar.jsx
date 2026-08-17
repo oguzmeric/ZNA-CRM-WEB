@@ -39,9 +39,22 @@ export default function PortalKullanicilar() {
   useEffect(() => { veriCek() }, [])
   const yukle = () => { setYukleniyor(true); veriCek() }
 
-  // ⚠️ Yalnız portal (müşteri) hesapları. Silinmişler listede yok.
+  // ⚠️ Yalnız portala GERÇEKTEN erişebilen hesaplar.
+  // Dışarıda kalanlar:
+  //   • silinmiş kayıtlar
+  //   • onayı REDDEDİLMİŞ başvurular — 17.08'de kullanıcı haklı olarak sordu:
+  //     reddedilmiş bir kayıt (gurbetciftci3449) burada duruyordu. Reddedilen
+  //     başvuru portal kullanıcısı değildir; yeri Kullanıcı Yönetimi'ndeki
+  //     başvuru kuyruğudur. Bu liste "kim içeri girebiliyor" sorusunu
+  //     cevaplamalı, başvuru geçmişini değil.
+  // ⚠️ Onay BEKLEYENLER listede kalır ama rozetle ayrılır — yönetimin
+  //    aksiyon alması gereken kayıtlar gözden kaçmasın.
   const portalHesaplari = useMemo(
-    () => (kullanicilar || []).filter(k => k.tip === 'musteri' && !k.hesapSilindi),
+    () => (kullanicilar || []).filter(k =>
+      k.tip === 'musteri'
+      && !k.hesapSilindi
+      && (k.onayDurum || 'onaylandi') !== 'reddedildi'
+    ),
     [kullanicilar]
   )
 
@@ -204,9 +217,13 @@ export default function PortalKullanicilar() {
                       </td>
                       <td style={{ ...hucre, whiteSpace: 'nowrap' }}>{fmtTarih(k.createdAt)}</td>
                       <td style={hucre}>
-                        {k.askida
-                          ? <Badge tone="kayip">Askıda</Badge>
-                          : <Badge tone="aktif">Aktif</Badge>}
+                        {/* Onay bekleyen başvuru henüz portal kullanıcısı değil —
+                            "Aktif" göstermek yanıltıcı olurdu. */}
+                        {k.onayDurum === 'bekliyor'
+                          ? <Badge tone="beklemede">Onay bekliyor</Badge>
+                          : k.askida
+                            ? <Badge tone="kayip">Askıda</Badge>
+                            : <Badge tone="aktif">Aktif</Badge>}
                       </td>
                       <td style={{ ...hucre, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <Button
