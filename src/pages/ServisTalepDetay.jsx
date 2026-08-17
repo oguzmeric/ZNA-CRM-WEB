@@ -18,6 +18,7 @@ import CustomSelect from '../components/CustomSelect'
 import CokluSelect from '../components/CokluSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
+import HeicResim from '../components/HeicResim'
 import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
 import ServisMalzemePlanCard from '../components/ServisMalzemePlanCard'
 import { kalemKullanimlariGetir, eksikCihazBilgisiKalemleri } from '../services/servisMalzemeService'
@@ -792,7 +793,7 @@ export default function ServisTalepDetay() {
                   {/* Resimlerde küçük önizleme — "görüp açabilelim" isteği:
                       neyin ek olduğu adından değil, görüntüsünden anlaşılsın */}
                   {ekOku.resimMi && ekOku.url ? (
-                    <img
+                    <HeicResim
                       src={ekOku.url}
                       alt={ekOku.ad}
                       onClick={() => setEkOnizleme({ url: ekOku.url, ad: ekOku.ad })}
@@ -1291,7 +1292,7 @@ export default function ServisTalepDetay() {
           >
             × Kapat
           </button>
-          <img
+          <HeicResim
             src={ekOnizleme.url}
             alt={ekOnizleme.ad}
             onClick={(e) => e.stopPropagation()}

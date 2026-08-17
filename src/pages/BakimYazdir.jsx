@@ -47,12 +47,6 @@ export default function BakimYazdir() {
   const pdfIndir = async () => {
     setPdfUretiliyor(true)
     try {
-      // Tarihi HEIC fotolar tarayıcıda çevrilerek gösteriliyor (HeicResim);
-      // dönüşüm bitmeden canvas alınırsa foto PDF'te boş kalır — bekle.
-      for (let t = 0; t < 90000; t += 500) {
-        if (!sayfaRef.current?.querySelector('[data-heic-durum="bekliyor"]')) break
-        await new Promise((coz) => setTimeout(coz, 500))
-      }
       const canvas = await html2canvas(sayfaRef.current, {
         // useCORS ŞART: bakım fotoğrafları + imzalar Supabase Storage'dan
         // (cross-origin) gelir; bu bayrak olmadan html2canvas onları SESSİZCE

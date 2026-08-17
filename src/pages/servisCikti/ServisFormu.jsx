@@ -207,7 +207,9 @@ export default function ServisFormu({ talep = {}, sirket = 'zna', malzemeler = [
   const genelToplam = yedekParcalar.reduce((s, p) => s + Number(p.tutar || 0), 0)
 
   const fotolar = (Array.isArray(talep.dosyalar) ? talep.dosyalar : [])
-    .filter((d) => d?.tip === 'image' || /\.(jpe?g|png|webp)(\?|$)/i.test(d?.url || ''))
+    // heic/heif de resim sayılır: kucukGorsel render endpoint'i HEIC'i sunucuda
+    // JPEG'e çevirir (17.08 doğrulandı) — çıktıdan sessizce düşmesinler.
+    .filter((d) => d?.tip === 'image' || /\.(jpe?g|png|webp|heic|heif)(\?|$)/i.test(d?.url || ''))
 
   // Print-only stiller
   const printCss = `

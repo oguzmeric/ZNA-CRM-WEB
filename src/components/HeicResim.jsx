@@ -1,42 +1,36 @@
 // <img>'in HEIC'e dayanıklı hali — normal uzantıda düz <img>'e düşer (sıfır
-// maliyet), .heic/.heif ise tarayıcıda JPEG'e çevirip gösterir (heicGoruntu).
-// data-heic-durum: "bekliyor" → dönüşüm sürüyor; PDF üreticileri bu işareti
-// bekleyerek eksik fotolu çıktı üretmekten kaçınır (BakimYazdir.pdfIndir).
+// maliyet), .heic/.heif ise Supabase render endpoint'inden sunucuda JPEG'e
+// çevrilmiş halini gösterir (heicGoruntu). Beklemesizdir; yazdır ve PDF
+// akışları normal <img> gibi davranır.
 import { useEffect, useState } from 'react'
-import { heicMi, heicNesneUrlGetir } from '../lib/heicGoruntu'
+import { heicMi, heicGosterimUrl } from '../lib/heicGoruntu'
 
 export default function HeicResim({ src, alt = '', style, ...props }) {
-  const heic = heicMi(src)
-  const [durum, setDurum] = useState(heic ? 'bekliyor' : 'hazir')
-  const [cozulmusUrl, setCozulmusUrl] = useState(heic ? null : src)
+  const [hata, setHata] = useState(false)
+  useEffect(() => { setHata(false) }, [src])
 
-  useEffect(() => {
-    if (!heicMi(src)) { setDurum('hazir'); setCozulmusUrl(src); return }
-    let aktif = true
-    setDurum('bekliyor'); setCozulmusUrl(null)
-    heicNesneUrlGetir(src).then((url) => {
-      if (!aktif) return
-      if (url) { setCozulmusUrl(url); setDurum('hazir') }
-      else setDurum('hata')
-    })
-    return () => { aktif = false }
-  }, [src])
-
-  if (durum === 'hazir') {
-    return <img src={cozulmusUrl} alt={alt} style={style} {...props} />
+  if (heicMi(src) && hata) {
+    return (
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#f1f5f9', color: '#94a3b8', fontSize: 11,
+          fontFamily: 'Arial, sans-serif', textAlign: 'center', padding: 8,
+          ...style,
+        }}
+        {...props}
+      >
+        Fotoğraf görüntülenemedi (HEIC)
+      </div>
+    )
   }
   return (
-    <div
-      data-heic-durum={durum}
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#f1f5f9', color: '#94a3b8', fontSize: 11,
-        fontFamily: 'Arial, sans-serif', textAlign: 'center', padding: 8,
-        ...style,
-      }}
+    <img
+      src={heicGosterimUrl(src)}
+      alt={alt}
+      style={style}
+      onError={heicMi(src) ? () => setHata(true) : undefined}
       {...props}
-    >
-      {durum === 'bekliyor' ? 'Fotoğraf hazırlanıyor…' : 'Fotoğraf görüntülenemedi (HEIC)'}
-    </div>
+    />
   )
 }
