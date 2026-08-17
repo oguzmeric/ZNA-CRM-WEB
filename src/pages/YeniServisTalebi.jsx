@@ -33,6 +33,7 @@ const bos = {
   kullanilacakMalzemeler: '',
   aciliyet: 'normal',
   lokasyon: '',
+  lokasyonId: null,      // seçilen lokasyonun kimliği (mig 300); elle yazılırsa null
   cihazTuru: '',
   ilgiliKisi: '',
   telefon: '',
@@ -74,6 +75,9 @@ export default function YeniServisTalebi() {
     setSeciliMusteri(m)
     setForm(p => ({
       ...p,
+      // ⚠️ Müşteri değişince lokasyon KİMLİĞİ düşer: önceki müşterinin
+      // lokasyonu yenisine ait değildir, kalırsa yanlış firmaya bağlanır.
+      lokasyonId: null,
       lokasyon: p.lokasyon || m.sehir || '',
       ilgiliKisi: p.ilgiliKisi || `${m.ad} ${m.soyad}`,
       telefon: p.telefon || m.telefon || '',
@@ -336,12 +340,16 @@ export default function YeniServisTalebi() {
                 </button>
               )}
             </Label>
+            {/* ⚠️ 17.08 — seçim artık KİMLİK saklıyor (mig 300). Eskiden yalnız
+                `ad` yazılıyordu; seçili kaydı bulmak için de `l.ad === lokasyon`
+                karşılaştırması yapılıyordu — aynı ada sahip iki lokasyon varsa
+                (canlıda var) yanlışını işaret edebilirdi. Artık id ile eşleşiyor. */}
             {musteriLokasyonlari.length > 0 && (
               <CustomSelect
-                value={musteriLokasyonlari.find(l => l.ad === form.lokasyon)?.id?.toString() || ''}
+                value={form.lokasyonId ? String(form.lokasyonId) : ''}
                 onChange={e => {
                   const sec = musteriLokasyonlari.find(l => l.id?.toString() === e.target.value)
-                  setForm(p => ({ ...p, lokasyon: sec?.ad || '' }))
+                  setForm(p => ({ ...p, lokasyonId: sec?.id ?? null, lokasyon: sec?.ad || '' }))
                 }}
                 style={{ marginBottom: 6 }}
               >
@@ -353,7 +361,9 @@ export default function YeniServisTalebi() {
             )}
             <Input
               value={form.lokasyon}
-              onChange={e => setForm(p => ({ ...p, lokasyon: e.target.value }))}
+              // Elle yazınca kimlik bağı DÜŞER — metin artık seçili kaydı
+              // temsil etmiyor; yanlış bağ bırakmaktansa boşaltmak doğru.
+              onChange={e => setForm(p => ({ ...p, lokasyon: e.target.value, lokasyonId: null }))}
               placeholder={musteriLokasyonlari.length > 0 ? 'veya manuel girin' : 'Şube / kat / oda'}
             />
           </div>

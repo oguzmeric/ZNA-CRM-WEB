@@ -33,11 +33,16 @@ import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, TarihSaatSecici, Select,
 } from '../../components/ui'
 import { aktifKonulariGetir } from '../../services/servisKonuService'
+import { musteriLokasyonlariniGetir } from '../../services/musteriLokasyonService'
+import LokasyonSecici from '../../components/LokasyonSecici'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
 
 const bosForm = {
   anaTur: '', altKategori: '', konu: '', lokasyon: '', cihazTuru: '',
+  // lokasyonId: tanımlı lokasyondan seçilmişse kimlik (mig 300)
+  // altLokasyon: bina/kat/oda serbest detayı — seçicinin YANINDA yaşar
+  lokasyonId: null, altLokasyon: '',
   aciklama: '', aciliyet: 'normal', ilgiliKisi: '', telefon: '', email: '', uygunZaman: '',
 }
 
@@ -47,6 +52,9 @@ export default function YeniTalep() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ ...bosForm, ilgiliKisi: kullanici?.ad || '' })
+  // Müşterinin TANIMLI lokasyonları — boşsa form serbest metne düşer.
+  // ⚠️ RLS zaten yalnız kendi lokasyonlarını veriyor (musteri_lokasyonlari_customer_select).
+  const [lokasyonlar, setLokasyonlar] = useState([])
   const [gonderildi, setGonderildi] = useState(false)
   const [hata, setHata] = useState({})
   const [adim, setAdim] = useState(1)
@@ -56,6 +64,17 @@ export default function YeniTalep() {
   // Konu başlıkları sabit listeden (mig 285) — RLS müşteri tipine de okuma verir
   const [konular, setKonular] = useState([])
   useEffect(() => { aktifKonulariGetir().then(d => setKonular(d || [])) }, [])
+
+  // Müşterinin tanımlı lokasyonları. Sonuç boşsa lokasyon alanı serbest metin
+  // olarak kalır — hata değil, yaygın durum (2.006 müşteride lokasyon yok).
+  useEffect(() => {
+    if (!kullanici?.musteriId) return
+    let iptal = false
+    musteriLokasyonlariniGetir(kullanici.musteriId)
+      .then(l => { if (!iptal) setLokasyonlar((l || []).filter(x => x.aktif !== false)) })
+      .catch(e => console.warn('[portal lokasyon]', e?.message))
+    return () => { iptal = true }
+  }, [kullanici?.musteriId])
 
   // Tür değişince alt kategori bölümüne kaydır.
   // ⚠️ block:'nearest' — 'center' zaten görünen bölümü bile ekranın ortasına
@@ -137,7 +156,11 @@ export default function YeniTalep() {
     if (!dogrula()) return
     setGonderiliyor(true)
     try {
-      const talep = await talepOlustur(form, kullanici)
+      // Lokasyon METNİ = seçilen ad + varsa bina/kat detayı. Kimlik `lokasyonId`
+      // ile ayrıca gider; metin listede/çıktıda okunabilir kalsın diye birleşir.
+      const lokasyonMetni = [form.lokasyon, form.altLokasyon?.trim()]
+        .filter(Boolean).join(' · ')
+      const talep = await talepOlustur({ ...form, lokasyon: lokasyonMetni }, kullanici)
       if (!talep?.id) throw new Error('Talep oluşturulamadı (kayıt sistemi yanıt vermedi).')
       // Dosyaları sırayla yükle
       for (const f of yeniDosyalar) {
@@ -569,16 +592,50 @@ export default function YeniTalep() {
                   {hata.aciklama && <p style={{ color: 'var(--danger)', font: '500 11px/16px var(--font-sans)', marginTop: 4 }}>{hata.aciklama}</p>}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-                  <div>
-                    <Label>Lokasyon / adres</Label>
-                    <Input value={form.lokasyon} onChange={e => guncelle('lokasyon', e.target.value)} placeholder="Bina, kat, oda…" />
+                {/* ⭐ LOKASYON — müşterinin verisine göre ŞEKİL DEĞİŞTİRİR (17.08).
+                    Tanımlı lokasyonu olan 16 müşteri seçiciden seçer (kimlik bağı
+                    kurulur, mig 300); geri kalan 2.006 müşteri eskisi gibi serbest
+                    metin yazar. Bayrampaşa'ya (55 lokasyon) göre tasarlayıp herkese
+                    dayatmak, lokasyonu olmayan müşterinin ekranını bozardı. */}
+                {lokasyonlar.length > 0 ? (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    <div>
+                      <Label>Lokasyon</Label>
+                      <LokasyonSecici
+                        lokasyonlar={lokasyonlar}
+                        value={form.lokasyonId}
+                        onChange={(id) => {
+                          const sec = lokasyonlar.find(l => String(l.id) === String(id))
+                          setForm(f => ({ ...f, lokasyonId: id ?? null, lokasyon: sec?.ad ?? '' }))
+                        }}
+                        bosEtiket="— Lokasyon belirtmeden gönder —"
+                        placeholder="Lokasyon ara ve seç…"
+                        ipucuVer={(l) => l.adres || null}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                      <div>
+                        <Label>Bina / kat / oda <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(isteğe bağlı)</span></Label>
+                        <Input value={form.altLokasyon} onChange={e => guncelle('altLokasyon', e.target.value)} placeholder="B blok, 3. kat…" />
+                      </div>
+                      <div>
+                        <Label>Cihaz / sistem türü</Label>
+                        <Input value={form.cihazTuru} onChange={e => guncelle('cihazTuru', e.target.value)} placeholder="Kamera, NVR, PDKS…" />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Cihaz / sistem türü</Label>
-                    <Input value={form.cihazTuru} onChange={e => guncelle('cihazTuru', e.target.value)} placeholder="Kamera, NVR, PDKS…" />
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                    <div>
+                      <Label>Lokasyon / adres</Label>
+                      <Input value={form.lokasyon} onChange={e => guncelle('lokasyon', e.target.value)} placeholder="Bina, kat, oda…" />
+                    </div>
+                    <div>
+                      <Label>Cihaz / sistem türü</Label>
+                      <Input value={form.cihazTuru} onChange={e => guncelle('cihazTuru', e.target.value)} placeholder="Kamera, NVR, PDKS…" />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <Label>Aciliyet seviyesi</Label>

@@ -251,6 +251,10 @@ export default function TeklifIste() {
       // Talep DB'ye yazılır — personel Teklifler > Müşteri Talepleri buradan
       // okur. talep_no DB trigger'ından gelir (mig 269).
       await musteriTalepEkle({
+        // ⭐ musteriId KİMLİK bağı (mig 301). Eskiden yalnız firma ADI
+        // yazılıyordu; talep müşteri kartında görünmüyor, RLS de isim
+        // eşleşmesine dayanıyordu (aynı adlı iki müşteri birbirini görebilirdi).
+        musteriId: kullanici.musteriId ?? null,
         firmaAdi: kullanici.firmaAdi || '',
         urunler: sepet.map(s => ({
           isim: s.urun.stokAdi, adet: String(s.adet),

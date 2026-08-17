@@ -216,7 +216,11 @@ export function ServisTalebiProvider({ children }) {
       anaTur: formData.anaTur,
       altKategori: formData.altKategori,
       konu: formData.konu,
+      // ⭐ lokasyon = GÖRÜNTÜ metni (seçilen ad + varsa bina/kat detayı),
+      //    lokasyonId = KESİN bağ (mig 300). Tanımlı lokasyonu olmayan
+      //    müşteride (2.006 müşteri) yalnız metin dolar — form buna uyarlanır.
       lokasyon: formData.lokasyon || '',
+      lokasyonId: formData.lokasyonId || null,
       cihazTuru: formData.cihazTuru || '',
       aciklama: formData.aciklama,
       kullanilacakMalzemeler: formData.kullanilacakMalzemeler || '',
@@ -268,7 +272,9 @@ export function ServisTalebiProvider({ children }) {
       altKategori: formData.altKategori || (formData.altKategoriler?.[0] ?? ''),
       altKategoriler: formData.altKategoriler?.length ? formData.altKategoriler : (formData.altKategori ? [formData.altKategori] : []),
       konu: formData.konu,
+      // Portal ile aynı kural: metin görüntü, id kesin bağ (mig 300)
       lokasyon: formData.lokasyon || '',
+      lokasyonId: formData.lokasyonId || null,
       cihazTuru: formData.cihazTuru || '',
       aciklama: formData.aciklama,
       kullanilacakMalzemeler: formData.kullanilacakMalzemeler || '',
