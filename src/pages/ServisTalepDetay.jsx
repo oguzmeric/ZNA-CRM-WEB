@@ -57,6 +57,11 @@ export default function ServisTalepDetay() {
   const [faturaNot, setFaturaNot] = useState('')
   const [faturaMesgul, setFaturaMesgul] = useState(false)
 
+  // 🔴 Form Bilgileri'nde kaydedilmemiş değişiklik var mı (17.08 veri kaybı
+  // vakası — mobilde teknisyen doldurup kaydetmeden çıkıyordu, aynı boşluk
+  // web'de de vardı). Kart bildirir; servis kapatılırken kapı olarak kullanılır.
+  const [formKirli, setFormKirli] = useState(false)
+
   const [yeniNot, setYeniNot] = useState('')
   const [notTip, setNotTip] = useState('ic')
   const [silOnayGoster, setSilOnayGoster] = useState(false)
@@ -158,6 +163,13 @@ export default function ServisTalepDetay() {
     // bilgisi (IP / alt-lokasyon) girilmemiş olan varsa sor. Web'de blok değil
     // onay — durumu çoğu zaman ofis personeli çekiyor, bilgiyi teknisyen girer.
     if (yeniDurum === 'tamamlandi') {
+      // 🔴 Kaydedilmemiş Form Bilgileri varsa ENGELLE (17.08). Kaydedilmeden
+      // kapanan servisin raporu eksik basılıyor. Buradaki değişiklik ekranda
+      // oturan kişinin kendi yazdığıdır — onay sorup geçmek onu kaybetmek olur.
+      if (formKirli) {
+        toast.error('Form Bilgileri kaydedilmedi — önce "Form Bilgilerini Kaydet"e basın, sonra servisi kapatın.')
+        return
+      }
       const eksikler = await eksikCihazBilgisiKalemleri(talep.id)
       if (eksikler.length > 0) {
         const ozet = eksikler.slice(0, 4).map(k =>
@@ -620,6 +632,7 @@ export default function ServisTalepDetay() {
           {/* Form Bilgileri — yapılan işlem / çözüm açıklaması */}
           <ServisFormBilgileriCard
             talep={talep}
+            onKirliDegisti={setFormKirli}
             onKaydet={async (yeniler) => {
               await talepGuncelle(talep.id, yeniler, kullanici?.ad)
             }}

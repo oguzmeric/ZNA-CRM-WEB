@@ -3,9 +3,16 @@
 //
 // Kayit edilen alanlar formun cikti komponentine (ServisFormu.jsx) yansir.
 // Migration: 045_servis_form_alanlari.sql
+//
+// 🔴 17.08 — KAYDEDILMEMIS DEGISIKLIK KORUMASI (mobil ile ayni desen):
+// Mobilde teknisyenler bu formu doldurup KAYDET'e basmadan cikiyordu ve
+// yazdiklari sessizce ucuyordu; depocu web'den elle girmek zorunda kaliyordu.
+// Ayni bosluk web'de de vardi -- burada da uyari/rozet/cikis korumasi yoktu.
+// Kart artik: degisiklik varken rozet basar, sayfadan cikisi engeller ve
+// durumu `onKirliDegisti` ile sayfaya bildirir (servis kapatma kapisi icin).
 
 import { useState, useEffect } from 'react'
-import { Save } from 'lucide-react'
+import { Save, AlertTriangle, Check } from 'lucide-react'
 import { Card, CardTitle, Button, Input, Label, Textarea } from './ui'
 
 const SERVIS_TIPI = [
@@ -71,7 +78,12 @@ function CheckGroup({ secenekler, secili, onChange }) {
   )
 }
 
-export default function ServisFormBilgileriCard({ talep, onKaydet }) {
+// "Değişti mi" sorusunu yanlış cevaplamamak için normalize: çoklu seçimde SIRA
+// önemsiz (kutuya basıp geri basınca sıra değişiyor), metinde null ile '' aynı.
+const cokluNorm = (s) => (s || '').split(',').map(x => x.trim()).filter(Boolean).sort().join(',')
+const metinNorm = (s) => (s ?? '').trim()
+
+export default function ServisFormBilgileriCard({ talep, onKaydet, onKirliDegisti }) {
   const [servisTipi, setServisTipi]    = useState(() => setOlustur(talep?.servisTipi))
   const [yukumluluk, setYukumluluk]    = useState(() => setOlustur(talep?.yukumluluk))
   const [servisYeri, setServisYeri]    = useState(() => setOlustur(talep?.servisYeri))
@@ -95,6 +107,30 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
   }, [talep?.id, talep?.servisTipi, talep?.yukumluluk, talep?.servisYeri,
       talep?.seriNumarasi, talep?.marka, talep?.model,
       talep?.cozumAciklamasi])
+
+  // Kaydedilmemiş değişiklik var mı? (web kartında Arıza Açıklaması YOK —
+  // o ayrı kartta düzenleniyor, buraya dahil edilmez)
+  const kirli =
+    cokluNorm(setToStr(servisTipi)) !== cokluNorm(talep?.servisTipi) ||
+    cokluNorm(setToStr(yukumluluk)) !== cokluNorm(talep?.yukumluluk) ||
+    cokluNorm(setToStr(servisYeri)) !== cokluNorm(talep?.servisYeri) ||
+    metinNorm(seriNo) !== metinNorm(talep?.seriNumarasi) ||
+    metinNorm(marka) !== metinNorm(talep?.marka) ||
+    metinNorm(model) !== metinNorm(talep?.model) ||
+    metinNorm(cozumAciklamasi) !== metinNorm(talep?.cozumAciklamasi)
+
+  // Sayfa bunu servis kapatma kapısında kullanıyor
+  useEffect(() => { onKirliDegisti?.(kirli) }, [kirli, onKirliDegisti])
+
+  // Sekme kapatma / yenileme / adres değişimi koruması. ⚠️ Tarayıcı kendi
+  // standart metnini gösterir (özel metin yok sayılır) — asıl uyarı karttaki
+  // rozet ve şerit; bu yalnız son emniyet.
+  useEffect(() => {
+    if (!kirli) return
+    const uyar = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', uyar)
+    return () => window.removeEventListener('beforeunload', uyar)
+  }, [kirli])
 
   const kaydet = async () => {
     setHata(null); setBasariMsg(null); setKaydediliyor(true)
@@ -123,9 +159,17 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
   const labelStil = { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }
 
   return (
-    <Card style={{ marginTop: 20 }}>
-      <CardTitle>Form Bilgileri</CardTitle>
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -8, marginBottom: 16 }}>
+    <Card style={{ marginTop: 20, ...(kirli ? { borderColor: '#f59e0b' } : null) }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <CardTitle style={{ margin: 0 }}>Form Bilgileri</CardTitle>
+        {kirli && (
+          <span style={{
+            background: '#f59e0b', color: '#fff', borderRadius: 5,
+            padding: '2px 7px', font: '900 9.5px/14px var(--font-sans)', letterSpacing: '0.03em',
+          }}>KAYDEDİLMEDİ</span>
+        )}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, marginBottom: 16 }}>
         Bu alanlar servis raporu (form çıktısı) için doldurulur.
       </div>
 
@@ -207,9 +251,26 @@ export default function ServisFormBilgileriCard({ talep, onKaydet }) {
           </div>
         )}
 
+        {/* Kaydedilmemiş değişiklik uyarısı — düğmenin hemen üstünde */}
+        {kirli && !kaydediliyor && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8,
+            padding: '10px 14px', color: '#92400e', fontSize: 12.5, fontWeight: 600,
+          }}>
+            <AlertTriangle size={15} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+            Yaptığınız değişiklikler <strong>henüz kaydedilmedi</strong> — kaydetmeden çıkarsanız kaybolur.
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="primary" iconLeft={<Save size={14} />} onClick={kaydet} disabled={kaydediliyor}>
-            {kaydediliyor ? 'Kaydediliyor…' : 'Form Bilgilerini Kaydet'}
+          <Button
+            variant={kirli ? 'primary' : 'secondary'}
+            iconLeft={kirli ? <Save size={14} /> : <Check size={14} />}
+            onClick={kaydet}
+            disabled={kaydediliyor || !kirli}
+          >
+            {kaydediliyor ? 'Kaydediliyor…' : kirli ? 'Form Bilgilerini Kaydet' : 'Kaydedildi — değişiklik yok'}
           </Button>
         </div>
       </div>
