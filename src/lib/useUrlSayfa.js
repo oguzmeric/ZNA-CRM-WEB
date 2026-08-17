@@ -18,9 +18,12 @@ export const useUrlSayfa = (resetDegerleri) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const sayfa = sayfaOku(searchParams.get('sayfa'))
 
-  // Reset effect'inin sayfayı bağımlılığa almadan okuyabilmesi için
+  // Reset effect'inin sayfayı bağımlılığa almadan okuyabilmesi için.
+  // ⚠️ Güncelleme EFFECT'te: render sırasında ref yazmak lint kuralınca yasak
+  // (react-hooks/refs) ve React'in eşzamanlı render'ında güvenilmez. `sayfa`
+  // ile `anahtar` aynı render'da değişmediği için sıra sorunu doğmaz.
   const sayfaRef = useRef(sayfa)
-  sayfaRef.current = sayfa
+  useEffect(() => { sayfaRef.current = sayfa }, [sayfa])
 
   // ⚠️ FONKSİYONEL GÜNCELLEYİCİ DESTEKLENİR — `setSayfa(s => s + 1)` (17.08).
   // Hesap `sayfaNo.js`'te (tarayıcısız test edilebilsin diye); oradaki başlık
