@@ -18,7 +18,7 @@ import {
   Palette, Check, X, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone,
   Activity, Timer, Boxes, StickyNote, GripVertical, RotateCcw, BadgeCheck, Car, LifeBuoy,
   FileCheck, Fuel, ShoppingCart, Sun, FileSignature, Receipt, CalendarCheck, Wallet,
-  Landmark, Archive, ShieldCheck, Search, SlidersHorizontal, Inbox,
+  Landmark, Archive, ShieldCheck, Search, SlidersHorizontal, Inbox, Star,
 } from 'lucide-react'
 import ThemePaneli from '../components/ThemePaneli'
 import FloatingSohbetButton from '../components/FloatingSohbetButton'
@@ -220,16 +220,15 @@ const menuItems = [
     modul: 'servis_talepleri',
     grup: 'operasyon',
     altMenu: [
-      // ⭐ 17.08 — "Müşteri Talepleri" öğesi KALDIRILDI. Aynı listeyi farklı
-      // filtreyle gösteren ikinci bir menü, portal onlarca firmaya açılırken
-      // çift takip ("hangisine baktım?") üretirdi. Talepler tek kuyrukta;
-      // portalden gelen PORTAL rozetiyle işaretli, kanal filtresi listede.
+      // ⭐ 17.08 — Bu menü artık YALNIZ İÇ SERVİS AKIŞI:
+      //   • "Müşteri Talepleri" → Müşteri Portalı grubuna taşındı (ham gelen iş)
+      //   • "Müşteri Memnuniyeti" → aynı gruba taşındı (müşteri geri bildirimi)
+      // Kalanlar ekibin kendi işlettiği kuyruk ve çıktılar.
       { id: 'servis_talepleri', isim: 'Servis Talepleri',   yol: '/servis-talepleri' },
       { id: 'servis_raporlari', isim: 'Servis Raporları',   yol: '/servis-raporlari' },
       // Sahaya takılı cihazların toplu görünümü (13.08) — eskiden tek yol
       // müşteri detayındaki bölümdü, müşteri müşteri gezmek gerekiyordu
       { id: 'saha_cihazlari',   isim: 'Saha Cihazları',      yol: '/saha-cihazlari' },
-      { id: 'memnuniyet',       isim: 'Müşteri Memnuniyeti', yol: '/memnuniyet' },
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
@@ -243,6 +242,9 @@ const menuItems = [
   // ise zaten işlenmiş/atanmış işin listesi — ikisi karışırsa triyaj bozulur.
   // ⚠️ Aynı sayfa, farklı kapsam: ?kaynak=musteri. Rozeti de ayrı sayılır.
   { id: 'portal_talepleri', isim: 'Portal Talepleri', Icon: Inbox, yol: '/servis-talepleri?kaynak=musteri', modul: 'servis_talepleri', grup: 'portal' },
+  // Memnuniyet = müşterinin bize verdiği not; iç servis akışı değil, müşteriyle
+  // olan ilişkinin çıktısı. Bu yüzden Servis'ten buraya taşındı (17.08).
+  { id: 'memnuniyet', isim: 'Müşteri Memnuniyeti', Icon: Star, yol: '/memnuniyet', modul: 'servis_talepleri', grup: 'portal' },
   { id: 'portal_kullanicilar', isim: 'Portal Kullanıcıları', Icon: Users, yol: '/portal-kullanicilar', modul: 'kullanici_yonetimi', grup: 'portal' },
   // Bakım — Servis'ten TAMAMEN AYRI menü grubu (toplu bakım operasyonu)
   { id: 'bakim_isleri', isim: 'Bakım İşleri', Icon: Wrench, yol: '/bakim-isleri', modul: null, grup: 'bakim' },
