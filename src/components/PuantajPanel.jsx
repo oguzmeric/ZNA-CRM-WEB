@@ -73,13 +73,22 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
     return { personel: p, oto, duzeltme, dakikalar, maasKaydi, hesap }
   }), [personeller, ozet, duzeltmeler, maaslar, yil, ay, ayar])
 
+  // Brüt ve net girilen maaşlar AYRI toplanır — iki tür aynı kefeye konursa
+  // toplam anlamsızlaşır (vergi dönüşümü bilerek yok, mig 304).
   const toplamlar = useMemo(() => {
     const maasli = satirlar.filter(s => s.hesap.genelToplam != null)
+    const grup = (tur) => {
+      const liste = maasli.filter(s => (s.maasKaydi?.maasTuru || 'brut') === tur)
+      return {
+        sayi: liste.length,
+        mesaiToplam: liste.reduce((t, s) => t + (s.hesap.mesaiToplam || 0), 0),
+        genelToplam: liste.reduce((t, s) => t + (s.hesap.genelToplam || 0), 0),
+      }
+    }
     return {
-      maasliSayi: maasli.length,
       maassizSayi: satirlar.length - maasli.length,
-      mesaiToplam: maasli.reduce((t, s) => t + (s.hesap.mesaiToplam || 0), 0),
-      genelToplam: maasli.reduce((t, s) => t + (s.hesap.genelToplam || 0), 0),
+      brut: grup('brut'),
+      net: grup('net'),
     }
   }, [satirlar])
 
@@ -102,7 +111,8 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
       if ((oto.acikKayitSayisi || 0) > 0) notlar.push(`${oto.acikKayitSayisi} açık mesai kaydı hesaba girmedi`)
       return {
         'Personel': personel.ad,
-        'Brüt Maaş (₺)': maasKaydi ? Number(maasKaydi.brutTutar) : '',
+        'Maaş (₺)': maasKaydi ? Number(maasKaydi.brutTutar) : '',
+        'Maaş Türü': maasKaydi ? ((maasKaydi.maasTuru || 'brut') === 'net' ? 'Net' : 'Brüt') : '',
         'Saat Ücreti (₺)': hesap.saatUcreti ?? '',
         'Hafta İçi FM (saat)': Number(hesap.hiSaat.toFixed(2)),
         'Pazar (saat)': Number(hesap.pzSaat.toFixed(2)),
@@ -112,20 +122,20 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
         'Not': notlar.join(' · '),
       }
     })
-    veriler.push({
-      'Personel': 'TOPLAM',
-      'Brüt Maaş (₺)': '',
-      'Saat Ücreti (₺)': '',
-      'Hafta İçi FM (saat)': '',
-      'Pazar (saat)': '',
-      'Resmî Tatil (saat)': '',
-      'Mesai Tutarı (₺)': toplamlar.mesaiToplam,
-      'Toplam Hakediş (₺)': toplamlar.genelToplam,
-      'Not': toplamlar.maassizSayi > 0 ? `${toplamlar.maassizSayi} personel maaşsız, toplam dışı` : '',
+    const toplamSatir = (etiket, g, not = '') => ({
+      'Personel': etiket, 'Maaş (₺)': '', 'Maaş Türü': '', 'Saat Ücreti (₺)': '',
+      'Hafta İçi FM (saat)': '', 'Pazar (saat)': '', 'Resmî Tatil (saat)': '',
+      'Mesai Tutarı (₺)': g.mesaiToplam, 'Toplam Hakediş (₺)': g.genelToplam, 'Not': not,
     })
+    if (toplamlar.brut.sayi > 0) veriler.push(toplamSatir('TOPLAM (Brüt bazlı)', toplamlar.brut))
+    if (toplamlar.net.sayi > 0) veriler.push(toplamSatir('TOPLAM (Net bazlı)', toplamlar.net))
+    if (toplamlar.maassizSayi > 0) {
+      veriler.push(toplamSatir('', { mesaiToplam: '', genelToplam: '' },
+        `${toplamlar.maassizSayi} personel maaşsız, toplamların dışında`))
+    }
     const ws = XLSX.utils.aoa_to_sheet(kunye)
     XLSX.utils.sheet_add_json(ws, veriler, { origin: -1 })
-    ws['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 13 }, { wch: 17 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 17 }, { wch: 40 }]
+    ws['!cols'] = [{ wch: 24 }, { wch: 13 }, { wch: 10 }, { wch: 13 }, { wch: 17 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 17 }, { wch: 40 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, `Puantaj ${AYLAR[ay - 1]} ${yil}`)
     XLSX.writeFile(wb, `puantaj-${yil}-${String(ay).padStart(2, '0')}.xlsx`)
@@ -154,7 +164,7 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-            Saat ücreti = brüt ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)}
+            Saat ücreti = maaş ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)}
           </div>
           <Button variant="ghost" onClick={() => setAyarModal(true)}>
             <Settings2 size={14} strokeWidth={1.7} /> Katsayılar
@@ -188,7 +198,7 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
               <THead>
                 <TR>
                   <TH>Personel</TH>
-                  <TH style={{ textAlign: 'right' }}>Brüt Maaş</TH>
+                  <TH style={{ textAlign: 'right' }}>Maaş</TH>
                   <TH style={{ textAlign: 'right' }}>Saat Ücreti</TH>
                   <TH style={{ textAlign: 'right' }}>Hafta İçi FM</TH>
                   <TH style={{ textAlign: 'right' }}>Pazar</TH>
@@ -216,7 +226,17 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
                     </TD>
                     <TD style={{ textAlign: 'right' }}>
                       {maasKaydi
-                        ? tutarBicim(maasKaydi.brutTutar)
+                        ? <>
+                            {tutarBicim(maasKaydi.brutTutar)}
+                            {(maasKaydi.maasTuru || 'brut') === 'net' && (
+                              <span style={{
+                                marginLeft: 5, padding: '1px 5px', borderRadius: 4,
+                                font: '700 9px/13px var(--font-sans)', letterSpacing: 0.4,
+                                background: 'var(--info-soft, #e0f2fe)', color: 'var(--info, #0369a1)',
+                                verticalAlign: 'middle',
+                              }}>NET</span>
+                            )}
+                          </>
                         : <Badge tone="kayip">Maaş girilmemiş</Badge>}
                     </TD>
                     <TD style={{ textAlign: 'right' }}>{hesap.saatUcreti != null ? tutarBicim(hesap.saatUcreti) : '—'}</TD>
@@ -257,8 +277,12 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
             background: 'var(--surface-muted, #f8fafc)',
             font: '500 12.5px/18px var(--font-sans)',
           }}>
-            <span>Mesai toplamı: <b>{tutarBicim(toplamlar.mesaiToplam)}</b></span>
-            <span>Genel hakediş (maaş + mesai): <b>{tutarBicim(toplamlar.genelToplam)}</b></span>
+            {toplamlar.brut.sayi > 0 && (
+              <span>Brüt bazlı — mesai: <b>{tutarBicim(toplamlar.brut.mesaiToplam)}</b> · toplam hakediş: <b>{tutarBicim(toplamlar.brut.genelToplam)}</b></span>
+            )}
+            {toplamlar.net.sayi > 0 && (
+              <span>Net bazlı — mesai: <b>{tutarBicim(toplamlar.net.mesaiToplam)}</b> · toplam hakediş: <b>{tutarBicim(toplamlar.net.genelToplam)}</b></span>
+            )}
             {toplamlar.maassizSayi > 0 && (
               <span style={{ color: 'var(--danger)' }}>
                 ⚠ {toplamlar.maassizSayi} personelin maaşı girilmediği için toplamlara dahil değil
@@ -311,18 +335,20 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
   const donemBasi = `${yil}-${String(ay).padStart(2, '0')}-01`
   const [baslangic, setBaslangic] = useState(donemBasi)
   const [tutar, setTutar] = useState('')
+  // Yeni kayıtta varsayılan, kişinin SON kaydının türü (tutarlılık); hiç yoksa brüt
+  const [maasTuru, setMaasTuru] = useState(maaslar[0]?.maasTuru || 'brut')
   const [not, setNot] = useState('')
   const [mesgul, setMesgul] = useState(false)
 
   const kaydet = async () => {
     const t = Number(String(tutar).replace(',', '.'))
-    if (!(t > 0)) { toast.error('Geçerli bir brüt tutar girin.'); return }
+    if (!(t > 0)) { toast.error('Geçerli bir tutar girin.'); return }
     if (!baslangic) { toast.error('Geçerlilik başlangıcı gerekli.'); return }
     setMesgul(true)
     try {
       await maasEkle({
         kullaniciId: personel.id, gecerliBaslangic: baslangic,
-        brutTutar: t, not: not.trim(), ekleyenId: kullanici?.id,
+        brutTutar: t, maasTuru, not: not.trim(), ekleyenId: kullanici?.id,
       })
       toast.success('Maaş kaydedildi.')
       onDegisti()
@@ -349,15 +375,22 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
   return (
     <Modal open onClose={onKapat} title={`Maaş — ${personel.ad}`} width={460}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <div>
             <Label required>Geçerlilik başlangıcı</Label>
             <Input type="date" value={baslangic} onChange={e => setBaslangic(e.target.value)} />
           </div>
           <div>
-            <Label required>Brüt maaş (₺)</Label>
+            <Label required>Maaş (₺)</Label>
             <Input type="number" min="0" step="0.01" value={tutar}
               onChange={e => setTutar(e.target.value)} placeholder="örn. 45000" autoFocus />
+          </div>
+          <div>
+            <Label>Tür</Label>
+            <CustomSelect value={maasTuru} onChange={e => setMaasTuru(e.target.value)}>
+              <option value="brut">Brüt</option>
+              <option value="net">Net</option>
+            </CustomSelect>
           </div>
         </div>
         <div>
@@ -365,8 +398,9 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
           <Input value={not} onChange={e => setNot(e.target.value)} placeholder="örn. Ağustos zammı" />
         </div>
         <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0 }}>
-          Zam geldiğinde eskisini silmeyin — yeni başlangıç tarihiyle yeni kayıt ekleyin.
-          Her dönem, o ay geçerli olan maaşla hesaplanır; geçmiş dönem raporları değişmez.
+          Hesap girilen türün cinsinden yapılır: net girilirse mesai ve toplamlar da NET çıkar
+          (brüt↔net vergi dönüşümü yapılmaz). Zam geldiğinde eskisini silmeyin — yeni başlangıç
+          tarihiyle yeni kayıt ekleyin; geçmiş dönem raporları değişmez.
         </p>
 
         {maaslar.length > 0 && (
@@ -380,7 +414,12 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
                   font: '400 12.5px/18px var(--font-sans)',
                 }}>
                   <span style={{ fontWeight: 600 }}>{fmtTarihKisa(m.gecerliBaslangic)}</span>
-                  <span style={{ flex: 1 }}>{tutarBicim(m.brutTutar)}</span>
+                  <span style={{ flex: 1 }}>
+                    {tutarBicim(m.brutTutar)}
+                    <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                      ({(m.maasTuru || 'brut') === 'net' ? 'Net' : 'Brüt'})
+                    </span>
+                  </span>
                   {m.not && <span style={{ color: 'var(--text-tertiary)' }}>{m.not}</span>}
                   <button type="button" title="Sil" onClick={() => sil(m)} style={ikonBtnStil}>
                     <Trash2 size={12} strokeWidth={1.7} />

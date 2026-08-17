@@ -517,19 +517,20 @@ export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazar
 export async function maasKayitlariGetir() {
   const { data, error } = await supabase
     .from('personel_maaslari')
-    .select('id, kullanici_id, gecerli_baslangic, brut_tutar, not_, olusturma_tarih')
+    .select('id, kullanici_id, gecerli_baslangic, brut_tutar, maas_turu, not_, olusturma_tarih')
     .order('gecerli_baslangic', { ascending: false })
   if (error) throw error
   return (data || []).map(toCamel)
 }
 
-export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, not, ekleyenId }) {
+export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, maasTuru, not, ekleyenId }) {
   const { data, error } = await supabase
     .from('personel_maaslari')
     .insert({
       kullanici_id: kullaniciId,
       gecerli_baslangic: gecerliBaslangic,
       brut_tutar: brutTutar,
+      maas_turu: maasTuru === 'net' ? 'net' : 'brut',
       not_: not || null,
       ekleyen_id: ekleyenId ?? null,
     })
