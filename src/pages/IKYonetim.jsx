@@ -25,6 +25,7 @@ import {
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
 import AvansOnaylari, { AvansKararModal, AvansOdemeModal } from '../components/AvansPanel'
+import PuantajPanel from '../components/PuantajPanel'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -45,6 +46,7 @@ const durumBadge = (durum) => {
 const SEKMELER = [
   { id: 'izin',      label: 'İzin Onayları',    ikon: CalendarCheck },
   { id: 'avans',     label: 'Avans Onayları',   ikon: Banknote },
+  { id: 'puantaj',   label: 'Puantaj',          ikon: Clock },
   { id: 'yukle',     label: 'Bordro Yükle',     ikon: Upload },
   { id: 'bordrolar', label: 'Yüklü Bordrolar',  ikon: FolderOpen },
 ]
@@ -305,6 +307,10 @@ export default function IKYonetim() {
               onTaksit={taksitDegistir}
               onSil={avansKaydiSil}
             />
+          )}
+
+          {sekme === 'puantaj' && (
+            <PuantajPanel personeller={personeller} kullanici={kullanici} />
           )}
 
           {sekme === 'yukle' && (

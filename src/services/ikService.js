@@ -485,3 +485,107 @@ export async function avansSil(id) {
   if (error) throw error
   return true
 }
+
+// ── Puantaj (mig 303) ─────────────────────────────────────────────────────
+// Erişim RLS'te Abdullah (44) + admin ile sınırlı — burada ek kontrol yok.
+// Hesap mantığı src/lib/puantajHesap.js'te (TEK KAYNAK), burada yalnız veri.
+
+export async function puantajAyarGetir() {
+  const { data, error } = await supabase
+    .from('ik_puantaj_ayarlar').select('*').eq('id', 1).single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazarKatsayi, resmiTatilKatsayi, guncelleyenId }) {
+  const { data, error } = await supabase
+    .from('ik_puantaj_ayarlar')
+    .update({
+      aylik_saat_bolen: aylikSaatBolen,
+      hafta_ici_katsayi: haftaIciKatsayi,
+      pazar_katsayi: pazarKatsayi,
+      resmi_tatil_katsayi: resmiTatilKatsayi,
+      guncelleyen_id: guncelleyenId ?? null,
+      guncelleme_tarih: new Date().toISOString(),
+    })
+    .eq('id', 1).select().single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+/** Tüm maaş kayıtları (geçmiş dahil) — dönem seçimi istemcide (donemMaasiSec). */
+export async function maasKayitlariGetir() {
+  const { data, error } = await supabase
+    .from('personel_maaslari')
+    .select('id, kullanici_id, gecerli_baslangic, brut_tutar, not_, olusturma_tarih')
+    .order('gecerli_baslangic', { ascending: false })
+  if (error) throw error
+  return (data || []).map(toCamel)
+}
+
+export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, not, ekleyenId }) {
+  const { data, error } = await supabase
+    .from('personel_maaslari')
+    .insert({
+      kullanici_id: kullaniciId,
+      gecerli_baslangic: gecerliBaslangic,
+      brut_tutar: brutTutar,
+      not_: not || null,
+      ekleyen_id: ekleyenId ?? null,
+    })
+    .select().single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Bu personel için aynı başlangıç tarihli maaş kaydı zaten var.')
+    throw error
+  }
+  return toCamel(data)
+}
+
+/** Yanlış girilen maaş kaydını sil (geçmiş düzeltme). */
+export async function maasSil(id) {
+  const { error } = await supabase.from('personel_maaslari').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
+/** Dönemin fazla mesai dakikaları — mesai_kayitlari tip='fazla' (RPC, mig 303). */
+export async function puantajDonemOzeti(yil, ay) {
+  const { data, error } = await supabase.rpc('puantaj_donem_ozeti', { p_yil: yil, p_ay: ay })
+  if (error) throw error
+  return (data || []).map(toCamel)
+}
+
+export async function puantajDuzeltmelerGetir(yil, ay) {
+  const { data, error } = await supabase
+    .from('puantaj_duzeltmeler').select('*')
+    .eq('donem_yil', yil).eq('donem_ay', ay)
+  if (error) throw error
+  return (data || []).map(toCamel)
+}
+
+/** Dönem+kişi düzeltmesi (upsert). NULL alan = otomatik değer geçerli kalır. */
+export async function puantajDuzeltmeKaydet({ kullaniciId, donemYil, donemAy, haftaIciDakika, pazarDakika, resmiTatilDakika, aciklama, duzeltenId }) {
+  const { data, error } = await supabase
+    .from('puantaj_duzeltmeler')
+    .upsert({
+      kullanici_id: kullaniciId,
+      donem_yil: donemYil,
+      donem_ay: donemAy,
+      hafta_ici_dakika: haftaIciDakika ?? null,
+      pazar_dakika: pazarDakika ?? null,
+      resmi_tatil_dakika: resmiTatilDakika ?? 0,
+      aciklama,
+      duzelten_id: duzeltenId ?? null,
+      guncelleme_tarih: new Date().toISOString(),
+    }, { onConflict: 'kullanici_id,donem_yil,donem_ay' })
+    .select().single()
+  if (error) throw error
+  return toCamel(data)
+}
+
+/** Düzeltmeyi kaldır → satır tamamen otomatik değerlere döner. */
+export async function puantajDuzeltmeSil(id) {
+  const { error } = await supabase.from('puantaj_duzeltmeler').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
