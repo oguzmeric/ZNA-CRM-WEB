@@ -217,10 +217,33 @@ export default function ServisRaporlari() {
   // ?rapor=ID ile açılan sekme: rapor tekil çekilip DOĞRUDAN Servis Formu'nda
   // açılır (detay modalı değil — çıktı için açılıyor, ara tıklama olmasın;
   // 10.08 geri bildirimi). Yalnız ilk açılışta çalışır.
+  //
+  // ⚠️ 17.08 — "kararsızlık" bildirimi: yeni sekmede ÖNCE liste çiziliyor,
+  // saniyeler sonra form üstüne biniyordu. Sebep iki ayrı yükleme yarışı:
+  // liste sorgusu hemen döner, form ise tekil rapor + envanter + imza + imzalı
+  // URL zincirini beklediği için geç gelir. Çözüm: `?rapor` varsa liste HİÇ
+  // çizilmez — form hazır olana kadar tek bir "açılıyor" ekranı gösterilir.
+  // ⚠️ İlk değer doğrudan URL'den okunur (state ilk render'da hazır olmalı;
+  // effect'e bırakılırsa o bir kare boyunca liste yine görünürdü).
+  const [formAcilisBekliyor, setFormAcilisBekliyor] = useState(
+    () => !!Number(new URLSearchParams(window.location.search).get('rapor'))
+  )
+
   useEffect(() => {
     const rid = Number(searchParams.get('rapor'))
     if (!rid) return
-    servisRaporGetir(rid).then(r => { if (r) formuAc(r) })
+    servisRaporGetir(rid)
+      .then(r => {
+        if (!r) throw new Error(`Rapor bulunamadı (#${rid}).`)
+        return formuAc(r)
+      })
+      // ⚠️ Eskiden .catch YOKTU: rapor gelmezse ya da formuAc patlarsa ekran
+      // sessizce listede kalıyor, kullanıcı neden açılmadığını bilmiyordu.
+      .catch(e => {
+        console.error('[?rapor açılışı]', e)
+        setHata(e?.message || 'Rapor açılamadı.')
+      })
+      .finally(() => setFormAcilisBekliyor(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -465,6 +488,21 @@ export default function ServisRaporlari() {
     }
     w.document.write(html)
     w.document.close()
+  }
+
+  // ?rapor=ID ile açılan sekme: form hazır olana kadar LİSTE ÇİZİLMEZ.
+  // Liste bir görünüp formun altında kalmasın diye ("kararsızlık", 17.08).
+  // ⚠️ Bu kapı listenin kendi iskeletinden ÖNCE gelmeli.
+  if (formAcilisBekliyor) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 12, minHeight: '60vh', color: 'var(--text-tertiary)',
+      }}>
+        <Wrench size={26} strokeWidth={1.5} className="sk-dondur" />
+        <span style={{ font: '500 13px/18px var(--font-sans)' }}>Servis formu açılıyor…</span>
+      </div>
+    )
   }
 
   // İskelet YALNIZ ilk açılışta. Sonraki çekimlerde (arama/filtre/sayfa)
