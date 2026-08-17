@@ -9,6 +9,7 @@ import { jsPDF } from 'jspdf'
 import znaBanner from '../assets/servis-formu/zna-banner.png'
 import anadolunetLogo from '../assets/servis-formu/anadolunet-logo.jpeg'
 import { FIRMA_KUNYE } from '../lib/kurumsalKunye'
+import HeicResim from '../components/HeicResim'
 
 // Servis formu şablonuyla AYNI kurumsal kimlik (ServisFormu.jsx ile hizalı)
 const SIRKET_BILGI = {
@@ -46,6 +47,12 @@ export default function BakimYazdir() {
   const pdfIndir = async () => {
     setPdfUretiliyor(true)
     try {
+      // Tarihi HEIC fotolar tarayıcıda çevrilerek gösteriliyor (HeicResim);
+      // dönüşüm bitmeden canvas alınırsa foto PDF'te boş kalır — bekle.
+      for (let t = 0; t < 90000; t += 500) {
+        if (!sayfaRef.current?.querySelector('[data-heic-durum="bekliyor"]')) break
+        await new Promise((coz) => setTimeout(coz, 500))
+      }
       const canvas = await html2canvas(sayfaRef.current, {
         // useCORS ŞART: bakım fotoğrafları + imzalar Supabase Storage'dan
         // (cross-origin) gelir; bu bayrak olmadan html2canvas onları SESSİZCE
@@ -326,7 +333,7 @@ function CevapOzeti({ kalem }) {
           <h3 style={h3Stil}>📷 Bakım Fotoğrafları</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {fotolar.map((url) => (
-              <img key={url} src={url} alt="Bakım fotoğrafı" style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 6, border: '1px solid #cbd5e1' }} />
+              <HeicResim key={url} src={url} alt="Bakım fotoğrafı" style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 6, border: '1px solid #cbd5e1' }} />
             ))}
           </div>
         </>
