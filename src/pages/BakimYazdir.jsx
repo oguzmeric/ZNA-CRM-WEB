@@ -47,7 +47,12 @@ export default function BakimYazdir() {
     setPdfUretiliyor(true)
     try {
       const canvas = await html2canvas(sayfaRef.current, {
-        scale: 2, backgroundColor: '#ffffff',
+        // useCORS ŞART: bakım fotoğrafları + imzalar Supabase Storage'dan
+        // (cross-origin) gelir; bu bayrak olmadan html2canvas onları SESSİZCE
+        // atlar — ekranda görünür, PDF'te boş kutu kalır (TB-2026-00082 vakası).
+        // SiparisYazdir/TeklifYazdir ile aynı desen.
+        scale: 2, useCORS: true, allowTaint: true,
+        backgroundColor: '#ffffff', logging: false,
         ignoreElements: (el) => el.classList?.contains('no-print'),
       })
       const pdf = new jsPDF('p', 'mm', 'a4')
