@@ -5,8 +5,9 @@
 // (puantaj_donem_ozeti RPC); Abdullah satır bazında düzeltebilir, düzeltme
 // gerekçesi zorunludur ve rozetle görünür. Erişim RLS'te Abdullah+admin.
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import {
-  Wallet, Pencil, AlertTriangle, Settings2, Trash2, RotateCcw,
+  Wallet, Pencil, AlertTriangle, Settings2, Trash2, RotateCcw, FileSpreadsheet,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -82,6 +83,55 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
     }
   }, [satirlar])
 
+  // Ekrandaki hesabın birebir Excel hali (bordro/muhasebe paylaşımı için).
+  // Tutarlar HAM SAYI yazılır ki Excel'de toplanabilsin; maaşsız satırın
+  // tutar hücreleri BOŞ kalır (0 yazmak "maaş girildi" sanılır), durum
+  // Not sütununda açıkça belirtilir. Mesai Raporu künye deseni.
+  const excelAktar = () => {
+    const kunye = [
+      ['PUANTAJ RAPORU'],
+      ['Dönem', `${AYLAR[ay - 1]} ${yil}`],
+      ['Formül', `Saat ücreti = brüt ÷ ${Number(ayar.aylikSaatBolen)} · Hafta içi ×${Number(ayar.haftaIciKatsayi)} · Pazar ×${Number(ayar.pazarKatsayi)} · Resmî tatil ×${Number(ayar.resmiTatilKatsayi)}`],
+      ['Rapor alındı', new Date().toLocaleString('tr-TR')],
+      [],
+    ]
+    const veriler = satirlar.map(({ personel, oto, duzeltme, dakikalar, maasKaydi, hesap }) => {
+      const notlar = []
+      if (!maasKaydi) notlar.push('Maaş girilmemiş')
+      if (dakikalar.duzeltilmis) notlar.push(`Elle düzeltildi: ${duzeltme?.aciklama || ''}`)
+      if ((oto.acikKayitSayisi || 0) > 0) notlar.push(`${oto.acikKayitSayisi} açık mesai kaydı hesaba girmedi`)
+      return {
+        'Personel': personel.ad,
+        'Brüt Maaş (₺)': maasKaydi ? Number(maasKaydi.brutTutar) : '',
+        'Saat Ücreti (₺)': hesap.saatUcreti ?? '',
+        'Hafta İçi FM (saat)': Number(hesap.hiSaat.toFixed(2)),
+        'Pazar (saat)': Number(hesap.pzSaat.toFixed(2)),
+        'Resmî Tatil (saat)': Number(hesap.rtSaat.toFixed(2)),
+        'Mesai Tutarı (₺)': hesap.mesaiToplam ?? '',
+        'Toplam Hakediş (₺)': hesap.genelToplam ?? '',
+        'Not': notlar.join(' · '),
+      }
+    })
+    veriler.push({
+      'Personel': 'TOPLAM',
+      'Brüt Maaş (₺)': '',
+      'Saat Ücreti (₺)': '',
+      'Hafta İçi FM (saat)': '',
+      'Pazar (saat)': '',
+      'Resmî Tatil (saat)': '',
+      'Mesai Tutarı (₺)': toplamlar.mesaiToplam,
+      'Toplam Hakediş (₺)': toplamlar.genelToplam,
+      'Not': toplamlar.maassizSayi > 0 ? `${toplamlar.maassizSayi} personel maaşsız, toplam dışı` : '',
+    })
+    const ws = XLSX.utils.aoa_to_sheet(kunye)
+    XLSX.utils.sheet_add_json(ws, veriler, { origin: -1 })
+    ws['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 13 }, { wch: 17 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 17 }, { wch: 40 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, `Puantaj ${AYLAR[ay - 1]} ${yil}`)
+    XLSX.writeFile(wb, `puantaj-${yil}-${String(ay).padStart(2, '0')}.xlsx`)
+    toast.success('Excel indirildi.')
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Dönem + ayar şeridi */}
@@ -106,6 +156,9 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
           <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
             Saat ücreti = brüt ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)}
           </div>
+          <Button variant="ghost" onClick={excelAktar} disabled={yukleniyor || satirlar.length === 0}>
+            <FileSpreadsheet size={14} strokeWidth={1.7} /> Excel
+          </Button>
           <Button variant="ghost" onClick={() => setAyarModal(true)}>
             <Settings2 size={14} strokeWidth={1.7} /> Katsayılar
           </Button>
