@@ -156,9 +156,6 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
           <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
             Saat ücreti = brüt ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)}
           </div>
-          <Button variant="ghost" onClick={excelAktar} disabled={yukleniyor || satirlar.length === 0}>
-            <FileSpreadsheet size={14} strokeWidth={1.7} /> Excel
-          </Button>
           <Button variant="ghost" onClick={() => setAyarModal(true)}>
             <Settings2 size={14} strokeWidth={1.7} /> Katsayılar
           </Button>
@@ -167,6 +164,20 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
 
       {/* Hakediş tablosu */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border-default)',
+        }}>
+          <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+            {AYLAR[ay - 1]} {yil} — Hakediş Tablosu
+            <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 6 }}>
+              {satirlar.length} personel
+            </span>
+          </div>
+          <Button variant="ghost" onClick={excelAktar} disabled={yukleniyor || satirlar.length === 0}>
+            <FileSpreadsheet size={14} strokeWidth={1.7} /> Excel'e Aktar
+          </Button>
+        </div>
         {yukleniyor ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
         ) : satirlar.length === 0 ? (
