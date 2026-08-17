@@ -15,10 +15,14 @@
 import { useState, useEffect } from 'react'
 import { Button, Modal, Input, Label } from './ui'
 import CustomSelect from './CustomSelect'
-import { stokUrunEkle } from '../services/stokService'
+import { stokUrunEkle, stokKoduUret } from '../services/stokService'
 
 const birimler = ['Adet', 'Metre', 'Kg', 'Boy', 'Paket', 'Kutu', 'Litre', 'Mt²']
 
+// ⚠️ YEDEK yol — asıl kod DB'den gelir (stokKoduUret, mig 302). Tarayıcıdaki
+// listeden max+1 üretmek yarışır: bayat listede (ikinci sekme / başka
+// kullanıcının eklemesi) çakışan kod üretip "DB hatası"na düşürüyordu
+// (17.08 Sadık vakası, [[reference_belge_no_trigger]] dersi).
 function otoKodUret(mevcutKodlar = []) {
   // Mevcut STK kodlarını dolaş, en yüksek numarayı bul, +1
   let max = 0
@@ -49,6 +53,7 @@ export default function HizliStokEkleModal({
 
   useEffect(() => {
     if (acik) {
+      // Yerel tahmin hemen görünsün, DB'den gelen kesin kod üstüne yazsın
       setStokKodu(otoKodUret(mevcutKodlar))
       setStokAdi(baslangicAd || '')
       setBirim('Adet')
@@ -56,6 +61,7 @@ export default function HizliStokEkleModal({
       setModel('')
       setHata(null)
       setKaydediliyor(false)
+      stokKoduUret().then((kod) => { if (kod) setStokKodu(kod) })
     }
   }, [acik])
 
@@ -71,16 +77,25 @@ export default function HizliStokEkleModal({
     }
     setKaydediliyor(true)
     try {
-      const yeni = await stokUrunEkle({
-        stokKodu: stokKodu.trim(),
+      const govde = {
         stokAdi: stokAdi.trim(),
         birim,
         marka: marka.trim() || null,
         model: model.trim() || null,
         katalogdaGoster: true,
-      })
+      }
+      let yeni = await stokUrunEkle({ ...govde, stokKodu: stokKodu.trim() })
       if (!yeni) {
-        setHata('Stok eklenemedi (DB hatası).')
+        // En sık neden: kod bu arada başkası tarafından alındı (unique ihlali).
+        // DB'den TAZE kod çekip bir kez sessizce yeniden dene (mig 302).
+        const tazeKod = await stokKoduUret()
+        if (tazeKod && tazeKod !== stokKodu.trim()) {
+          yeni = await stokUrunEkle({ ...govde, stokKodu: tazeKod })
+          if (yeni) setStokKodu(tazeKod)
+        }
+      }
+      if (!yeni) {
+        setHata('Stok eklenemedi. Kod çakışmış olabilir — modalı kapatıp yeniden deneyin; sorun sürerse yöneticinize bildirin.')
         return
       }
       onEklendi?.(yeni)

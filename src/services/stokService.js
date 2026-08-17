@@ -34,6 +34,16 @@ export const stokUrunGetir = async (id) => {
   return toCamel(data)
 }
 
+// STK kodunu DB üretir (mig 302). İstemcideki listeden max+1 üretmek YARIŞIR:
+// bayat liste (ikinci sekme / başka kullanıcı) çakışan kod üretip unique
+// ihlaliyle "DB hatası" döndürüyordu (17.08 Sadık vakası). null = RPC yok/hata;
+// çağıran eski yönteme düşebilir ama kaydetmeden önce tekrar denemeli.
+export const stokKoduUret = async () => {
+  const { data, error } = await supabase.rpc('stok_kodu_uret')
+  if (error) { console.error('stokKoduUret hata:', error.message); return null }
+  return data || null
+}
+
 // stok_urunler kolonları (camelCase) — tabloya gidebilecek tüm alanların whitelist'i
 const KABUL_EDILEN_KOLONLAR = [
   'stokKodu', 'stokAdi', 'birim', 'minStok', 'aciklama',
