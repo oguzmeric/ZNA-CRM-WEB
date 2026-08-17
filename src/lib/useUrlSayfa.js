@@ -12,19 +12,26 @@
 // ve React StrictMode'un çift effect çağrısı da bu sayede zararsız.
 import { useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { sayfaOku, sayfaHesapla } from './sayfaNo'
 
 export const useUrlSayfa = (resetDegerleri) => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const sayfa = Math.max(1, parseInt(searchParams.get('sayfa') || '1', 10) || 1)
+  const sayfa = sayfaOku(searchParams.get('sayfa'))
 
   // Reset effect'inin sayfayı bağımlılığa almadan okuyabilmesi için
   const sayfaRef = useRef(sayfa)
   sayfaRef.current = sayfa
 
+  // ⚠️ FONKSİYONEL GÜNCELLEYİCİ DESTEKLENİR — `setSayfa(s => s + 1)` (17.08).
+  // Hesap `sayfaNo.js`'te (tarayıcısız test edilebilsin diye); oradaki başlık
+  // yorumu bu düzeltmenin neden gerektiğini anlatıyor.
   const setSayfa = useCallback((n) => {
     setSearchParams(prev => {
       const p = new URLSearchParams(prev)
-      if (Number(n) <= 1) p.delete('sayfa'); else p.set('sayfa', String(n))
+      // ⚠️ Önceki değer `prev`'den okunur (ref'ten DEĞİL): art arda gelen
+      // çağrılarda ref bayat kalabilir, URL parametresi kalmaz.
+      const sayi = sayfaHesapla(p.get('sayfa'), n)
+      if (sayi <= 1) p.delete('sayfa'); else p.set('sayfa', String(sayi))
       return p
     }, { replace: true })
   }, [setSearchParams])
