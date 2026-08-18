@@ -243,7 +243,9 @@ export async function kritikSeviyeUrunler() {
       gercek_bakiye: gercekBakiye,
       rezerve_adet: s.rezerve,
       satilabilir,
-      kritik: (u.min_stok || 0) > 0 && satilabilir < (u.min_stok || 0),
+      // 18.08: eşitlik DAHİL — "en az 5 kaldığında uyar" (ModelDetay ve Stok
+      // listesi zaten <= idi, burası < kalınca eşikte rozet/liste susuyordu)
+      kritik: (u.min_stok || 0) > 0 && satilabilir <= (u.min_stok || 0),
     }
   }).filter(u => u.kritik).sort((a, b) => (a.satilabilir - a.min_stok) - (b.satilabilir - b.min_stok))
 }

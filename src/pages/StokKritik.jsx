@@ -1,4 +1,5 @@
-// Kritik seviye altındaki ürünler — satılabilir < min_stok.
+// Kritik seviyedeki ürünler — satılabilir <= min_stok (eşik DAHİL, 18.08:
+// "en az 5 adet kaldığında uyarı versin"). Eşiğe eşit ürün "Sınırda" görünür.
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Package } from 'lucide-react'
@@ -28,7 +29,7 @@ export default function StokKritik() {
           <h1 className="t-h2" style={{ margin: 0 }}>Kritik Seviye</h1>
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-          Satılabilir bakiye (mevcut − rezerve) minimum stoğun altında olan ürünler.
+          Satılabilir bakiye (mevcut − rezerve) minimum stoğa inen veya altına düşen ürünler.
         </div>
       </div>
 
@@ -74,7 +75,9 @@ export default function StokKritik() {
                     <TD style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{u.satilabilir}</TD>
                     <TD style={{ textAlign: 'right' }}>{u.min_stok}</TD>
                     <TD style={{ textAlign: 'right' }}>
-                      <Badge tone="kayip">{eksik} adet</Badge>
+                      {eksik > 0
+                        ? <Badge tone="kayip">{eksik} adet</Badge>
+                        : <Badge tone="beklemede">Sınırda</Badge>}
                     </TD>
                   </TR>
                 )
