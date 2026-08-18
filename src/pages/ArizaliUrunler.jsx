@@ -23,6 +23,7 @@ import {
 } from '../components/ui'
 
 const DURUM_TONE = { aktif: 'basarili', arizali: 'kayip', serviste: 'beklemede', hurda: 'neutral' }
+const musteriAdi = (m) => m?.firma || [m?.ad, m?.soyad].filter(Boolean).join(' ') || (m ? `Müşteri #${m.id}` : '')
 const durumBilgi = (id) => CIHAZ_DURUMLARI.find(d => d.id === id) || { id, isim: id, renk: '#6b7280' }
 const kucukTr = (s) => (s || '').toLocaleLowerCase('tr-TR')
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
@@ -229,12 +230,13 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
 
   useEffect(() => { musterileriGetir().then(m => setMusteriler(m || [])) }, [])
 
+  // ⚠️ Müşteri listesinde alan adı `firma` (firmaAdi DEĞİL — canlıda "liste
+  // gelmiyor" vakası, 18.08). Boş aramada ilk 30 gösterilir: alana tıklayan
+  // kullanıcı yazmadan da liste görsün.
   const adaylar = useMemo(() => {
     const q = kucukTr(musteriArama.trim())
-    if (q.length < 2) return []
-    return musteriler
-      .filter(m => kucukTr(m.firmaAdi || m.firma_adi).includes(q))
-      .slice(0, 30)
+    const l = q ? musteriler.filter(m => kucukTr(musteriAdi(m)).includes(q)) : musteriler
+    return l.slice(0, 30)
   }, [musteriler, musteriArama])
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -272,12 +274,12 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
               display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
               border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
             }}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{musteri.firmaAdi || musteri.firma_adi}</span>
+              <span style={{ flex: 1, fontWeight: 600 }}>{musteriAdi(musteri)}</span>
               <Button variant="ghost" onClick={() => { setMusteri(null); setMusteriArama('') }}>Değiştir</Button>
             </div>
           ) : (
             <>
-              <Input placeholder="Müşteri adı yazın (en az 2 harf)…" value={musteriArama}
+              <Input placeholder="Müşteri adı yazın veya listeden seçin…" value={musteriArama}
                 onChange={e => setMusteriArama(e.target.value)} autoFocus />
               {adaylar.length > 0 && (
                 <div style={{
@@ -291,7 +293,7 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
                         padding: '7px 12px', background: 'transparent', border: 'none',
                         borderBottom: '1px solid var(--border-default)', cursor: 'pointer',
                         font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)',
-                      }}>{m.firmaAdi || m.firma_adi}</button>
+                      }}>{musteriAdi(m)}</button>
                   ))}
                 </div>
               )}
