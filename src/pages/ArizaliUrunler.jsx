@@ -253,7 +253,8 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
   // kullanıcı yazmadan da liste görsün.
   const adaylar = useMemo(() => {
     const q = kucukTr(musteriArama.trim())
-    const l = q ? musteriler.filter(m => kucukTr(musteriAdi(m)).includes(q)) : musteriler
+    if (!q) return []   // 18.08: yazmadan dropdown AÇILMAZ (kullanıcı istedi)
+    const l = musteriler.filter(m => kucukTr(musteriAdi(m)).includes(q))
     return l.slice(0, 30)
   }, [musteriler, musteriArama])
 
@@ -301,7 +302,7 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
             </div>
           ) : (
             <>
-              <Input placeholder="Müşteri adı yazın veya listeden seçin…" value={musteriArama}
+              <Input placeholder="Müşteri adı yazmaya başlayın…" value={musteriArama}
                 onChange={e => setMusteriArama(e.target.value)} autoFocus />
               {adaylar.length > 0 && (
                 <div style={{
