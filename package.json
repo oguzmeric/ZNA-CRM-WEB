@@ -11,6 +11,7 @@
     "test:teklif": "node scripts/test-teklif-hesap.mjs",
     "test:sayfa": "node scripts/test-url-sayfa.mjs",
     "test:puantaj": "node scripts/test-puantaj.mjs",
+    "test:hakedis": "node scripts/test-izin-hakedis.mjs",
     "preview": "vite preview",
     "supabase": "supabase",
     "deploy:fn": "supabase functions deploy"

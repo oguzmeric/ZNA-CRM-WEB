@@ -69,6 +69,7 @@ const DokumanMerkezi = lazy(() => import('./pages/DokümanMerkezi'))
 const KisiselDokumanlar = lazy(() => import('./pages/KisiselDokumanlar'))
 const IzinBordro = lazy(() => import('./pages/IzinBordro'))
 const IKYonetim = lazy(() => import('./pages/IKYonetim'))
+const PersonelSicil = lazy(() => import('./pages/PersonelSicil'))
 const MesaiRaporu = lazy(() => import('./pages/MesaiRaporu'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Profil = lazy(() => import('./pages/Profil'))
@@ -491,6 +492,8 @@ function App() {
           <Route path="/dokumanlarim" element={<KisiselDokumanlar />} />
           <Route path="/izin-bordro" element={<IzinBordro />} />
           <Route path="/ik-yonetim" element={<IKGuard><IKYonetim /></IKGuard>} />
+          {/* Sicil kartı MENÜDE YOK — girişi İK Yönetimi > Personel Sicil sekmesi */}
+          <Route path="/ik-yonetim/sicil/:id" element={<IKGuard><PersonelSicil /></IKGuard>} />
           <Route path="/mesai-raporu" element={<MesaiRaporGuard><MesaiRaporu /></MesaiRaporGuard>} />
           <Route path="/kargolar" element={<Kargolar />} />
           <Route path="/kargolar/:id" element={<KargoDetay />} />

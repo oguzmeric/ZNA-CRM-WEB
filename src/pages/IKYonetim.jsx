@@ -3,9 +3,10 @@
 // Desen kaynağı: KisiselDokumanlar.jsx (sekme, Card/Button/Badge, CustomSelect).
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   CalendarCheck, Upload, FolderOpen, CheckCircle2, XCircle,
-  Download, Trash2, FileText, Clock, Users, Printer, Banknote,
+  Download, Trash2, FileText, Clock, Users, Printer, Banknote, IdCard,
 } from 'lucide-react'
 import { izinFormuYazdir } from '../lib/izinFormu'
 import { useAuth } from '../context/AuthContext'
@@ -26,6 +27,7 @@ import {
 import CustomSelect from '../components/CustomSelect'
 import AvansOnaylari, { AvansKararModal, AvansOdemeModal } from '../components/AvansPanel'
 import PuantajPanel from '../components/PuantajPanel'
+import PersonelSicilListesi from '../components/sicil/PersonelSicilListesi'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -49,7 +51,12 @@ const SEKMELER = [
   { id: 'puantaj',   label: 'Puantaj',          ikon: Clock },
   { id: 'yukle',     label: 'Bordro Yükle',     ikon: Upload },
   { id: 'bordrolar', label: 'Yüklü Bordrolar',  ikon: FolderOpen },
+  // 18.08: Personel Sicil — kişi bazlı özlük kartı. Menüye AYRI öğe eklenmedi
+  // (kullanıcı kararı: "ekstradan menü eklememize gerek yok"), giriş noktası
+  // yalnız bu sekme. Kart /ik-yonetim/sicil/:id rotasında açılır.
+  { id: 'sicil',     label: 'Personel Sicil',   ikon: IdCard },
 ]
+const SEKME_IDLER = SEKMELER.map(s => s.id)
 
 
 export default function IKYonetim() {
@@ -57,7 +64,18 @@ export default function IKYonetim() {
   const { toast } = useToast()
   const { confirm } = useConfirm()
 
-  const [sekme, setSekme] = useState('izin')
+  // Sekme URL'de tutulur (?sekme=sicil): sicil kartından geri dönünce aynı
+  // sekmeye düşülsün, F5'te seçim kaybolmasın.
+  const [aramaParam, setAramaParam] = useSearchParams()
+  const urlSekme = aramaParam.get('sekme')
+  const [sekme, setSekmeState] = useState(
+    SEKME_IDLER.includes(urlSekme) ? urlSekme : 'izin',
+  )
+  const setSekme = (id) => {
+    setSekmeState(id)
+    setAramaParam(id === 'izin' ? {} : { sekme: id }, { replace: true })
+  }
+
   const [yukleniyor, setYukleniyor] = useState(true)
   const [izinler, setIzinler] = useState([])
   const [bordrolar, setBordrolar] = useState([])
@@ -282,7 +300,10 @@ export default function IKYonetim() {
         })}
       </div>
 
-      {yukleniyor ? (
+      {/* Sicil sekmesi kendi verisini çeker — izin/avans/bordro yüklemesini BEKLEMEZ */}
+      {sekme === 'sicil' ? (
+        <PersonelSicilListesi />
+      ) : yukleniyor ? (
         <Card><div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div></Card>
       ) : (
         <>
