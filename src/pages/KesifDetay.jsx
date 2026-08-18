@@ -40,7 +40,7 @@ import {
 } from '../components/ui'
 
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
-const birimler = ['Adet', 'Metre', 'Paket', 'Kutu', 'Takım', 'Saat']
+const birimler = ['Adet', 'Metre', 'Paket', 'Kutu', 'Takım', 'Saat', 'Gün']
 
 // Serbest metin lokasyonu müşterinin alt lokasyon kaydına çöz (mig 236)
 const lokNorm = (s = '') =>
@@ -961,7 +961,15 @@ ${printTetikle ? '<' + `script>window.onload = () => setTimeout(() => window.pri
         }}>
           <div>
             <Label>Kategori</Label>
-            <CustomSelect value={yeniKalem.kategori} onChange={e => setYeniKalem(v => ({ ...v, kategori: e.target.value }))}>
+            <CustomSelect value={yeniKalem.kategori} onChange={e => {
+              const kategori = e.target.value
+              // 18.08: işçilik GÜN bazında girilir — kategori işçilik olunca
+              // birim otomatik Gün, işçilikten çıkınca Gün kaldıysa Adet'e döner.
+              setYeniKalem(v => ({
+                ...v, kategori,
+                birim: kategori === 'iscilik' ? 'Gün' : (v.birim === 'Gün' ? 'Adet' : v.birim),
+              }))
+            }}>
               {KESIF_KATEGORILERI.map(k => <option key={k.id} value={k.id}>{k.ikon} {k.ad}</option>)}
             </CustomSelect>
           </div>
