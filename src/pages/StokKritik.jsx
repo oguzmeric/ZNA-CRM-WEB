@@ -54,7 +54,9 @@ export default function StokKritik() {
             </THead>
             <TBody>
               {liste.map(u => {
-                const eksik = (u.min_stok || 0) - u.satilabilir
+                // 18.08: "Eksik -5" adet sanılıyordu — kolon tamamlanması gereken
+                // ADEDİ gösterir, işaretsiz yazılır (min 5, satılabilir 0 → 5 eksik).
+                const eksik = Math.max(0, (u.min_stok || 0) - (u.satilabilir || 0))
                 return (
                   <TR key={u.id}
                     onClick={() => navigate(`/stok/model/${u.stok_kodu}`)}
@@ -72,7 +74,7 @@ export default function StokKritik() {
                     <TD style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{u.satilabilir}</TD>
                     <TD style={{ textAlign: 'right' }}>{u.min_stok}</TD>
                     <TD style={{ textAlign: 'right' }}>
-                      <Badge tone="kayip">{eksik > 0 ? `-${eksik}` : '0'}</Badge>
+                      <Badge tone="kayip">{eksik} adet</Badge>
                     </TD>
                   </TR>
                 )

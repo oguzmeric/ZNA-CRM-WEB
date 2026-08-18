@@ -285,15 +285,18 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
 
   useEffect(() => { musterileriGetir().then(m => setMusteriler(m || [])) }, [])
 
-  useEffect(() => {
+  // Müşteri seçimi/temizliği tek handler'da: lokasyon durumu sıfırlanır,
+  // tanımlı lokasyonlar çekilir (effect'te senkron setState lint hatasıydı).
+  const musteriSec = (m) => {
+    setMusteri(m)
     setLokasyonId(null)
     setLokasyonDetay('')
     setForm(f => ({ ...f, lokasyon: '' }))
-    if (!musteri?.id) { setLokasyonlar([]); return }
-    musteriLokasyonSecenekleri(musteri.id)
+    if (!m?.id) { setLokasyonlar([]); return }
+    musteriLokasyonSecenekleri(m.id)
       .then(l => setLokasyonlar(l || []))
       .catch(() => setLokasyonlar([]))
-  }, [musteri?.id])
+  }
 
   // ⚠️ Müşteri listesinde alan adı `firma` (firmaAdi DEĞİL — canlıda "liste
   // gelmiyor" vakası, 18.08). Boş aramada ilk 30 gösterilir: alana tıklayan
@@ -345,7 +348,7 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
               border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
             }}>
               <span style={{ flex: 1, fontWeight: 600 }}>{musteriAdi(musteri)}</span>
-              <Button variant="ghost" onClick={() => { setMusteri(null); setMusteriArama('') }}>Değiştir</Button>
+              <Button variant="ghost" onClick={() => { musteriSec(null); setMusteriArama('') }}>Değiştir</Button>
             </div>
           ) : (
             <>
@@ -357,7 +360,7 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
                   borderRadius: 'var(--radius-sm)', maxHeight: 180, overflowY: 'auto',
                 }}>
                   {adaylar.map(m => (
-                    <button key={m.id} type="button" onClick={() => setMusteri(m)}
+                    <button key={m.id} type="button" onClick={() => musteriSec(m)}
                       style={{
                         display: 'block', width: '100%', textAlign: 'left',
                         padding: '7px 12px', background: 'transparent', border: 'none',
