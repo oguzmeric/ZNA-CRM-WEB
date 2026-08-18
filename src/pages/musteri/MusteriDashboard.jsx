@@ -418,11 +418,23 @@ export default function MusteriDashboard() {
   const kullaniciAd = kullanici?.ad || 'Değerli müşterimiz'
   const bugun = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
+  // İşletim sisteminde "hareketi azalt" açıksa banner'daki tüm döngüler durur.
+  // Sürekli dönen/parlayan öğeler bazı kullanıcılarda baş dönmesi yapar; bu
+  // tercih tarayıcıdan okunabildiği için saygı göstermek zorunludur.
+  const azHareket = useMemo(
+    () => typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
+    [],
+  )
+
   // ⚠️ padding BURADA — MusteriLayout'un <main>'i artık boşluk vermiyor (çift padding'di)
   return (
     <div style={{ padding: 16, maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* Banner */}
+      {/* Banner — hareketli ama "kurumsal": tüm döngüler yavaş (18-90sn) ve
+          düşük kontrastlı. Amaç dikkat çalmak değil, ekranın ölü durmaması.
+          ⚠️ azHareket: işletim sisteminde "hareketi azalt" açıksa TÜM döngüler
+          durur (erişilebilirlik + vestibüler rahatsızlık). */}
       <section
         style={{
           position: 'relative',
@@ -431,33 +443,72 @@ export default function MusteriDashboard() {
           borderRadius: 'var(--radius-lg)',
           padding: '13px 20px',
           overflow: 'hidden',
+          isolation: 'isolate',
         }}
       >
-        <svg
+        {/* 1) Gradient kayması — banner'ın kendi mavisi içinde gidip gelir */}
+        <motion.div
+          aria-hidden="true"
+          animate={azHareket ? undefined : { backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+          style={{
+            position: 'absolute', inset: 0, zIndex: -2,
+            background: `linear-gradient(115deg, ${PORTAL_BLUE[800]} 0%, ${PORTAL_BLUE[600]} 30%, ${PORTAL_BLUE[400]} 50%, ${PORTAL_BLUE[600]} 70%, ${PORTAL_BLUE[800]} 100%)`,
+            backgroundSize: '260% 100%',
+          }}
+        />
+
+        {/* 2) Sağ üstteki halkalar — çok yavaş döner (90sn tam tur) */}
+        <motion.svg
           aria-hidden="true"
           viewBox="0 0 200 200"
           width="200"
           height="200"
-          style={{ position: 'absolute', right: -20, top: -40, opacity: 0.15, pointerEvents: 'none' }}
+          animate={azHareket ? undefined : { rotate: 360 }}
+          transition={{ duration: 90, repeat: Infinity, ease: 'linear' }}
+          style={{ position: 'absolute', right: -20, top: -40, opacity: 0.15, pointerEvents: 'none', zIndex: -1 }}
         >
           {[40, 70, 100, 130].map(r => (
             <circle key={r} cx="100" cy="100" r={r} fill="none" stroke="#fff" strokeWidth="1" />
           ))}
-        </svg>
+        </motion.svg>
+
+        {/* 3) Nefes alan parıltı — sol alttan gelen yumuşak ışık */}
+        <motion.div
+          aria-hidden="true"
+          animate={azHareket ? undefined : { opacity: [0.10, 0.22, 0.10], scale: [1, 1.15, 1] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+          style={{
+            position: 'absolute', left: -60, bottom: -90, width: 260, height: 260, zIndex: -1,
+            background: 'radial-gradient(circle, #fff 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
+          {/* 4) Metin girişi — sayfa açılışında bir kez, döngü yok */}
+          <motion.div
+            initial={azHareket ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+          >
             <div style={{ font: '400 12px/16px var(--font-sans)', opacity: 0.8 }}>Hoş geldiniz,</div>
             <div style={{ font: '500 18px/24px var(--font-sans)', marginTop: 1 }}>{kullaniciAd}</div>
             <div style={{ font: '400 12px/16px var(--font-sans)', opacity: 0.75, marginTop: 4 }}>
               {bugun}{kullanici?.firmaAdi ? ` · ${kullanici.firmaAdi}` : ''}
             </div>
-          </div>
+          </motion.div>
+
           <motion.button
             type="button"
-            whileHover={{ y: -1 }}
+            initial={azHareket ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.1, ease: 'easeOut' }}
+            whileHover={{ y: -2, boxShadow: '0 6px 18px rgba(0,0,0,0.18)' }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/musteri-portal/yeni-talep')}
             style={{
+              position: 'relative', overflow: 'hidden',
               display: 'inline-flex', alignItems: 'center', gap: 8,
               height: 36, padding: '0 16px',
               background: '#fff', color: PORTAL_BLUE[600],
@@ -466,8 +517,21 @@ export default function MusteriDashboard() {
               cursor: 'pointer',
             }}
           >
-            <Plus size={15} strokeWidth={1.8} />
-            Yeni talep oluştur
+            {/* Butonun üzerinden geçen parıltı — 6 sn'de bir, 1.1 sn sürer */}
+            {!azHareket && (
+              <motion.span
+                aria-hidden="true"
+                animate={{ x: ['-140%', '240%'] }}
+                transition={{ duration: 1.1, repeat: Infinity, repeatDelay: 5, ease: 'easeInOut' }}
+                style={{
+                  position: 'absolute', top: 0, bottom: 0, width: 60,
+                  background: `linear-gradient(100deg, transparent, ${PORTAL_BLUE[50]}, transparent)`,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+            <Plus size={15} strokeWidth={1.8} style={{ position: 'relative' }} />
+            <span style={{ position: 'relative' }}>Yeni talep oluştur</span>
           </motion.button>
         </div>
       </section>
