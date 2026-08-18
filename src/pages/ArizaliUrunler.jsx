@@ -7,8 +7,9 @@
 //  • durum işleme: Arızalı → Serviste → Tamir edildi (Aktif) / Hurda, notlu
 //  • hareket geçmişi. Veri katmanı musteriCihazService (mig 149 tabloları).
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import {
-  AlertTriangle, Wrench, Plus, History, CheckCircle2, Trash2, Send,
+  AlertTriangle, Wrench, Plus, History, CheckCircle2, Trash2, Send, FileSpreadsheet,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -76,6 +77,38 @@ export default function ArizaliUrunler() {
     { id: 'aktif', ad: 'Tamir edilen/Aktif' }, { id: 'hurda', ad: 'Hurda' },
     { id: 'tumu', ad: `Tümü (${sayilar.toplam})` },
   ]
+  const aktifFiltreAd = FILTRELER.find(f => f.id === durumFiltre)?.ad || durumFiltre
+
+  // Ekrandaki FİLTRELENMİŞ listenin birebir Excel hali (Puantaj deseni:
+  // künye + satırlar; buton tablonun başlık şeridinde).
+  const excelAktar = () => {
+    const kunye = [
+      ['ARIZALI ÜRÜNLER'],
+      ['Filtre', aktifFiltreAd + (arama.trim() ? ` · arama: "${arama.trim()}"` : '')],
+      ['Rapor alındı', new Date().toLocaleString('tr-TR')],
+      [],
+    ]
+    const veriler = liste.map(c => ({
+      'Müşteri': c.musteriAd || '',
+      'Cihaz Adı': c.cihazAdi || '',
+      'Marka': c.marka || '',
+      'Model': c.model || '',
+      'Seri No': c.seriNo || 'SN\'siz',
+      'Durum': durumBilgi(c.durum).isim,
+      'Arıza Nedeni': c.arizaNedeni || '',
+      'Arıza Tarihi': fmtTarih(c.arizaTarihi),
+      'Lokasyon': c.lokasyon || '',
+      'Not': c.notlar || '',
+      'Kayıt Tarihi': fmtTarih(c.olusturmaTarih),
+    }))
+    const ws = XLSX.utils.aoa_to_sheet(kunye)
+    XLSX.utils.sheet_add_json(ws, veriler, { origin: -1 })
+    ws['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 32 }, { wch: 12 }, { wch: 26 }, { wch: 24 }, { wch: 12 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Arızalı Ürünler')
+    XLSX.writeFile(wb, `arizali-urunler-${durumFiltre}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    toast.success('Excel indirildi.')
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -111,6 +144,20 @@ export default function ArizaliUrunler() {
 
       {/* Liste */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border-default)',
+        }}>
+          <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+            {aktifFiltreAd}
+            <span style={{ font: '400 12px/18px var(--font-sans)', color: 'var(--text-tertiary)', marginLeft: 6 }}>
+              {liste.length} kayıt
+            </span>
+          </div>
+          <Button variant="ghost" onClick={excelAktar} disabled={yukleniyor || liste.length === 0}>
+            <FileSpreadsheet size={14} strokeWidth={1.7} /> Excel'e Aktar
+          </Button>
+        </div>
         {yukleniyor ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
         ) : liste.length === 0 ? (
