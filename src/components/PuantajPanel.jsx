@@ -69,7 +69,11 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
     const duzeltme = duzeltmeler.find(d => d.kullaniciId === p.id) || null
     const dakikalar = gecerliDakikalar(oto, duzeltme)
     const maasKaydi = donemMaasiSec(maaslar.filter(m => m.kullaniciId === p.id), yil, ay)
-    const hesap = puantajSatirHesapla({ brutTutar: maasKaydi?.brutTutar, ...dakikalar, ayar })
+    const hesap = puantajSatirHesapla({
+      brutTutar: maasKaydi?.brutTutar,
+      besDahil: maasKaydi?.besDahil !== false,
+      ...dakikalar, ayar,
+    })
     return { personel: p, oto, duzeltme, dakikalar, maasKaydi, hesap }
   }), [personeller, ozet, duzeltmeler, maaslar, yil, ay, ayar])
 
@@ -83,6 +87,8 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
         sayi: liste.length,
         mesaiToplam: liste.reduce((t, s) => t + (s.hesap.mesaiToplam || 0), 0),
         genelToplam: liste.reduce((t, s) => t + (s.hesap.genelToplam || 0), 0),
+        besToplam: liste.reduce((t, s) => t + (s.hesap.besKesinti || 0), 0),
+        odenecekToplam: liste.reduce((t, s) => t + (s.hesap.odenecek || 0), 0),
       }
     }
     return {
@@ -100,13 +106,14 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
     const kunye = [
       ['PUANTAJ RAPORU'],
       ['Dönem', `${AYLAR[ay - 1]} ${yil}`],
-      ['Formül', `Saat ücreti = brüt ÷ ${Number(ayar.aylikSaatBolen)} · Hafta içi ×${Number(ayar.haftaIciKatsayi)} · Pazar ×${Number(ayar.pazarKatsayi)} · Resmî tatil ×${Number(ayar.resmiTatilKatsayi)}`],
+      ['Formül', `Saat ücreti = maaş ÷ ${Number(ayar.aylikSaatBolen)} · Hafta içi ×${Number(ayar.haftaIciKatsayi)} · Pazar ×${Number(ayar.pazarKatsayi)} · Resmî tatil ×${Number(ayar.resmiTatilKatsayi)} · BES kesintisi %${Number(ayar.besOrani ?? 0)} (maaş+mesai üzerinden)`],
       ['Rapor alındı', new Date().toLocaleString('tr-TR')],
       [],
     ]
     const veriler = satirlar.map(({ personel, oto, duzeltme, dakikalar, maasKaydi, hesap }) => {
       const notlar = []
       if (!maasKaydi) notlar.push('Maaş girilmemiş')
+      if (maasKaydi && maasKaydi.besDahil === false) notlar.push('BES muaf (caymış)')
       if (dakikalar.duzeltilmis) notlar.push(`Elle düzeltildi: ${duzeltme?.aciklama || ''}`)
       if ((oto.acikKayitSayisi || 0) > 0) notlar.push(`${oto.acikKayitSayisi} açık mesai kaydı hesaba girmedi`)
       return {
@@ -119,23 +126,26 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
         'Resmî Tatil (saat)': Number(hesap.rtSaat.toFixed(2)),
         'Mesai Tutarı (₺)': hesap.mesaiToplam ?? '',
         'Toplam Hakediş (₺)': hesap.genelToplam ?? '',
+        'BES Kesintisi (₺)': hesap.besKesinti ?? '',
+        'Ödenecek (₺)': hesap.odenecek ?? '',
         'Not': notlar.join(' · '),
       }
     })
     const toplamSatir = (etiket, g, not = '') => ({
       'Personel': etiket, 'Maaş (₺)': '', 'Maaş Türü': '', 'Saat Ücreti (₺)': '',
       'Hafta İçi FM (saat)': '', 'Pazar (saat)': '', 'Resmî Tatil (saat)': '',
-      'Mesai Tutarı (₺)': g.mesaiToplam, 'Toplam Hakediş (₺)': g.genelToplam, 'Not': not,
+      'Mesai Tutarı (₺)': g.mesaiToplam, 'Toplam Hakediş (₺)': g.genelToplam,
+      'BES Kesintisi (₺)': g.besToplam ?? '', 'Ödenecek (₺)': g.odenecekToplam ?? '', 'Not': not,
     })
     if (toplamlar.brut.sayi > 0) veriler.push(toplamSatir('TOPLAM (Brüt bazlı)', toplamlar.brut))
     if (toplamlar.net.sayi > 0) veriler.push(toplamSatir('TOPLAM (Net bazlı)', toplamlar.net))
     if (toplamlar.maassizSayi > 0) {
-      veriler.push(toplamSatir('', { mesaiToplam: '', genelToplam: '' },
+      veriler.push(toplamSatir('', { mesaiToplam: '', genelToplam: '', besToplam: '', odenecekToplam: '' },
         `${toplamlar.maassizSayi} personel maaşsız, toplamların dışında`))
     }
     const ws = XLSX.utils.aoa_to_sheet(kunye)
     XLSX.utils.sheet_add_json(ws, veriler, { origin: -1 })
-    ws['!cols'] = [{ wch: 24 }, { wch: 13 }, { wch: 10 }, { wch: 13 }, { wch: 17 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 17 }, { wch: 40 }]
+    ws['!cols'] = [{ wch: 24 }, { wch: 13 }, { wch: 10 }, { wch: 13 }, { wch: 17 }, { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 17 }, { wch: 15 }, { wch: 15 }, { wch: 40 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, `Puantaj ${AYLAR[ay - 1]} ${yil}`)
     XLSX.writeFile(wb, `puantaj-${yil}-${String(ay).padStart(2, '0')}.xlsx`)
@@ -164,7 +174,7 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-            Saat ücreti = maaş ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)}
+            Saat ücreti = maaş ÷ {Number(ayar.aylikSaatBolen)} · Hafta içi ×{Number(ayar.haftaIciKatsayi)} · Pazar ×{Number(ayar.pazarKatsayi)} · Resmî tatil ×{Number(ayar.resmiTatilKatsayi)} · BES %{Number(ayar.besOrani ?? 0)}
           </div>
           <Button variant="ghost" onClick={() => setAyarModal(true)}>
             <Settings2 size={14} strokeWidth={1.7} /> Katsayılar
@@ -205,6 +215,8 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
                   <TH style={{ textAlign: 'right' }}>Resmî Tatil</TH>
                   <TH style={{ textAlign: 'right' }}>Mesai Tutarı</TH>
                   <TH style={{ textAlign: 'right' }}>Toplam Hakediş</TH>
+                  <TH style={{ textAlign: 'right' }}>BES</TH>
+                  <TH style={{ textAlign: 'right' }}>Ödenecek</TH>
                   <TH style={{ width: 90 }}></TH>
                 </TR>
               </THead>
@@ -249,6 +261,16 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
                     <TD style={{ textAlign: 'right', fontWeight: 700 }}>
                       {hesap.genelToplam != null ? tutarBicim(hesap.genelToplam) : '—'}
                     </TD>
+                    <TD style={{ textAlign: 'right', color: 'var(--danger)' }}>
+                      {maasKaydi && maasKaydi.besDahil === false
+                        ? <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>muaf</span>
+                        : hesap.besKesinti != null && hesap.besKesinti > 0
+                          ? `−${tutarBicim(hesap.besKesinti)}`
+                          : '—'}
+                    </TD>
+                    <TD style={{ textAlign: 'right', fontWeight: 700 }}>
+                      {hesap.odenecek != null ? tutarBicim(hesap.odenecek) : '—'}
+                    </TD>
                     <TD>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                         <button
@@ -278,10 +300,10 @@ export default function PuantajPanel({ personeller = [], kullanici }) {
             font: '500 12.5px/18px var(--font-sans)',
           }}>
             {toplamlar.brut.sayi > 0 && (
-              <span>Brüt bazlı — mesai: <b>{tutarBicim(toplamlar.brut.mesaiToplam)}</b> · toplam hakediş: <b>{tutarBicim(toplamlar.brut.genelToplam)}</b></span>
+              <span>Brüt bazlı — mesai: <b>{tutarBicim(toplamlar.brut.mesaiToplam)}</b> · hakediş: <b>{tutarBicim(toplamlar.brut.genelToplam)}</b> · BES: <b>−{tutarBicim(toplamlar.brut.besToplam)}</b> · ödenecek: <b>{tutarBicim(toplamlar.brut.odenecekToplam)}</b></span>
             )}
             {toplamlar.net.sayi > 0 && (
-              <span>Net bazlı — mesai: <b>{tutarBicim(toplamlar.net.mesaiToplam)}</b> · toplam hakediş: <b>{tutarBicim(toplamlar.net.genelToplam)}</b></span>
+              <span>Net bazlı — mesai: <b>{tutarBicim(toplamlar.net.mesaiToplam)}</b> · hakediş: <b>{tutarBicim(toplamlar.net.genelToplam)}</b> · BES: <b>−{tutarBicim(toplamlar.net.besToplam)}</b> · ödenecek: <b>{tutarBicim(toplamlar.net.odenecekToplam)}</b></span>
             )}
             {toplamlar.maassizSayi > 0 && (
               <span style={{ color: 'var(--danger)' }}>
@@ -337,6 +359,7 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
   const [tutar, setTutar] = useState('')
   // Yeni kayıtta varsayılan, kişinin SON kaydının türü (tutarlılık); hiç yoksa brüt
   const [maasTuru, setMaasTuru] = useState(maaslar[0]?.maasTuru || 'brut')
+  const [besDahil, setBesDahil] = useState(maaslar[0]?.besDahil !== false)
   const [not, setNot] = useState('')
   const [mesgul, setMesgul] = useState(false)
 
@@ -348,7 +371,7 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
     try {
       await maasEkle({
         kullaniciId: personel.id, gecerliBaslangic: baslangic,
-        brutTutar: t, maasTuru, not: not.trim(), ekleyenId: kullanici?.id,
+        brutTutar: t, maasTuru, besDahil, not: not.trim(), ekleyenId: kullanici?.id,
       })
       toast.success('Maaş kaydedildi.')
       onDegisti()
@@ -393,6 +416,10 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
             </CustomSelect>
           </div>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', font: '400 13px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+          <input type="checkbox" checked={besDahil} onChange={e => setBesDahil(e.target.checked)} />
+          BES kesintisi uygulansın (işareti kaldır = bu kişi BES'ten caymış)
+        </label>
         <div>
           <Label>Not</Label>
           <Input value={not} onChange={e => setNot(e.target.value)} placeholder="örn. Ağustos zammı" />
@@ -549,19 +576,25 @@ function AyarModal({ ayar, kullanici, onKapat, onDegisti, toast }) {
   const [hi, setHi] = useState(String(ayar.haftaIciKatsayi))
   const [pz, setPz] = useState(String(ayar.pazarKatsayi))
   const [rt, setRt] = useState(String(ayar.resmiTatilKatsayi))
+  const [bes, setBes] = useState(String(ayar.besOrani ?? 3))
   const [mesgul, setMesgul] = useState(false)
 
   const kaydet = async () => {
     const sayi = (s) => Number(String(s).replace(',', '.'))
-    const b = sayi(bolen), h = sayi(hi), p = sayi(pz), r = sayi(rt)
+    const b = sayi(bolen), h = sayi(hi), p = sayi(pz), r = sayi(rt), bo = sayi(bes)
     if (![b, h, p, r].every(n => Number.isFinite(n) && n > 0)) {
-      toast.error('Tüm değerler sıfırdan büyük sayı olmalı.')
+      toast.error('Bölen ve katsayılar sıfırdan büyük sayı olmalı.')
+      return
+    }
+    if (!Number.isFinite(bo) || bo < 0) {
+      toast.error('BES oranı 0 veya daha büyük olmalı (0 = kesinti yok).')
       return
     }
     setMesgul(true)
     try {
       await puantajAyarKaydet({
         aylikSaatBolen: b, haftaIciKatsayi: h, pazarKatsayi: p, resmiTatilKatsayi: r,
+        besOrani: bo,
         guncelleyenId: kullanici?.id,
       })
       toast.success('Katsayılar güncellendi.')
@@ -595,7 +628,15 @@ function AyarModal({ ayar, kullanici, onKapat, onDegisti, toast }) {
             <Label>Resmî tatil katsayısı</Label>
             <Input type="number" min="0.1" step="0.05" value={rt} onChange={e => setRt(e.target.value)} />
           </div>
+          <div>
+            <Label>BES kesinti oranı (%)</Label>
+            <Input type="number" min="0" step="0.5" value={bes} onChange={e => setBes(e.target.value)} />
+          </div>
         </div>
+        <p style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: 0 }}>
+          BES, (maaş + mesai) üzerinden kesilir ve Ödenecek sütununda düşülür.
+          0 girilirse kesinti tamamen kapanır; kişi bazında muafiyet maaş penceresinden.
+        </p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onKapat} disabled={mesgul}>Vazgeç</Button>
           <Button variant="primary" onClick={kaydet} disabled={mesgul}>

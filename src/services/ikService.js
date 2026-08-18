@@ -497,7 +497,7 @@ export async function puantajAyarGetir() {
   return toCamel(data)
 }
 
-export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazarKatsayi, resmiTatilKatsayi, guncelleyenId }) {
+export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazarKatsayi, resmiTatilKatsayi, besOrani, guncelleyenId }) {
   const { data, error } = await supabase
     .from('ik_puantaj_ayarlar')
     .update({
@@ -505,6 +505,7 @@ export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazar
       hafta_ici_katsayi: haftaIciKatsayi,
       pazar_katsayi: pazarKatsayi,
       resmi_tatil_katsayi: resmiTatilKatsayi,
+      bes_orani: besOrani,
       guncelleyen_id: guncelleyenId ?? null,
       guncelleme_tarih: new Date().toISOString(),
     })
@@ -517,13 +518,13 @@ export async function puantajAyarKaydet({ aylikSaatBolen, haftaIciKatsayi, pazar
 export async function maasKayitlariGetir() {
   const { data, error } = await supabase
     .from('personel_maaslari')
-    .select('id, kullanici_id, gecerli_baslangic, brut_tutar, maas_turu, not_, olusturma_tarih')
+    .select('id, kullanici_id, gecerli_baslangic, brut_tutar, maas_turu, bes_dahil, not_, olusturma_tarih')
     .order('gecerli_baslangic', { ascending: false })
   if (error) throw error
   return (data || []).map(toCamel)
 }
 
-export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, maasTuru, not, ekleyenId }) {
+export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, maasTuru, besDahil, not, ekleyenId }) {
   const { data, error } = await supabase
     .from('personel_maaslari')
     .insert({
@@ -531,6 +532,7 @@ export async function maasEkle({ kullaniciId, gecerliBaslangic, brutTutar, maasT
       gecerli_baslangic: gecerliBaslangic,
       brut_tutar: brutTutar,
       maas_turu: maasTuru === 'net' ? 'net' : 'brut',
+      bes_dahil: besDahil !== false,
       not_: not || null,
       ekleyen_id: ekleyenId ?? null,
     })

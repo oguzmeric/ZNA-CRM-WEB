@@ -58,6 +58,20 @@ console.log('— Ayarlanabilir katsayı (Abdullah değiştirirse) —')
   esit('1 saat ×2 = 400,00', s.hiTutar, 400)
 }
 
+console.log('— BES kesintisi: (maaş+mesai) × %3, hakedişten düşer —')
+{
+  const s = puantajSatirHesapla({ brutTutar: 33030, haftaIciDakika: 600 })
+  esit('genel 35.232 → BES 1.056,96', s.besKesinti, 1056.96)
+  esit('ödenecek 34.175,04', s.odenecek, 34175.04)
+  const muaf = puantajSatirHesapla({ brutTutar: 33030, haftaIciDakika: 600, besDahil: false })
+  esit('caymış: kesinti 0', muaf.besKesinti, 0)
+  esit('caymış: ödenecek = hakediş', muaf.odenecek, 35232)
+  const kapali = puantajSatirHesapla({ brutTutar: 33030, ayar: { ...VARSAYILAN_AYAR, besOrani: 0 } })
+  esit('oran 0: kesinti 0', kapali.besKesinti, 0)
+  const maassiz = puantajSatirHesapla({ brutTutar: null, haftaIciDakika: 60 })
+  esit('maaşsız: BES/ödenecek null', [maassiz.besKesinti, maassiz.odenecek], [null, null])
+}
+
 console.log('— donemMaasiSec: dönem sonuna kadar geçerli en yeni maaş —')
 {
   const maaslar = [

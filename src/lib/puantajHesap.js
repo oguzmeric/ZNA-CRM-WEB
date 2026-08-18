@@ -13,6 +13,7 @@ export const VARSAYILAN_AYAR = {
   haftaIciKatsayi: 1.5,
   pazarKatsayi: 2.5,
   resmiTatilKatsayi: 2.0,
+  besOrani: 3,           // BES otomatik katılım %; 0 = kesinti kapalı (mig 305)
 }
 
 // Döneme (yil, ay) o tarihte geçerli brüt maaşı seç: gecerliBaslangic ay
@@ -33,6 +34,7 @@ export const puantajSatirHesapla = ({
   haftaIciDakika = 0,
   pazarDakika = 0,
   resmiTatilDakika = 0,
+  besDahil = true,
   ayar = VARSAYILAN_AYAR,
 }) => {
   const hiSaat = (Number(haftaIciDakika) || 0) / 60
@@ -43,6 +45,7 @@ export const puantajSatirHesapla = ({
       saatUcreti: null, hiSaat, pzSaat, rtSaat,
       hiTutar: null, pzTutar: null, rtTutar: null,
       mesaiToplam: null, genelToplam: null,
+      besKesinti: null, odenecek: null,
     }
   }
   const brut = Number(brutTutar)
@@ -51,11 +54,19 @@ export const puantajSatirHesapla = ({
   const pzTutar = kurus(pzSaat * saatUcreti * Number(ayar.pazarKatsayi))
   const rtTutar = kurus(rtSaat * saatUcreti * Number(ayar.resmiTatilKatsayi))
   const mesaiToplam = kurus(hiTutar + pzTutar + rtTutar)
+  const genelToplam = kurus(brut + mesaiToplam)
+  // BES otomatik katılım prime esas kazançtan kesilir — fazla mesai DAHİL
+  // (maaş+mesai)×oran. Kişi caymışsa (besDahil=false) veya oran 0 ise yok.
+  const besKesinti = besDahil
+    ? kurus(genelToplam * (Number(ayar.besOrani || 0) / 100))
+    : 0
   return {
     saatUcreti: kurus(saatUcreti), hiSaat, pzSaat, rtSaat,
     hiTutar, pzTutar, rtTutar,
     mesaiToplam,
-    genelToplam: kurus(brut + mesaiToplam),
+    genelToplam,
+    besKesinti,
+    odenecek: kurus(genelToplam - besKesinti),
   }
 }
 
