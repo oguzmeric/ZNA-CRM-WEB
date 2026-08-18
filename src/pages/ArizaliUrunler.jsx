@@ -17,6 +17,8 @@ import {
   cihazArizaGiderildi, cihazServiseGonder, cihazHurdayaAyir, cihazHareketleriGetir,
 } from '../services/musteriCihazService'
 import { musterileriGetir } from '../services/musteriService'
+import { musteriLokasyonSecenekleri } from '../services/sahaCihazService'
+import LokasyonSecici from '../components/LokasyonSecici'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Modal,
   Table, THead, TBody, TR, TH, TD,
@@ -226,9 +228,25 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
   const [form, setForm] = useState({
     cihazAdi: '', marka: '', model: '', seriNo: '', lokasyon: '', arizaNedeni: '', notlar: '',
   })
+  // Müşterinin TANIMLI lokasyonları (18.08: "Başakşehir'i yazdım, lokasyonlar
+  // gelmedi") — varsa ID tabanlı seçici + detay, yoksa serbest metin.
+  // Kayıt kolonu METİN: "Lokasyon Adı — detay" birleştirilip yazılır.
+  const [lokasyonlar, setLokasyonlar] = useState([])
+  const [lokasyonId, setLokasyonId] = useState(null)
+  const [lokasyonDetay, setLokasyonDetay] = useState('')
   const [mesgul, setMesgul] = useState(false)
 
   useEffect(() => { musterileriGetir().then(m => setMusteriler(m || [])) }, [])
+
+  useEffect(() => {
+    setLokasyonId(null)
+    setLokasyonDetay('')
+    setForm(f => ({ ...f, lokasyon: '' }))
+    if (!musteri?.id) { setLokasyonlar([]); return }
+    musteriLokasyonSecenekleri(musteri.id)
+      .then(l => setLokasyonlar(l || []))
+      .catch(() => setLokasyonlar([]))
+  }, [musteri?.id])
 
   // ⚠️ Müşteri listesinde alan adı `firma` (firmaAdi DEĞİL — canlıda "liste
   // gelmiyor" vakası, 18.08). Boş aramada ilk 30 gösterilir: alana tıklayan
@@ -247,12 +265,16 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
     if (!form.arizaNedeni.trim()) { toast.error('Arıza nedeni zorunlu.'); return }
     setMesgul(true)
     try {
+      const seciliLok = lokasyonlar.find(l => String(l.id) === String(lokasyonId))
+      const lokasyonMetni = seciliLok
+        ? (lokasyonDetay.trim() ? `${seciliLok.ad} — ${lokasyonDetay.trim()}` : seciliLok.ad)
+        : (lokasyonlar.length > 0 ? lokasyonDetay.trim() : form.lokasyon.trim())
       const { hata } = await cihazEkle({
         musteriId: musteri.id,
         cihazAdi: form.cihazAdi.trim(),
         marka: form.marka.trim(), model: form.model.trim(),
         seriNo: form.seriNo.trim(),          // boş = SN'siz (barkodsuz)
-        lokasyon: form.lokasyon.trim(),
+        lokasyon: lokasyonMetni,
         durum: 'arizali',
         arizaNedeni: form.arizaNedeni.trim(),
         arizaTarihi: new Date().toISOString(),
@@ -321,7 +343,22 @@ function YeniArizaliModal({ kullanici, toast, onKapat, onDegisti }) {
         </div>
         <div>
           <Label>Lokasyon</Label>
-          <Input value={form.lokasyon} onChange={set('lokasyon')} placeholder="örn. Giriş kapısı / Depo" />
+          {lokasyonlar.length > 0 ? (
+            <>
+              <LokasyonSecici
+                lokasyonlar={lokasyonlar}
+                value={lokasyonId}
+                onChange={setLokasyonId}
+                ipucuVer={(l) => l.adres || ''}
+              />
+              <div style={{ marginTop: 6 }}>
+                <Input value={lokasyonDetay} onChange={e => setLokasyonDetay(e.target.value)}
+                  placeholder="Bina/kat/oda detayı (opsiyonel)" />
+              </div>
+            </>
+          ) : (
+            <Input value={form.lokasyon} onChange={set('lokasyon')} placeholder="örn. Giriş kapısı / Depo" />
+          )}
         </div>
         <div>
           <Label required>Arıza nedeni</Label>
