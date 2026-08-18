@@ -551,6 +551,17 @@ export async function maasSil(id) {
   return true
 }
 
+/** Mevcut kayıtta BES muafiyetini değiştir — tutar yeniden girilmez
+ *  (17.08 UX düzeltmesi: yalnız BES değişikliği için yeni kayıt istemek tutarsızdı). */
+export async function maasBesDegistir(id, besDahil) {
+  const { data, error } = await supabase
+    .from('personel_maaslari')
+    .update({ bes_dahil: besDahil !== false })
+    .eq('id', id).select().single()
+  if (error) throw error
+  return toCamel(data)
+}
+
 /** Dönemin fazla mesai dakikaları — mesai_kayitlari tip='fazla' (RPC, mig 303). */
 export async function puantajDonemOzeti(yil, ay) {
   const { data, error } = await supabase.rpc('puantaj_donem_ozeti', { p_yil: yil, p_ay: ay })

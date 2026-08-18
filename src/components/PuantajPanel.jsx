@@ -13,6 +13,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
   puantajAyarGetir, puantajAyarKaydet, maasKayitlariGetir, maasEkle, maasSil,
+  maasBesDegistir,
   puantajDonemOzeti, puantajDuzeltmelerGetir, puantajDuzeltmeKaydet, puantajDuzeltmeSil,
   tutarBicim,
 } from '../services/ikService'
@@ -356,8 +357,9 @@ const ikonBtnStil = {
 function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, toast, confirm }) {
   const donemBasi = `${yil}-${String(ay).padStart(2, '0')}-01`
   const [baslangic, setBaslangic] = useState(donemBasi)
-  const [tutar, setTutar] = useState('')
-  // Yeni kayıtta varsayılan, kişinin SON kaydının türü (tutarlılık); hiç yoksa brüt
+  // Yeni kayıt alanları SON kayıttan ön-dolu (tutar dahil) — yalnız tek alan
+  // değiştirmek için her şeyi yeniden yazmak gerekmesin (17.08 geri bildirimi)
+  const [tutar, setTutar] = useState(maaslar[0]?.brutTutar != null ? String(maaslar[0].brutTutar) : '')
   const [maasTuru, setMaasTuru] = useState(maaslar[0]?.maasTuru || 'brut')
   const [besDahil, setBesDahil] = useState(maaslar[0]?.besDahil !== false)
   const [not, setNot] = useState('')
@@ -379,6 +381,15 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
     } catch (e) {
       toast.error(e?.message || 'Kaydedilemedi.')
     } finally { setMesgul(false) }
+  }
+
+  // Mevcut kayıtta BES'i tek tıkla değiştir — tutar yeniden GİRİLMEZ
+  const besDegistir = async (m) => {
+    try {
+      await maasBesDegistir(m.id, m.besDahil === false)
+      toast.success(m.besDahil === false ? 'BES kesintisi açıldı.' : 'Kişi BES\'ten muaf yapıldı.')
+      onDegisti()
+    } catch (e) { toast.error(e?.message || 'Değiştirilemedi.') }
   }
 
   const sil = async (m) => {
@@ -448,6 +459,20 @@ function MaasModal({ personel, maaslar, yil, ay, kullanici, onKapat, onDegisti, 
                     </span>
                   </span>
                   {m.not && <span style={{ color: 'var(--text-tertiary)' }}>{m.not}</span>}
+                  <button
+                    type="button"
+                    title="Bu kayıtta BES kesintisini aç/kapat — tutar yeniden girilmez"
+                    onClick={() => besDegistir(m)}
+                    style={{
+                      border: '1px solid var(--border-default)', borderRadius: 999,
+                      padding: '2px 8px', cursor: 'pointer',
+                      font: '700 10px/14px var(--font-sans)', letterSpacing: 0.3,
+                      background: m.besDahil === false ? 'var(--surface-muted, #f1f5f9)' : 'var(--info-soft, #e0f2fe)',
+                      color: m.besDahil === false ? 'var(--text-tertiary)' : 'var(--info, #0369a1)',
+                    }}
+                  >
+                    {m.besDahil === false ? 'BES muaf' : 'BES ✓'}
+                  </button>
                   <button type="button" title="Sil" onClick={() => sil(m)} style={ikonBtnStil}>
                     <Trash2 size={12} strokeWidth={1.7} />
                   </button>
