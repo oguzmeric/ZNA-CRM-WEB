@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import MusteriDavetModal from '../components/MusteriDavetModal'
 import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
+import BolumBaslik from '../components/BolumBaslik'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -451,9 +452,9 @@ function MusteriDetay() {
       <Card style={{ marginBottom: 12, padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-            <Avatar name={musteri.firma || musteri.ad} size="md" />
+            <Avatar name={musteri.firma || musteri.ad} size="lg" />
             <div style={{ minWidth: 0 }}>
-              <div style={{ font: '700 16px/22px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 2 }}>
+              <div style={{ font: '700 19px/26px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 3 }}>
                 {musteri.firma || '—'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
@@ -602,18 +603,13 @@ function MusteriDetay() {
             </div>
           </div>
         )}
-      </Card>
-
-      {/* Özet — kompakt yatay şerit */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 4,
-        padding: '6px 10px',
-        background: 'var(--surface-card)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-md)',
-        marginBottom: 12,
-        alignItems: 'stretch',
-      }}>
+        {/* Özet şeridi — ayrı karttı, künyeye entegre edildi (18.08: "bütünlük yok") */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 4,
+          marginTop: 12, paddingTop: 10,
+          borderTop: '1px solid var(--border-default)',
+          alignItems: 'stretch',
+        }}>
         {[
           { key: 'gorusme', isim: 'Görüşme', sayi: gorusmeler.length, Icon: Phone },
           { key: 'teklif',  isim: 'Teklif',  sayi: teklifler.length,  Icon: FileText },
@@ -654,7 +650,8 @@ function MusteriDetay() {
             ),
           ]
         })}
-      </div>
+        </div>
+      </Card>
 
       {/* İki kolon: SOL = künye (kişi/lokasyon/finans), SAĞ = hareket
           (sipariş/servis/cihaz/geçmiş). 1100px altında tek kolona düşer. */}
@@ -662,18 +659,11 @@ function MusteriDetay() {
         <div className="musteri-kolon">
       {/* İlgili kişiler */}
       <Card padding={0} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Users size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-            <h2 className="t-h2" style={{ margin: 0 }}>İlgili Kişiler</h2>
-            <span className="t-caption tabular-nums">({kisiler.length})</span>
-          </div>
-          {!kisiForm && (
-            <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setKisiForm({ ...bosKisi })}>
-              Kişi ekle
-            </Button>
-          )}
-        </div>
+        <BolumBaslik Icon={Users} baslik="İlgili Kişiler" sayi={kisiler.length} sag={!kisiForm && (
+          <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setKisiForm({ ...bosKisi })}>
+            Kişi ekle
+          </Button>
+        )} />
 
         {kisiForm && (
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
@@ -791,18 +781,11 @@ function MusteriDetay() {
 
       {/* Alt lokasyonlar */}
       <Card ref={lokasyonBolumRef} padding={0} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-default)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-            <h2 className="t-h2" style={{ margin: 0 }}>Alt Lokasyonlar</h2>
-            <span className="t-caption tabular-nums">({lokasyonlar.length})</span>
-          </div>
-          {!lokasyonForm && (
-            <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setLokasyonForm({ ...bosLok })}>
-              Lokasyon ekle
-            </Button>
-          )}
-        </div>
+        <BolumBaslik Icon={MapPin} baslik="Alt Lokasyonlar" sayi={lokasyonlar.length} sag={!lokasyonForm && (
+          <Button variant="secondary" size="sm" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => setLokasyonForm({ ...bosLok })}>
+            Lokasyon ekle
+          </Button>
+        )} />
 
         {lokasyonForm && (
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', background: 'var(--surface-sunken)' }}>
@@ -1070,17 +1053,14 @@ function MusteriDetay() {
         <div className="musteri-kolon">
       {/* Sipariş Özeti — ZNA-SIP kayıtları (üst sırada göster) */}
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <CardTitle>Sipariş Özeti</CardTitle>
-          {siparisler.length > 0 && (
-            <button
-              onClick={() => navigate(`/siparisler?musteri=${musteri.id}`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 13px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
+        <BolumBaslik inline Icon={Inbox} baslik="Sipariş Özeti" sayi={siparisler.length} sag={siparisler.length > 0 && (
+          <button
+            onClick={() => navigate(`/siparisler?musteri=${musteri.id}`)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12.5px/18px var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            Tümünü gör <ArrowRight size={14} strokeWidth={1.5} />
+          </button>
+        )} />
         {siparisler.length === 0 ? (
           <div style={{
             padding: '20px 12px', textAlign: 'center',
@@ -1246,13 +1226,11 @@ function MusteriDetay() {
         const acik = musteriTalepleri.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
         return (
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <CardTitle>Servis Talepleri</CardTitle>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {acik.length > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{acik.length} açık · </span>}
-                {musteriTalepleri.length} toplam
-              </span>
-            </div>
+            <BolumBaslik inline Icon={Wrench} baslik="Servis Talepleri" sayi={musteriTalepleri.length} sag={
+              acik.length > 0 && (
+                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{acik.length} açık</span>
+              )
+            } />
             <div>
               {musteriTalepleri.slice(0, 8).map(t => {
                 const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }

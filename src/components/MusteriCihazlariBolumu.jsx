@@ -9,7 +9,8 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from './CustomSelect'
 import LokasyonSecici from './LokasyonSecici'
-import { Button, Input, Textarea, Label, Card, CardTitle, EmptyState } from './ui'
+import BolumBaslik from './BolumBaslik'
+import { Button, Input, Textarea, Label, Card, EmptyState } from './ui'
 import {
   CIHAZ_DURUMLARI, musteriCihazlariGetir, cihazEkle, cihazGuncelle,
   cihazArizaBildir, cihazArizaGiderildi, cihazSil, cihazHareketleriGetir,
@@ -180,17 +181,14 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [], on
 
   return (
     <Card style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CardTitle style={{ margin: 0 }}>Müşteri Cihazları</CardTitle>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {cihazlar.length} cihaz{arizaliSayi > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}> · {arizaliSayi} arızalı</span>}
-          </span>
-        </div>
+      <BolumBaslik inline Icon={MonitorSmartphone} baslik="Müşteri Cihazları" sayi={cihazlar.length} sag={<>
+        {arizaliSayi > 0 && (
+          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{arizaliSayi} arızalı</span>
+        )}
         <Button variant="secondary" size="sm" iconLeft={<Plus size={13} strokeWidth={1.5} />} onClick={() => formAc()}>
           Cihaz Ekle
         </Button>
-      </div>
+      </>} />
 
       {cihazlar.length === 0 && !form && (
         <EmptyState
