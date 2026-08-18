@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, FileText, Package, Search, ShoppingCart, X, Plus, Minus,
@@ -116,13 +116,44 @@ export default function TeklifIste() {
   const [gonderildi, setGonderildi] = useState(false)
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [buyukGorsel, setBuyukGorsel] = useState(null)
+  const [katalogHata, setKatalogHata] = useState(null)
 
-  useEffect(() => {
-    katalogUrunleriniGetir().then(d => { setKatalogUrunler(d || []); setKatalogYukleniyor(false) })
+  // ⚠️ SESSİZ BAŞARISIZLIK YASAK (18.08): katalog çağrısının catch'i yoktu —
+  // istek patlarsa setKatalogYukleniyor(false) HİÇ çalışmıyor, ekran sonsuza
+  // kadar iskelet gösteriyordu. Hata yakalanmadığı için sebep de görünmüyordu
+  // ("teklif iste'ye basınca ürünler listelenmiyor" vakası). Artık hata
+  // ekranda yazılır ve tekrar denenebilir.
+  // Yükleme bayrağı effect gövdesinde senkron set EDİLMEZ (cascading render):
+  // başlangıçta zaten true, yeniden denemede `katalogYenile` içinde — yani
+  // olay işleyicisinde — set edilir.
+  const katalogCek = useCallback(async () => {
+    try {
+      const d = await katalogUrunleriniGetir()
+      setKatalogUrunler(d || [])
+      setKatalogHata(null)
+    } catch (e) {
+      console.error('[TeklifIste] katalog alınamadı:', e?.message || e)
+      setKatalogHata(e?.message || 'Ürün kataloğu yüklenemedi.')
+      setKatalogUrunler([])
+    } finally {
+      setKatalogYukleniyor(false)
+    }
+
     kategorileriGetir()
       .then(d => setKategoriler(d || []))
       .catch(e => console.warn('[TeklifIste] kategoriler alınamadı:', e?.message))
   }, [])
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- katalogCek async;
+  // tüm setState çağrıları ilk `await`ten SONRA çalışıyor, effect gövdesinde
+  // senkron güncelleme yok. Kural async sınırını takip edemediği için uyarıyor.
+  useEffect(() => { katalogCek() }, [katalogCek])
+
+  const katalogYenile = () => {
+    setKatalogYukleniyor(true)
+    setKatalogHata(null)
+    katalogCek()
+  }
 
   // Kategori ağacı + her düğümün ALT DALLAR DAHİL ürün sayısı
   const kategoriAgaci = useMemo(() => {
@@ -184,6 +215,13 @@ export default function TeklifIste() {
       .sort((a, b) => b.adet - a.adet || a.etiket.localeCompare(b.etiket, 'tr'))
   }, [kategoriliUrunler])
 
+  // Kategori değişince o kategoride olmayan marka seçili kalmasın (boş liste tuzağı)
+  // ⚠️ filtreliUrunler'den ÖNCE hesaplanmalı: aşağıdaki süzgeç `seciliMarka`
+  // kullanıyordu, yani "geçersiz marka" düzeltmesi arayüzde uygulanıyor ama
+  // LİSTEYE yansımıyordu — kategori değişince liste boş kalabiliyordu (18.08).
+  const markaGecerli = seciliMarka === 'hepsi' || markalar.some(m => m.anahtar === seciliMarka)
+  const etkinMarka = markaGecerli ? seciliMarka : 'hepsi'
+
   const filtreliUrunler = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase('tr')
     return kategoriliUrunler.filter(u => {
@@ -191,14 +229,10 @@ export default function TeklifIste() {
       const aramaUygun = !q ||
         `${u.stokAdi || ''} ${u.marka || ''} ${u.model || ''} ${u.stokKodu || ''}`
           .toLocaleLowerCase('tr').includes(q)
-      const markaUygun = seciliMarka === 'hepsi' || markaAnahtar(u.marka) === seciliMarka
+      const markaUygun = etkinMarka === 'hepsi' || markaAnahtar(u.marka) === etkinMarka
       return aramaUygun && markaUygun
     })
-  }, [kategoriliUrunler, arama, seciliMarka])
-
-  // Kategori değişince o kategoride olmayan marka seçili kalmasın (boş liste tuzağı)
-  const markaGecerli = seciliMarka === 'hepsi' || markalar.some(m => m.anahtar === seciliMarka)
-  const etkinMarka = markaGecerli ? seciliMarka : 'hepsi'
+  }, [kategoriliUrunler, arama, etkinMarka])
 
   const seciliKategoriAdi = seciliKategori == null
     ? null : kategoriler.find(k => k.id === seciliKategori)?.ad
@@ -449,6 +483,26 @@ export default function TeklifIste() {
                   border: '1px solid var(--border-default)',
                 }} className="shimmer" />
               ))}
+            </div>
+          ) : katalogHata ? (
+            /* Katalog ÇEKİLEMEDİ — "ürün yok" ile karıştırılmamalı. Sebep
+               ekranda yazar, müşteri tekrar deneyebilir. */
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap',
+              padding: '14px 16px',
+              border: '1px solid rgba(220,38,38,0.35)', borderRadius: 'var(--radius-md)',
+              background: 'rgba(220,38,38,0.06)',
+            }}>
+              <Package size={16} strokeWidth={1.7} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', marginBottom: 2 }}>
+                  Ürün kataloğu yüklenemedi
+                </div>
+                <div style={{ font: '400 12px/17px var(--font-sans)', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
+                  {katalogHata}
+                </div>
+              </div>
+              <Button variant="secondary" size="sm" onClick={katalogYenile}>Tekrar Dene</Button>
             </div>
           ) : filtreliUrunler.length === 0 ? (
             <EmptyState
