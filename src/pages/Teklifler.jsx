@@ -12,7 +12,7 @@ import { useConfirm } from '../context/ConfirmContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
 import {
   teklifleriGetir, tekliflerIlkSayfa, teklifSil as dbTeklifSil,
-  musteriTalepleriniGetir, musteriTalepGuncelle,
+  musteriTalepleriniGetir, musteriTalepGuncelle, teklifTaslakGetir,
 } from '../services/teklifService'
 import { useAuth } from '../context/AuthContext'
 import { satisTeklifRozetleri } from '../services/satisService'
@@ -115,6 +115,10 @@ export default function Teklifler() {
   // Yaşlandırma kovası filtresi — şeritteki kutuya tıklayınca dolar.
   // null = kova filtresi yok.
   const [yasFiltresi, setYasFiltresi] = useState(null)
+  // Kullanıcının kaydedilmemiş yeni-teklif taslağı (mig 308) — 18.08
+  // Ahmet/Turkuaz vakası: taslak yalnız Yeni Teklif'te görünüyordu,
+  // listede arayan "kaydetmedim, kayboldu" sanıyordu.
+  const [taslagim, setTaslagim] = useState(null)
   const [sayfa, setSayfa] = useUrlSayfa([aktifSekme, arama, siralama, benimTekliflerim, yasFiltresi])
 
   // Filtre/sekme/arama değişince 1. sayfaya dön
@@ -144,7 +148,9 @@ export default function Teklifler() {
     // Yan veriler liste render'ını BEKLETMEZ
     musteriTalepleriniGetir().then(tl => { if (!iptal) setMusteriTalepleri(tl || []) }).catch(() => {})
     satisTeklifRozetleri().then(s => { if (!iptal) setSatislar(s || []) }).catch(() => {})
+    teklifTaslakGetir(kullanici?.id).then(t => { if (!iptal) setTaslagim(t) }).catch(() => {})
     return () => { iptal = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (yukleniyor) return <SkeletonList />
@@ -244,8 +250,28 @@ export default function Teklifler() {
     else if (sayfaListesi[sayfaListesi.length - 1] !== '…') sayfaListesi.push('…')
   }
 
+  const taslakDolu = taslagim?.form
+    && (taslagim.form.firmaAdi || taslagim.form.konu || (taslagim.form.satirlar || []).length > 0)
+
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
+
+      {/* Kaydedilmemiş taslak şeridi — taslak listede kayıt olarak GÖRÜNMEZ,
+          bu şerit "kayboldu" sanılmasını engeller (18.08 Ahmet/Turkuaz) */}
+      {taslakDolu && (
+        <Card style={{ padding: '10px 14px', marginBottom: 14, borderLeft: '3px solid var(--accent, #2563eb)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <span className="t-body-strong">Kaydedilmemiş teklif taslağın var: </span>
+              <span className="t-body" style={{ color: 'var(--text-secondary)' }}>
+                {taslagim.form.firmaAdi || 'müşteri seçilmemiş'} — {(taslagim.form.satirlar || []).length} satır
+                {taslagim.ts ? ` · ${new Date(taslagim.ts).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}
+              </span>
+            </div>
+            <Button variant="primary" onClick={() => navigate('/teklifler/yeni?taslak=1')}>Devam Et</Button>
+          </div>
+        </Card>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>

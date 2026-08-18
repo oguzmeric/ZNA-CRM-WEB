@@ -134,3 +134,31 @@ export const musteriTalepGuncelle = async (id, guncellenmis) => {
   const { data } = await supabase.from('musteri_teklif_talepleri').update(toSnake(rest)).eq('id', id).select().single()
   return toCamel(data)
 }
+
+// ── Yeni teklif taslağı — DB'de, kullanıcı başına TEK satır (mig 308) ──
+// Ahmet/Turkuaz vakası (18.08): yerel (localStorage) taslak cihaza özeldi,
+// başka bilgisayarda bulunamadı. RLS herkesi kendi taslağıyla sınırlar.
+export const teklifTaslakGetir = async (kullaniciId) => {
+  if (!kullaniciId) return null
+  const { data, error } = await supabase
+    .from('teklif_taslaklari').select('form, guncelleme_tarih')
+    .eq('kullanici_id', kullaniciId).maybeSingle()
+  if (error) { console.error('[teklifTaslakGetir]', error.message); return null }
+  return data ? { form: data.form, ts: new Date(data.guncelleme_tarih).getTime() } : null
+}
+
+export const teklifTaslakKaydet = async (kullaniciId, form) => {
+  if (!kullaniciId) return false
+  const { error } = await supabase.from('teklif_taslaklari').upsert(
+    { kullanici_id: kullaniciId, form, guncelleme_tarih: new Date().toISOString() },
+    { onConflict: 'kullanici_id' },
+  )
+  if (error) { console.error('[teklifTaslakKaydet]', error.message); return false }
+  return true
+}
+
+export const teklifTaslakSil = async (kullaniciId) => {
+  if (!kullaniciId) return
+  const { error } = await supabase.from('teklif_taslaklari').delete().eq('kullanici_id', kullaniciId)
+  if (error) console.error('[teklifTaslakSil]', error.message)
+}

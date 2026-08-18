@@ -22,6 +22,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
   teklifleriGetir, teklifGetir, teklifEkle, teklifGuncelle, stokFiyatGecmisi, paylasimDurumOzet,
+  teklifTaslakGetir, teklifTaslakKaydet, teklifTaslakSil,
 } from '../services/teklifService'
 import { sablonlariGetir, sablonEkle, sablonSil } from '../services/teklifSablonService'
 import { teklifOnayaDustuBildir } from '../services/teklifOnayService'
@@ -429,18 +430,40 @@ function TeklifDetay() {
     }
   }, [form?.paraBirimi, kurlar])
 
-  // ── Otomatik taslak (yeni teklif) ──────────────────────────────────
-  // Sekme kazayla kapanırsa girilen veriler kaybolmasın: form 2sn debounce ile
-  // localStorage'a yazılır; mount'ta taslak varsa "Devam Et / Yoksay" banner'ı çıkar.
+  // ── Otomatik taslak (yeni teklif) — DB'de, mig 308 ────────────────
+  // 18.08 Ahmet/Turkuaz vakası: localStorage taslağı cihaza özeldi ve
+  // bulunamadı. Taslak artık teklif_taslaklari'nda (kullanıcı başına tek
+  // satır, her cihazdan erişilir); form 2sn debounce ile upsert edilir.
+  // Mount'ta taslak varsa "Devam Et / Yoksay" banner'ı çıkar; Teklifler
+  // listesindeki şeritten ?taslak=1 ile gelindiyse banner'sız direkt yüklenir.
   const [taslakBanner, setTaslakBanner] = useState(null) // null | { form, ts }
+  const taslakOtoYukleRef = useRef(new URLSearchParams(window.location.search).get('taslak') === '1')
 
   useEffect(() => {
     if (!yeni || onDoldurum) return
-    try {
-      const t = JSON.parse(localStorage.getItem('teklif_taslak_yeni') || 'null')
+    let iptal = false
+    ;(async () => {
+      // Bir kerelik göç: eski yerel taslak varsa DB'ye taşı (kimsenin
+      // yarım işi geçişte kaybolmasın), yerel kopyayı temizle.
+      try {
+        const eski = JSON.parse(localStorage.getItem('teklif_taslak_yeni') || 'null')
+        if (eski?.form && kullanici?.id) {
+          await teklifTaslakKaydet(kullanici.id, eski.form)
+          localStorage.removeItem('teklif_taslak_yeni')
+        }
+      } catch { /* bozuk yerel taslak — yoksay */ }
+      const t = await teklifTaslakGetir(kullanici?.id)
+      if (iptal) return
       const dolu = t?.form && (t.form.firmaAdi || t.form.konu || (t.form.satirlar || []).length > 0)
-      if (dolu) setTaslakBanner(t)
-    } catch { /* bozuk taslak — yoksay */ }
+      if (!dolu) return
+      if (taslakOtoYukleRef.current) {
+        taslakOtoYukleRef.current = false
+        setForm(f => ({ ...f, ...t.form }))
+      } else {
+        setTaslakBanner(t)
+      }
+    })()
+    return () => { iptal = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -451,9 +474,10 @@ function TeklifDetay() {
     const timer = setTimeout(() => {
       const dolu = form.firmaAdi || form.konu || (form.satirlar || []).length > 0
       if (!dolu) return
-      try { localStorage.setItem('teklif_taslak_yeni', JSON.stringify({ form, ts: Date.now() })) } catch { /* quota — sessiz geç */ }
+      teklifTaslakKaydet(kullanici?.id, form)
     }, 2000)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeni, form, taslakBanner])
 
   // Teklifler listesindeki "Proforma oluştur" ?proforma=1 ile gelir — form
@@ -754,6 +778,7 @@ function TeklifDetay() {
           }
           // Kayıt başarılı — otomatik taslağı temizle (yoksa bir sonraki yeni
           // teklifte "taslak bulundu" banner'ı yanlış çıkar)
+          teklifTaslakSil(kullanici?.id)
           localStorage.removeItem('teklif_taslak_yeni')
           // Keşiften geldiyse keşfe geri bağla (KesifDetay "Teklife Aktar" akışı)
           if (onDoldurum?.kesifId) {
@@ -1086,6 +1111,7 @@ function TeklifDetay() {
               <Button
                 variant="secondary"
                 onClick={() => {
+                  teklifTaslakSil(kullanici?.id)
                   localStorage.removeItem('teklif_taslak_yeni')
                   setTaslakBanner(null)
                 }}
