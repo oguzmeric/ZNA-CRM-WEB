@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains } from '../lib/trSearch'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User } from 'lucide-react'
+import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User, MapPin } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import Sayfalama from '../components/Sayfalama'
 import ServisKonuYonetimModal from '../components/ServisKonuYonetimModal'
@@ -47,6 +47,10 @@ export default function ServisTalepleri() {
   const [durumFiltre, setDurumFiltre] = useState('tumu')
   const [turFiltre, setTurFiltre] = useState('tumu')
   const [aciliyetFiltre, setAciliyetFiltre] = useState('tumu')
+  // 18.08 kullanıcı isteği: "lokasyon gözükmesi ve teknisyen filtrelemesi
+  // lokasyon filtrelemesi gerekli". '_yok' = atanmamış / lokasyonsuz kayıtlar.
+  const [teknisyenFiltre, setTeknisyenFiltre] = useState('tumu')
+  const [lokasyonFiltre, setLokasyonFiltre] = useState('tumu')
   // ⭐ 17.08 KARARI — İKİ AYRI KUYRUK (kullanıcı):
   //   "portaldan gelen servis talepleri servis taleplerinde gözükmesine gerek
   //    yok, rozet ile de gelmesine gerek yok. Müşteri portal menüsü altında
@@ -88,16 +92,50 @@ export default function ServisTalepleri() {
   const ACILIYET_GRUBU = { oncelikli: ['acil', 'yuksek'] }
   const aciliyetCoz = (f) => ACILIYET_GRUBU[f] || [f]
 
+  // ⭐ Lokasyon İKİ kolonda taşınıyor: `lokasyon` (görüntü metni) ve
+  // `lokasyonId` (mig 300 kesin bağ). Canlıda 174 kaydın 142'sinde metin,
+  // 116'sında id dolu — ve id'si dolu OLUP metni boş kayıt YOK. Bu yüzden
+  // hem gösterim hem filtre METİN üzerinden çalışır; id'ye düşmek gerekmiyor.
+  const lokasyonMetni = (t) => (t.lokasyon || '').trim()
+
+  // Filtre seçenekleri — kaynak kapsamına (personel/portal) SAYGILI türetilir.
+  // Ham `talepler`den türetilse personel kuyruğunda portal lokasyonları da
+  // listelenir ve seçilince liste boş gelirdi.
+  const kaynaktakiler = useMemo(() => talepler.filter(t => {
+    if (kaynakFiltre === 'tumu') return true
+    return (t.kaynak || 'personel') === kaynakFiltre
+  }), [talepler, kaynakFiltre])
+
+  const teknisyenSecenekleri = useMemo(() => {
+    const set = new Set(kaynaktakiler.map(t => t.atananKullaniciAd).filter(Boolean))
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [kaynaktakiler])
+
+  const lokasyonSecenekleri = useMemo(() => {
+    const set = new Set(kaynaktakiler.map(lokasyonMetni).filter(Boolean))
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [kaynaktakiler])
+
   // Durum DIŞINDAKİ filtreler — sayaçlar da liste de bu kümeden türer.
   // Sayaçları ham `talepler`den hesaplamak, sayfanın kaynak kapsamını (personel
   // / müşteri talebi) yok sayıyordu: şerit 116 derken liste 115 gösteriyordu.
   const kapsamdaki = talepler.filter(t => {
     if (aramaMetni && !trContains(
-      [t.talepNo, t.konu, t.musteriAd, t.firmaAdi].filter(Boolean).join(' '),
+      // Lokasyon da aranabilir olmalı — kolonu görüp arayamamak tutarsız olurdu
+      [t.talepNo, t.konu, t.musteriAd, t.firmaAdi, t.lokasyon, t.atananKullaniciAd].filter(Boolean).join(' '),
       aramaMetni,
     )) return false
     if (turFiltre !== 'tumu' && t.anaTur !== turFiltre) return false
     if (aciliyetFiltre !== 'tumu' && !aciliyetCoz(aciliyetFiltre).includes(t.aciliyet)) return false
+    if (teknisyenFiltre !== 'tumu') {
+      if (teknisyenFiltre === '_yok') { if (t.atananKullaniciAd) return false }
+      else if (t.atananKullaniciAd !== teknisyenFiltre) return false
+    }
+    if (lokasyonFiltre !== 'tumu') {
+      const l = lokasyonMetni(t)
+      if (lokasyonFiltre === '_yok') { if (l) return false }
+      else if (l !== lokasyonFiltre) return false
+    }
     if (kaynakFiltre !== 'tumu') {
       const k = t.kaynak || 'personel'   // eski kayitlar default personel
       if (k !== kaynakFiltre) return false
@@ -120,7 +158,7 @@ export default function ServisTalepleri() {
   // Filtre/arama değişince ilk sayfaya dön. React'in "render sırasında state
   // düzelt" deseni — useEffect ile yapmak react-hooks/set-state-in-effect
   // uyarısı üretiyordu.
-  const filtreAnahtari = `${aramaMetni}|${durumFiltre}|${turFiltre}|${aciliyetFiltre}|${kaynakFiltre}|${sayfaBoyutu}`
+  const filtreAnahtari = `${aramaMetni}|${durumFiltre}|${turFiltre}|${aciliyetFiltre}|${teknisyenFiltre}|${lokasyonFiltre}|${kaynakFiltre}|${sayfaBoyutu}`
   const [oncekiFiltre, setOncekiFiltre] = useState(filtreAnahtari)
   if (oncekiFiltre !== filtreAnahtari) {
     setOncekiFiltre(filtreAnahtari)
@@ -165,8 +203,12 @@ export default function ServisTalepleri() {
     }
   }
 
-  const temizle = () => { setDurumFiltre('tumu'); setTurFiltre('tumu'); setAciliyetFiltre('tumu'); setAramaMetni('') }
-  const filtreAktif = durumFiltre !== 'tumu' || turFiltre !== 'tumu' || aciliyetFiltre !== 'tumu' || aramaMetni
+  const temizle = () => {
+    setDurumFiltre('tumu'); setTurFiltre('tumu'); setAciliyetFiltre('tumu')
+    setTeknisyenFiltre('tumu'); setLokasyonFiltre('tumu'); setAramaMetni('')
+  }
+  const filtreAktif = durumFiltre !== 'tumu' || turFiltre !== 'tumu' || aciliyetFiltre !== 'tumu'
+    || teknisyenFiltre !== 'tumu' || lokasyonFiltre !== 'tumu' || aramaMetni
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
@@ -326,6 +368,20 @@ export default function ServisTalepleri() {
             <option value="oncelikli">Öncelikli (acil + yüksek)</option>
             {ACILIYET_SEVIYELERI.map(a => <option key={a.id} value={a.id}>{a.isim}</option>)}
           </CustomSelect>
+          {/* TEKNİSYEN — atanan personel. Seçenekler taleplerden türetilir,
+              sabit personel listesinden DEĞİL: ayrılmış personelin eski
+              talepleri de filtrelenebilsin. */}
+          <CustomSelect value={teknisyenFiltre} onChange={e => { setTeknisyenFiltre(e.target.value); setSayfa(1) }}>
+            <option value="tumu">Tüm Teknisyenler</option>
+            <option value="_yok">Atanmamış</option>
+            {teknisyenSecenekleri.map(ad => <option key={ad} value={ad}>{ad}</option>)}
+          </CustomSelect>
+          {/* LOKASYON — metin alanı üzerinden (bkz. lokasyonMetni notu) */}
+          <CustomSelect value={lokasyonFiltre} onChange={e => { setLokasyonFiltre(e.target.value); setSayfa(1) }}>
+            <option value="tumu">Tüm Lokasyonlar</option>
+            <option value="_yok">Lokasyonsuz</option>
+            {lokasyonSecenekleri.map(l => <option key={l} value={l}>{l}</option>)}
+          </CustomSelect>
           {/* KANAL — kuyruklar ayrı olduğu için bu bir filtre değil, KAPSAM
               göstergesi. Yine de "hepsini gör" gerekebiliyor (arama/rapor);
               seçim URL'e yazılır, sayfa paylaşılınca aynı kapsam açılır. */}
@@ -364,7 +420,7 @@ export default function ServisTalepleri() {
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
                 <thead>
                   <tr>
-                    {['Talep No', 'Konu / Müşteri', 'Tür', 'Aciliyet', 'Durum', 'Atanan Personel', 'Oluşturan', 'Tarih', ''].map((h, i, arr) => (
+                    {['Talep No', 'Konu / Müşteri', 'Lokasyon', 'Tür', 'Aciliyet', 'Durum', 'Atanan Personel', 'Oluşturan', 'Tarih', ''].map((h, i, arr) => (
                       <th key={i} style={{
                         background: 'var(--surface-sunken)',
                         padding: '10px 14px',
@@ -404,6 +460,21 @@ export default function ServisTalepleri() {
                             <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2 }}>
                               {talep.firmaAdi || talep.musteriAd}
                             </div>
+                          </td>
+                          <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', maxWidth: 180 }}>
+                            {lokasyonMetni(talep) ? (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%',
+                                font: '400 12.5px/17px var(--font-sans)', color: 'var(--text-secondary)',
+                              }} title={lokasyonMetni(talep)}>
+                                <MapPin size={11} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {lokasyonMetni(talep)}
+                                </span>
+                              </span>
+                            ) : (
+                              <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>—</span>
+                            )}
                           </td>
                           <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap' }}>
                             {anaTur && <Badge tone="brand">{anaTur.isim}</Badge>}
@@ -462,7 +533,7 @@ export default function ServisTalepleri() {
                         </tr>
                         {silOnayAcik && (
                           <tr>
-                            <td colSpan={9} style={{
+                            <td colSpan={10} style={{
                               padding: '12px 20px',
                               background: 'var(--danger-soft)',
                               borderTop: '1px solid var(--danger-border)',
