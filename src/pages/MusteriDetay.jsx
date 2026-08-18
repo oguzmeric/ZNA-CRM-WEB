@@ -1215,7 +1215,9 @@ function MusteriDetay() {
           .filter(t => Number(t.musteriId) === Number(id) || (musteri?.firma && t.firmaAdi === musteri.firma))
           .sort((a, b) => new Date(b.olusturmaTarihi || 0) - new Date(a.olusturmaTarihi || 0))
         if (!musteriTalepleri.length) return null
-        const acik = musteriTalepleri.filter(t => !['tamamlandi', 'iptal'].includes(t.durum))
+        // ⚠️ Kapanış zinciri: tamamlandi → onaylandi (Kapalı). 'onaylandi' ve
+        // 'reddedildi' kapalı sayılmayınca 102 talebin 100'ü "açık" görünüyordu (18.08)
+        const acik = musteriTalepleri.filter(t => !['tamamlandi', 'onaylandi', 'reddedildi', 'iptal'].includes(t.durum))
         return (
           <Card style={{ marginBottom: 16 }}>
             <BolumBaslik inline Icon={Wrench} baslik="Servis Talepleri" sayi={musteriTalepleri.length} sag={
