@@ -133,7 +133,8 @@ export default function ArizaliUrunler() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 1440, margin: '0 auto', padding: 24 }}>
       {/* KPI şeridi */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+      {/* 18.08: kartlar tam genişliğe yayılıp devleşiyordu — doğal genişlikte, kompakt */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <KpiKart Icon={AlertTriangle} renk="#dc2626" deger={sayilar.arizali} etiket="Arızalı ürün" />
         <KpiKart Icon={Wrench} renk="#f59e0b" deger={sayilar.serviste} etiket="Serviste" />
         <KpiKart Icon={CheckCircle2} renk="#10b981" deger={sayilar.toplam - sayilar.arizali - sayilar.serviste} etiket="Aktif / kapanmış" />
@@ -278,15 +279,15 @@ export default function ArizaliUrunler() {
 }
 
 const KpiKart = (p) => (
-  <Card style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+  <Card style={{ padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 150 }}>
     <div style={{
-      width: 38, height: 38, borderRadius: 10, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
+      width: 26, height: 26, borderRadius: 8, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       background: p.renk + '18', color: p.renk,
-    }}><p.Icon size={18} strokeWidth={1.8} /></div>
-    <div>
-      <div style={{ font: '700 20px/24px var(--font-sans)', color: 'var(--text-primary)' }}>{p.deger}</div>
-      <div className="t-caption">{p.etiket}</div>
+    }}><p.Icon size={13} strokeWidth={1.8} /></div>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+      <span style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-primary)' }} className="tabular-nums">{p.deger}</span>
+      <span className="t-caption">{p.etiket}</span>
     </div>
   </Card>
 )
