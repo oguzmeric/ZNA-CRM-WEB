@@ -9,13 +9,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import {
-  AlertTriangle, Wrench, Plus, History, CheckCircle2, Trash2, Send, FileSpreadsheet,
+  AlertTriangle, Wrench, Plus, History, CheckCircle2, Trash2, Send, FileSpreadsheet, Ban,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import {
   CIHAZ_DURUMLARI, tumCihazlariGetir, cihazEkle, cihazArizaBildir,
   cihazArizaGiderildi, cihazServiseGonder, cihazHurdayaAyir, cihazHareketleriGetir,
+  cihazSil,
 } from '../services/musteriCihazService'
 import { musterileriGetir } from '../services/musteriService'
 import { musteriLokasyonSecenekleri } from '../services/sahaCihazService'
@@ -34,6 +36,7 @@ const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 export default function ArizaliUrunler() {
   const { kullanici } = useAuth()
   const { toast } = useToast()
+  const { confirm } = useConfirm()
 
   const [yukleniyor, setYukleniyor] = useState(true)
   const [cihazlar, setCihazlar] = useState([])
@@ -51,6 +54,21 @@ export default function ArizaliUrunler() {
     catch (e) { setYuklemeHatasi(e.message || 'Bilinmeyen hata') }
     finally { setYukleniyor(false) }
   }, [])
+
+  // Kalıcı silme — YANLIŞ girilen kayıtlar için (hurdayla karışmasın:
+  // hurda iş süreci, silme veri düzeltmesi). Hareketler FK cascade ile gider.
+  const sil = async (c) => {
+    const onay = await confirm({
+      baslik: 'Kaydı Sil',
+      mesaj: `"${c.cihazAdi || 'Cihaz'}"${c.seriNo ? ` (SN: ${c.seriNo})` : ''} kaydı ve hareket geçmişi kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
+    })
+    if (!onay) return
+    const ok = await cihazSil(c.id)
+    if (!ok) { toast.error('Kayıt silinemedi.'); return }
+    toast.success('Kayıt silindi.')
+    yukle()
+  }
   useEffect(() => { Promise.resolve().then(yukle) }, [yukle])
 
   const sayilar = useMemo(() => ({
@@ -113,7 +131,7 @@ export default function ArizaliUrunler() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 1440, margin: '0 auto', padding: 24 }}>
       {/* KPI şeridi */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
         <KpiKart Icon={AlertTriangle} renk="#dc2626" deger={sayilar.arizali} etiket="Arızalı ürün" />
@@ -218,7 +236,7 @@ export default function ArizaliUrunler() {
                           )}
                           {c.durum !== 'hurda' && c.durum !== 'aktif' && (
                             <MiniBtn title="Hurdaya ayır" onClick={() => setIslemModal({ cihaz: c, islem: 'hurda' })}>
-                              <Trash2 size={12} strokeWidth={1.7} />
+                              <Ban size={12} strokeWidth={1.7} />
                             </MiniBtn>
                           )}
                           {c.durum === 'aktif' && (
@@ -228,6 +246,10 @@ export default function ArizaliUrunler() {
                           )}
                           <MiniBtn title="Hareket geçmişi" onClick={() => setGecmisModal(c)}>
                             <History size={12} strokeWidth={1.7} />
+                          </MiniBtn>
+                          {/* 18.08: çöp = GERÇEK silme (yanlış giriş) — hurda değil */}
+                          <MiniBtn title="Kaydı sil (yanlış giriş)" onClick={() => sil(c)}>
+                            <Trash2 size={12} strokeWidth={1.7} />
                           </MiniBtn>
                         </div>
                       </TD>
