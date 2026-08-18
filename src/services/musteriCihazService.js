@@ -35,6 +35,39 @@ export const musteriCihazlariGetir = async (musteriId) => {
   return arrayToCamel(data)
 }
 
+// Merkezi Arızalı Ürünler sayfası (18.08): TÜM müşterilerin cihazları,
+// müşteri adı join'li. Web'den giriş/işleme MusteriDetay'a mahkumdu —
+// depocu ürünü önünde tutarken hangi müşteride olduğunu bilmek zorundaydı.
+export const tumCihazlariGetir = async () => {
+  const { data, error } = await supabase
+    .from('musteri_cihazlari')
+    .select('*, musteriler(firma_adi)')
+    .order('guncelleme_tarih', { ascending: false })
+  if (error) { console.error('[tumCihazlariGetir]', error.message); return [] }
+  return (data || []).map((r) => {
+    const { musteriler, ...cihaz } = r
+    return { ...toCamel(cihaz), musteriAd: musteriler?.firma_adi || '' }
+  })
+}
+
+// Serviste / hurda geçişleri — hareket tipi mevcut 'guncelleme' ailesinde
+// kalır (hareket tablosunda tip kısıtı olma ihtimaline karşı yeni tip açılmaz).
+export const cihazServiseGonder = async (id, not, yapan) => {
+  const { data, error } = await supabase
+    .from('musteri_cihazlari').update({ durum: 'serviste' }).eq('id', id).select().single()
+  if (error) { console.error('[cihazServiseGonder]', error.message); return null }
+  await hareketYaz(id, 'guncelleme', `Servise gönderildi${not ? ': ' + not : ''}`, yapan)
+  return toCamel(data)
+}
+
+export const cihazHurdayaAyir = async (id, not, yapan) => {
+  const { data, error } = await supabase
+    .from('musteri_cihazlari').update({ durum: 'hurda' }).eq('id', id).select().single()
+  if (error) { console.error('[cihazHurdayaAyir]', error.message); return null }
+  await hareketYaz(id, 'guncelleme', `Hurdaya ayrıldı${not ? ': ' + not : ''}`, yapan)
+  return toCamel(data)
+}
+
 // SN ile global arama (arızalı girişte "bu cihaz kayıtlı mı?")
 export const cihazGetirSeriNo = async (seriNo) => {
   const { data, error } = await supabase

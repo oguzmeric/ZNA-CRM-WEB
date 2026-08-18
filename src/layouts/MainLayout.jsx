@@ -229,6 +229,9 @@ const menuItems = [
       // Sahaya takılı cihazların toplu görünümü (13.08) — eskiden tek yol
       // müşteri detayındaki bölümdü, müşteri müşteri gezmek gerekiyordu
       { id: 'saha_cihazlari',   isim: 'Saha Cihazları',      yol: '/saha-cihazlari' },
+      // Arızalı cihaz girişi + durum işleme (18.08) — webden giriş yoktu,
+      // depocu MusteriDetay'a mahkumdu; SN'siz (barkodsuz) giriş de burada
+      { id: 'arizali_urunler',  isim: 'Arızalı Ürünler',     yol: '/arizali-urunler' },
     ],
   },
   { id: 'kargolar', isim: 'Kargo Takip', Icon: Truck, yol: '/kargolar', modul: null, grup: 'operasyon' },
