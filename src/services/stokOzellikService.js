@@ -85,6 +85,27 @@ export const kategoriOzellikleri = (tanimlar, kategoriler, kategoriId) => {
 
 // ── Ürün değerleri ────────────────────────────────────────────
 
+/**
+ * Teknik özelliği GİRİLMİŞ ürün id'leri — Set<urunId>.
+ *
+ * "Eksik bilgi" filtresi için (18.08): hangi ürünlerde özellik VAR sorusuna
+ * tek sorguda cevap verir. Tam değer haritası (urunOzellikMap) yerine yalnız
+ * `urun_id` çekilir — canlıda 2.706 satır ama 356 tekil ürün; değerleri de
+ * çekmek gereksiz yük olurdu.
+ *
+ * ⚠️ Boş/silinmiş değer satır olarak DURMAZ (urunOzellikleriKaydet boş değeri
+ * siler), yani satırın varlığı "özellik girilmiş" demektir.
+ */
+export const ozelligiOlanUrunIdleri = () => cached('stokOzellik:doluUrunler', async () => {
+  const data = await pagedFetch((off, size) =>
+    supabase.from('stok_urun_ozellikler')
+      .select('urun_id')
+      .order('urun_id')
+      .range(off, off + size - 1)
+  )
+  return new Set((data || []).map(r => Number(r.urun_id)))
+})
+
 // Tek ürünün değerleri: Map<ozellikId, deger>
 export const urunOzellikleriGetir = async (urunId) => {
   const { data, error } = await supabase

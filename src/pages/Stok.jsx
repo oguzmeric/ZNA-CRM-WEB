@@ -29,7 +29,7 @@ import {
 import {
   OZELLIK_TIPLERI, ozellikTanimlariGetir, ozellikEkle, ozellikGuncelle,
   kategoriOzellikleri, urunOzellikleriGetir, urunOzellikleriKaydet,
-  tumUrunOzellikleriGetir,
+  tumUrunOzellikleriGetir, ozelligiOlanUrunIdleri,
 } from '../services/stokOzellikService'
 import { AlertTriangle as AlertIkon } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
@@ -137,6 +137,12 @@ function Stok() {
   const [kategoriler, setKategoriler] = useState([])
   const [filtreKatId, setFiltreKatId] = useState('')       // liste kategori filtresi (alt dallar dahil)
   const [pasifGoster, setPasifGoster] = useState(false)    // pasif ürünleri de göster
+  // ⭐ 18.08 kullanıcı isteği: "Teknik Özellikler ve resimlerin olmadığı
+  // ürünleri listeleyebilelim". Katalog kalitesi denetimi — canlıda 2.456
+  // aktif üründen 2.100'ünde özellik, 250'sinde görsel YOK.
+  // '' | 'gorsel' | 'ozellik' | 'ikisi'
+  const [eksikFiltre, setEksikFiltre] = useState('')
+  const [ozellikliIdler, setOzellikliIdler] = useState(null)  // Set<urunId> — lazy
   const [kategoriModal, setKategoriModal] = useState(false) // admin kategori yönetimi
   const [dokumanYukleniyor, setDokumanYukleniyor] = useState(false)
   const dokumanRef = useRef(null)
@@ -153,8 +159,21 @@ function Stok() {
   const [ozellikFiltre, setOzellikFiltre] = useState({})       // liste filtreleri {ozellikId: deger}
   // Sayfa no URL'de (?sayfa=7): model detayına girip geri dönünce liste aynı sayfada.
   // ozellikFiltre OBJE — hook DEĞER karşılaştırır, referans değişimi resetlemez.
-  const [sayfa, setSayfa] = useUrlSayfa([arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre])
+  const [sayfa, setSayfa] = useUrlSayfa([arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre, eksikFiltre])
   const [urunOzellikMap, setUrunOzellikMap] = useState(null)   // Map<urunId, Map<ozellikId,deger>> — lazy
+
+  // "Eksik bilgi" filtresi özellik gerektiriyorsa dolu ürün id kümesini lazy çek.
+  // Görsel filtresi ürün kaydındaki gorsel_url'den okunur, sorgu gerektirmez.
+  useEffect(() => {
+    if (eksikFiltre !== 'ozellik' && eksikFiltre !== 'ikisi') return
+    if (ozellikliIdler) return
+    ozelligiOlanUrunIdleri()
+      .then(s => setOzellikliIdler(s || new Set()))
+      .catch(e => {
+        console.error('[eksik filtre]', e?.message || e)
+        setOzellikliIdler(new Set())
+      })
+  }, [eksikFiltre, ozellikliIdler])
 
   // Kategori filtresi seçilince ürün özellik değerlerini (filtre için) lazy yükle
   useEffect(() => {
@@ -784,6 +803,14 @@ function Stok() {
   const gorunenUrunler = urunler.filter((u) => {
     if (!pasifGoster && u.aktif === false) return false
     if (filtreKatSet && !filtreKatSet.has(u.kategoriId)) return false
+    // Eksik bilgi süzgeci — küme henüz yüklenmediyse özellik koşulu uygulanmaz
+    if (eksikFiltre) {
+      const gorselYok = !String(u.gorselUrl || '').trim()
+      const ozellikYok = ozellikliIdler ? !ozellikliIdler.has(Number(u.id)) : false
+      if (eksikFiltre === 'gorsel' && !gorselYok) return false
+      if (eksikFiltre === 'ozellik' && !ozellikYok) return false
+      if (eksikFiltre === 'ikisi' && !(gorselYok && ozellikYok)) return false
+    }
     // Özellik filtreleri — map henüz yüklenmediyse filtre uygulanmaz
     if (aktifOzellikFiltre.length > 0 && urunOzellikMap) {
       const uMap = urunOzellikMap.get(u.id)
@@ -946,6 +973,15 @@ function Stok() {
             {katSecenekler.map(k => <option key={k.id} value={k.id}>{k.etiket}</option>)}
           </CustomSelect>
         </div>
+        {/* EKSİK BİLGİ — katalog kalitesi denetimi (18.08 kullanıcı isteği).
+            className="w-auto" ŞART: verilmezse select tüm satırı kaplar. */}
+        <CustomSelect className="w-auto" value={eksikFiltre}
+          onChange={(e) => setEksikFiltre(e.target.value)} style={{ minWidth: 190 }}>
+          <option value="">Eksik bilgi: filtre yok</option>
+          <option value="gorsel">Görseli olmayanlar</option>
+          <option value="ozellik">Teknik özelliği olmayanlar</option>
+          <option value="ikisi">Görseli + özelliği olmayanlar</option>
+        </CustomSelect>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
           <input
             type="checkbox"
