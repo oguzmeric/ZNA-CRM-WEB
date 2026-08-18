@@ -27,7 +27,7 @@ import {
 } from '../lib/gorevSabitleri'
 import {
   SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle,
-  gorunurMu, durumEsle, inSearch, inDateEq, bitisGorunen, hiyerarsikSirala,
+  gorunurMu, durumEsle, inSearch, inDateEq, bitisGorunen, hiyerarsikSirala, listeSirala,
 } from '../lib/gorevFiltre'
 import {
   IlerlemeBar, EtkinDurumRozeti, OncelikNokta, SekmeSatiri, SebepModal, IsYukuPaneli,
@@ -1032,10 +1032,12 @@ function Gorevler() {
         inSearch(oncAd, kolonFiltre.kontrol)
       )
     })
-    .sort((a, b) => String(b.olusturmaTarih || '').localeCompare(String(a.olusturmaTarih || '')))
 
-  // Alt görevleri üstlerinin hemen altına grupla (madde 32)
-  const tabloRow = hiyerarsikSirala(listeSuzulmus)
+  // Sıralama çekirdekte (listeSirala): AÇIK işler üstte, her grup kendi içinde
+  // en yeni önce. Salt tarih sıralaması devam eden işi tamamlananların arasına
+  // düşürüyordu (18.08 geri bildirimi).
+  // Alt görevleri üstlerinin hemen altına grupla (madde 32) — sıralamadan SONRA.
+  const tabloRow = hiyerarsikSirala(listeSirala(listeSuzulmus))
   const toplam = tabloRow.length
   const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUT))
   const guvSayfa = Math.min(sayfa, toplamSayfa)

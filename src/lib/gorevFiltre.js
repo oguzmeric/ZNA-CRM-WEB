@@ -171,6 +171,31 @@ export const inDateEq = (val, q) => {
 // yazıyordu: kullanıcı gördüğü tarihi yazınca satır kayboluyordu).
 export const bitisGorunen = (g) => String(g?.bitisTarih || g?.sonTarih || '').slice(0, 10)
 
+// ─── Liste sıralaması: AÇIK İŞLER ÜSTTE (18.08) ─────────────────────────────
+//
+// Kullanıcı: "Tümü'ne tıkladığımızda devam ediyor ortalarda görünüyor.
+// Tamamlananlar tarih sırasına göre aşağıda kalabilir ancak bekleyen işler,
+// devam edenler en üstte gözükmesi gerek."
+//
+// Eski hâli SALT `olusturmaTarih` idi: 27.07'de açılıp hâlâ devam eden bir iş,
+// 13.08'de tamamlanmış işlerin ALTINA düşüyordu. Liste "yapılacak işler"
+// panosu olduğu için kapanmış kayıt açık kaydın önüne geçmemeli.
+//
+// Kural: önce durum grubu (açık → kapalı), her grup kendi içinde en yeni
+// önce. Kapalılar silinmiyor, sadece aşağı iniyor.
+//
+// ⚠️ Sıralama `hiyerarsikSirala`dan ÖNCE uygulanır; o adım alt görevleri
+// üstlerinin altına toplar ve kök sırasını korur.
+export const acikMi = (g) => !KAPALI_DURUMLAR.includes(durumBilgi(g?.durum).id)
+
+export const listeSirala = (liste) =>
+  [...(liste || [])].sort((a, b) => {
+    const aA = acikMi(a)
+    const bA = acikMi(b)
+    if (aA !== bA) return aA ? -1 : 1          // açık olan yukarı
+    return String(b.olusturmaTarih || '').localeCompare(String(a.olusturmaTarih || ''))
+  })
+
 // ─── Alt görevleri üstlerinin altına dizme (madde 32) ───────────────────────
 export const hiyerarsikSirala = (liste) => {
   const idSet = new Set(liste.map(g => g.id))

@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs'
 import {
   SEKME_LISTESI, sekmeBaglami, sekmeKumesi, kapsamEsle, sekmeEsle,
   gorunurMu, durumEsle, hiyerarsikSirala, bitisGorunen, haftaAraligi,
+  listeSirala, acikMi,
 } from '../src/lib/gorevFiltre.js'
 import {
   bugunStr, etkinSonTarih, gorevGecikti, isYukuHesapla, ACIK_DURUMLAR, KAPALI_DURUMLAR,
@@ -395,6 +396,74 @@ test('D5 · kapalı görev "Bugün/Bu Hafta"da görünmez', () => {
   const g = gorev({ durum: 'tamamlandi', sonTarih: bugunStr() })
   assert.equal(sekmeKumesi([g], 'bugun', ctx).length, 0)
   assert.equal(sekmeKumesi([g], 'hafta', ctx).length, 0)
+})
+
+// ─── E · Liste sıralaması: açık işler üstte (18.08 geri bildirimi) ──────────
+//
+// Vaka: "Tümü'ne tıkladığımızda devam ediyor ortalarda görünüyor.
+// Tamamlananlar tarih sırasına göre aşağıda kalabilir ancak bekleyen işler,
+// devam edenler en üstte gözükmesi gerek."
+// Ekranda: 27.07'de açılmış 'devam' görevi, 13.08'de tamamlanmış işlerin
+// ALTINDA kalıyordu (salt olusturmaTarih sıralaması).
+
+test('E1 · açık görev, daha YENİ tamamlanmış görevin üstünde', () => {
+  const eskiAcik = gorev({ id: 1, durum: 'devam', olusturmaTarih: '2026-07-27T18:14:00Z' })
+  const yeniKapali = gorev({ id: 2, durum: 'tamamlandi', olusturmaTarih: '2026-08-13T09:35:00Z' })
+  const s = listeSirala([yeniKapali, eskiAcik])
+  assert.equal(s[0].id, 1, 'devam eden görev en üstte olmalı')
+  assert.equal(s[1].id, 2)
+})
+
+test('E2 · açıklar kendi içinde en yeni önce', () => {
+  const a = gorev({ id: 1, durum: 'devam',    olusturmaTarih: '2026-08-01T10:00:00Z' })
+  const b = gorev({ id: 2, durum: 'bekliyor', olusturmaTarih: '2026-08-10T10:00:00Z' })
+  const s = listeSirala([a, b])
+  assert.deepEqual(s.map(g => g.id), [2, 1])
+})
+
+test('E3 · kapalılar kendi içinde en yeni önce', () => {
+  const a = gorev({ id: 1, durum: 'tamamlandi', olusturmaTarih: '2026-08-01T10:00:00Z' })
+  const b = gorev({ id: 2, durum: 'iptal',      olusturmaTarih: '2026-08-10T10:00:00Z' })
+  const s = listeSirala([a, b])
+  assert.deepEqual(s.map(g => g.id), [2, 1])
+})
+
+test('E4 · tüm açık durumlar kapalıların üstünde', () => {
+  const kapali = gorev({ id: 99, durum: 'tamamlandi', olusturmaTarih: '2026-12-31T00:00:00Z' })
+  for (const d of ACIK_DURUMLAR) {
+    const acik = gorev({ id: 1, durum: d, olusturmaTarih: '2020-01-01T00:00:00Z' })
+    const s = listeSirala([kapali, acik])
+    assert.equal(s[0].id, 1, `'${d}' durumu kapalının üstünde olmalı`)
+  }
+})
+
+test('E5 · acikMi kapalı durumları doğru ayırır', () => {
+  for (const d of KAPALI_DURUMLAR) assert.equal(acikMi({ durum: d }), false, `${d} kapalı olmalı`)
+  for (const d of ACIK_DURUMLAR) assert.equal(acikMi({ durum: d }), true, `${d} açık olmalı`)
+})
+
+test('E6 · girdi dizisini DEĞİŞTİRMEZ (saf fonksiyon)', () => {
+  const liste = [
+    gorev({ id: 1, durum: 'tamamlandi', olusturmaTarih: '2026-08-13T00:00:00Z' }),
+    gorev({ id: 2, durum: 'devam',      olusturmaTarih: '2026-07-27T00:00:00Z' }),
+  ]
+  const kopya = liste.map(g => g.id)
+  listeSirala(liste)
+  assert.deepEqual(liste.map(g => g.id), kopya, 'orijinal dizi bozulmamalı')
+})
+
+test('E7 · boş/undefined girdide patlamaz', () => {
+  assert.deepEqual(listeSirala([]), [])
+  assert.deepEqual(listeSirala(undefined), [])
+})
+
+test('E8 · sıralama sonrası hiyerarşi korunur (alt görev üstünün altında)', () => {
+  const ust = gorev({ id: 10, durum: 'devam', olusturmaTarih: '2026-07-01T00:00:00Z' })
+  const alt = gorev({ id: 11, durum: 'tamamlandi', ustGorevId: 10, gorevNo: 'GRV-2', olusturmaTarih: '2026-08-20T00:00:00Z' })
+  const digerAcik = gorev({ id: 12, durum: 'bekliyor', olusturmaTarih: '2026-08-25T00:00:00Z' })
+  const s = hiyerarsikSirala(listeSirala([alt, ust, digerAcik]))
+  // 12 en yeni açık → önce; sonra 10 ve HEMEN altında çocuğu 11
+  assert.deepEqual(s.map(g => g.id), [12, 10, 11])
 })
 
 // ─── Sonuç ──────────────────────────────────────────────────────────────────
