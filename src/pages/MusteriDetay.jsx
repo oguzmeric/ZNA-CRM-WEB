@@ -28,6 +28,7 @@ import { useServisTalebi } from '../context/ServisTalebiContext'
 import {
   Button, Input, Textarea, Label,
   Card, CardTitle, Badge, CodeBadge, Avatar, Alert, EmptyState, SegmentedControl,
+  Table, THead, TBody, TR, TH, TD,
 } from '../components/ui'
 
 const durumMap = {
@@ -1099,48 +1100,39 @@ function MusteriDetay() {
               </div>
             )
           })()}
-          <div>
-            {siparisler.slice(0, 5).map(s => {
-              const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
-              const kaynakLabel = s.kaynakTipi === 'teklif' ? 'TEKLİFTEN' : 'ÖN SİPARİŞTEN'
-              const kaynakRenk = s.kaynakTipi === 'teklif' ? '#3b82f6' : '#10b981'
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => navigate(`/siparisler/${s.id}`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    transition: 'background 120ms',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13 }}>{s.siparisNo}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                      background: `${durumObj?.renk}22`, color: durumObj?.renk,
-                      border: `1px solid ${durumObj?.renk}55`,
-                    }}>{durumObj?.isim || s.durum}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                      background: `${kaynakRenk}15`, color: kaynakRenk,
-                    }}>{kaynakLabel}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ font: '600 13px/18px var(--font-sans)', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                      ₺{fmt(s.genelToplam)}
-                    </span>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>
-                      {s.onayTarihi ? new Date(s.onayTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+          {/* 18.08: serbest satır dizilimi tabloya çevrildi — hizalı kolon + başlık */}
+          <div style={{ overflowX: 'auto' }}>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Sipariş No</TH><TH>Durum</TH><TH>Kaynak</TH>
+                  <TH style={{ textAlign: 'right' }}>Tutar</TH>
+                  <TH style={{ textAlign: 'right' }}>Tarih</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {siparisler.slice(0, 5).map(s => {
+                  const durumObj = SIPARIS_DURUMLARI.find(d => d.id === s.durum)
+                  const kaynakLabel = s.kaynakTipi === 'teklif' ? 'Teklif' : 'Ön sipariş'
+                  return (
+                    <TR key={s.id} onClick={() => navigate(`/siparisler/${s.id}`)} style={{ cursor: 'pointer' }}>
+                      <TD><CodeBadge>{s.siparisNo}</CodeBadge></TD>
+                      <TD>
+                        <span style={{
+                          fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
+                          background: `${durumObj?.renk}18`, color: durumObj?.renk,
+                        }}>{durumObj?.isim || s.durum}</span>
+                      </TD>
+                      <TD style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{kaynakLabel}</TD>
+                      <TD style={{ textAlign: 'right', fontWeight: 600 }} className="tabular-nums">₺{fmt(s.genelToplam)}</TD>
+                      <TD style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-tertiary)' }} className="tabular-nums">
+                        {s.onayTarihi ? new Date(s.onayTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                      </TD>
+                    </TR>
+                  )
+                })}
+              </TBody>
+            </Table>
           </div>
         </>
         )}
@@ -1232,40 +1224,41 @@ function MusteriDetay() {
               )
             } />
             <div>
-              {musteriTalepleri.slice(0, 8).map(t => {
-                const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => navigate(`/servis-talepleri/${t.id}`)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                      padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                      transition: 'background 120ms',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)', flexShrink: 0 }}>
-                        {t.talepNo || `#${t.id}`}
-                      </span>
-                      <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
-                        {t.konu || '—'}
-                      </span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-                        background: `${meta.renk}1f`, color: meta.renk,
-                      }}>
-                        {meta.isim.toUpperCase()}
-                      </span>
-                    </div>
-                    <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {t.olusturmaTarihi ? new Date(t.olusturmaTarihi).toLocaleDateString('tr-TR') : ''}
-                    </span>
-                  </div>
-                )
-              })}
+              {/* 18.08: satır dizilimi tabloya çevrildi */}
+              <div style={{ overflowX: 'auto' }}>
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Talep No</TH><TH>Konu</TH><TH>Durum</TH>
+                      <TH style={{ textAlign: 'right' }}>Tarih</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {musteriTalepleri.slice(0, 8).map(t => {
+                      const meta = SERVIS_DURUM_META[t.durum] || { isim: t.durum, renk: 'var(--text-tertiary)' }
+                      return (
+                        <TR key={t.id} onClick={() => navigate(`/servis-talepleri/${t.id}`)} style={{ cursor: 'pointer' }}>
+                          <TD><CodeBadge>{t.talepNo || `#${t.id}`}</CodeBadge></TD>
+                          <TD style={{ maxWidth: 260 }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                              {t.konu || '—'}
+                            </div>
+                          </TD>
+                          <TD>
+                            <span style={{
+                              fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
+                              background: `${meta.renk}1f`, color: meta.renk, whiteSpace: 'nowrap',
+                            }}>{meta.isim}</span>
+                          </TD>
+                          <TD style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-tertiary)' }} className="tabular-nums">
+                            {t.olusturmaTarihi ? new Date(t.olusturmaTarihi).toLocaleDateString('tr-TR') : ''}
+                          </TD>
+                        </TR>
+                      )
+                    })}
+                  </TBody>
+                </Table>
+              </div>
             </div>
             {musteriTalepleri.length > 8 && (
               <button

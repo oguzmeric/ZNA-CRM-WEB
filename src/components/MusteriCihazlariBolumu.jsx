@@ -10,7 +10,7 @@ import { useConfirm } from '../context/ConfirmContext'
 import CustomSelect from './CustomSelect'
 import LokasyonSecici from './LokasyonSecici'
 import BolumBaslik from './BolumBaslik'
-import { Button, Input, Textarea, Label, Card, EmptyState } from './ui'
+import { Button, Input, Textarea, Label, Card, EmptyState, Table, THead, TBody, TR, TH, TD } from './ui'
 import {
   CIHAZ_DURUMLARI, musteriCihazlariGetir, cihazEkle, cihazGuncelle,
   cihazArizaBildir, cihazArizaGiderildi, cihazSil, cihazHareketleriGetir,
@@ -198,42 +198,51 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [], on
         />
       )}
 
-      {/* Liste */}
-      {gorunen.map(c => {
-        const d = durumObj(c.durum)
-        return (
-          <div
-            key={c.id}
-            onClick={() => detayAc(c)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 120ms',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>
-                {c.cihazAdi || [c.marka, c.model].filter(Boolean).join(' ') || 'Cihaz'}
-              </span>
-              <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-tertiary)' }}>S.N. {c.seriNo}</span>
-              {c.ipAdresi && <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-tertiary)' }}>{c.ipAdresi}</span>}
-              {c.lokasyon && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  <MapPin size={10} strokeWidth={1.5} /> {c.lokasyon}
-                </span>
-              )}
-              <span style={{
-                fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                background: `${d.renk}18`, color: d.renk, border: `1px solid ${d.renk}44`,
-              }}>{d.isim.toLocaleUpperCase('tr')}</span>
-            </div>
-            <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-              {c.guncellemeTarih ? new Date(c.guncellemeTarih).toLocaleDateString('tr-TR') : ''}
-            </span>
-          </div>
-        )
-      })}
+      {/* Liste — 18.08: serbest satır dizilimi tabloya çevrildi */}
+      {gorunen.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Cihaz</TH><TH>Seri No</TH><TH>IP</TH><TH>Lokasyon</TH><TH>Durum</TH>
+                <TH style={{ textAlign: 'right' }}>Tarih</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {gorunen.map(c => {
+                const d = durumObj(c.durum)
+                return (
+                  <TR key={c.id} onClick={() => detayAc(c)} style={{ cursor: 'pointer' }}>
+                    <TD style={{ fontWeight: 600 }}>
+                      {c.cihazAdi || [c.marka, c.model].filter(Boolean).join(' ') || 'Cihaz'}
+                    </TD>
+                    <TD style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>
+                      {c.seriNo || <span style={{ color: 'var(--text-tertiary)' }}>SN'siz</span>}
+                    </TD>
+                    <TD style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                      {c.ipAdresi || '—'}
+                    </TD>
+                    <TD style={{ maxWidth: 180 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-secondary)' }} title={c.lokasyon || ''}>
+                        {c.lokasyon || '—'}
+                      </div>
+                    </TD>
+                    <TD>
+                      <span style={{
+                        fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
+                        background: `${d.renk}18`, color: d.renk, whiteSpace: 'nowrap',
+                      }}>{d.isim}</span>
+                    </TD>
+                    <TD style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-tertiary)' }} className="tabular-nums">
+                      {c.guncellemeTarih ? new Date(c.guncellemeTarih).toLocaleDateString('tr-TR') : ''}
+                    </TD>
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
+        </div>
+      )}
       {cihazlar.length > 6 && (
         <button
           onClick={() => setHepsiGoster(!hepsiGoster)}
