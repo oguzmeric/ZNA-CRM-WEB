@@ -120,6 +120,50 @@ export const dosyaLinkiAl = async (path) => {
   return data.signedUrl
 }
 
+/**
+ * Bu görüşmeden ÜRETİLEN kayıtlar — servis talebi / teklif / keşif.
+ *
+ * 18.08 kullanıcı isteği: "görüşmeden servis açıyorum, aynı servise ararken
+ * çok fazla servis olduğundan karışıyor — bu görüşmenin servisine ulaşmak
+ * istiyoruz." Bağ zaten kuruluydu (gorusme_id), yalnız ekranda gösterilmiyordu.
+ *
+ * ⚠️ ÜÇ TABLONUN KOLON ADLARI FARKLI — canlıdan doğrulandı, tahmin DEĞİL:
+ *   servis_talepleri : olusturma_tarih_İ_ · durum
+ *   teklifler        : olusturma_tarih    · onay_durumu   (durum kolonu YOK!)
+ *   kesifler         : olusturma_tarih    · durum · kesif_basligi
+ * Yanlış kolon adı PostgREST'te 400 döndürür ve liste sessizce boş kalır.
+ *
+ * Bir tablonun hatası diğerlerini düşürmesin diye her sorgu ayrı ele alınır;
+ * hata konsola yazılır, o bölüm boş döner ama diğerleri gelir.
+ */
+export const gorusmeninUretilenleri = async (gorusmeId) => {
+  const gid = Number(gorusmeId)
+  const bos = { servisler: [], teklifler: [], kesifler: [] }
+  if (!gid) return bos
+
+  const [s, t, k] = await Promise.all([
+    supabase.from('servis_talepleri')
+      .select('id, talep_no, konu, durum, atanan_kullanici_ad, olusturma_tarihi')
+      .eq('gorusme_id', gid).order('id', { ascending: false }),
+    supabase.from('teklifler')
+      .select('id, teklif_no, konu, onay_durumu, olusturma_tarih')
+      .eq('gorusme_id', gid).order('id', { ascending: false }),
+    supabase.from('kesifler')
+      .select('id, kesif_no, kesif_basligi, durum, olusturma_tarih')
+      .eq('gorusme_id', gid).order('id', { ascending: false }),
+  ])
+
+  if (s.error) console.error('[gorusmeninUretilenleri/servis]', s.error.message)
+  if (t.error) console.error('[gorusmeninUretilenleri/teklif]', t.error.message)
+  if (k.error) console.error('[gorusmeninUretilenleri/kesif]', k.error.message)
+
+  return {
+    servisler: (s.data || []).map(toCamel),
+    teklifler: (t.data || []).map(toCamel),
+    kesifler:  (k.data || []).map(toCamel),
+  }
+}
+
 // Dosya sil (storage + dosyalar array)
 export const dosyaSil = async (gorusmeId, path) => {
   const { error: delError } = await supabase.storage

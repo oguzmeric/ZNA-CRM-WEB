@@ -15,7 +15,7 @@ import { useToast } from '../context/ToastContext'
 import CustomSelect from '../components/CustomSelect'
 import GorusenCokluSecim from '../components/GorusenCokluSecim'
 import { SkeletonDetay } from '../components/Skeleton'
-import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService } from '../services/gorusmeService'
+import { gorusmeGetir, gorusmeGuncelle as gorusmeGuncelleService, gorusmeninUretilenleri } from '../services/gorusmeService'
 import { gorusmeYorumlariGetir, gorusmeYorumEkle, gorusmeYorumSil } from '../services/gorusmeYorumService'
 import MentionTextarea from '../components/MentionTextarea'
 import { parseMentions, segmentMetin } from '../lib/mention'
@@ -64,6 +64,18 @@ const IRTIBAT = {
   diger:           { C: Lightbulb,     isim: 'Diğer' },
 }
 
+// Servis talebi durum → Badge tone. Kapanış zinciri: tamamlandi → onaylandi.
+const SERVIS_DURUM_TONE = {
+  bekliyor: 'pasif', inceleniyor: 'beklemede', atandi: 'lead',
+  devam_ediyor: 'beklemede', tamamlandi: 'aktif', onaylandi: 'aktif',
+  iptal: 'kayip', reddedildi: 'kayip',
+}
+const SERVIS_DURUM_ISIM = {
+  bekliyor: 'Bekliyor', inceleniyor: 'İnceleniyor', atandi: 'Atandı',
+  devam_ediyor: 'Devam Ediyor', tamamlandi: 'Tamamlandı', onaylandi: 'Onaylandı (Kapalı)',
+  iptal: 'İptal', reddedildi: 'Reddedildi',
+}
+
 const gorevDurumTone = (d) => {
   if (d === 'tamamlandi') return { tone: 'aktif', isim: 'Tamamlandı' }
   if (d === 'devam')      return { tone: 'beklemede', isim: 'Devam Ediyor' }
@@ -84,6 +96,9 @@ function GorusmeDetay() {
   const [onSiparisModalAcik, setOnSiparisModalAcik] = useState(false)
   const [duzenlenenOnSiparis, setDuzenlenenOnSiparis] = useState(null)
   const [onSiparisler, setOnSiparisler] = useState([])
+  // Bu görüşmeden üretilen servis/teklif/keşif — "aynı servisi ararken
+  // karışıyor" geri bildiriminin karşılığı (18.08)
+  const [uretilenler, setUretilenler] = useState({ servisler: [], teklifler: [], kesifler: [] })
   // { [onSiparisId]: { siparisNo, durum } } — onaylanınca üretilen sipariş no
   const [siparisHaritasi, setSiparisHaritasi] = useState({})
 
@@ -124,6 +139,13 @@ function GorusmeDetay() {
         }
         // Bu görüşmeye bağlı ön siparişler
         gorusmeninOnSiparisleri(id).then(setOnSiparisler).catch(() => setOnSiparisler([]))
+        // Bu görüşmeden üretilen servis / teklif / keşif
+        gorusmeninUretilenleri(id)
+          .then(setUretilenler)
+          .catch(e => {
+            console.error('[uretilenler]', e?.message || e)
+            setUretilenler({ servisler: [], teklifler: [], kesifler: [] })
+          })
         // Yorumlar
         gorusmeYorumlariGetir(id).then(setYorumlar).catch(() => setYorumlar([]))
       } finally { setYukleniyor(false) }
@@ -662,6 +684,102 @@ function GorusmeDetay() {
           </div>
         )}
       </Card>
+
+      {/* Bu görüşmeden oluşturulanlar — servis / teklif / keşif.
+          18.08: "görüşmeden servis açıyorum, sonra aynı servisi ararken çok
+          fazla servis olduğundan karışıyor". Bağ (gorusme_id) zaten vardı,
+          yalnız hiçbir ekranda gösterilmiyordu. */}
+      {(() => {
+        const { servisler, teklifler, kesifler } = uretilenler
+        const toplam = servisler.length + teklifler.length + kesifler.length
+        if (!toplam) return null
+
+        const kisaTarih = (t) => t
+          ? new Date(t).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
+          : ''
+
+        // ⚠️ BİLEŞEN DEĞİL düz render fonksiyonu: JSX içinde bileşen tanımlamak
+        // her render'da yeni bir tip üretir ve React satırları baştan kurar.
+        const satirCiz = ({ k, ikon, no, baslik, rozet, rozetTone, alt, tarih, yol }) => (
+          <div
+            key={k}
+            onClick={() => navigate(yol)}
+            style={{
+              padding: 10, border: '1px solid var(--border-default)', borderRadius: 8,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
+              background: 'var(--surface-sunken)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+          >
+            {ikon}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: 'var(--brand-primary)' }}>
+                  {no}
+                </span>
+                {rozet && <Badge tone={rozetTone || 'neutral'}>{rozet}</Badge>}
+              </div>
+              {baslik && (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {baslik}
+                </div>
+              )}
+              {alt && (
+                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 2 }}>{alt}</div>
+              )}
+            </div>
+            {tarih && (
+              <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                {tarih}
+              </span>
+            )}
+            <ArrowRight size={14} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          </div>
+        )
+
+        return (
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }}>
+              <CardTitle>Bu Görüşmeden Oluşturulanlar</CardTitle>
+              <p className="t-caption" style={{ marginTop: 2 }}>
+                <span className="tabular-nums">{toplam}</span> kayıt — tıklayarak doğrudan açabilirsin
+              </p>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {servisler.map(s => satirCiz({
+                k: `srv-${s.id}`,
+                ikon: <Wrench size={15} strokeWidth={1.6} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />,
+                no: s.talepNo || `#${s.id}`,
+                baslik: s.konu,
+                rozet: SERVIS_DURUM_ISIM[s.durum] || s.durum,
+                rozetTone: SERVIS_DURUM_TONE[s.durum] || 'neutral',
+                alt: s.atananKullaniciAd ? `Atanan: ${s.atananKullaniciAd}` : 'Henüz atanmadı',
+                tarih: kisaTarih(s.olusturmaTarihi),
+                yol: `/servis-talepleri/${s.id}`,
+              }))}
+              {teklifler.map(t => satirCiz({
+                k: `tkf-${t.id}`,
+                ikon: <Receipt size={15} strokeWidth={1.6} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />,
+                no: t.teklifNo || `#${t.id}`,
+                baslik: t.konu,
+                rozet: t.onayDurumu,
+                tarih: kisaTarih(t.olusturmaTarih),
+                yol: `/teklifler/${t.id}`,
+              }))}
+              {kesifler.map(k => satirCiz({
+                k: `ksf-${k.id}`,
+                ikon: <Compass size={15} strokeWidth={1.6} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />,
+                no: k.kesifNo || `#${k.id}`,
+                baslik: k.kesifBasligi,
+                rozet: k.durum,
+                tarih: kisaTarih(k.olusturmaTarih),
+                yol: `/kesifler/${k.id}`,
+              }))}
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Bağlı ön siparişler */}
       {onSiparisler.length > 0 && (
