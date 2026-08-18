@@ -26,11 +26,15 @@ export const ANA_TURLER = [
   { id: 'kesif', isim: 'Keşif', ikon: '🔍', renk: '#014486', bg: 'rgba(1,68,134,0.1)' },
   { id: 'bakim', isim: 'Bakım', ikon: '🛠️', renk: '#f59e0b', bg: 'rgba(245,158,11,0.1)', portal: false },
   { id: 'kurulum', isim: 'Kurulum', ikon: '🔩', renk: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', portal: false },
-  { id: 'teklif', isim: 'Teklif', ikon: '💼', renk: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  // 18.08: portaldan KALDIRILDI — sol menüde ayrı "Teklif İste" sayfası var
+  // (ürün katalogundan sepetli akış). Talep formundaki tür fazlalıktı ve
+  // müşteriyi iki ayrı teklif yoluna bölüyordu. Tür SİLİNMEDİ: mevcut
+  // 'teklif' talepleri rozetini/rengini buradan okumaya devam ediyor.
+  { id: 'teklif', isim: 'Teklif', ikon: '💼', renk: '#10b981', bg: 'rgba(16,185,129,0.1)', portal: false },
   { id: 'egitim', isim: 'Eğitim', ikon: '🎓', renk: '#06b6d4', bg: 'rgba(6,182,212,0.1)' },
 ]
 
-// Müşteri portalında seçilebilen türler — Arıza · Talep · Keşif · Teklif · Eğitim
+// Müşteri portalında seçilebilen türler — Arıza · Talep · Keşif · Eğitim
 export const PORTAL_TURLERI = ANA_TURLER.filter(t => t.portal !== false)
 
 export const ALT_KATEGORILER = {
@@ -432,23 +436,34 @@ export function ServisTalebiProvider({ children }) {
     }
   }
 
+  /**
+   * Talebe not ekler. HATA FIRLATIR — çağıran yakalayıp kullanıcıya göstermeli.
+   *
+   * ⚠️ 18.08: eskiden doğrudan `servis_talepleri` UPDATE ediyordu. Portal
+   * müşterisinde bu YOL KAPALIYDI (tabloda müşteri için UPDATE politikası yok,
+   * yalnız SELECT/INSERT/DELETE var) → RLS reddediyor, fonksiyon `if (kayitli)`
+   * ile sessizce yutuyor, çağıran da metin kutusunu temizliyordu. Müşteri
+   * yazdığını kaybediyor, not hiç kaydedilmiyordu ("yazışmaya yazınca
+   * yazılmıyor" bildirimi).
+   *
+   * Artık `servis_talep_not_ekle` RPC'si (mig 311, SECURITY DEFINER):
+   * yalnız `notlar` dizisine ekler, başka kolona dokunmaz. Yetki + not tipi
+   * SUNUCUDA belirlenir — müşteri 'ic' (ekip içi) not yazamaz.
+   */
   const notEkle = async (talepId, metin, kullanici, tip = 'ic') => {
-    const mevcutTalep = talepler.find(t => t.id === talepId)
-    if (!mevcutTalep) return
-
-    const yeniNot = {
-      id: crypto.randomUUID(),
-      kullaniciId: kullanici.id,
-      kullaniciAd: kullanici.ad,
-      metin,
-      tarih: new Date().toISOString(),
-      tip,
+    const { data, error } = await supabase.rpc('servis_talep_not_ekle', {
+      p_talep_id: talepId,
+      p_metin: metin,
+      p_tip: tip,
+    })
+    if (error) {
+      console.error('[notEkle]', error.message)
+      throw new Error(error.message || 'Not eklenemedi.')
     }
-    const yeniNotlar = [...(mevcutTalep.notlar || []), yeniNot]
-    const kayitli = await servisTalepGuncelle(talepId, { notlar: yeniNotlar })
-    if (kayitli) {
-      setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...kayitli } : t))
-    }
+    // Sunucunun ürettiği notu yerel listeye ekle (kimlik/tarih/tip sunucudan)
+    setTalepler(prev => prev.map(t =>
+      t.id === talepId ? { ...t, notlar: [...(t.notlar || []), data] } : t))
+    return data
   }
 
   const talepSil = async (id) => {

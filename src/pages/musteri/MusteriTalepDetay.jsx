@@ -6,6 +6,7 @@ import {
   Frown, Meh, Smile, Paperclip, Image as ImageIcon,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/ToastContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
@@ -47,6 +48,7 @@ export default function MusteriTalepDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
   const { talepler, notEkle, talepGuncelle, dosyaLinkiAl, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const toast = useToast()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')
@@ -111,10 +113,19 @@ export default function MusteriTalepDetay() {
     setDuzenlemeModu(false); setDuzenForm(null)
   }
 
-  const notGonder = () => {
-    if (!yeniNot.trim()) return
-    notEkle(talep.id, yeniNot.trim(), kullanici, 'musteri')
-    setYeniNot('')
+  // ⚠️ await ŞART (18.08): eskiden notEkle beklenmeden kutu temizleniyordu.
+  // Portal müşterisinde yazma RLS'e takılıyordu (tabloda müşteri UPDATE
+  // politikası yok) → mesaj hiç kaydedilmiyor ama yazdığı metin siliniyordu.
+  // Artık mig 311 RPC'si üzerinden yazılıyor; hata olursa metin KUTUDA KALIR.
+  const notGonder = async () => {
+    const metin = yeniNot.trim()
+    if (!metin) return
+    try {
+      await notEkle(talep.id, metin, kullanici, 'musteri')
+      setYeniNot('')
+    } catch (e) {
+      toast?.error?.(e?.message || 'Mesaj gönderilemedi, lütfen tekrar deneyin.')
+    }
   }
 
   const musteriOnayladi = () => {
@@ -130,7 +141,12 @@ export default function MusteriTalepDetay() {
       kullanici.ad,
       'Müşteri sorunu devam ettiğini bildirdi'
     )
-    if (sorunAciklama.trim()) notEkle(talep.id, sorunAciklama.trim(), kullanici, 'musteri')
+    // Not kaydı başarısız olsa bile akış ilerlemeli (durum zaten güncellendi);
+    // yine de sessiz kalmıyoruz — müşteri açıklamasının düştüğünü bilmeli.
+    if (sorunAciklama.trim()) {
+      notEkle(talep.id, sorunAciklama.trim(), kullanici, 'musteri')
+        .catch(e => toast?.error?.(e?.message || 'Açıklama kaydedilemedi.'))
+    }
     setOnayAsamasi('bitti')
   }
 

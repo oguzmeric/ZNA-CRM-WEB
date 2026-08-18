@@ -258,9 +258,18 @@ export default function ServisTalepDetay() {
     kaydeden: talep.musteriAd || 'Müşteri',
   } : null
 
-  const notGonder = () => {
-    if (!yeniNot.trim()) return
-    notEkle(talep.id, yeniNot.trim(), kullanici, notTip)
+  // ⚠️ await ŞART: eskiden notEkle beklenmeden setYeniNot('') çalışıyordu —
+  // kayıt başarısız olsa bile kutu temizleniyor, kullanıcı yazdığını
+  // kaybediyordu. Artık hata olursa metin KUTUDA KALIR ve sebep gösterilir.
+  const notGonder = async () => {
+    const metin = yeniNot.trim()
+    if (!metin) return
+    try {
+      await notEkle(talep.id, metin, kullanici, notTip)
+    } catch (e) {
+      toast?.error?.(e?.message || 'Not eklenemedi.')
+      return
+    }
 
     // @mention bildirimleri (sadece iç notlar için — müşteriye giden notlarda
     // ekip içi etiketleme anlamsız)
