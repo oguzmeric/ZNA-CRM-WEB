@@ -23,6 +23,8 @@ import Dashboard from './pages/Dashboard'
 import PaylasimBelge from './pages/PaylasimBelge'
 import DavetKabul from './pages/DavetKabul'
 import KullaniciSozlesmesi from './pages/KullaniciSozlesmesi'
+import Gizlilik from './pages/Gizlilik'
+import Yardim from './pages/Yardim'
 import SozlesmeOnaylari from './pages/SozlesmeOnaylari'
 import SozlesmeKapisi from './components/SozlesmeKapisi'
 import MainLayout from './layouts/MainLayout'
@@ -320,6 +322,20 @@ function App() {
           <Route path="/kullanici-sozlesmesi" element={<KullaniciSozlesmesi />} />
         </Routes>
       </Suspense>
+    )
+  }
+
+  // Gizlilik politikası ve yardım — auth gate'in ÖNÜNDE, herkese açık.
+  // ⚠️ App Store Connect'in "Privacy Policy URL" ve "Support URL" alanları bu
+  // iki adresi gösterir; Apple incelemecisi ANONİM açar. Login arkasına
+  // düşerlerse uygulama "destek/politika sayfasına erişilemiyor" diye reddedilir.
+  // (/destek yolu iç destek modülünde kullanımda olduğu için burası /yardim.)
+  if (location.pathname === '/gizlilik' || location.pathname === '/yardim') {
+    return (
+      <Routes>
+        <Route path="/gizlilik" element={<Gizlilik />} />
+        <Route path="/yardim" element={<Yardim />} />
+      </Routes>
     )
   }
 
