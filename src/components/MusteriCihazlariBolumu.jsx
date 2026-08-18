@@ -27,7 +27,7 @@ const HAREKET_IKON = {
   olusturuldu: '➕', ariza: '⚠️', tamir: '✅', guncelleme: '✏️', not: '📝',
 }
 
-export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) {
+export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [], onOzet }) {
   const { kullanici } = useAuth()
   const { toast } = useToast()
   const { confirm } = useConfirm()
@@ -47,7 +47,15 @@ export default function MusteriCihazlariBolumu({ musteriId, lokasyonlar = [] }) 
 
   const yukle = useCallback(() => {
     if (!musteriId) return
-    musteriCihazlariGetir(musteriId).then(setCihazlar)
+    musteriCihazlariGetir(musteriId).then(l => {
+      setCihazlar(l)
+      // Üst sayfaya özet bildir — MusteriDetay tepesinde arızalı cihaz bandı (18.08)
+      onOzet?.({
+        arizali: l.filter(c => c.durum === 'arizali').length,
+        serviste: l.filter(c => c.durum === 'serviste').length,
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musteriId])
 
   useEffect(() => { yukle() }, [yukle])

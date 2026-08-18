@@ -4,7 +4,7 @@ import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Pencil, Save, X, Plus, Trash2, Star, MapPin, Phone, Mail,
   Users, Building2, FileText, Receipt, CheckSquare, ArrowRight, Inbox, Check,
-  CheckCircle2, Send, User, Compass, HardDrive, Wrench, Cpu,
+  CheckCircle2, Send, User, Compass, HardDrive, Wrench, Cpu, AlertTriangle,
 } from 'lucide-react'
 import MusteriDavetModal from '../components/MusteriDavetModal'
 import MusteriCihazlariBolumu from '../components/MusteriCihazlariBolumu'
@@ -118,6 +118,10 @@ function MusteriDetay() {
   const lokasyonBolumRef = useRef(null)
 
   const yeniOlusturuldu = location.state?.yeniMusteri === true
+
+  // Cihaz Envanteri bölümü sayfanın en altında — arızalı/serviste cihaz varsa
+  // ÜSTTE uyarı bandı çıkar (18.08: "müşteri detayında arızalı cihazı göremiyoruz")
+  const [cihazOzet, setCihazOzet] = useState(null)
 
   const [musteri, setMusteri]       = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -407,6 +411,30 @@ function MusteriDetay() {
       >
         <ArrowLeft size={14} strokeWidth={1.5} /> Müşterilere dön
       </button>
+
+      {/* Arızalı/serviste cihaz uyarısı — bölüm sayfanın altında kalıyor,
+          sorunlu cihaz varsa daha kapıdan görünsün */}
+      {(cihazOzet?.arizali > 0 || cihazOzet?.serviste > 0) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '9px 14px', marginBottom: 14,
+          border: '1px solid rgba(220,38,38,0.35)', borderRadius: 'var(--radius-md)',
+          background: 'rgba(220,38,38,0.06)',
+        }}>
+          <AlertTriangle size={15} strokeWidth={1.7} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 200, font: '600 12.5px/18px var(--font-sans)', color: 'var(--text-primary)' }}>
+            Bu müşteride {[
+              cihazOzet.arizali > 0 ? `${cihazOzet.arizali} arızalı` : null,
+              cihazOzet.serviste > 0 ? `${cihazOzet.serviste} serviste` : null,
+            ].filter(Boolean).join(' + ')} cihaz var.
+          </span>
+          <Button size="sm" variant="secondary" onClick={() =>
+            document.getElementById('cihaz-envanteri')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }>
+            Cihazları Gör
+          </Button>
+        </div>
+      )}
 
       {/* Yeni müşteri banner */}
       {yeniOlusturuldu && (
@@ -1274,7 +1302,9 @@ function MusteriDetay() {
       })()}
 
       {/* Müşteri Cihaz Envanteri — SN/IP/MAC/kimlik takibi + arıza durumu */}
-      <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} />
+      <div id="cihaz-envanteri">
+        <MusteriCihazlariBolumu musteriId={Number(id)} lokasyonlar={lokasyonlar} onOzet={setCihazOzet} />
+      </div>
 
       {/* Timeline — müşteri etkileşim geçmişi (scrollable) */}
       <Card padding={0} style={{ marginBottom: 16 }}>
