@@ -1701,26 +1701,33 @@ function Gorevler() {
           const saatVar = str.includes('T') || str.includes(' ')
           const d = new Date(str)
           if (isNaN(d.getTime())) return str.slice(0, 10)
+          // ⚠️ YIL 2 HANE (18.08): "13.08.2026 09:35" 16 karakterdi ve iki tarih
+          // kolonu tabloyu ekran dışına taşırıyordu ("ekrana sığmıyor" geri
+          // bildirimi). "13.08.26 09:35" ile kolon başına ~18px kazanılıyor,
+          // bilgi kaybı yok.
           if (saatVar) {
             return new Intl.DateTimeFormat('tr-TR', {
-              day: '2-digit', month: '2-digit', year: 'numeric',
+              day: '2-digit', month: '2-digit', year: '2-digit',
               hour: '2-digit', minute: '2-digit',
               timeZone: 'Europe/Istanbul',
             }).format(d)
           }
           return new Intl.DateTimeFormat('tr-TR', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
+            day: '2-digit', month: '2-digit', year: '2-digit',
             timeZone: 'Europe/Istanbul',
           }).format(d)
         }
 
+        // 18.08 "ekrana sığmıyor": 10 kolon × yatay dolgu tabloyu taşırıyordu.
+        // Dolgu 8→6px, başlık 11→10.5px, hücre 12→11.5px. Satır yoğunluğu
+        // (06.08 kararı) korunuyor; yalnız yatay eksende sıkıştırma yapıldı.
         const thStyle = {
           textAlign: 'left',
-          padding: '7px 8px',
-          font: '600 11px/14px var(--font-sans)',
+          padding: '7px 6px',
+          font: '600 10.5px/14px var(--font-sans)',
           color: 'var(--text-secondary)',
           textTransform: 'uppercase',
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
           background: 'var(--surface-sunken)',
           borderBottom: '1px solid var(--border-default)',
           whiteSpace: 'nowrap',
@@ -1728,8 +1735,8 @@ function Gorevler() {
         }
         const tdStyle = {
           // GRID yoğunluğu (06.08): satırlar sıkı — tek ekranda daha çok görev
-          padding: '5px 8px',
-          font: '400 12px/17px var(--font-sans)',
+          padding: '5px 6px',
+          font: '400 11.5px/17px var(--font-sans)',
           color: 'var(--text-primary)',
           borderBottom: '1px solid var(--border-default)',
           verticalAlign: 'middle',
@@ -1737,8 +1744,8 @@ function Gorevler() {
         }
         const colFilterInput = {
           width: '100%',
-          padding: '4px 8px',
-          font: '400 12px/16px var(--font-sans)',
+          padding: '3px 6px',
+          font: '400 11.5px/16px var(--font-sans)',
           color: 'var(--text-primary)',
           background: 'var(--surface-card)',
           border: '1px solid var(--border-default)',
@@ -1937,12 +1944,14 @@ function Gorevler() {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
-                    <th style={{ ...thStyle, width: 64 }}></th>
+                    <th style={{ ...thStyle, width: 52 }}></th>
                     <th style={thStyle}>No</th>
                     <th style={thStyle}>Takip</th>
                     <th style={thStyle}>Görevi Veren</th>
                     <th style={thStyle}>Görevi Alan</th>
-                    <th style={{ ...thStyle, minWidth: 320 }}>Görev</th>
+                    {/* Görev metni esnek kolon: minWidth 320→240, kalan genişliği
+                        yine bu kolon yutar (tableLayout auto) */}
+                    <th style={{ ...thStyle, minWidth: 240 }}>Görev</th>
                     <th style={thStyle}>İlerleme</th>
                     <th style={thStyle}>Baş. Tarih</th>
                     <th style={thStyle}>Bit. Tarih</th>
@@ -1951,13 +1960,13 @@ function Gorevler() {
                   {/* Sütun filtre satırı — "Filtreler" düğmesiyle katlanır */}
                   {filtrePaneli && (
                   <tr>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}></th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}></th>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input placeholder="GRV-…" value={kolonFiltre.no}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, no: e.target.value }); setSayfa(1) }}
-                        style={{ ...colFilterInput, minWidth: 76 }} />
+                        style={{ ...colFilterInput, minWidth: 64 }} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <select
                         value={kolonFiltre.takip}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, takip: e.target.value }); setSayfa(1) }}
@@ -1968,33 +1977,33 @@ function Gorevler() {
                         <option value="suresi_gecti">Gecikmiş</option>
                       </select>
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.veren}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, veren: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.alan}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, alan: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input placeholder="başlık / açıklama…" value={kolonFiltre.gorev}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, gorev: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}></th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}></th>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input type="date" value={kolonFiltre.basTar}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, basTar: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input type="date" value={kolonFiltre.bitTar}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, bitTar: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
                     </th>
-                    <th style={{ ...thStyle, top: 34, padding: '6px 12px', background: 'var(--surface-card)' }}>
+                    <th style={{ ...thStyle, top: 34, padding: '5px 6px', background: 'var(--surface-card)' }}>
                       <input placeholder="ara…" value={kolonFiltre.kontrol}
                         onChange={e => { setKolonFiltre({ ...kolonFiltre, kontrol: e.target.value }); setSayfa(1) }}
                         style={colFilterInput} />
