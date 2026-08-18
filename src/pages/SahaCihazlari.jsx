@@ -20,7 +20,7 @@ import { MonitorSmartphone, ExternalLink, RefreshCw, MapPin, X } from 'lucide-re
 import { SkeletonList } from '../components/Skeleton'
 import Sayfalama from '../components/Sayfalama'
 import CustomSelect from '../components/CustomSelect'
-import { Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Modal, Input, Label, Alert } from '../components/ui'
+import { Button, SearchInput, Card, Badge, CodeBadge, EmptyState, Modal, Input, Label, Alert } from '../components/ui'
 import { trKelimeEslesir } from '../lib/trArama'
 import {
   takilanUrunleriGetir, envanterCihazlariniGetir,
@@ -291,7 +291,7 @@ export default function SahaCihazlari() {
   if (yukleniyor) return <div style={{ padding: 24 }}><SkeletonList /></div>
 
   return (
-    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <p className="t-caption" style={{ margin: 0, color: 'var(--text-tertiary)' }}>
           Sahaya takılı cihazların toplu görünümü. Cihaz seçip <strong>lokasyon atayabilirsiniz</strong>;
@@ -312,13 +312,14 @@ export default function SahaCihazlari() {
         </Alert>
       )}
 
-      {/* Sayaç şeridi — kutular sekmelerin kaynağını birebir sayar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-        <KPICard label="Takılan Ürün (S/N)" value={takilan.length} kompakt />
-        <KPICard label="Lokasyonu Girilmemiş" value={lokasyonsuzSayi} kompakt />
-        <KPICard label="Elle Girilen Cihaz" value={envanter.length} kompakt />
-        <KPICard label="Müşteri" value={new Set([...takilan, ...envanter].map(k => k.musteriId).filter(Boolean)).size} kompakt />
-        <KPICard label="Arızalı (envanter)" value={arizali} kompakt />
+      {/* Sayaç şeridi — kutular sekmelerin kaynağını birebir sayar.
+          18.08: dev kartlar listeyi ekran dışına itiyordu — kompakt şerit */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <SayacKutu deger={takilan.length} etiket="Takılan Ürün (S/N)" />
+        <SayacKutu deger={lokasyonsuzSayi} etiket="Lokasyonu Girilmemiş" />
+        <SayacKutu deger={envanter.length} etiket="Elle Girilen Cihaz" />
+        <SayacKutu deger={new Set([...takilan, ...envanter].map(k => k.musteriId).filter(Boolean)).size} etiket="Müşteri" />
+        <SayacKutu deger={arizali} etiket="Arızalı (envanter)" />
       </div>
 
       {/* Sekmeler — FaturaTalepleri ile aynı alt-çizgi deseni */}
@@ -351,11 +352,13 @@ export default function SahaCihazlari() {
               : 'Cihaz adı, seri no, IP, müşteri, lokasyon ara…'}
           />
         </div>
-        <CustomSelect value={musteriFiltre} onChange={e => setMusteriFiltre(e.target.value)} style={{ minWidth: 200 }}>
+        {/* 18.08: w-auto şart — yoksa select kökü %100 genişleyip her filtreyi
+            ayrı satıra itiyor, liste ekranın çok altından başlıyordu */}
+        <CustomSelect className="w-auto" value={musteriFiltre} onChange={e => setMusteriFiltre(e.target.value)} style={{ minWidth: 200 }}>
           <option value="">Tüm Müşteriler</option>
           {musteriler.map(m => <option key={m} value={m}>{m}</option>)}
         </CustomSelect>
-        <CustomSelect value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)} style={{ minWidth: 140 }}>
+        <CustomSelect className="w-auto" value={durumFiltre} onChange={e => setDurumFiltre(e.target.value)} style={{ minWidth: 140 }}>
           <option value="">Tüm Durumlar</option>
           {durumlar.map(d => <option key={d} value={d}>{d}</option>)}
         </CustomSelect>
@@ -534,3 +537,12 @@ export default function SahaCihazlari() {
 }
 
 const hucre = { padding: '9px 12px', borderBottom: '1px solid var(--border-default)' }
+
+// Kompakt sayaç (ArizaliUrunler KPI deseniyle aynı boy) — KPICard'ın iki
+// satırlı dev kartı üst bloğu şişiriyordu, liste ekran dışına kayıyordu.
+const SayacKutu = ({ deger, etiket }) => (
+  <Card style={{ padding: '7px 14px', display: 'flex', alignItems: 'baseline', gap: 6 }}>
+    <span className="tabular-nums" style={{ font: '700 15px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{deger}</span>
+    <span className="t-caption">{etiket}</span>
+  </Card>
+)
