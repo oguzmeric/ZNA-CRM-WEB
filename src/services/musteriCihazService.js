@@ -38,15 +38,19 @@ export const musteriCihazlariGetir = async (musteriId) => {
 // Merkezi Arızalı Ürünler sayfası (18.08): TÜM müşterilerin cihazları,
 // müşteri adı join'li. Web'den giriş/işleme MusteriDetay'a mahkumdu —
 // depocu ürünü önünde tutarken hangi müşteride olduğunu bilmek zorundaydı.
+// ⚠️ musteriler'de kolon `firma` (firma_adi DEĞİL) — yanlış embed PostgREST'te
+// 400 veriyordu ve liste sessizce boş dönüyordu; hata artık fırlatılır ki
+// sayfa "kayıt yok" ile "yüklenemedi"yi ayırt edebilsin.
 export const tumCihazlariGetir = async () => {
   const { data, error } = await supabase
     .from('musteri_cihazlari')
-    .select('*, musteriler(firma_adi)')
+    .select('*, musteriler(firma, ad, soyad)')
     .order('guncelleme_tarih', { ascending: false })
-  if (error) { console.error('[tumCihazlariGetir]', error.message); return [] }
+  if (error) { console.error('[tumCihazlariGetir]', error.message); throw new Error(error.message) }
   return (data || []).map((r) => {
-    const { musteriler, ...cihaz } = r
-    return { ...toCamel(cihaz), musteriAd: musteriler?.firma_adi || '' }
+    const { musteriler: m, ...cihaz } = r
+    const musteriAd = m?.firma || [m?.ad, m?.soyad].filter(Boolean).join(' ') || ''
+    return { ...toCamel(cihaz), musteriAd }
   })
 }
 

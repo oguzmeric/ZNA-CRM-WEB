@@ -37,6 +37,7 @@ export default function ArizaliUrunler() {
 
   const [yukleniyor, setYukleniyor] = useState(true)
   const [cihazlar, setCihazlar] = useState([])
+  const [yuklemeHatasi, setYuklemeHatasi] = useState(null)
   const [durumFiltre, setDurumFiltre] = useState('acik')   // acik = arızalı + serviste
   const [arama, setArama] = useState('')
 
@@ -46,7 +47,8 @@ export default function ArizaliUrunler() {
 
   const yukle = useCallback(async () => {
     setYukleniyor(true)
-    try { setCihazlar(await tumCihazlariGetir()) }
+    try { setCihazlar(await tumCihazlariGetir()); setYuklemeHatasi(null) }
+    catch (e) { setYuklemeHatasi(e.message || 'Bilinmeyen hata') }
     finally { setYukleniyor(false) }
   }, [])
   useEffect(() => { Promise.resolve().then(yukle) }, [yukle])
@@ -160,6 +162,15 @@ export default function ArizaliUrunler() {
         </div>
         {yukleniyor ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
+        ) : yuklemeHatasi ? (
+          // "kayıt yok" ile "yüklenemedi" AYRI: sorgu hatası sessizce boş
+          // liste gibi görünüyordu (firma_adi embed vakası, 18.08)
+          <div style={{ padding: 24, textAlign: 'center' }}>
+            <div style={{ color: 'var(--danger)', font: '600 13px/18px var(--font-sans)', marginBottom: 8 }}>
+              Liste yüklenemedi: {yuklemeHatasi}
+            </div>
+            <Button variant="ghost" onClick={yukle}>Tekrar Dene</Button>
+          </div>
         ) : liste.length === 0 ? (
           <EmptyState title="Kayıt yok" description="Bu filtrede cihaz bulunmuyor." />
         ) : (
