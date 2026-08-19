@@ -22,6 +22,7 @@ import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Modal,
 } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 
 const AY_ADLARI = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -123,12 +124,10 @@ export default function IzinBordro() {
   }
 
   const bordroIndir = async (b) => {
-    try {
-      const url = await bordroIndirUrl(b.dosyaYol)
-      window.open(url, '_blank')
-    } catch (e) {
-      toast.error(e?.message || 'Bordro indirilemedi.')
-    }
+    // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+    // takılıp sessizce null dönüyordu (bkz. src/lib/dosyaAc.js).
+    const sonuc = await yeniSekmedeAc(() => bordroIndirUrl(b.dosyaYol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Bordro indirilemedi.'))
   }
 
   return (

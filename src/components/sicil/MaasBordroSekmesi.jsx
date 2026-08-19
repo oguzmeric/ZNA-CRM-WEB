@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { Download, FileText } from 'lucide-react'
 import { Badge, Button, Table, THead, TBody, TR, TH, TD } from '../ui'
 import { useToast } from '../../context/ToastContext'
+import { indirmeBaslat } from '../../lib/dosyaAc'
 import { maasGecmisiGetir } from '../../services/personelSicilService'
 import { bordrolariGetir, bordroIndirUrl, tutarBicim } from '../../services/ikService'
 import { useSekmeVeri } from './useSekmeVeri'
@@ -21,7 +22,7 @@ const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
 
 export default function MaasBordroSekmesi({ kullaniciId }) {
-  const toast = useToast()
+  const { toast } = useToast()
   const [indirilen, setIndirilen] = useState(null)
 
   const { veri, yukleniyor, hata, yenile } = useSekmeVeri(
@@ -42,13 +43,19 @@ export default function MaasBordroSekmesi({ kullaniciId }) {
   const bordrolar = veri?.bordrolar || []
   const guncel = maaslar[0] || null
 
+  // ⚠️ window.open KULLANILMAZ: imzalı URL await'in ardından geliyor, o noktada
+  // tarayıcının kullanıcı-etkileşimi penceresi kapandığı için popup engelleniyor
+  // ve null dönüyordu — istisna da fırlatmadığı için hata görünmüyordu.
+  // bordroIndirUrl attachment olarak imzalıyor; adres ataması sayfayı
+  // değiştirmeden indirmeyi başlatır. (bkz. src/lib/dosyaAc.js)
   const indir = async (b) => {
     setIndirilen(b.id)
     try {
       const url = await bordroIndirUrl(b.dosyaYol, b.dosyaAd)
-      window.open(url, '_blank', 'noopener')
+      if (!url) throw new Error('Bordro bağlantısı üretilemedi.')
+      indirmeBaslat(url)
     } catch (e) {
-      toast?.error?.(e?.message || 'Bordro indirilemedi.')
+      toast.error(e?.message || 'Bordro indirilemedi.')
     } finally {
       setIndirilen(null)
     }

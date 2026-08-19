@@ -49,7 +49,7 @@ export default function ServisTalepDetay() {
   const { kullanici, kullanicilar } = useAuth()
   const { talepler, talepGuncelle, talepSil, notEkle, dosyaYukle, dosyaLinkiAl, dosyaSil, ANA_TURLER, ALT_KATEGORILER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
   const { bildirimEkle, talepBildirimleriniOku } = useBildirim()
-  const toast = useToast()
+  const { toast } = useToast()
   const navigate = useNavigate()
 
   // Servis → Proforma Fatura köprüsü

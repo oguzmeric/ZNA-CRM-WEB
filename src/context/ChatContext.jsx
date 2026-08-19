@@ -63,7 +63,7 @@ const onizlemeMetni = (icerik = '') => {
 
 export function ChatProvider({ children }) {
   const { kullanici, kullanicilar } = useAuth()
-  // DİKKAT: destructuring ŞART. `const toast = useToast()` context objesinin
+  // DİKKAT: destructuring ŞART. `const { toast } = useToast()` context objesinin
   // KENDİSİNİ verir ({ showToast, toast }) → toast.info undefined olur ve
   // `toast?.info?.(...)` optional-call sayesinde hata bile fırlatmadan sessizce
   // hiçbir şey yapmaz. Bu yüzden yeni mesaj bildirimi HİÇ çıkmıyordu; aynı

@@ -28,6 +28,7 @@ import CustomSelect from '../components/CustomSelect'
 import AvansOnaylari, { AvansKararModal, AvansOdemeModal } from '../components/AvansPanel'
 import PuantajPanel from '../components/PuantajPanel'
 import PersonelSicilListesi from '../components/sicil/PersonelSicilListesi'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -216,10 +217,10 @@ export default function IKYonetim() {
   }, [bordrolar, bordroPersonelFiltre])
 
   const bordroIndir = async (b) => {
-    try {
-      const url = await bordroIndirUrl(b.dosyaYol)
-      window.open(url, '_blank')
-    } catch (e) { toast.error(e?.message || 'İndirme linki alınamadı.') }
+    // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+    // takılıp sessizce null dönüyordu (bkz. src/lib/dosyaAc.js).
+    const sonuc = await yeniSekmedeAc(() => bordroIndirUrl(b.dosyaYol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'İndirme linki alınamadı.'))
   }
 
   const bordroKaldir = async (b) => {

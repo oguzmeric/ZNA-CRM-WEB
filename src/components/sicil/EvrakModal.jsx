@@ -16,6 +16,7 @@ import {
 } from '../../services/personelEvrakService'
 import { useToast } from '../../context/ToastContext'
 import { useConfirm } from '../../context/ConfirmContext'
+import { yeniSekmedeAc, acmaHatasi } from '../../lib/dosyaAc'
 import { tarihBicim } from './bicim'
 
 const BOS = { tur: 'kimlik', baslik: '', gecerlilikTarihi: '', aciklama: '' }
@@ -94,10 +95,11 @@ export default function EvrakModal({ acik, kapat, kullaniciId, personelAd }) {
     }
   }
 
+  // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+  // takılıp sessizce null dönüyor (bkz. src/lib/dosyaAc.js).
   const ac = async (yol) => {
-    const url = await evrakUrl(yol)
-    if (!url) { toast.error('Belge açılamadı.'); return }
-    window.open(url, '_blank', 'noopener')
+    const sonuc = await yeniSekmedeAc(() => evrakUrl(yol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Belge açılamadı.'))
   }
 
   const sil = async (e) => {

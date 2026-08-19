@@ -61,7 +61,7 @@ export default function PersonelSicil() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { kullanici } = useAuth()
-  const toast = useToast()
+  const { toast } = useToast()
 
   const [personel, setPersonel] = useState(null)
   const [sicil, setSicil] = useState(null)

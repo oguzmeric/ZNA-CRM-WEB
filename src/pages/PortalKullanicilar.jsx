@@ -23,7 +23,7 @@ const fmtTarih = (t) => (t ? new Date(t).toLocaleDateString('tr-TR') : '—')
 
 export default function PortalKullanicilar() {
   const navigate = useNavigate()
-  const toast = useToast()
+  const { toast } = useToast()
   const [kullanicilar, setKullanicilar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [arama, setArama] = useState('')

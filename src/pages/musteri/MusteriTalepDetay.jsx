@@ -48,7 +48,7 @@ export default function MusteriTalepDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
   const { talepler, notEkle, talepGuncelle, dosyaLinkiAl, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
-  const toast = useToast()
+  const { toast } = useToast()
   const navigate = useNavigate()
 
   const [yeniNot, setYeniNot] = useState('')

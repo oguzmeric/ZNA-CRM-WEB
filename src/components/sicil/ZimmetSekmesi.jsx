@@ -31,6 +31,7 @@ import { useSekmeVeri } from './useSekmeVeri'
 import { SekmeYukleniyor, SekmeHata, SekmeBos, OzetKutular } from './ortak'
 import { tarihBicim } from './bicim'
 import { useToast } from '../../context/ToastContext'
+import { yeniSekmedeAc, acmaHatasi } from '../../lib/dosyaAc'
 
 const KATEGORILER = [
   { id: 'bilgisayar', ad: 'Bilgisayar' },
@@ -235,10 +236,11 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
   }
 
   // Bucket private — her açılışta 1 saatlik imzalı link üretilir.
+  // Pencere URL'den ÖNCE açılır: await sonrası window.open popup engeline
+  // takılıp sessizce null dönüyor (bkz. src/lib/dosyaAc.js).
   const belgeAc = async (yol) => {
-    const url = await imzaliTutanakUrl(yol)
-    if (!url) { toast.error('Belge açılamadı. Yetkiniz olmayabilir.'); return }
-    window.open(url, '_blank', 'noopener')
+    const sonuc = await yeniSekmedeAc(() => imzaliTutanakUrl(yol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Belge açılamadı. Yetkiniz olmayabilir.'))
   }
 
   const belgeKaldir = async (tutanakNo) => {
