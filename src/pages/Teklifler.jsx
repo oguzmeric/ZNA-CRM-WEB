@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
   ChevronUp, ChevronDown, Download, Inbox as InboxMail, ClipboardEdit, Search as SearchIc,
-  CheckCircle2, Ban, Clock, CloudDownload,
+  CheckCircle2, Ban, Clock,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useHatirlatma } from '../context/HatirlatmaContext'
@@ -281,7 +281,7 @@ export default function Teklifler() {
             {!tamListeHazir && <span style={{ opacity: 0.6 }}> · tüm kayıtlar yükleniyor…</span>}
           </p>
         </div>
-        {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
+        {aktifSekme !== 'musteri_talepleri' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Kapsam: Tümü | Tekliflerim (hazırlayan/temsilci benim) */}
             <div style={{ display: 'inline-flex', padding: 2, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
@@ -303,7 +303,6 @@ export default function Teklifler() {
                 </button>
               ))}
             </div>
-            <EsnCekButonu />
             <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
               Yeni teklif
             </Button>
@@ -312,7 +311,7 @@ export default function Teklifler() {
       </div>
 
       {/* Arama + Sıralama */}
-      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
+      {aktifSekme !== 'musteri_talepleri' && (
         <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, maxWidth: 400, minWidth: 240 }}>
             <SearchInput
@@ -335,7 +334,7 @@ export default function Teklifler() {
       {/* ─── AÇIK TEKLİF TAKİBİ — yaşlandırma şeridi ───
           Kutular tıklanabilir; gösterdikleri kümeyi AYNEN listeler
           (sayaç ↔ liste kapsam kuralı). Düzen AcikTeklifSeridi içinde. */}
-      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
+      {aktifSekme !== 'musteri_talepleri' && (
         <AcikTeklifSeridi
           ozet={takipOzeti}
           kisiYuku={kisiYuku}
@@ -354,7 +353,6 @@ export default function Teklifler() {
           { id: 'onaylananlar',      label: 'Onaylananlar' },
           { id: 'reddedilenler',     label: 'Reddedilenler' },
           { id: 'tumu',              label: 'Tümü' },
-          { id: 'esnweb',            label: 'esnweb', icon: <CloudDownload size={12} strokeWidth={1.5} /> },
           { id: 'musteri_talepleri', label: 'Müşteri Talepleri', icon: <InboxMail size={12} strokeWidth={1.5} />, badge: bekleyenSayisi },
         ].map(s => {
           const aktif = aktifSekme === s.id
@@ -525,11 +523,8 @@ export default function Teklifler() {
         </div>
       )}
 
-      {/* esnweb tekliflerini panel */}
-      {aktifSekme === 'esnweb' && <EsnwebPanel />}
-
       {/* TEKLİF TABLOSU */}
-      {aktifSekme !== 'musteri_talepleri' && aktifSekme !== 'esnweb' && (
+      {aktifSekme !== 'musteri_talepleri' && (
         <div style={{ marginTop: 20 }}>
           <Card padding={0} style={{ overflow: 'hidden' }}>
             {gorunenTeklifler.length === 0 ? (
@@ -847,402 +842,5 @@ export default function Teklifler() {
         </div>
       )}
     </div>
-  )
-}
-
-// esn.dovkod → CRM para_birimi
-function dovkodDon(dov) {
-  if (dov === 'D') return 'USD'
-  if (dov === 'E') return 'EUR'
-  if (dov === 'S') return 'GBP'
-  return 'TL'
-}
-
-// esnweb tekliflerini listeleyen panel — arama, tarih filtresi, kalem expand
-function EsnwebPanel() {
-  const navigate = useNavigate()
-  const [tumu, setTumu] = useState([])
-  const [yukleniyor, setYukleniyor] = useState(true)
-  const [arama, setArama] = useState('')
-  const [gunFiltresi, setGunFiltresi] = useState('7')  // son N gün
-  const [acikFisno, setAcikFisno] = useState(null)
-  const [kalemler, setKalemler] = useState({})  // fisno → kalem[]
-  const [importEdiliyor, setImportEdiliyor] = useState(null)  // fisno
-  const [topluAktarim, setTopluAktarim] = useState(null)  // { toplam, yapilan, hata }
-
-  useEffect(() => {
-    (async () => {
-      setYukleniyor(true)
-      const bugun = new Date()
-      const oncesi = new Date()
-      oncesi.setDate(bugun.getDate() - Number(gunFiltresi))
-      const alt = oncesi.toISOString().slice(0, 10)
-      const { data, error } = await supabase.from('esn_teklifler')
-        .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul, crm_teklif_id')
-        .eq('silindi', false)
-        .gte('tarih', alt)
-        .order('tarih', { ascending: false })
-        .order('evrak_no', { ascending: false })
-        .limit(500)
-      if (error) console.warn('[esnweb-panel]', error.message)
-      setTumu(data || [])
-      setYukleniyor(false)
-    })()
-  }, [gunFiltresi])
-
-  const acKapa = async (fisno) => {
-    if (acikFisno === fisno) { setAcikFisno(null); return }
-    setAcikFisno(fisno)
-    if (!kalemler[fisno]) {
-      const { data } = await supabase.from('esn_teklif_kalemleri')
-        .select('refno, stok_kodu, stok_adi, birim, miktar, fiyat, tutar, kdv_yuzde, iskonto1_yuzde, net_tutar, dovkod, kur')
-        .eq('fisno', fisno)
-        .order('refno')
-      setKalemler(k => ({ ...k, [fisno]: data || [] }))
-    }
-  }
-
-  // Aktarılmamış tüm teklifleri toplu CRM'e aktarır (yönlendirmesiz, arka planda)
-  const topluAktar = async () => {
-    const aktarilmayan = tumu.filter(x => !x.crm_teklif_id)
-    if (!aktarilmayan.length) { alert('Aktarılacak yeni teklif yok — hepsi zaten CRM\'de.'); return }
-    if (!confirm(`${aktarilmayan.length} teklif CRM'e aktarılacak. Devam edilsin mi?`)) return
-    setTopluAktarim({ toplam: aktarilmayan.length, yapilan: 0, hata: 0 })
-    let yapilan = 0, hata = 0
-    // Musteri map — bir kez al, sık sık sorgulama
-    const { data: musteriler } = await supabase.from('musteriler').select('id, ad').limit(5000)
-    const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toUpperCase()
-    const musteriMap = new Map((musteriler || []).map(m => [norm(m.ad), m.id]))
-
-    for (const t of aktarilmayan) {
-      try {
-        // Kalemleri çek
-        const { data: kalemLst } = await supabase.from('esn_teklif_kalemleri')
-          .select('stok_kodu, stok_adi, birim, miktar, fiyat, kdv_yuzde, iskonto1_yuzde, kur')
-          .eq('fisno', t.fisno)
-        const satirlar = (kalemLst || []).map(k => ({
-          id: crypto.randomUUID(),
-          stokKodu: k.stok_kodu || '',
-          stokAdi: k.stok_adi || '',
-          miktar: Number(k.miktar) || 0,
-          birim: k.birim || 'Adet',
-          birimFiyat: Number(k.fiyat) || 0,
-          iskonto: Number(k.iskonto1_yuzde) || 0,
-          kdv: Number(k.kdv_yuzde) || 20,
-        }))
-        const yeni = {
-          tarih: t.tarih || new Date().toISOString().slice(0, 10),
-          musteri_id: musteriMap.get(norm(t.firma_adi)) || null,
-          firma_adi: t.firma_adi,
-          konu: t.teklif_konusu || `esnweb #${t.evrak_no}`,
-          para_birimi: dovkodDon(t.dovkod),
-          doviz_kuru: Number(kalemLst?.[0]?.kur) || 0,
-          hazirlayan: t.hazirlayan || t.temsilci || null,
-          onay_durumu: 'takipte',
-          satirlar,
-          aciklama: `esnweb'den içe aktarıldı: FISNO ${t.fisno}, Evrak ${t.evrak_no}`,
-        }
-        const { data: inserted, error } = await supabase.from('teklifler').insert(yeni).select('id').single()
-        if (error) throw error
-        await supabase.from('esn_teklifler').update({ crm_teklif_id: inserted.id }).eq('fisno', t.fisno)
-        yapilan++
-      } catch (e) {
-        console.warn('[toplu-aktar]', t.fisno, e?.message)
-        hata++
-      }
-      setTopluAktarim({ toplam: aktarilmayan.length, yapilan, hata })
-    }
-    // Listeyi tazele
-    const { data: tazelenmis } = await supabase.from('esn_teklifler')
-      .select('fisno, evrak_no, tarih, firma_adi, temsilci, hazirlayan, teklif_konusu, dovkod, genel_toplam, genel_toplam_dov, aciklama, onay_durumu, tek_kabul, crm_teklif_id')
-      .eq('silindi', false)
-      .in('fisno', tumu.map(x => x.fisno))
-    if (tazelenmis) setTumu(tazelenmis)
-    alert(`Toplu aktarım tamamlandı!\n\nBaşarılı: ${yapilan}\nHata: ${hata}`)
-    setTopluAktarim(null)
-  }
-
-  const crmeAktar = async (t) => {
-    setImportEdiliyor(t.fisno)
-    try {
-      const kalemLst = kalemler[t.fisno] || []
-      // Müşteriyi firma_adi ile bul (fuzzy: temizlenmiş, upper)
-      const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toUpperCase()
-      const { data: musteriler } = await supabase.from('musteriler').select('id, ad').ilike('ad', `%${(t.firma_adi || '').split(' ')[0]}%`).limit(50)
-      const eslesme = (musteriler || []).find(m => norm(m.ad) === norm(t.firma_adi))
-
-      // Kalem satırları CRM formatına
-      const satirlar = kalemLst.map(k => ({
-        id: crypto.randomUUID(),
-        stokKodu: k.stok_kodu || '',
-        stokAdi: k.stok_adi || '',
-        miktar: Number(k.miktar) || 0,
-        birim: k.birim || 'Adet',
-        birimFiyat: Number(k.fiyat) || 0,
-        iskonto: Number(k.iskonto1_yuzde) || 0,
-        kdv: Number(k.kdv_yuzde) || 20,
-      }))
-
-      const yeniTeklif = {
-        tarih: t.tarih || new Date().toISOString().slice(0, 10),
-        musteri_id: eslesme?.id || null,
-        firma_adi: t.firma_adi,
-        konu: t.teklif_konusu || `esnweb #${t.evrak_no}`,
-        para_birimi: dovkodDon(t.dovkod),
-        doviz_kuru: Number(kalemLst[0]?.kur) || 0,
-        hazirlayan: t.hazirlayan || t.temsilci || null,
-        onay_durumu: 'takipte',
-        satirlar,
-        aciklama: `esnweb'den içe aktarıldı: FISNO ${t.fisno}, Evrak ${t.evrak_no}`,
-      }
-
-      const { data, error } = await supabase.from('teklifler').insert(yeniTeklif).select('id').single()
-      if (error) {
-        alert('İçe aktarma hatası: ' + error.message)
-        return
-      }
-      // esn_teklifler.crm_teklif_id set — aynı teklifi tekrar aktarmayı önle
-      await supabase.from('esn_teklifler').update({ crm_teklif_id: data.id }).eq('fisno', t.fisno)
-      navigate(`/teklifler/${data.id}`)
-    } catch (e) {
-      alert('Hata: ' + (e?.message || e))
-    } finally {
-      setImportEdiliyor(null)
-    }
-  }
-
-  const filtreli = tumu.filter(t => {
-    if (!arama.trim()) return true
-    const q = arama.toLowerCase()
-    return (t.firma_adi || '').toLowerCase().includes(q)
-      || String(t.evrak_no || '').includes(q)
-      || (t.teklif_konusu || '').toLowerCase().includes(q)
-      || (t.temsilci || '').toLowerCase().includes(q)
-  })
-
-  const fmtDov = (n, dov) => {
-    const sym = dov === 'D' ? '$' : dov === 'E' ? '€' : dov === 'S' ? '£' : '₺'
-    return sym + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  }
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          value={arama}
-          onChange={e => setArama(e.target.value)}
-          placeholder="Firma, teklif no, konu, temsilci ara…"
-          style={{
-            flex: 1, minWidth: 260, padding: '8px 12px',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-default)',
-            background: 'var(--surface-card)', color: 'var(--text-primary)',
-            font: '400 13px/18px var(--font-sans)',
-          }}
-        />
-        <select value={gunFiltresi} onChange={e => setGunFiltresi(e.target.value)}
-          style={{
-            padding: '8px 12px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-default)', background: 'var(--surface-card)',
-            color: 'var(--text-primary)', font: '400 13px/18px var(--font-sans)',
-          }}>
-          <option value="1">Son 1 gün</option>
-          <option value="3">Son 3 gün</option>
-          <option value="7">Son 7 gün</option>
-          <option value="30">Son 30 gün</option>
-          <option value="90">Son 3 ay</option>
-          <option value="365">Son 1 yıl</option>
-        </select>
-        <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
-          <span className="tabular-nums">{filtreli.length}</span> teklif
-          {tumu.some(x => !x.crm_teklif_id) && (
-            <span style={{ marginLeft: 8, color: 'var(--warning)' }}>
-              (<span className="tabular-nums">{tumu.filter(x => !x.crm_teklif_id).length}</span> aktarılmayı bekliyor)
-            </span>
-          )}
-        </span>
-        <Button
-          variant="primary"
-          size="sm"
-          iconLeft={<Download size={12} strokeWidth={1.5} />}
-          onClick={topluAktar}
-          disabled={!!topluAktarim || !tumu.some(x => !x.crm_teklif_id)}
-        >
-          {topluAktarim
-            ? `Aktarılıyor ${topluAktarim.yapilan}/${topluAktarim.toplam}${topluAktarim.hata ? ` (${topluAktarim.hata} hata)` : ''}…`
-            : 'Filtredekileri CRM\'e Aktar'}
-        </Button>
-      </div>
-
-      <Card padding={0} style={{ overflow: 'hidden' }}>
-        {yukleniyor ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Yükleniyor…</div>
-        ) : filtreli.length === 0 ? (
-          <div style={{ padding: 40 }}>
-            <EmptyState
-              icon={<CloudDownload size={32} strokeWidth={1.5} />}
-              title="Kayıt yok"
-              description="Üstteki 'esnweb Çek' butonuyla senkron yap veya tarih aralığını genişlet."
-            />
-          </div>
-        ) : (
-          <div>
-            {filtreli.map(t => {
-              const acik = acikFisno === t.fisno
-              return (
-                <div key={t.fisno} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                  <div onClick={() => acKapa(t.fisno)} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '80px 100px 1fr 160px 130px 32px',
-                    gap: 12, alignItems: 'center',
-                    padding: '12px 16px', cursor: 'pointer',
-                    background: acik ? 'var(--surface-sunken)' : 'transparent',
-                    transition: 'background 120ms',
-                  }}>
-                    <div style={{ fontWeight: 600, color: 'var(--brand-primary)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      #{t.evrak_no || '—'}
-                      {t.crm_teklif_id && <Check size={12} strokeWidth={2} color="var(--success)" title="CRM'e aktarılmış" />}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                      {t.tarih ? new Date(t.tarih).toLocaleDateString('tr-TR') : '—'}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{t.firma_adi}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{t.teklif_konusu || '—'}</div>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.temsilci || t.hazirlayan || '—'}</div>
-                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtDov(t.genel_toplam, t.dovkod)}
-                    </div>
-                    <ChevronDown size={16} style={{ transform: acik ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 150ms', color: 'var(--text-tertiary)' }} />
-                  </div>
-
-                  {acik && (
-                    <div style={{ padding: '10px 16px 16px', background: 'var(--surface-sunken)' }}>
-                      {!kalemler[t.fisno] ? (
-                        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Kalemler yükleniyor…</div>
-                      ) : kalemler[t.fisno].length === 0 ? (
-                        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Kalem bulunmuyor</div>
-                      ) : (
-                        <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', overflow: 'hidden' }}>
-                          <div style={{
-                            display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 110px 110px',
-                            gap: 8, padding: '8px 12px',
-                            background: 'var(--surface-sunken)',
-                            font: '600 11px/14px var(--font-sans)',
-                            color: 'var(--text-tertiary)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.03em',
-                            borderBottom: '1px solid var(--border-default)',
-                          }}>
-                            <div>Stok Kodu</div>
-                            <div>Ürün</div>
-                            <div style={{ textAlign: 'right' }}>Miktar</div>
-                            <div>Birim</div>
-                            <div style={{ textAlign: 'right' }}>Birim Fiyat</div>
-                            <div style={{ textAlign: 'right' }}>Tutar</div>
-                          </div>
-                          {kalemler[t.fisno].map(k => (
-                            <div key={k.refno} style={{
-                              display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 110px 110px',
-                              gap: 8, padding: '8px 12px',
-                              font: '400 12px/16px var(--font-sans)',
-                              color: 'var(--text-primary)',
-                              borderTop: '1px solid var(--border-default)',
-                            }}>
-                              <div style={{ fontFamily: 'monospace', fontSize: 11 }}>{k.stok_kodu}</div>
-                              <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.stok_adi}</div>
-                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Number(k.miktar || 0)}</div>
-                              <div style={{ color: 'var(--text-tertiary)' }}>{k.birim}</div>
-                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDov(k.fiyat, k.dovkod)}</div>
-                              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmtDov(k.tutar, k.dovkod)}</div>
-                            </div>
-                          ))}
-                          <div style={{
-                            padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20,
-                            fontSize: 12, color: 'var(--text-secondary)',
-                            background: 'var(--surface-sunken)', borderTop: '1px solid var(--border-default)',
-                          }}>
-                            {t.crm_teklif_id ? (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                iconLeft={<Check size={12} strokeWidth={1.5} />}
-                                onClick={() => navigate(`/teklifler/${t.crm_teklif_id}`)}
-                              >
-                                CRM'de Aç
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                iconLeft={<Download size={12} strokeWidth={1.5} />}
-                                onClick={() => crmeAktar(t)}
-                                disabled={importEdiliyor === t.fisno}
-                              >
-                                {importEdiliyor === t.fisno ? 'İçe aktarılıyor…' : "CRM'e İçe Aktar"}
-                              </Button>
-                            )}
-                            <div style={{ display: 'flex', gap: 20 }}>
-                              {t.dovkod === 'D' && <span>Kur: <strong style={{ color: 'var(--text-primary)' }}>{kalemler[t.fisno][0]?.kur?.toFixed(4) || '—'}</strong></span>}
-                              <span>Genel Toplam: <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>{fmtDov(t.genel_toplam, t.dovkod)}</strong></span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-    </div>
-  )
-}
-
-// esnweb'den teklif çekme butonu — 100 son teklifi liste + baş + kalem senkron eder
-// supabase.functions.invoke bilinmeyen bir nedenle 'Failed to send request' veriyor,
-// doğrudan fetch ile session token gönderiyoruz (test edildi: çalışıyor)
-function EsnCekButonu() {
-  const [cekiliyor, setCekiliyor] = useState(false)
-  const cek = async () => {
-    setCekiliyor(true)
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const token = sess?.session?.access_token
-      if (!token) { alert('Oturum bulunamadı'); return }
-      const url = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/esn-teklif-senkron'
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + token,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ limit: 100 }),
-      })
-      const data = await r.json()
-      if (!data?.ok) { alert('Çekilemedi: ' + (data?.hata || r.status)); return }
-      const y = data.yeni || 0, g = data.guncellenen || 0, k = data.kalem_yeni || 0, h = data.hatalar || []
-      let msg = `Tarandı: ${data.taranan}\nYeni: ${y}\nGüncellenen: ${g}\nKalem eklendi: ${k}`
-      if (h.length) msg += `\n\nHatalar (${h.length}):\n` + h.slice(0, 5).join('\n')
-      alert(msg)
-    } catch (e) {
-      alert('Hata: ' + (e?.message || e))
-    } finally {
-      setCekiliyor(false)
-    }
-  }
-  return (
-    <Button
-      variant="secondary"
-      iconLeft={<CloudDownload size={14} strokeWidth={1.5} />}
-      onClick={cek}
-      disabled={cekiliyor}
-      title="Son 100 esnweb teklifini kalemleriyle birlikte senkron eder"
-    >
-      {cekiliyor ? 'Çekiliyor…' : 'esnweb Çek'}
-    </Button>
   )
 }

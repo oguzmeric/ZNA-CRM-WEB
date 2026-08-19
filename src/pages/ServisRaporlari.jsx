@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useSearchParams } from 'react-router-dom'
 import {
   Wrench, Download, ChevronLeft, ChevronRight, ExternalLink,
-  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer, RefreshCw,
+  Building2, MapPin, User, Calendar, Hash, FileText, AlertTriangle, CheckCircle2, Printer,
 } from 'lucide-react'
 import {
   SearchInput, Card, Badge, CodeBadge, EmptyState, Button, Select, Label, Modal,
@@ -97,70 +97,6 @@ export default function ServisRaporlari() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [formRapor, setFormRapor] = useState(null)   // form görünümünde gösterilen rapor
   const [formSirket, setFormSirket] = useState('zna') // 'zna' | 'anadolunet'
-  const [esnGuncelleniyor, setEsnGuncelleniyor] = useState(false)
-  const [yeniCekiliyor, setYeniCekiliyor] = useState(false)
-
-  const yeniKayitlariCek = async () => {
-    setYeniCekiliyor(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('esn-liste-senkron', { body: { limit: 100 } })
-      // Supabase JS 4xx/5xx yanıtta error.context.json() gerçek hatayı barındırıyor
-      let hata = null, ekstra = ''
-      if (error) {
-        try {
-          const ctx = await error.context?.json()
-          hata = ctx?.hata || ctx?.error
-          if (ctx?.responseType || ctx?.keys || ctx?.rawPreview) {
-            ekstra = '\n\ntür: ' + ctx.responseType + '\nkeys: ' + JSON.stringify(ctx.keys) + '\nresponse: ' + ctx.rawPreview
-          }
-        } catch {}
-        hata = hata || error.message
-      } else if (!data?.ok) {
-        hata = data?.hata || 'bilinmiyor'
-      }
-      if (hata) {
-        alert('Çekilemedi: ' + hata + ekstra)
-        return
-      }
-      const yeni = data.yeni || 0
-      const guncellenen = data.guncellenen || 0
-      const silinen = data.silinen || 0
-      if (yeni === 0 && guncellenen === 0 && silinen === 0) {
-        alert('Değişiklik yok. (Taranan: ' + data.taranan + ')')
-      } else {
-        // Yeni + güncellenen fişler için arka planda detay senkronu tetikle
-        const fisNolar = data.fisNolar || []
-        for (const fisNo of fisNolar) {
-          supabase.functions.invoke('esn-detay-senkron', { body: { fisno: fisNo } })
-            .catch(e => console.warn('[ServisRaporlari] esn-detay-senkron fail:', fisNo, e?.message))
-        }
-        alert(`${yeni} yeni + ${guncellenen} güncelleme + ${silinen} silme. Detaylar arka planda çekiliyor.`)
-        setSayfa(1)
-      }
-    } finally {
-      setYeniCekiliyor(false)
-    }
-  }
-
-  const esnGuncelle = async (rapor) => {
-    if (!rapor?.fisNo) return
-    setEsnGuncelleniyor(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('esn-detay-senkron', { body: { fisno: rapor.fisNo } })
-      if (error || !data?.ok) {
-        alert('Güncellenemedi: ' + (data?.hata ?? error?.message ?? 'bilinmiyor'))
-        return
-      }
-      // Kaydı yeniden çek
-      const { data: yeni } = await supabase.from('servis_raporlari').select('*').eq('fis_no', rapor.fisNo).maybeSingle()
-      if (yeni) {
-        const { toCamel } = await import('../lib/mapper')
-        setSeciliRapor(toCamel(yeni))
-      }
-    } finally {
-      setEsnGuncelleniyor(false)
-    }
-  }
 
   // Filtre dropdown'ları için unique listeler — bir kez çekilir (sayfa yaşamı boyunca)
   const [firmalar, setFirmalar] = useState([])
@@ -536,16 +472,6 @@ export default function ServisRaporlari() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
-            variant="secondary"
-            size="sm"
-            iconLeft={<RefreshCw size={13} strokeWidth={1.5} className={yeniCekiliyor ? 'sk-dondur' : ''} />}
-            onClick={yeniKayitlariCek}
-            disabled={yeniCekiliyor}
-            title="esnweb'den son 100 fişi kontrol edip DB'de olmayanları ekler"
-          >
-            {yeniCekiliyor ? 'Çekiliyor…' : 'Yeni Kayıtları Çek'}
-          </Button>
-          <Button
             variant="primary"
             size="sm"
             iconLeft={<Printer size={13} strokeWidth={1.5} />}
@@ -843,15 +769,6 @@ export default function ServisRaporlari() {
         footer={
           <>
             <Button variant="secondary" onClick={() => setSeciliRapor(null)}>Kapat</Button>
-            <Button
-              variant="secondary"
-              iconLeft={<RefreshCw size={14} strokeWidth={1.5} className={esnGuncelleniyor ? 'sk-dondur' : ''} />}
-              onClick={() => esnGuncelle(seciliRapor)}
-              disabled={esnGuncelleniyor}
-              title="esnweb.com'dan bu fişi yeniden çek"
-            >
-              {esnGuncelleniyor ? 'Güncelleniyor…' : 'esnweb güncelle'}
-            </Button>
             <Button
               variant="secondary"
               iconLeft={<FileText size={14} strokeWidth={1.5} />}
