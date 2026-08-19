@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { SkeletonList } from '../components/Skeleton'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 
 export default function FiloYakit() {
   const { toast } = useToast()
@@ -82,10 +83,11 @@ export default function FiloYakit() {
     if (ok) { toast.success('Fiş silindi.'); yukle() } else toast.error('Silinemedi.')
   }
 
+  // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+  // takılıp sessizce null dönüyordu (19.08, bkz. src/lib/dosyaAc.js).
   const dosyaAc = async (path) => {
-    const url = await filoDosyaUrl(path)
-    if (url) window.open(url, '_blank')
-    else toast.error('Dosya açılamadı.')
+    const sonuc = await yeniSekmedeAc(() => filoDosyaUrl(path))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
   }
 
   if (yukleniyor) return <SkeletonList />

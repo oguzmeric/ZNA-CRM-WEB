@@ -132,7 +132,7 @@ export default function MusteriDavetModal({ open, onClose, musteri, onayKisi }) 
             </div>
 
             {hata && (
-              <Alert tone="danger">{hata}</Alert>
+              <Alert variant="danger">{hata}</Alert>
             )}
           </form>
         )}

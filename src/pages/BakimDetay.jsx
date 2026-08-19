@@ -247,7 +247,7 @@ export default function BakimDetay() {
                     }}>
                       {kd.isim}
                     </span>
-                    {k.arizaVar && <Badge tone="danger" style={{ fontSize: 10 }}>⚠️ ARIZA</Badge>}
+                    {k.arizaVar && <Badge tone="hata" style={{ fontSize: 10 }}>⚠️ ARIZA</Badge>}
                   </div>
                   {/* 04.08: "tamamlandı" artık kilit DEĞİL — yanlış girilen sonuç
                       webden düzeltilebilmeli (kullanıcı isteği). Yalnız iptal ve

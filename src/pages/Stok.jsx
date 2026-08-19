@@ -1,3 +1,4 @@
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
@@ -1508,9 +1509,9 @@ function Stok() {
                     <button
                       type="button"
                       onClick={async () => {
-                        const url = await dokumanImzaliUrl(form.dokumanUrl)
-                        if (url) window.open(url, '_blank')
-                        else toast.error('Doküman açılamadı.')
+                        // Pencere URL'den ÖNCE (popup engeli — bkz. src/lib/dosyaAc.js)
+                        const sonuc = await yeniSekmedeAc(() => dokumanImzaliUrl(form.dokumanUrl))
+                        if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Doküman açılamadı.'))
                       }}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-primary)', font: '500 12px/16px var(--font-sans)' }}
                     >
@@ -1651,7 +1652,7 @@ function Stok() {
                         </div>
                       </div>
                       {a.baskaUrunde.length > 0 && (
-                        <Alert tone="danger" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                        <Alert variant="danger" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
                           <div style={{ fontSize: 12 }}>
                             <strong>Bu S/N/barkodlar başka bir ürüne kayıtlı!</strong>
                             <div style={{ marginTop: 4, display: 'grid', gap: 2 }}>
@@ -1666,14 +1667,14 @@ function Stok() {
                         </Alert>
                       )}
                       {a.tekrar.length > 0 && (
-                        <Alert tone="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                        <Alert variant="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
                           <div style={{ fontSize: 12 }}>
                             Aynı S/N tekrar okundu, sadece 1 kez eklenir: <strong>{a.tekrar.slice(0, 5).join(', ')}{a.tekrar.length > 5 ? ` … (+${a.tekrar.length - 5})` : ''}</strong>
                           </div>
                         </Alert>
                       )}
                       {a.buUrunde.length > 0 && (
-                        <Alert tone="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
+                        <Alert variant="warning" icon={<AlertIkon size={13} strokeWidth={1.5} />} style={{ marginTop: 8 }}>
                           <div style={{ fontSize: 12 }}>
                             Bu S/N'ler bu üründe zaten kayıtlı: <strong>{a.buUrunde.slice(0, 5).join(', ')}{a.buUrunde.length > 5 ? ` … (+${a.buUrunde.length - 5})` : ''}</strong>
                           </div>

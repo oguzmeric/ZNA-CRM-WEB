@@ -336,7 +336,7 @@ export default function SiparisOnaylari() {
                 const seciliMi = secili?.id === t.id && secili?._kaynak === kaynak
                 const kayitNo = isSip ? t.siparisNo : isTeklif ? t.teklifNo : t.onSiparisNo
                 const badgeLabel = isSip ? 'SİPARİŞ' : isTeklif ? 'TEKLİF' : 'ÖN SİPARİŞ'
-                const badgeTone = isSip ? 'aktif' : isTeklif ? 'brand' : 'success'
+                const badgeTone = isSip ? 'aktif' : isTeklif ? 'brand' : 'basarili'
                 const tarih = isSip ? (t.onayTarihi || t.olusturmaTarih)
                             : isTeklif ? (t.tarih || t.olusturmaTarih)
                             : sekme === 'red' ? (t.guncellemeTarih || t.olusturmaTarih)
@@ -1098,7 +1098,7 @@ function OnSiparisDetayPaneli({ onSiparis: os, sekme, kullanici, gorusme, onTama
             {gorusme.aktNo}
           </span>
         )}
-        <Badge tone="success" style={{ fontSize: 10 }}>ÖN SİPARİŞ</Badge>
+        <Badge tone="basarili" style={{ fontSize: 10 }}>ÖN SİPARİŞ</Badge>
         <CardTitle style={{ margin: 0 }}>{os.onSiparisNo}</CardTitle>
       </div>
       {gorusme && (

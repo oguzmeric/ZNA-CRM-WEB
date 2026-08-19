@@ -674,7 +674,7 @@ export default function Teklifler() {
                                   // İŞ KURALI (06.08): proforma TEKLİFTEN kesilmez — teklif
                                   // siparişe dönüşür, proforma SİPARİŞ üzerinden kesilir.
                                   // (Teklif + sipariş çifte proformaya yol açıyordu.)
-                                  <Badge tone="success">Kabul</Badge>
+                                  <Badge tone="basarili">Kabul</Badge>
                                 ) : (
                                   <Badge tone={onay.tone}>{onay.isim}</Badge>
                                 )}

@@ -1,6 +1,7 @@
 // Kişisel Dokümanlar — kullanıcı kendi dosya/link'lerini yönetir.
 // Görünürlük: sadece_ben / herkes / secili kişiler.
 
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -453,10 +454,9 @@ export default function KisiselDokumanlar() {
               onDuzenle={() => { setDuzenle(d); setEkleModal(true) }}
               onAc={async () => {
                 if (d.tip === 'link') { window.open(d.linkUrl, '_blank'); return }
-                try {
-                  const url = await dokumanIndirmeUrl(d.dosyaYolu)
-                  window.open(url, '_blank')
-                } catch (e) { toast.error(e?.message || 'Açma hatası') }
+                // Pencere URL'den ÖNCE (popup engeli — bkz. src/lib/dosyaAc.js)
+                const sonuc = await yeniSekmedeAc(() => dokumanIndirmeUrl(d.dosyaYolu))
+                if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Açma hatası'))
               }}
               onIndir={async () => {
                 if (d.tip === 'link') { window.open(d.linkUrl, '_blank'); return }

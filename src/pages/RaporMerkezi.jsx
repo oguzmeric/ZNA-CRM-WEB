@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { gorusmeleriGetir } from '../services/gorusmeService'
 import { teklifleriGetir } from '../services/teklifService'
 import { servisTalepleriniGetir } from '../services/servisService'
@@ -337,6 +338,7 @@ export default function RaporMerkezi() {
     gorevler: true, musteriler: true, stok: true,
   })
   const [yukleniyor, setYukleniyor] = useState(false)
+  const { toast } = useToast()
 
   const [tumVeri, setTumVeri] = useState({
     gorusmeler: [], teklifler: [], servis: [], gorevler: [],
@@ -390,12 +392,27 @@ export default function RaporMerkezi() {
   const modulDegistir = (id) => setSeciliModuller(prev => ({ ...prev, [id]: !prev[id] }))
 
   const pdfIndirAction = () => {
+    // ⚠️ Pencere HEMEN, tıklama anında açılır (19.08): eskiden window.open bir
+    // setTimeout'un içindeydi — kullanıcı etkileşimi bağlamı geçtiği için popup
+    // engelleniyordu, `w` null kalıyor, `w.document.write` fırlatıyor ve hata
+    // setTimeout içinde yutulduğundan buton SONSUZA KADAR "Yükleniyor"da
+    // kalıyordu. setYukleniyor(false) da finally güvencesine alındı.
+    const w = window.open('', '_blank')
+    if (!w) {
+      toast.error('Tarayıcı yeni sekmeyi engelledi. Açılır pencere iznini verip tekrar deneyin.')
+      return
+    }
     setYukleniyor(true)
     setTimeout(() => {
-      const html = pdfUret({ aralikEtiketi, ...veri, seciliModuller })
-      const w = window.open('', '_blank')
-      w.document.write(html); w.document.close(); w.focus()
-      setTimeout(() => { w.print(); setYukleniyor(false) }, 400)
+      try {
+        const html = pdfUret({ aralikEtiketi, ...veri, seciliModuller })
+        w.document.write(html); w.document.close(); w.focus()
+        setTimeout(() => { try { w.print() } finally { setYukleniyor(false) } }, 400)
+      } catch (e) {
+        w.close()
+        setYukleniyor(false)
+        toast.error('PDF hazırlanamadı: ' + (e?.message || 'bilinmeyen hata'))
+      }
     }, 100)
   }
 

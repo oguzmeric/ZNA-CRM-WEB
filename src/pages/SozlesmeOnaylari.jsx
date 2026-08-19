@@ -139,7 +139,7 @@ export default function SozlesmeOnaylari() {
 
                 {eskiSurum && <Badge tone="beklemede">eski sürüm</Badge>}
                 {o
-                  ? <Badge tone="tamamlandi">Onaylı</Badge>
+                  ? <Badge tone="basarili">Onaylı</Badge>
                   : <Badge tone="beklemede">Bekliyor</Badge>}
                 {o && (
                   <ChevronDown

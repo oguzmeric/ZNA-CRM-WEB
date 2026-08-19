@@ -51,7 +51,9 @@ export default function LokasyonYonetModal({
     if (!window.confirm(`"${l.ad}" lokasyonu silinsin mi?`)) return
     setYukleniyor(true)
     try {
-      await musteriLokasyonSil(l.id)
+      // Servis throw etmez, false döner (19.08) — catch'e düşmüyordu.
+      const ok = await musteriLokasyonSil(l.id)
+      if (!ok) { setHata('Silinemedi — lokasyona bağlı kayıtlar olabilir.'); return }
       onLokasyonlarChange(lokasyonlar.filter(x => x.id !== l.id))
     } catch (err) {
       setHata('Silinemedi: ' + (err?.message || 'bilinmeyen hata'))

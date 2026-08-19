@@ -4,6 +4,7 @@
 // (Abdullah + adminler) gerçek faturayı keser, numarasını girer ve PDF'ini
 // yükler. satislar kaydı YALNIZ burada oluşur — talep aşaması ciroya sızmaz.
 
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -573,16 +574,15 @@ function TalepDetay({ talep, kullanici, kullanicilar, onKapat, onTamamlandi, nav
     onTamamlandi()
   }
 
+  // Pencere URL'den ÖNCE açılır (popup engeli — bkz. src/lib/dosyaAc.js, 19.08).
   const pdfAc = async () => {
-    const url = await faturaDosyaUrl(talep.faturaPdfYol)
-    if (!url) { toast.error('PDF açılamadı.'); return }
-    window.open(url, '_blank', 'noopener')
+    const sonuc = await yeniSekmedeAc(() => faturaDosyaUrl(talep.faturaPdfYol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'PDF açılamadı.'))
   }
 
   const irsaliyeAc = async () => {
-    const url = await faturaDosyaUrl(talep.irsaliyeYol)
-    if (!url) { toast.error('İrsaliye açılamadı.'); return }
-    window.open(url, '_blank', 'noopener')
+    const sonuc = await yeniSekmedeAc(() => faturaDosyaUrl(talep.irsaliyeYol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'İrsaliye açılamadı.'))
   }
 
   // Faturalandıktan sonra irsaliye ekleme/değiştirme

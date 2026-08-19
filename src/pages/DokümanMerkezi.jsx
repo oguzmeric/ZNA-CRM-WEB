@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { supabase } from '../lib/supabase'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import {
   kategorileriGetir, dokumanlariGetir, dokumanEkle, dokumanSil,
   dokumanIndirmeUrl, dokumanDosyayiIndir, tarayicidaAcilabilir,
@@ -178,16 +179,12 @@ export default function DokümanMerkezi() {
   }, [kategoriler, merkezListe])
 
   const ac = async (d) => {
-    try {
-      if (d.tip === 'link') {
-        window.open(d.linkUrl, '_blank', 'noopener,noreferrer')
-      } else {
-        const url = await dokumanIndirmeUrl(d.dosyaYolu)
-        window.open(url, '_blank', 'noopener,noreferrer')
-      }
-    } catch (e) {
-      toast.error('Açılamadı: ' + (e?.message || 'bilinmeyen hata'))
-    }
+    // Link senkron açılır (etkileşim taze). Dosyada pencere URL'den ÖNCE açılır —
+    // await sonrası window.open popup engeline takılıp sessizce null dönüyordu;
+    // istisna da fırlatmadığı için catch hiç çalışmıyordu (19.08, bkz. dosyaAc.js).
+    if (d.tip === 'link') { window.open(d.linkUrl, '_blank', 'noopener,noreferrer'); return }
+    const sonuc = await yeniSekmedeAc(() => dokumanIndirmeUrl(d.dosyaYolu))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Açılamadı.'))
   }
 
   const indir = async (d) => {

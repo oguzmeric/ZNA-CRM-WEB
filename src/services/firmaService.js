@@ -31,8 +31,14 @@ export const firmaGuncelle = async (id, guncellenmis) => {
   return toCamel(data)
 }
 
+// true = gerçekten silindi. 19.08: hata yutulup hiçbir şey dönmüyordu; çağıran
+// koşulsuz "Bayi silindi" diyordu, kayıt DB'de duruyordu. `.select('id')` ŞART:
+// RLS izin vermezse delete HATA VERMEDEN 0 satır etkiler — dönen dizi boşsa
+// silinmemiştir (bkz. reference_rls_returning_tuzagi).
 export const firmaSil = async (id) => {
-  const { error } = await supabase.from('firmalar').delete().eq('id', id)
-  if (error) console.error('firmaSil hata:', error.message)
+  const { data, error } = await supabase.from('firmalar').delete().eq('id', id).select('id')
+  if (error) { console.error('firmaSil hata:', error.message); return false }
+  if (!data?.length) { console.warn('firmaSil: satır silinmedi (RLS/yok):', id); return false }
   invalidate('firmalar:list', `firma:${id}`)
+  return true
 }

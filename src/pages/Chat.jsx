@@ -11,6 +11,7 @@ import { Avatar, Button, Textarea, EmptyState, Modal, Input, Label, Select } fro
 import CokluSelect from '../components/CokluSelect'
 import EmojiSecici from '../components/EmojiSecici'
 import { sohbetDosyaUrl, DOSYA_LIMIT } from '../services/chatService'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 
 const durumRenk = {
   cevrimici:    'var(--success)',
@@ -238,9 +239,14 @@ function Chat() {
     try { d = JSON.parse(icerik) } catch { return }
     // Yeni format: Storage yolu → imzalı URL
     if (d.yol) {
-      const r = await sohbetDosyaUrl(d.yol, d.dosyaAdi)
-      if (r.__error) { toast.error('Dosya açılamadı: ' + r.__error); return }
-      window.open(r.url, '_blank', 'noopener')
+      // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+      // takılıp sessizce null dönüyordu (19.08, bkz. src/lib/dosyaAc.js).
+      const sonuc = await yeniSekmedeAc(async () => {
+        const r = await sohbetDosyaUrl(d.yol, d.dosyaAdi)
+        if (r.__error) throw new Error(r.__error)
+        return r.url
+      })
+      if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
       return
     }
     // Eski format (base64 gömülü) — bozulmadan çalışmaya devam ediyor

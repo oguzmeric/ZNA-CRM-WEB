@@ -47,9 +47,13 @@ export const musteriLokasyonGuncelle = async (lokasyonId, guncellenmis) => {
   return toCamel(data)
 }
 
+// true = gerçekten silindi (19.08 — sessiz yutma temizliği). `.select('id')`:
+// RLS izin vermezse delete hatasız 0 satır etkiler, dönen dizi boş kalır.
+// FK engeli (lokasyona bağlı servis/keşif) da error olarak buraya düşer.
 export const musteriLokasyonSil = async (id) => {
-  const { error } = await supabase.from('musteri_lokasyonlari').delete().eq('id', id)
-  if (error) console.error('musteriLokasyonSil hata:', error.message)
+  const { data, error } = await supabase.from('musteri_lokasyonlari').delete().eq('id', id).select('id')
+  if (error) { console.error('musteriLokasyonSil hata:', error.message); return false }
+  return (data?.length ?? 0) > 0
 }
 
 // ---------- Lokasyon bazlı kayıt dökümü ----------

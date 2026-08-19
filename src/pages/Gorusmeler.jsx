@@ -420,12 +420,17 @@ function Gorusmeler() {
   }
 
   const durumGuncelle = async (id, yeniDurum) => {
-    await gorusmeGuncelle(id, { durum: yeniDurum })
-    setGorusmeler(prev => prev.map(g => g.id === id ? { ...g, durum: yeniDurum } : g))
+    // gorusmeGuncelle hata durumunda null döner (19.08): UI durumu değişmiş
+    // görünüp DB'de eski kalıyordu, hiçbir uyarı da çıkmıyordu.
+    const g = await gorusmeGuncelle(id, { durum: yeniDurum })
+    if (!g) { toast.error('Durum güncellenemedi.'); return }
+    setGorusmeler(prev => prev.map(x => x.id === id ? { ...x, durum: yeniDurum } : x))
   }
 
   const gorusmeSil = async (id) => {
-    await dbGorusmeSil(id)
+    // Servis artık gerçek sonucu dönüyor (19.08 sessiz yutma temizliği).
+    const ok = await dbGorusmeSil(id)
+    if (!ok) { toast.error('Görüşme silinemedi.'); return }
     setGorusmeler(prev => prev.filter(g => g.id !== id))
     toast.success('Görüşme silindi.')
   }

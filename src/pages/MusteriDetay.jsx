@@ -251,7 +251,9 @@ function MusteriDetay() {
       onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    await musteriKisiSil(kisiId)
+    // Servis artık gerçek sonucu dönüyor (19.08 sessiz yutma temizliği).
+    const ok = await musteriKisiSil(kisiId)
+    if (!ok) { toast.error('Kişi silinemedi.'); return }
     setKisiler(prev => prev.filter(k => k.id !== kisiId))
     toast.success('Kişi silindi.')
   }
@@ -280,7 +282,10 @@ function MusteriDetay() {
       onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    await musteriLokasyonSil(lokId)
+    // Servis artık gerçek sonucu dönüyor (19.08). FK engeli (lokasyona bağlı
+    // servis/keşif kaydı) da false döner — kullanıcı sebepli mesaj görür.
+    const ok = await musteriLokasyonSil(lokId)
+    if (!ok) { toast.error('Lokasyon silinemedi — bağlı kayıtları olabilir.'); return }
     setLokasyonlar(prev => prev.filter(l => l.id !== lokId))
     toast.success('Lokasyon silindi.')
   }

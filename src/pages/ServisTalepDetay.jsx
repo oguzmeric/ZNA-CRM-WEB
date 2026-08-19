@@ -1,3 +1,4 @@
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
@@ -765,9 +766,14 @@ export default function ServisTalepDetay() {
                     multiple
                     onChange={async (e) => {
                       const files = Array.from(e.target.files || [])
+                      // 19.08: catch{} yüklemeyi sessizce yutuyordu — dosya
+                      // eklenmemişken hiçbir uyarı çıkmıyordu.
+                      let hatali = 0
                       for (const f of files) {
-                        try { await dosyaYukle(talep.id, f, kullanici?.ad) } catch {}
+                        try { await dosyaYukle(talep.id, f, kullanici?.ad) }
+                        catch (err) { hatali++; console.warn('[ek yükle]', f.name, err?.message) }
                       }
+                      if (hatali) toast.error(hatali + ' dosya yüklenemedi.')
                       e.target.value = ''
                     }}
                     style={{ display: 'none' }}
@@ -830,11 +836,12 @@ export default function ServisTalepDetay() {
                     onClick={async () => {
                       // Resimse büyüt; değilse yeni sekmede aç.
                       if (ekOku.resimMi && ekOku.url) { setEkOnizleme({ url: ekOku.url, ad: ekOku.ad }); return }
-                      try {
-                        // Mobil kayıtta path yok — public url doğrudan açılır
-                        const url = d.path ? await dosyaLinkiAl(d.path) : ekOku.url
-                        if (url) window.open(url, '_blank')
-                      } catch {}
+                      // Mobil kayıtta path yok — public url senkron açılır (etkileşim taze).
+                      if (!d.path) { if (ekOku.url) window.open(ekOku.url, '_blank'); return }
+                      // Pencere URL'den ÖNCE (popup engeli, 19.08 — bkz. src/lib/dosyaAc.js);
+                      // eskiden catch{} hatayı da yutuyordu.
+                      const sonuc = await yeniSekmedeAc(() => dosyaLinkiAl(d.path))
+                      if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
                     }}
                     style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
@@ -847,7 +854,10 @@ export default function ServisTalepDetay() {
                     title="Sil"
                     onClick={async () => {
                       if (!confirm(`"${ekOku.ad}" silinsin mi?`)) return
-                      try { await dosyaSil(talep.id, d) } catch {}
+                      // 19.08: catch{} silme hatasını yutuyordu — ek silinmemişken
+                      // hiçbir geri bildirim yoktu.
+                      try { await dosyaSil(talep.id, d) }
+                      catch (err) { toast.error('Dosya silinemedi: ' + (err?.message || 'bilinmeyen')) }
                     }}
                     style={{ background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >

@@ -147,7 +147,7 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
         )}
 
         {analiz.baskaUrunde.length > 0 && (
-          <Alert tone="danger" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
+          <Alert variant="danger" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
             <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
               <strong>Bu S/N/barkodlar başka bir ürüne kayıtlı!</strong> Aynı fiziksel seri numarası iki farklı ürüne verilemez.
               <div style={{ marginTop: 6, display: 'grid', gap: 3 }}>
@@ -163,7 +163,7 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
         )}
 
         {analiz.dublike.length > 0 && (
-          <Alert tone="warning" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
+          <Alert variant="warning" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
             <div style={{ fontSize: 12.5 }}>
               Aynı S/N metinde tekrar ediyor, sadece 1 kez eklenir:{' '}
               <strong>{analiz.dublike.slice(0, 5).join(', ')}{analiz.dublike.length > 5 ? ` … (+${analiz.dublike.length - 5})` : ''}</strong>
@@ -172,7 +172,7 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
         )}
 
         {analiz.cakisma.length > 0 && (
-          <Alert tone="warning" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
+          <Alert variant="warning" icon={<AlertTriangle size={14} strokeWidth={1.5} />}>
             <div style={{ fontSize: 12.5 }}>
               Bu S/N'ler zaten bu üründe kayıtlı, eklenmez:{' '}
               <strong>{analiz.cakisma.slice(0, 5).join(', ')}{analiz.cakisma.length > 5 ? ` … (+${analiz.cakisma.length - 5})` : ''}</strong>
@@ -180,9 +180,9 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
           </Alert>
         )}
 
-        {hata && <Alert tone="danger">{hata}</Alert>}
+        {hata && <Alert variant="danger">{hata}</Alert>}
         {basari && (
-          <Alert tone="success" icon={<CheckCircle2 size={14} strokeWidth={1.5} />}>{basari}</Alert>
+          <Alert variant="success" icon={<CheckCircle2 size={14} strokeWidth={1.5} />}>{basari}</Alert>
         )}
       </div>
     </Modal>

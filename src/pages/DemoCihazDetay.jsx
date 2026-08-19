@@ -19,6 +19,7 @@ import DemoZimmetAcModal from '../components/DemoZimmetAcModal'
 import BelgePaylasModal from '../components/BelgePaylasModal'
 
 import { SkeletonDetay } from '../components/Skeleton'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 const fmtTarih = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : '—'
 
 const KARAR_ROZETI = {
@@ -143,10 +144,11 @@ export default function DemoCihazDetay() {
     else toast.error('Yükleme başarısız.')
   }
 
+  // Pencere URL'den ÖNCE açılır — await sonrası window.open popup engeline
+  // takılıp sessizce null dönüyordu (19.08, bkz. src/lib/dosyaAc.js).
   const imzaliGoster = async (path) => {
-    const url = await imzaliTutanakUrl(path)
-    if (url) window.open(url, '_blank')
-    else toast.error('Dosya açılamadı.')
+    const sonuc = await yeniSekmedeAc(() => imzaliTutanakUrl(path))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
   }
 
   const aldiSayisi = gecmis.filter(z => z.musteriKarari === 'aldi').length

@@ -82,14 +82,22 @@ export const lisansGuncelle = async (id, guncellenmis) => {
   return dbToForm(data)
 }
 
+// true = gerçekten silindi (19.08 — sessiz yutma temizliği).
+// ⚠️ SIRA DEĞİŞTİ: satır ÖNCE silinir, görsel SONRA. Eskiden önce görsel
+// siliniyordu; satır silme başarısız olursa lisans görselsiz kalıyordu.
 export const lisansSil = async (id) => {
-  // Görsel varsa storage'dan da temizle
   const { data } = await supabase.from('trassir_lisanslar').select('gorsel_yolu').eq('id', id).maybeSingle()
+
+  const { data: silinen, error } = await supabase
+    .from('trassir_lisanslar').delete().eq('id', id).select('id')
+  if (error) { console.error('lisansSil hata:', error.message); return false }
+  if (!silinen?.length) { console.warn('lisansSil: satır silinmedi (RLS/yok):', id); return false }
+
   if (data?.gorsel_yolu) {
-    await supabase.storage.from(GORSEL_BUCKET).remove([data.gorsel_yolu])
+    await supabase.storage.from(GORSEL_BUCKET).remove([data.gorsel_yolu]).catch(() => {})
   }
-  await supabase.from('trassir_lisanslar').delete().eq('id', id)
   invalidate('lisanslar:list', `lisans:${id}`)
+  return true
 }
 
 // ---------- Lisans görseli (lisans özeti ekran görüntüsü) ----------

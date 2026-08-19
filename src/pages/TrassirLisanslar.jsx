@@ -188,8 +188,12 @@ function TrassirLisanslar() {
     const lisansIdVarMi = form.lisansId && lisanslar.find(l => l.lisansId === form.lisansId && l.id !== duzenleId)
     if (lisansIdVarMi) { toast.error('Bu Lisans ID zaten kayıtlı.'); return }
 
+    // ⚠️ Başarı mesajı yalnız servis GERÇEKTEN kaydedince (19.08 sessiz yutma
+    // temizliği): eskiden lisansGuncelle/lisansEkle null dönse bile koşulsuz
+    // "kaydedildi" deniyor, form kapanıyordu — kayıt DB'ye hiç yazılmamışken.
     if (duzenleId) {
       let g = await lisansGuncelle(duzenleId, form)
+      if (!g) { toast.error('Lisans güncellenemedi — bilgiler kaydedilmedi, form açık bırakıldı.'); return }
       const eskiYol = lisanslar.find(l => l.id === duzenleId)?.gorselYolu || null
       if (gorselFile) {
         const g2 = await lisansGorselYukle(duzenleId, gorselFile, eskiYol)
@@ -198,15 +202,16 @@ function TrassirLisanslar() {
         const g2 = await lisansGorselSil(duzenleId, eskiYol)
         if (g2) g = g2
       }
-      if (g) setLisanslar(prev => prev.map(l => l.id === duzenleId ? g : l))
+      setLisanslar(prev => prev.map(l => l.id === duzenleId ? g : l))
       toast.success('Lisans güncellendi.')
     } else {
       let y = await lisansEkle({ ...form, olusturmaTarih: new Date().toISOString() })
-      if (y && gorselFile) {
+      if (!y) { toast.error('Lisans kaydedilemedi — form açık bırakıldı, tekrar deneyin.'); return }
+      if (gorselFile) {
         const y2 = await lisansGorselYukle(y.id, gorselFile)
         if (y2) y = y2; else toast.error('Görsel yüklenemedi — lisans kaydedildi.')
       }
-      if (y) setLisanslar(prev => [y, ...prev])
+      setLisanslar(prev => [y, ...prev])
       toast.success('Lisans kaydedildi.')
     }
     setForm(bosForm); setDuzenleId(null); setGoster(false); setMusteriLokasyonlari([])
@@ -219,7 +224,10 @@ function TrassirLisanslar() {
   }
 
   const lisansSil = async (id) => {
-    await dbLisansSil(id)
+    // Servis artık gerçek sonucu dönüyor (19.08): eskiden hata yutulup satır
+    // UI'dan kaldırılıyor + "silindi" deniyordu; sayfa yenilenince geri geliyordu.
+    const ok = await dbLisansSil(id)
+    if (!ok) { toast.error('Lisans silinemedi.'); return }
     setLisanslar(prev => prev.filter(l => l.id !== id))
     toast.success('Lisans silindi.')
   }

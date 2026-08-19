@@ -1,3 +1,4 @@
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
@@ -426,10 +427,10 @@ function SatisDetay() {
     }
   }
 
+  // Pencere URL'den ÖNCE açılır (popup engeli — bkz. src/lib/dosyaAc.js, 19.08).
   const faturaPdfAc = async () => {
-    const url = await faturaDosyaUrl(form.faturaPdfYol)
-    if (!url) { toast.error('PDF açılamadı.'); return }
-    window.open(url, '_blank', 'noopener')
+    const sonuc = await yeniSekmedeAc(() => faturaDosyaUrl(form.faturaPdfYol))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'PDF açılamadı.'))
   }
 
   if (yukleniyor) {

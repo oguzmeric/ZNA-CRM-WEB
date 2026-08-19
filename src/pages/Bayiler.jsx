@@ -107,7 +107,10 @@ function Bayiler() {
       onayMetin: 'Evet, sil', iptalMetin: 'Vazgeç', tip: 'tehlikeli',
     })
     if (!onay) return
-    await dbFirmaSil(id)
+    // Servis artık gerçek sonucu dönüyor (19.08): eskiden hata yutulup satır
+    // UI'dan kaldırılıyor + "silindi" deniyordu; yenileyince geri geliyordu.
+    const ok = await dbFirmaSil(id)
+    if (!ok) { toast.error('Bayi silinemedi.'); return }
     setFirmalar(prev => prev.filter(f => f.id !== id))
     toast.success('Bayi silindi.')
   }

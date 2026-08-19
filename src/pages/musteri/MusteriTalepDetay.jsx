@@ -1,3 +1,4 @@
+import { yeniSekmedeAc, acmaHatasi } from '../../lib/dosyaAc'
 import { useState, isValidElement } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -435,10 +436,10 @@ export default function MusteriTalepDetay() {
                       key={d.path}
                       type="button"
                       onClick={async () => {
-                        try {
-                          const url = await dosyaLinkiAl(d.path)
-                          window.open(url, '_blank')
-                        } catch {}
+                        // Pencere URL'den ÖNCE (popup engeli, 19.08); catch{} hatayı da
+                        // yutuyordu — müşteri hiçbir şey göremiyordu (bkz. lib/dosyaAc.js).
+                        const sonuc = await yeniSekmedeAc(() => dosyaLinkiAl(d.path))
+                        if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
                       }}
                       title={d.name}
                       style={{

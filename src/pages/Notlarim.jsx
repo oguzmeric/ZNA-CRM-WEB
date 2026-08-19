@@ -68,6 +68,7 @@ import { musterileriGetir } from '../services/musteriService'
 import { trContains } from '../lib/trSearch'
 import { htmlMi, htmlToDuzMetin, duzMetinToHtml } from '../lib/notIcerik'
 import { invalidate } from '../lib/cache'
+import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
 
 function tarihFormat(iso) {
   if (!iso) return '—'
@@ -302,13 +303,17 @@ function Notlarim() {
     }
     setKaydediliyor(true)
     try {
-      if (duzenleId) {
-        await notGuncelle(duzenleId, form, kullanici.id)
-        toast.success('Not güncellendi')
-      } else {
-        await notEkle(kullanici.id, form)
-        toast.success('Not eklendi')
+      // ⚠️ notGuncelle/notEkle hata durumunda THROW ETMEZ, null döner (servis
+      // console.warn ile yutuyor) — yani catch'e hiç düşülmüyordu ve not
+      // kaydedilmemişken "Not eklendi" gösterilip modal kapanıyordu (19.08).
+      const sonuc = duzenleId
+        ? await notGuncelle(duzenleId, form, kullanici.id)
+        : await notEkle(kullanici.id, form)
+      if (!sonuc) {
+        toast.error('Not kaydedilemedi — pencere açık bırakıldı, tekrar deneyin.')
+        return
       }
+      toast.success(duzenleId ? 'Not güncellendi' : 'Not eklendi')
       kapatModal()
       yukle()
     } catch (e) {
@@ -887,6 +892,8 @@ function chipStyle(aktif, renk) {
 
 // EklerBolumu — foto/belge yükleme + listeleme
 function EklerBolumu({ ekler = [], kullaniciId, notId, onEkleEklendi, onEkSilindi }) {
+  // ekAc hataları görünür olsun — alt bileşen, toast hook burada (19.08)
+  const { toast } = useToast()
   const [yukleniyor, setYukleniyor] = useState(false)
   const [acikFotoUrl, setAcikFotoUrl] = useState(null)
 
@@ -910,13 +917,17 @@ function EklerBolumu({ ekler = [], kullaniciId, notId, onEkleEklendi, onEkSilind
   }
 
   const ekAc = async (ek) => {
-    const url = await ekSignedUrl(ek.path)
-    if (!url) return alert('Dosya açılamadı')
+    // Foto modalda açılır (pencere gerekmez); dosyada pencere URL'den ÖNCE
+    // açılır — await sonrası window.open popup engeline takılıp sessizce null
+    // dönüyordu (19.08, bkz. src/lib/dosyaAc.js).
     if (ek.tip === 'foto' || ek.mimeType?.startsWith('image/')) {
+      const url = await ekSignedUrl(ek.path)
+      if (!url) { toast.error('Dosya açılamadı.'); return }
       setAcikFotoUrl(url)
-    } else {
-      window.open(url, '_blank')
+      return
     }
+    const sonuc = await yeniSekmedeAc(async () => ekSignedUrl(ek.path))
+    if (!sonuc.ok) toast.error(acmaHatasi(sonuc, 'Dosya açılamadı.'))
   }
 
   const ekKaldir = async (ek) => {

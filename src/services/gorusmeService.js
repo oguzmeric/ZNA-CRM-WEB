@@ -70,14 +70,25 @@ export const konuTopluYeniden = async (eskiAd, yeniAd) => {
   return data?.length ?? 0
 }
 
+// true = gerçekten silindi (19.08 — sessiz yutma temizliği).
+// ⚠️ SIRA DEĞİŞTİ: satır ÖNCE silinir, dosyalar SONRA. Eskiden önce dosyalar
+// siliniyordu; satır silme başarısız olursa (RLS: görüşmeler yalnız yönetici
+// silebilir) kayıt duruyor ama ekleri kaybolmuş oluyordu.
 export const gorusmeSil = async (id) => {
   const { data: g } = await supabase.from('gorusmeler').select('dosyalar').eq('id', id).single()
+
+  const { data: silinen, error } = await supabase
+    .from('gorusmeler').delete().eq('id', id).select('id')
+  if (error) { console.error('gorusmeSil hata:', error.message); return false }
+  if (!silinen?.length) { console.warn('gorusmeSil: satır silinmedi (RLS/yok):', id); return false }
+
+  // Satır gitti — ekler artık öksüz, best-effort temizle
   const dosyaPaths = (g?.dosyalar || []).map(d => d.path).filter(Boolean)
   if (dosyaPaths.length > 0) {
-    await supabase.storage.from('gorusme-dosyalari').remove(dosyaPaths)
+    await supabase.storage.from('gorusme-dosyalari').remove(dosyaPaths).catch(() => {})
   }
-  await supabase.from('gorusmeler').delete().eq('id', id)
   invalidate('gorusmeler:list', `gorusme:${id}`)
+  return true
 }
 
 // ─────────────────────────────────────────────────────────────────────
