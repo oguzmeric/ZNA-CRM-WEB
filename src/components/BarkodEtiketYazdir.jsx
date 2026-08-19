@@ -51,10 +51,13 @@ function snPunto(seriNo, ruloModu) {
 export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat, onYazdir, duzen = 'barkod' }) {
   const snDuzen = duzen === 'sn'
   const { toast } = useToast()
-  // Kağıt seçimi (14.08): A4 etiket sayfası (24 etiket) VEYA NIIMBOT 40×20 rulo
-  // (etiket başına bir sayfa). Rulo modu yalnız SN düzeninde anlamlı.
+  // Kağıt seçimi (14.08): A4 etiket sayfası (24 etiket) VEYA 40×20 mm rulo
+  // (etiket başına bir sayfa; NIIMBOT B21 ve Xprinter XP-490B — ikisi de
+  // 203 dpi). 19.08: rulo modu 'barkod' düzenine de açıldı — XP-490B masaüstü
+  // USB yazıcı, ModelDetay'dan da rulo basılacak; eskiden yalnız SN düzeninde
+  // vardı ve ModelDetay A4'e kilitliydi.
   const [kagit, setKagit] = useState('a4')   // 'a4' | 'rulo'
-  const ruloModu = snDuzen && kagit === 'rulo'
+  const ruloModu = kagit === 'rulo'
   const [seciliIdler, setSeciliIdler] = useState(() => new Set(kalemler.map(k => k.id)))
   const tumu = () => setSeciliIdler(new Set(kalemler.map(k => k.id)))
   const hicbiri = () => setSeciliIdler(new Set())
@@ -89,7 +92,7 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
               <h3 style={{ margin: 0, fontSize: 18 }}>Toplu Barkod Etiket</h3>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
                 {marka} · {stokKodu} · {seciliKalemler.length}/{kalemler.length} seçili ·{' '}
-                {ruloModu ? 'NIIMBOT 40×20 mm rulo · her etiket ayrı' : 'A4 · 3×8 grid = 24 etiket/sayfa'}
+                {ruloModu ? 'Rulo 40×20 mm · her etiket ayrı sayfa' : 'A4 · 3×8 grid = 24 etiket/sayfa'}
               </div>
             </div>
             <button onClick={onKapat} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
@@ -97,26 +100,24 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
             </button>
           </div>
 
-          {/* Kağıt seçimi — yalnız SN düzeninde (bağımsız SN etiketleri) */}
-          {snDuzen && (
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginRight: 2 }}>Kağıt:</span>
-              {[
-                { id: 'a4', etiket: 'A4 etiket sayfası (24 adet)' },
-                { id: 'rulo', etiket: 'NIIMBOT rulo 40×20 mm' },
-              ].map(s => (
-                <button key={s.id} type="button" onClick={() => setKagit(s.id)}
-                  style={{
-                    fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                    background: kagit === s.id ? 'rgba(59,130,246,0.12)' : 'transparent',
-                    border: `1px solid ${kagit === s.id ? 'rgba(59,130,246,0.45)' : 'var(--border-default)'}`,
-                    color: kagit === s.id ? '#3b82f6' : 'var(--text-secondary)',
-                  }}>
-                  {s.etiket}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Kağıt seçimi — her iki düzende (19.08: XP-490B rulo) */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginRight: 2 }}>Kağıt:</span>
+            {[
+              { id: 'a4', etiket: 'A4 etiket sayfası (24 adet)' },
+              { id: 'rulo', etiket: 'Rulo 40×20 mm (Xprinter / NIIMBOT)' },
+            ].map(s => (
+              <button key={s.id} type="button" onClick={() => setKagit(s.id)}
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                  background: kagit === s.id ? 'rgba(59,130,246,0.12)' : 'transparent',
+                  border: `1px solid ${kagit === s.id ? 'rgba(59,130,246,0.45)' : 'var(--border-default)'}`,
+                  color: kagit === s.id ? '#3b82f6' : 'var(--text-secondary)',
+                }}>
+                {s.etiket}
+              </button>
+            ))}
+          </div>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <Button variant="secondary" size="sm" onClick={tumu}>Tümünü Seç</Button>
@@ -152,7 +153,7 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
 
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>
             {ruloModu ? (
-              <>💡 Yazdır'a basınca yazdır önizlemesi açılır. Yazıcı olarak <strong>NIIMBOT</strong>'u,
+              <>💡 Yazdır'a basınca yazdır önizlemesi açılır. Yazıcı olarak <strong>Xprinter XP-490B</strong> (veya NIIMBOT) seçin,
               kenar boşluğunu <strong>Yok</strong> seç. Her seri no ayrı etikete basılır
               ({seciliKalemler.length} etiket).</>
             ) : (
@@ -326,6 +327,29 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
           .etiket-rulo-modu .etiket-barkod-sn svg {
             max-width: 34mm;
             height: 10mm !important;
+          }
+
+          /* 'barkod' düzeni (marka/model/CODE128/SN) 40×20 ruloda — 19.08,
+             Xprinter XP-490B. A4 puntoları (11pt marka, 55mm barkod) bu alana
+             sığmaz; hepsi rulo ölçüsüne indirilir. Dikey bütçe ~17mm:
+             marka 2.5 + model 2 + barkod 7 + sn 2 + aralıklar. */
+          .etiket-rulo-modu .etiket-hucre .etiket-marka {
+            font-size: 6.5pt;
+            line-height: 1.05;
+            white-space: nowrap; overflow: hidden; max-width: 36mm;
+          }
+          .etiket-rulo-modu .etiket-hucre .etiket-model {
+            font-size: 5.5pt;
+            line-height: 1.05;
+            white-space: nowrap; overflow: hidden; max-width: 36mm;
+          }
+          .etiket-rulo-modu .etiket-hucre .etiket-barkod svg {
+            max-width: 34mm;
+            height: 7mm !important;
+          }
+          .etiket-rulo-modu .etiket-hucre .etiket-sn {
+            font-size: 6pt;
+            letter-spacing: 0.3px;
           }
         }
       `}</style>
