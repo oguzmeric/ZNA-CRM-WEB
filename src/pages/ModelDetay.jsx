@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useParams, useNavigate } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
-  stokUrunleriniGetir, stokHareketleriniGetir,
+  stokUrunleriniGetir, stokHareketleriniGetir, gorselYukle, stokUrunGuncelle,
   snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
   snTopluTeknisyeneVer, snTopluDepoyaCek,
   SN_SILME_SEBEPLERI, aileleriGetir,
@@ -89,6 +89,12 @@ function ModelDetay() {
   const { confirm } = useConfirm()
   const [kalemler, setKalemler] = useState([])
   const [urun, setUrun] = useState(null)
+  // Görsel yükleme — "görseli olmayanlar" filtresinden gelen kullanıcı
+  // ürüne tıklayınca BURAYA düşüyor; yükleme yalnız Stok listesindeki düzenleme
+  // formundaydı, detayda yoktu (19.08 bildirimi). gorselYukle storage'a yazar,
+  // DB'deki gorsel_url'i stokUrunGuncelle günceller.
+  const gorselInputRef = useRef(null)
+  const [gorselYukleniyor, setGorselYukleniyor] = useState(false)
   const [hareketler, setHareketler] = useState([])
   const [musteriMap, setMusteriMap] = useState(new Map())
   const [teknisyenMap, setTeknisyenMap] = useState(new Map())
@@ -325,26 +331,72 @@ function ModelDetay() {
       {/* Özet Kartı */}
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-          {urun?.gorselUrl ? (
-            <img
-              src={urun.gorselUrl}
-              alt=""
-              style={{
+          {/* Görsel — tıklanınca yükleme/değiştirme. "Görseli olmayanlar"
+              filtresinden gelen kullanıcı buradan yükler; eskiden yükleme
+              yalnız Stok listesindeki düzenleme formundaydı (19.08). */}
+          <button
+            type="button"
+            onClick={() => !gorselYukleniyor && urun && gorselInputRef.current?.click()}
+            title={urun?.gorselUrl ? 'Görseli değiştir' : 'Görsel yükle'}
+            style={{
+              padding: 0, border: 'none', background: 'transparent',
+              cursor: gorselYukleniyor || !urun ? 'wait' : 'pointer', flexShrink: 0,
+              position: 'relative',
+            }}
+          >
+            {urun?.gorselUrl ? (
+              <img
+                src={urun.gorselUrl}
+                alt=""
+                style={{
+                  width: 64, height: 64, borderRadius: 'var(--radius-md)',
+                  objectFit: 'contain', background: 'var(--surface-sunken)',
+                  border: '1px solid var(--border-default)', display: 'block',
+                  opacity: gorselYukleniyor ? 0.4 : 1,
+                }}
+              />
+            ) : (
+              <div style={{
                 width: 64, height: 64, borderRadius: 'var(--radius-md)',
-                objectFit: 'contain', background: 'var(--surface-sunken)',
-                border: '1px solid var(--border-default)', flexShrink: 0,
-              }}
-            />
-          ) : (
-            <div style={{
-              width: 64, height: 64, borderRadius: 'var(--radius-md)',
-              background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              {seriTakipli ? <Tag size={22} strokeWidth={1.5} /> : <Package size={22} strokeWidth={1.5} />}
-            </div>
-          )}
+                background: 'var(--brand-primary-soft)', color: 'var(--brand-primary)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 2,
+                border: '1px dashed var(--brand-primary)',
+                opacity: gorselYukleniyor ? 0.4 : 1,
+              }}>
+                {seriTakipli ? <Tag size={18} strokeWidth={1.5} /> : <Package size={18} strokeWidth={1.5} />}
+                <span style={{ font: '500 9px/11px var(--font-sans)' }}>
+                  {gorselYukleniyor ? 'Yükleniyor' : 'Görsel ekle'}
+                </span>
+              </div>
+            )}
+          </button>
+          <input
+            ref={gorselInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file || !urun) return
+              setGorselYukleniyor(true)
+              try {
+                const url = await gorselYukle(file, stokKodu)
+                if (!url) throw new Error('Görsel yüklenemedi.')
+                // Storage'a yazmak yetmez: liste ve katalog gorsel_url kolonunu
+                // okuyor. Stok formunda bunu "Kaydet" yapıyordu, burada form yok.
+                const g = await stokUrunGuncelle(urun.id, { gorselUrl: url })
+                if (!g) throw new Error('Görsel kaydedilemedi.')
+                setUrun((u) => ({ ...u, gorselUrl: url }))
+                toast.success('Ürün görseli güncellendi.')
+              } catch (err) {
+                toast.error(err.message || 'Görsel yüklenemedi.')
+              } finally {
+                setGorselYukleniyor(false)
+              }
+            }}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 className="t-h2" style={{ marginBottom: 6 }}>{modelAdi}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -352,7 +404,7 @@ function ModelDetay() {
               {seriTakipli ? (
                 <Badge tone="brand">S/N takipli · <span className="tabular-nums">{sayilar.toplam}</span> adet</Badge>
               ) : (
-                <Badge tone="info">Toplu ürün</Badge>
+                <Badge tone="bilgi">Toplu ürün</Badge>
               )}
               {urun?.marka && <span className="t-caption">Marka: <span style={{ color: 'var(--text-secondary)' }}>{urun.marka}</span></span>}
               {urun?.grupKodu && <Badge tone="neutral">{urun.grupKodu}</Badge>}
