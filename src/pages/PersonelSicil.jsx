@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Briefcase, Wallet, Clock, CalendarCheck, Banknote,
   LayoutDashboard, Pencil, Save, X, AlertTriangle, Phone, Mail, IdCard,
-  PackageCheck,
+  PackageCheck, FolderOpen,
 } from 'lucide-react'
 import { Button, Card, Badge, CodeBadge, Avatar, EmptyState } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
@@ -41,6 +41,7 @@ import CalismaSaatleriSekmesi from '../components/sicil/CalismaSaatleriSekmesi'
 import IzinlerSekmesi from '../components/sicil/IzinlerSekmesi'
 import AvanslarSekmesi from '../components/sicil/AvanslarSekmesi'
 import ZimmetSekmesi from '../components/sicil/ZimmetSekmesi'
+import EvrakModal from '../components/sicil/EvrakModal'
 
 const SEKMELER = [
   { id: 'genel',    label: 'Genel Bakış',      ikon: LayoutDashboard },
@@ -68,6 +69,7 @@ export default function PersonelSicil() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState(null)
   const [sekme, setSekme] = useState('genel')
+  const [evrakAcik, setEvrakAcik] = useState(false)
 
   // form !== null → düzenleme modu. TÜM sicil kaydını tutar: upsert satırın
   // tamamını yazdığı için yalnız görünen alanları göndermek diğerlerini siler.
@@ -312,11 +314,18 @@ export default function PersonelSicil() {
         </div>
       </Card>
 
-      {/* ── Sekme çubuğu ──────────────────────────────────────────────── */}
+      {/* ── Sekme çubuğu + özlük evrakları ────────────────────────────
+          Evrak AYRI SEKME değil: çubuk zaten sekiz öğeyle dolu ve evrak işi
+          "aç, yükle, kapat" biçiminde kısa sürüyor — sekme yapmak sicilde
+          gezinmeyi bölerdi. Düğme bilerek çubuğun sağındaki boşlukta. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        marginBottom: 16, flexWrap: 'wrap',
+      }}>
       <div style={{
         display: 'inline-flex', background: 'var(--surface-sunken)',
         border: '1px solid var(--border-default)', borderRadius: 10,
-        padding: 3, marginBottom: 16, flexWrap: 'wrap',
+        padding: 3, flexWrap: 'wrap',
         opacity: form ? 0.55 : 1,
       }}>
         {SEKMELER.map(s => {
@@ -337,6 +346,18 @@ export default function PersonelSicil() {
             </button>
           )
         })}
+      </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!!form}
+          title={form ? 'Önce düzenlemeyi kaydet veya iptal et' : 'Kimlik, diploma, sağlık raporu gibi özlük evrakları'}
+          iconLeft={<FolderOpen size={14} strokeWidth={1.8} />}
+          onClick={() => setEvrakAcik(true)}
+        >
+          Özlük Evrakları
+        </Button>
       </div>
 
       {form && (
@@ -390,6 +411,13 @@ export default function PersonelSicil() {
           Son güncelleme: {tarihBicim(sicil.guncellemeTarih)}
         </div>
       )}
+
+      <EvrakModal
+        acik={evrakAcik}
+        kapat={() => setEvrakAcik(false)}
+        kullaniciId={id}
+        personelAd={personel?.ad}
+      />
     </div>
   )
 }
