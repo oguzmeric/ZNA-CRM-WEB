@@ -76,11 +76,15 @@ export default function DemirbasTutanakYazdir() {
 
   const { kalemler, personel, teslimEden, tarih } = veri
 
+  // Dikey flex + imza bloğunda marginTop:'auto' — imzalar içeriğin hemen
+  // altına yapışmaz, A4'ün DİBİNE iner. Kalem sayısı 2 de olsa 15 de olsa
+  // imza alanı hep aynı yerde durur; ıslak imzalı evrakta beklenen budur.
   const sayfa = {
     width: '210mm', minHeight: '270mm', margin: '0 auto', padding: '10mm 12mm',
     background: '#fff', color: '#000',
     fontFamily: '"Microsoft Sans Serif", Arial, sans-serif',
     fontSize: 10, lineHeight: 1.45,
+    display: 'flex', flexDirection: 'column',
   }
   const tablo = { width: '100%', borderCollapse: 'collapse', border: `1px solid ${BORDER}`, marginBottom: 8 }
   const hucre = { border: `1px solid ${BORDER}`, padding: '4px 8px', verticalAlign: 'top' }
@@ -92,7 +96,7 @@ export default function DemirbasTutanakYazdir() {
     letterSpacing: 0.4, textTransform: 'uppercase',
   }
   const imzaKutu = {
-    border: `1px solid ${BORDER}`, height: 96, padding: '6px 10px',
+    border: `1px solid ${BORDER}`, height: 110, padding: '8px 12px',
     width: '50%', verticalAlign: 'top',
   }
 
@@ -197,7 +201,7 @@ export default function DemirbasTutanakYazdir() {
         </div>
 
         {/* ─── İmzalar ─── */}
-        <table style={{ ...tablo, marginTop: 4 }}>
+        <table style={{ ...tablo, marginTop: 'auto', marginBottom: 6 }}>
           <tbody>
             <tr>
               <td style={imzaKutu}>
