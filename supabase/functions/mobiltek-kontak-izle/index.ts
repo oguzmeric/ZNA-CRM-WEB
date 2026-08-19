@@ -11,7 +11,7 @@
 // İlk görülen araç için bildirim atılmaz (ilk cron'da yağmur olmasın).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
+import { vehiclesGetir } from '../_shared/mobiltekVehicles.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -110,20 +110,16 @@ Deno.serve(async (req) => {
     // ── Mobiltek'ten araçları çek ──
     const token = await mobiltekToken(svc)
     if (!token) return json({ ok: false, hata: 'mobiltek_token_yok' }, 500)
-    const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
-    const veri = await r.json()
-
-    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
-    // Kota dolduğunda HTTP 200 + {"code":40,...,"vehicles":null} geliyor; bu
-    // kontrol yokken `?? []` boş diziye düşüyor ve cron "araç yok" diyerek
-    // sessizce başarıyla bitiyordu. Kontak durumları 12.08'den beri bu yüzden
-    // güncellenmiyordu ve hiçbir yerde iz kalmıyordu (19.08).
-    const uygulamaHatasi = mobiltekYanitHatasi(veri)
-    if (uygulamaHatasi) {
-      console.error('[mobiltek-kontak-izle]', uygulamaHatasi)
-      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    // Ortak önbellekli erişim (mig 316): TTL içinde ikinci istek Mobiltek'e
+    // GİTMEZ — aynı dakikada tetiklenen cron'lar ve açık sekmeler tek upstream
+    // isteği paylaşır; kota-dolu yanıtı 10 dk önbellekte kalır. code:40
+    // kontrolü yardımcının İÇİNDE (19.08 kota tespiti).
+    const sonuc = await vehiclesGetir(svc, token)
+    if (sonuc.hata) {
+      console.error('[mobiltek-kontak-izle]', sonuc.hata)
+      return json({ ok: false, hata: sonuc.hata, kota: sonuc.kota ?? false }, 502)
     }
+    const veri = sonuc.veri
 
     // Kontak sinyali: Mobiltek 'ignition' bazen yanlış rapor ediyor —
     // web ekranıyla aynı mantık: ignition truthy VEYA hız > 0

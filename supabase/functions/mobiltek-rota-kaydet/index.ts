@@ -16,7 +16,7 @@
 // araç park halindedir.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
+import { vehiclesGetir } from '../_shared/mobiltekVehicles.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -122,20 +122,16 @@ Deno.serve(async (req) => {
     // ── Mobiltek'ten anlık konumlar ──
     const token = await mobiltekToken(svc)
     if (!token) return json({ ok: false, hata: 'mobiltek_token_yok' }, 500)
-    const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
-    const veri = await r.json()
-
-    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
-    // Kota dolduğunda HTTP 200 + {"code":40,...,"vehicles":null} geliyor; bu
-    // kontrol yokken aşağıdaki `?? []` boş diziye düşüyor ve cron hiçbir şey
-    // yazmadan "başarılı" bitiyordu. Konum izleri 09.08'den beri bu yüzden
-    // boştu ve hiçbir yerde hata görünmüyordu (19.08).
-    const uygulamaHatasi = mobiltekYanitHatasi(veri)
-    if (uygulamaHatasi) {
-      console.error('[mobiltek-rota-kaydet]', uygulamaHatasi)
-      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    // Ortak önbellekli erişim (mig 316): TTL içinde ikinci istek Mobiltek'e
+    // GİTMEZ — aynı dakikada tetiklenen cron'lar ve açık sekmeler tek upstream
+    // isteği paylaşır; kota-dolu yanıtı 10 dk önbellekte kalır. code:40
+    // kontrolü yardımcının İÇİNDE (19.08 kota tespiti).
+    const sonuc = await vehiclesGetir(svc, token)
+    if (sonuc.hata) {
+      console.error('[mobiltek-rota-kaydet]', sonuc.hata)
+      return json({ ok: false, hata: sonuc.hata, kota: sonuc.kota ?? false }, 502)
     }
+    const veri = sonuc.veri
 
     const simdi = new Date().toISOString()
     const araclar = (veri?.vehicles ?? [])

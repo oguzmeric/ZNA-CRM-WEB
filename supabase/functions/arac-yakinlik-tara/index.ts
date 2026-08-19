@@ -4,7 +4,7 @@
 // Kullanım: frontend polling'iyle beraber çağrılır (30 sn) veya cron.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
+import { vehiclesGetir } from '../_shared/mobiltekVehicles.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -92,20 +92,16 @@ Deno.serve(async (req) => {
     // Mobiltek'ten pozisyonları al
     const token = await mobiltekToken(svc)
     if (!token) return json({ ok: false, hata: 'mobiltek_token_yok' }, 500)
-    const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
-    const veri = await r.json()
-
-    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
-    // BURADA ÖZELLİKLE TEHLİKELİ: veri gelmeyince `?? []` boş listeye düşüyor,
-    // hiçbir yakınlık kaydı tazelenmiyor, ardından aşağıdaki ÇÖZÜLME KONTROLÜ
-    // "son_zaman eskimiş" diye HÂLÂ SÜREN alarmları cozuldu=true yapıyordu.
-    // Yani kota bitince aktif alarmlar sahte biçimde kapanıyordu (19.08).
-    const uygulamaHatasi = mobiltekYanitHatasi(veri)
-    if (uygulamaHatasi) {
-      console.error('[arac-yakinlik-tara]', uygulamaHatasi)
-      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    // Ortak önbellekli erişim (mig 316): TTL içinde ikinci istek Mobiltek'e
+    // GİTMEZ — aynı dakikada tetiklenen cron'lar ve açık sekmeler tek upstream
+    // isteği paylaşır; kota-dolu yanıtı 10 dk önbellekte kalır. code:40
+    // kontrolü yardımcının İÇİNDE (19.08 kota tespiti).
+    const sonuc = await vehiclesGetir(svc, token)
+    if (sonuc.hata) {
+      console.error('[arac-yakinlik-tara]', sonuc.hata)
+      return json({ ok: false, hata: sonuc.hata, kota: sonuc.kota ?? false }, 502)
     }
+    const veri = sonuc.veri
     const araclar = (veri?.vehicles ?? [])
       .map((v: any) => ({
         id: Number(v.id),

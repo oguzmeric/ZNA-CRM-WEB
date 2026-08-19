@@ -11,6 +11,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { mobiltekYanitHatasi } from '../_shared/mobiltekYanit.ts'
+import { vehiclesGetir } from '../_shared/mobiltekVehicles.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -221,6 +222,27 @@ serve(async (req) => {
 
     try {
       const access = await getirToken(sb)
+
+      // Parametresiz 'vehicles' — ORTAK ÖNBELLEK (mig 316). Web sayfası her
+      // yenilemede bu ucu iki kez çekiyordu (harita + yakınlık taraması), N açık
+      // sekme = N upstream istek. Artık TTL içinde herkes aynı yanıtı paylaşır;
+      // hata (kota) fırlatılır ve dış catch loglayıp { ok:false } döner.
+      if (yol === 'vehicles' && Object.keys(params ?? {}).length === 0) {
+        const sonuc = await vehiclesGetir(sb, access)
+        if (sonuc.hata) throw new Error(sonuc.hata)
+        veri = sonuc.veri
+        await sb.from('mobiltek_istek_log').insert({
+          kullanici_id: profil.id,
+          endpoint: yol,
+          parametre: { kaynak: sonuc.kaynak },
+          http_kod: 200,
+          sure_ms: Date.now() - t0,
+        })
+        return new Response(JSON.stringify({ ok: true, mock: false, veri }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       const url = yolToEndpoint(yol, params)
       // POST kullanılan yollar (canlı kamera durdurma)
       const httpMethod = yol.startsWith('cameras-live-stop/') ? 'POST' : 'GET'

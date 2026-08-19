@@ -13,7 +13,7 @@
 //   - yönetici listesi isim regex yerine rol='admin'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
+import { vehiclesGetir } from '../_shared/mobiltekVehicles.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,20 +102,16 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* debug yoksa normal akış */ }
 
-    const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
-    const veri = await r.json()
-
-    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
-    // Kota dolduğunda HTTP 200 + {"code":40,...,"vehicles":null} geliyor; guard
-    // olmadan `?? []` boş listeye düşüyor ve fonksiyon "0 araç senkronize
-    // edildi" diyerek başarıyla bitiyordu — elle tetikleyen kullanıcı da hata
-    // görmüyordu (19.08).
-    const uygulamaHatasi = mobiltekYanitHatasi(veri)
-    if (uygulamaHatasi) {
-      console.error('[arac-km-sync]', uygulamaHatasi)
-      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    // Ortak önbellekli erişim (mig 316): TTL içinde ikinci istek Mobiltek'e
+    // GİTMEZ — aynı dakikada tetiklenen cron'lar ve açık sekmeler tek upstream
+    // isteği paylaşır; kota-dolu yanıtı 10 dk önbellekte kalır. code:40
+    // kontrolü yardımcının İÇİNDE (19.08 kota tespiti).
+    const sonuc = await vehiclesGetir(svc, token)
+    if (sonuc.hata) {
+      console.error('[arac-km-sync]', sonuc.hata)
+      return json({ ok: false, hata: sonuc.hata, kota: sonuc.kota ?? false }, 502)
     }
+    const veri = sonuc.veri
     const mAraclar = (veri?.vehicles ?? []).map((v: any) => ({
       id: Number(v.id),
       plaka: v.label ?? String(v.id),
