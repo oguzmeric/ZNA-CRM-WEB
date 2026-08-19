@@ -197,11 +197,27 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
     if (!secili.length) return
     setTutanakYapiliyor(true)
     try {
-      const no = await tutanakOlustur(secili)
-      toast.success(`Tutanak oluşturuldu: ${no} (${secili.length} kalem)`)
+      // ⚠️ Pencere tutanak numarasından ÖNCE açılır. Eskiden `await
+      // tutanakOlustur()` + `await yenile()` sonrasında window.open
+      // çağrılıyordu; o noktada kullanıcı etkileşimi bittiği için popup
+      // engelleniyor, sekme açılmıyor ama "Tutanak oluşturuldu" mesajı
+      // çıkıyordu — belge oluşur, kullanıcı göremezdi (bkz. src/lib/dosyaAc.js).
+      let olusanNo = null
+      const sonuc = await yeniSekmedeAc(async () => {
+        olusanNo = await tutanakOlustur(secili)
+        return '/demirbas-tutanak/' + olusanNo
+      })
+
+      if (!olusanNo) {
+        // tutanakOlustur patladı — sebebini yeniSekmedeAc taşıdı.
+        throw sonuc.hata || new Error('Tutanak oluşturulamadı.')
+      }
+
+      toast.success(`Tutanak oluşturuldu: ${olusanNo} (${secili.length} kalem)`)
       setSecili([])
       await yenile()
-      window.open('/demirbas-tutanak/' + no, '_blank', 'noopener')
+      // Belge oluştu ama sekme açılamadıysa kullanıcı bunu bilmeli.
+      if (!sonuc.ok) toast.warning(acmaHatasi(sonuc, 'Tutanak açılamadı, listeden açabilirsiniz.'))
     } catch (e) {
       toast.error(e.message || 'Tutanak oluşturulamadı.')
     } finally {
