@@ -384,7 +384,12 @@ function App() {
     )
   }
 
+  // Layout'suz (sidebar/topbar olmadan) render edilecek cikti sayfalari.
+  // ⚠️ Buraya alinmayan bir yazdirma sayfasi MainLayout icinde kalir ve
+  // kagida TUM MENU basilir — demirbas tutanaginda bu yasandi (18.08).
   const isPrint = location.pathname.endsWith('/yazdir')
+    || location.pathname.startsWith('/demirbas-tutanak/')
+    || location.pathname.endsWith('/tutanak')  // demo cihaz tutanağı da aynı dertteydi
   if (isPrint) {
     return (
       <Suspense fallback={<SayfaYukleniyor />}>
@@ -395,6 +400,9 @@ function App() {
           <Route path="/servis-talepleri/:id/yazdir" element={<ServisFormuYazdir />} />
           <Route path="/siparisler/:id/yazdir" element={<AdminGuard><SiparisYazdir /></AdminGuard>} />
           <Route path="/bakim-isleri/:id/yazdir" element={<BakimYazdir />} />
+          {/* Demirbaş teslim tutanağı (mig 312) — layout'suz çıktı */}
+          <Route path="/demirbas-tutanak/:no" element={<DemirbasTutanakYazdir />} />
+          <Route path="/demolar/:id/tutanak" element={<DemoTutanakYazdir />} />
         </Routes>
       </Suspense>
     )
@@ -495,9 +503,6 @@ function App() {
           <Route path="/demolar" element={<Demolar />} />
           <Route path="/demolar/yeni" element={<YeniDemoCihaz />} />
           <Route path="/demolar/:id" element={<DemoCihazDetay />} />
-          <Route path="/demolar/:id/tutanak" element={<DemoTutanakYazdir />} />
-          {/* Personel demirbaş teslim tutanağı — no: TTN-YYYY-NNNN (mig 312) */}
-          <Route path="/demirbas-tutanak/:no" element={<DemirbasTutanakYazdir />} />
           <Route path="/demolar/:id/duzenle" element={<DuzenleDemoCihaz />} />
           <Route path="/servis-talepleri" element={<ServisTalepleri />} />
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />

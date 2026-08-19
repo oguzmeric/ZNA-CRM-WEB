@@ -199,3 +199,28 @@ input.sayi-sade { -moz-appearance: textfield; appearance: textfield; }
 .chat-sil-btn { opacity: 0; transition: opacity 120ms; }
 .chat-satir:hover .chat-sil-btn { opacity: 1; }
 .chat-sil-btn:hover { color: var(--danger) !important; }
+
+/* ─── Yazdırma ────────────────────────────────────────────────────────────
+   Projede hiç @media print kuralı yoktu; `no-print` sınıfı yazdırma
+   sayfalarında kullanılıyor ama HİÇBİR YERDE TANIMLI DEĞİLDİ — bu yüzden
+   ekrandaki "Geri / Yazdır" butonları da kâğıda basılıyordu (18.08, demirbaş
+   tutanağı çıktısında görüldü).
+
+   Ayrıca tarayıcılar arka plan renklerini varsayılan olarak BASMAZ; antetli
+   evrakta bölüm başlıklarının dolgusu kaybolduğu için print-color-adjust
+   açıkça zorlanıyor. */
+@media print {
+  .no-print { display: none !important; }
+
+  /* Ekran için konan gri zemin kâğıda gri basılmasın */
+  html, body { background: #fff !important; }
+
+  /* Antet ve bölüm başlıklarındaki dolgu/renkler korunsun */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Kenar boşluğunu belge kendi padding'iyle veriyor (10mm/12mm) */
+  @page { size: A4 portrait; margin: 0; }
+}
