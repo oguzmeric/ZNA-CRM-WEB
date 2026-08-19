@@ -1,6 +1,7 @@
 // Mobiltek proxy istemcisi — supabase.functions.invoke ile edge function'a çağrı.
 
 import { supabase } from '../lib/supabase'
+import { edgeHataMesaji } from '../lib/edgeHata'
 
 const cagir = async (yol, params = {}) => {
   const r = await cagirDetayli(yol, params)
@@ -17,12 +18,10 @@ const cagirDetayli = async (yol, params = {}) => {
   })
   if (error) {
     console.error('[mobiltek]', yol, error.message)
-    const zamanAsimi = /timeout|abort/i.test(error.message || '')
-    return {
-      hata: zamanAsimi
-        ? 'Mobiltek yanıt vermedi (zaman aşımı). Tekrar deneyin.'
-        : `Bağlantı hatası: ${error.message}`,
-    }
+    // ⚠️ error.message DAİMA "Edge Function returned a non-2xx status code"
+    // der; fonksiyonun gerçek sebebi ("Mobiltek aylık sorgulama limiti
+    // dolmuş...") yanıt GÖVDESİNDE kalır. edgeHataMesaji onu çıkarır.
+    return { hata: await edgeHataMesaji(error, 'Mobiltek bağlantısı kurulamadı.') }
   }
   if (!data?.ok) {
     console.warn('[mobiltek]', yol, data?.hata)
