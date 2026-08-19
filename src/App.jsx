@@ -120,6 +120,7 @@ const Demolar = lazy(() => import('./pages/Demolar'))
 const YeniDemoCihaz = lazy(() => import('./pages/YeniDemoCihaz'))
 const DemoCihazDetay = lazy(() => import('./pages/DemoCihazDetay'))
 const DemoTutanakYazdir = lazy(() => import('./pages/DemoTutanakYazdir'))
+const DemirbasTutanakYazdir = lazy(() => import('./pages/DemirbasTutanakYazdir'))
 const DuzenleDemoCihaz = lazy(() => import('./pages/DuzenleDemoCihaz'))
 const GunlukOzet = lazy(() => import('./pages/GunlukOzet'))
 const Sozlesmeler = lazy(() => import('./pages/Sozlesmeler'))
@@ -495,6 +496,8 @@ function App() {
           <Route path="/demolar/yeni" element={<YeniDemoCihaz />} />
           <Route path="/demolar/:id" element={<DemoCihazDetay />} />
           <Route path="/demolar/:id/tutanak" element={<DemoTutanakYazdir />} />
+          {/* Personel demirbaş teslim tutanağı — no: TTN-YYYY-NNNN (mig 312) */}
+          <Route path="/demirbas-tutanak/:no" element={<DemirbasTutanakYazdir />} />
           <Route path="/demolar/:id/duzenle" element={<DuzenleDemoCihaz />} />
           <Route path="/servis-talepleri" element={<ServisTalepleri />} />
           <Route path="/servis-talepleri/yeni" element={<YeniServisTalebi />} />

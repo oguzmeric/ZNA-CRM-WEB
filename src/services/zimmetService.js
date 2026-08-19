@@ -156,7 +156,9 @@ export async function teknisyenDemirbaslari(kullaniciId) {
   return data || []
 }
 
-export async function demirbasEkle({ kullaniciId, kategori, aciklama, fotoUrl }) {
+// mig 312: marka/model/seri_no ayri kolonlar — tutanakta sutun oluyorlar.
+// demirbas_no YAZILMAZ: trigger uretir (istemci sayaci yaris yaratir).
+export async function demirbasEkle({ kullaniciId, kategori, aciklama, fotoUrl, marka, model, seriNo, teslimNotu, verildiTarih }) {
   const { data, error } = await supabase
     .from('demirbas_zimmet')
     .insert({
@@ -164,6 +166,11 @@ export async function demirbasEkle({ kullaniciId, kategori, aciklama, fotoUrl })
       kategori,
       aciklama: aciklama || null,
       foto_url: fotoUrl || null,
+      marka: marka?.trim() || null,
+      model: model?.trim() || null,
+      seri_no: seriNo?.trim() || null,
+      teslim_notu: teslimNotu?.trim() || null,
+      ...(verildiTarih ? { verildi_tarih: verildiTarih } : {}),
     })
     .select()
     .single()
@@ -202,4 +209,42 @@ export async function demirbasFotoYukle(file, kullaniciId) {
   if (error) throw error
   const { data } = supabase.storage.from('demirbas-foto').getPublicUrl(yol)
   return data.publicUrl
+}
+
+// ---------- Teslim tutanagi (mig 312) ----------
+// Tutanak ayri tablo DEGIL: ayni teslimdeki kalemler ayni tutanak_no'yu
+// paylasir. Numarayi DB uretir, yetki kontrolu de RPC icinde.
+
+export async function tutanakOlustur(kalemIdler) {
+  const { data, error } = await supabase.rpc('demirbas_tutanak_olustur', { p_ids: kalemIdler })
+  if (error) throw new Error(error.message || 'Tutanak olusturulamadi')
+  return data // 'TTN-2026-0001'
+}
+
+// Tutanak ciktisi icin: kalemler + personel + teslim eden.
+// Embed yerine iki adim — kullanicilar embed'i RLS altinda sessizce bos
+// donebiliyor (bkz. reference_sessiz_yutma_deseni).
+export async function tutanakGetir(tutanakNo) {
+  const { data: kalemler, error } = await supabase
+    .from('demirbas_zimmet')
+    .select('id, demirbas_no, kategori, marka, model, seri_no, aciklama, teslim_notu, verildi_tarih, kullanici_id, zimmetleyen_id')
+    .eq('tutanak_no', tutanakNo)
+    .order('demirbas_no')
+  if (error) throw error
+  if (!kalemler?.length) throw new Error('Tutanak bulunamadi: ' + tutanakNo)
+
+  const idler = Array.from(new Set(kalemler.flatMap(k => [k.kullanici_id, k.zimmetleyen_id]).filter(Boolean)))
+  const { data: kisiler } = await supabase
+    .from('kullanicilar')
+    .select('id, ad, unvan')
+    .in('id', idler)
+  const kisiMap = new Map((kisiler || []).map(k => [k.id, k]))
+
+  return {
+    tutanakNo,
+    kalemler,
+    personel: kisiMap.get(kalemler[0].kullanici_id) || null,
+    teslimEden: kisiMap.get(kalemler[0].zimmetleyen_id) || null,
+    tarih: kalemler[0].verildi_tarih,
+  }
 }

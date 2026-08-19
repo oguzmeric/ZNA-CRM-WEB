@@ -9,15 +9,19 @@
 // YETKİ: sayfa kapısı IKGuard (ik_yonetim modülü) — Ali (1), Oğuz (2),
 // Abdullah (44). Bu üçü karttaki yedi tablonun HEPSİNİ görebiliyor, o yüzden
 // kart içinde ikinci bir yetki ayrımı yok; "sekmeye tıkladım yetkim yok"
-// durumu yapısal olarak imkânsız. (Zimmet sekmesi tam bu yüzden kaldırıldı —
-// demirbas_zimmet RLS'i İK yetkisine değil demirbas_yetkili()'ye bakıyor ve
-// Abdullah 162 kaydın sıfırını görüyordu.)
+// durumu yapısal olarak imkânsız.
+//
+// Zimmet & Demirbaş sekmesi bir kez bu yüzden KALDIRILMIŞTI (demirbas_zimmet
+// RLS'i demirbas_yetkili()'ye bakıyordu, Abdullah 162 kaydın sıfırını
+// görüyordu). mig 312 o fonksiyona ik_yonetim modülünü ekledi — ölçüm
+// Abdullah 0 → 162 — ve sekme geri geldi.
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, Briefcase, Wallet, Clock, CalendarCheck, Banknote,
   LayoutDashboard, Pencil, Save, X, AlertTriangle, Phone, Mail, IdCard,
+  PackageCheck,
 } from 'lucide-react'
 import { Button, Card, Badge, CodeBadge, Avatar, EmptyState } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
@@ -36,6 +40,7 @@ import MaasBordroSekmesi from '../components/sicil/MaasBordroSekmesi'
 import CalismaSaatleriSekmesi from '../components/sicil/CalismaSaatleriSekmesi'
 import IzinlerSekmesi from '../components/sicil/IzinlerSekmesi'
 import AvanslarSekmesi from '../components/sicil/AvanslarSekmesi'
+import ZimmetSekmesi from '../components/sicil/ZimmetSekmesi'
 
 const SEKMELER = [
   { id: 'genel',    label: 'Genel Bakış',      ikon: LayoutDashboard },
@@ -45,6 +50,7 @@ const SEKMELER = [
   { id: 'mesai',    label: 'Çalışma Saatleri', ikon: Clock },
   { id: 'izin',     label: 'İzinler',          ikon: CalendarCheck },
   { id: 'avans',    label: 'Avanslar',         ikon: Banknote },
+  { id: 'zimmet',   label: 'Zimmet & Demirbaş', ikon: PackageCheck },
 ]
 
 // Düzenlenebilir sekmeler — ikisi de aynı personel_sicil satırını yazar
@@ -375,6 +381,7 @@ export default function PersonelSicil() {
             istihdamaGit={() => { setSekme('istihdam'); duzenleBaslat() }} />
         )}
         {sekme === 'avans' && <AvanslarSekmesi kullaniciId={id} />}
+        {sekme === 'zimmet' && <ZimmetSekmesi kullaniciId={id} personelAd={personel?.ad} />}
       </Card>
 
       {/* Kayıt izi */}
