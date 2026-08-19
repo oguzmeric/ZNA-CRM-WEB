@@ -4,6 +4,7 @@
 // Kullanım: frontend polling'iyle beraber çağrılır (30 sn) veya cron.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +95,17 @@ Deno.serve(async (req) => {
     const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
     if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
     const veri = await r.json()
+
+    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
+    // BURADA ÖZELLİKLE TEHLİKELİ: veri gelmeyince `?? []` boş listeye düşüyor,
+    // hiçbir yakınlık kaydı tazelenmiyor, ardından aşağıdaki ÇÖZÜLME KONTROLÜ
+    // "son_zaman eskimiş" diye HÂLÂ SÜREN alarmları cozuldu=true yapıyordu.
+    // Yani kota bitince aktif alarmlar sahte biçimde kapanıyordu (19.08).
+    const uygulamaHatasi = mobiltekYanitHatasi(veri)
+    if (uygulamaHatasi) {
+      console.error('[arac-yakinlik-tara]', uygulamaHatasi)
+      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    }
     const araclar = (veri?.vehicles ?? [])
       .map((v: any) => ({
         id: Number(v.id),
@@ -183,12 +195,23 @@ Deno.serve(async (req) => {
     }
 
     // Çözülme kontrolü: son_zaman > COZULDU_ESIK_DK olan aktif kayıtları kapat
-    const cozuldu = new Date(Date.now() - COZULDU_ESIK_DK * 60000).toISOString()
-    const { count: kapatilan } = await svc
-      .from('arac_yakinlik_kayitlari')
-      .update({ cozuldu: true, cozuldu_zamani: simdi }, { count: 'exact' })
-      .eq('cozuldu', false)
-      .lt('son_zaman', cozuldu)
+    //
+    // ⚠️ İKİNCİ KAPI: araç listesi boşsa bu kontrol ÇALIŞTIRILMAZ. "Kaydın
+    // son_zaman'ı eskimiş" ile "veri gelmediği için tazeleyemedik" aynı şey
+    // değildir; ikisi karışınca süren alarmlar sahte biçimde kapanır. Yukarıdaki
+    // `code` kapısı bilinmeyen bir arıza biçiminde delinirse burası tutar.
+    let kapatilan = 0
+    if (araclar.length === 0) {
+      console.warn('[arac-yakinlik-tara] araç listesi boş — çözülme kontrolü ATLANDI')
+    } else {
+      const cozuldu = new Date(Date.now() - COZULDU_ESIK_DK * 60000).toISOString()
+      const { count } = await svc
+        .from('arac_yakinlik_kayitlari')
+        .update({ cozuldu: true, cozuldu_zamani: simdi }, { count: 'exact' })
+        .eq('cozuldu', false)
+        .lt('son_zaman', cozuldu)
+      kapatilan = count ?? 0
+    }
 
     return json({
       ok: true,

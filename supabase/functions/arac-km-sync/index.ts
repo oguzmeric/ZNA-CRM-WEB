@@ -13,6 +13,7 @@
 //   - yönetici listesi isim regex yerine rol='admin'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { mobiltekYanitHatasi, kotaHatasiMi } from '../_shared/mobiltekYanit.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -104,6 +105,17 @@ Deno.serve(async (req) => {
     const r = await fetch(`${MOBILTEK_BASE}/vehicles/`, { headers: { Authorization: `Bearer ${token}` } })
     if (!r.ok) return json({ ok: false, hata: `mobiltek ${r.status}` }, 502)
     const veri = await r.json()
+
+    // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL gövdedeki `code` ile bildiriyor.
+    // Kota dolduğunda HTTP 200 + {"code":40,...,"vehicles":null} geliyor; guard
+    // olmadan `?? []` boş listeye düşüyor ve fonksiyon "0 araç senkronize
+    // edildi" diyerek başarıyla bitiyordu — elle tetikleyen kullanıcı da hata
+    // görmüyordu (19.08).
+    const uygulamaHatasi = mobiltekYanitHatasi(veri)
+    if (uygulamaHatasi) {
+      console.error('[arac-km-sync]', uygulamaHatasi)
+      return json({ ok: false, hata: uygulamaHatasi, kota: kotaHatasiMi(veri) }, 502)
+    }
     const mAraclar = (veri?.vehicles ?? []).map((v: any) => ({
       id: Number(v.id),
       plaka: v.label ?? String(v.id),

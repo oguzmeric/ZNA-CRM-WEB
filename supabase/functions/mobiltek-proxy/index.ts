@@ -10,6 +10,7 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { mobiltekYanitHatasi } from '../_shared/mobiltekYanit.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -239,6 +240,17 @@ serve(async (req) => {
         veri = JSON.parse(rawText)
       } catch {
         veri = { raw: rawText }
+      }
+
+      // ⚠️ Mobiltek hatayı HTTP durumuyla DEĞİL, gövdedeki `code` ile bildiriyor.
+      // Kota dolduğunda HTTP 200 + {"code":40,...,"vehicles":null} dönüyor; bu
+      // kontrol olmadığı için aylardır "araç yok" gibi görünüyordu (19.08).
+      // Fırlatılan hata aşağıdaki dış catch'te hem mobiltek_istek_log'a yazılır
+      // hem de istemciye { ok:false, hata } olarak döner.
+      const uygulamaHatasi = mobiltekYanitHatasi(veri)
+      if (uygulamaHatasi) {
+        console.error(`[mobiltek-proxy] ${yol} uygulama hatası:`, uygulamaHatasi)
+        throw new Error(uygulamaHatasi)
       }
     } catch (e: any) {
       if (e.message === 'MOBILTEK_CREDENTIALS_MISSING') {
