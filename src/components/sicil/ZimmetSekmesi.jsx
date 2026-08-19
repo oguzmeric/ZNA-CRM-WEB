@@ -447,13 +447,15 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
                     ) : (
                       <Badge tone="uyari">Tutanaksız</Badge>
                     )}
+                    {/* display:flex — inline-flex ALT SATIRA İNMİYOR, tutanak
+                        numarasına yapışıyordu (19.08 ekran görüntüsü). */}
                     {d.tutanak_no && (
                       <div style={{
                         marginTop: 3, font: '400 11px/15px var(--font-sans)',
-                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        display: 'flex', alignItems: 'center', gap: 3,
                         color: d.imzali_tutanak_yolu ? 'var(--success)' : 'var(--warning)',
                       }}>
-                        {d.imzali_tutanak_yolu && <CheckCircle2 size={11} strokeWidth={2} />}
+                        {d.imzali_tutanak_yolu && <CheckCircle2 size={11} strokeWidth={2} style={{ flexShrink: 0 }} />}
                         {d.imzali_tutanak_yolu ? 'İmzalısı arşivde' : 'İmza bekliyor'}
                       </div>
                     )}

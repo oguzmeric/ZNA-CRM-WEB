@@ -13,10 +13,15 @@ import { ConfirmProvider } from './context/ConfirmContext'
 import { HatirlatmaProvider } from './context/HatirlatmaContext'
 import { ToplantiHatirlaticiProvider } from './context/ToplantiHatirlaticiContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { surumTazelemeKur } from './lib/surumTazeleme'
 import './styles/tokens.css'
 import './styles/typography.css'
 import './index.css'
 import App from './App.jsx'
+
+// Yeni sürüm yayınlanınca açık kalan sekmeler kendini kurtarsın.
+// render'DAN ÖNCE: chunk hatası React ağacı kurulurken de olabilir.
+surumTazelemeKur()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
