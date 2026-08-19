@@ -61,6 +61,17 @@ export default function DemirbasTutanakYazdir() {
     return () => { iptal = true }
   }, [no])
 
+  // ⚠️ Bu sayfa sicil sekmesinden window.open ile YENİ SEKMEDE açılıyor;
+  // yeni sekmenin geçmişi boş olduğu için navigate(-1) hiçbir yere gitmiyordu.
+  // Sekmeyi açan pencere duruyorsa sekmeyi kapatırız, aksi halde (adres
+  // çubuğuna elle yazılmışsa) personelin sicil kartına döneriz.
+  const acilanSekme = typeof window !== 'undefined' && !!window.opener && !window.opener.closed
+  const geriDon = () => {
+    if (acilanSekme) { window.close(); return }
+    const pid = veri?.kalemler?.[0]?.kullanici_id
+    navigate(pid ? '/ik-yonetim/sicil/' + pid : '/ik-yonetim?sekme=sicil')
+  }
+
   if (yukleniyor) return <SkeletonDetay />
 
   if (hata || !veri) {
@@ -68,7 +79,7 @@ export default function DemirbasTutanakYazdir() {
       <div style={{ padding: 24 }}>
         <EmptyState title="Tutanak bulunamadı" description={hata || `${no} numaralı tutanak yok.`} />
         <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <Button variant="secondary" onClick={() => navigate(-1)}>Geri Dön</Button>
+          <Button variant="secondary" onClick={geriDon}>{acilanSekme ? 'Kapat' : 'Sicil Kartına Dön'}</Button>
         </div>
       </div>
     )
@@ -106,8 +117,8 @@ export default function DemirbasTutanakYazdir() {
         maxWidth: '210mm', margin: '0 auto 12px',
         display: 'flex', justifyContent: 'space-between', gap: 8,
       }}>
-        <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate(-1)}>
-          Geri
+        <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={geriDon}>
+          {acilanSekme ? 'Kapat' : 'Sicil Kartına Dön'}
         </Button>
         <Button variant="primary" iconLeft={<Printer size={14} strokeWidth={1.5} />} onClick={() => window.print()}>
           Yazdır
