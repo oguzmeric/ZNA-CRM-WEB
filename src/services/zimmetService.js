@@ -178,16 +178,56 @@ export async function demirbasEkle({ kullaniciId, kategori, aciklama, fotoUrl, m
   return data
 }
 
-// Kategori/açıklama düzenleme (otomatik geri yüklenen kayıtların tamamlanması vb.)
-export async function demirbasGuncelle(id, { kategori, aciklama }) {
+// Demirbaş düzenleme (mig 312 alanları dâhil).
+//
+// ⚠️ TUTANAĞA BAĞLI kalemde marka/model/seri_no DEĞİŞTİRİLEMEZ: tutanak
+// basılıp imzalanmış bir belgedir, dayanağı olan veri sonradan değişirse
+// belge yalan söyler. Bu kalemlerde yalnız açıklama ve teslim notu güncellenir.
+export async function demirbasGuncelle(id, alanlar) {
+  const { data: mevcut, error: okuHata } = await supabase
+    .from('demirbas_zimmet')
+    .select('tutanak_no')
+    .eq('id', id)
+    .single()
+  if (okuHata) throw okuHata
+
+  const guncel = {}
+  if (alanlar.aciklama !== undefined) guncel.aciklama = alanlar.aciklama?.trim() || null
+  if (alanlar.teslimNotu !== undefined) guncel.teslim_notu = alanlar.teslimNotu?.trim() || null
+
+  if (!mevcut?.tutanak_no) {
+    if (alanlar.kategori !== undefined) guncel.kategori = alanlar.kategori
+    if (alanlar.marka !== undefined) guncel.marka = alanlar.marka?.trim() || null
+    if (alanlar.model !== undefined) guncel.model = alanlar.model?.trim() || null
+    if (alanlar.seriNo !== undefined) guncel.seri_no = alanlar.seriNo?.trim() || null
+  }
+
   const { data, error } = await supabase
     .from('demirbas_zimmet')
-    .update({ kategori, aciklama: aciklama || null })
+    .update(guncel)
     .eq('id', id)
     .select()
     .single()
   if (error) throw error
   return data
+}
+
+// Kaydı tamamen siler — YALNIZ tutanaksız kalemler için (yanlış giriş).
+// Tutanaklı kalem silinmez; personel cihazı geri verdiyse demirbasIade()
+// kullanılır, kayıt tarihsel iz olarak kalır.
+export async function demirbasSil(id) {
+  const { data: mevcut, error: okuHata } = await supabase
+    .from('demirbas_zimmet')
+    .select('tutanak_no')
+    .eq('id', id)
+    .single()
+  if (okuHata) throw okuHata
+  if (mevcut?.tutanak_no) {
+    throw new Error('Bu kalem ' + mevcut.tutanak_no + ' tutanağına bağlı, silinemez. İade etmek için İade Al kullanın.')
+  }
+  const { error } = await supabase.from('demirbas_zimmet').delete().eq('id', id)
+  if (error) throw error
+  return true
 }
 
 export async function demirbasIade(id) {

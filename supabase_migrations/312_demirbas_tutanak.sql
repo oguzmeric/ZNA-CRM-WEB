@@ -127,3 +127,37 @@ alter table public.demirbas_zimmet
 alter table public.demirbas_zimmet
   add constraint demirbas_zimmet_kategori_check
   check (kategori = any (array['bilgisayar','laptop','canta','alet','telefon','diger']));
+
+-- ── 6) Tutanak korumasi DB seviyesinde ────────────────────────────
+-- Servis katmanindaki kontrol yeterli degil: dogrudan SQL/REST cagrisi onu
+-- atlar. Tutanak imzalanmis bir belge oldugu icin dayanagi olan satir
+-- silinemez, kimlik alanlari da degisemez.
+create or replace function public.demirbas_tutanak_koruma()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.tutanak_no is not null then
+      raise exception 'Bu demirbas % tutanagina bagli, silinemez. Iade icin iade_tarih kullanin.', old.tutanak_no
+        using errcode = 'restrict_violation';
+    end if;
+    return old;
+  end if;
+
+  if old.tutanak_no is not null and (
+       new.seri_no  is distinct from old.seri_no
+    or new.marka    is distinct from old.marka
+    or new.model    is distinct from old.model
+    or new.kategori is distinct from old.kategori
+    or new.tutanak_no is distinct from old.tutanak_no
+  ) then
+    raise exception 'Bu demirbas % tutanagina bagli; seri no, marka, model ve kategori degistirilemez.', old.tutanak_no
+      using errcode = 'restrict_violation';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_demirbas_tutanak_koruma on public.demirbas_zimmet;
+create trigger tr_demirbas_tutanak_koruma
+  before update or delete on public.demirbas_zimmet
+  for each row execute function public.demirbas_tutanak_koruma();
