@@ -16,12 +16,16 @@
 //   • açıklama, teslim notu → değiştirilebilir
 //   • iade her zaman açık   → kayıt tarihsel iz olarak kalır
 
-import { useState } from 'react'
-import { Plus, Printer, FileText, PackageCheck, Pencil, Trash2, Undo2 } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import {
+  Plus, Printer, FileText, PackageCheck, Pencil, Trash2, Undo2,
+  Upload, CheckCircle2, ExternalLink, RotateCcw,
+} from 'lucide-react'
 import { Button, Badge, Input, Select, Table, THead, TBody, TR, TH, TD } from '../ui'
 import {
   teknisyenDemirbaslari, demirbasEkle, demirbasGuncelle,
   demirbasSil, demirbasIade, tutanakOlustur,
+  imzaliTutanakYukle, imzaliTutanakUrl, imzaliTutanakKaldir,
 } from '../../services/zimmetService'
 import { useSekmeVeri } from './useSekmeVeri'
 import { SekmeYukleniyor, SekmeHata, SekmeBos, OzetKutular } from './ortak'
@@ -70,6 +74,31 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
   const [secili, setSecili] = useState([])
   const [tutanakYapiliyor, setTutanakYapiliyor] = useState(false)
   const [islemdeki, setIslemdeki] = useState(null)
+  const [yuklenen, setYuklenen] = useState(null)       // yükleme sürerken tutanak no
+  const dosyaRef = useRef(null)
+  const hedefTutanakRef = useRef(null)                 // dosya seçicinin hangi tutanak için açıldığı
+
+  // Tutanak listesi — kalemler tutanak_no'ya göre gruplanır. Ayrı tablo yok
+  // (mig 312 tasarımı), grup burada kuruluyor. İmzalı belge alanları tutanağın
+  // TÜM satırlarında aynı; ilk satırdan okumak yeterli.
+  // ⚠️ Hook erken return'lerin ÜSTÜNDE: `liste` aşağıda tanımlı olduğu için
+  // bilerek `veri` üzerinden hesaplanıyor.
+  const tutanaklar = useMemo(() => {
+    const harita = new Map()
+    for (const d of veri || []) {
+      if (!d.tutanak_no) continue
+      const g = harita.get(d.tutanak_no)
+      if (g) { g.kalemler.push(d); continue }
+      harita.set(d.tutanak_no, {
+        no: d.tutanak_no,
+        tarih: d.verildi_tarih,
+        imzaliYol: d.imzali_tutanak_yolu || null,
+        imzaliTarih: d.imzali_yukleme_tarih || null,
+        kalemler: [d],
+      })
+    }
+    return Array.from(harita.values()).sort((a, b) => b.no.localeCompare(a.no, 'tr'))
+  }, [veri])
 
   if (yukleniyor) return <SekmeYukleniyor metin="Demirbaş kayıtları yükleniyor…" />
   if (hata) return <SekmeHata hata={hata} tekrar={yenile} />
@@ -77,6 +106,7 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
   const liste = veri || []
   const cihazlar = liste.filter(d => SERI_ZORUNLU.includes(d.kategori))
   const tutanaksiz = liste.filter(d => !d.tutanak_no)
+  const imzaBekleyen = tutanaklar.filter(t => !t.imzaliYol)
   const kilitli = !!duzenlenen?.tutanakNo
   const hepsiSecili = tutanaksiz.length > 0 && secili.length === tutanaksiz.length
 
@@ -178,6 +208,52 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
     }
   }
 
+  // ── İmzalı tutanak arşivi (mig 313) ──────────────────────────────────
+  // Tek gizli <input> tüm satırlara hizmet eder; hangi tutanak için açıldığı
+  // ref'te tutulur (her satıra ayrı input koymak DOM'u şişirir).
+  const belgeIste = (tutanakNo) => {
+    hedefTutanakRef.current = tutanakNo
+    dosyaRef.current?.click()
+  }
+
+  const dosyaSecildi = async (e) => {
+    const dosya = e.target.files?.[0]
+    const tutanakNo = hedefTutanakRef.current
+    e.target.value = ''            // aynı dosya tekrar seçilebilsin
+    if (!dosya || !tutanakNo) return
+    setYuklenen(tutanakNo)
+    try {
+      const { adet } = await imzaliTutanakYukle(tutanakNo, dosya)
+      toast.success(`İmzalı tutanak yüklendi (${adet} kalem).`)
+      yenile()
+    } catch (err) {
+      toast.error(err.message || 'Belge yüklenemedi.')
+    } finally {
+      setYuklenen(null)
+      hedefTutanakRef.current = null
+    }
+  }
+
+  // Bucket private — her açılışta 1 saatlik imzalı link üretilir.
+  const belgeAc = async (yol) => {
+    const url = await imzaliTutanakUrl(yol)
+    if (!url) { toast.error('Belge açılamadı. Yetkiniz olmayabilir.'); return }
+    window.open(url, '_blank', 'noopener')
+  }
+
+  const belgeKaldir = async (tutanakNo) => {
+    setYuklenen(tutanakNo)
+    try {
+      await imzaliTutanakKaldir(tutanakNo)
+      toast.success('Belge bağlantısı kaldırıldı, tutanak yeniden imza bekliyor.')
+      yenile()
+    } catch (err) {
+      toast.error(err.message || 'Bağlantı kaldırılamadı.')
+    } finally {
+      setYuklenen(null)
+    }
+  }
+
   return (
     <div style={{ padding: 16 }}>
       <OzetKutular
@@ -190,8 +266,16 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
             color: tutanaksiz.length > 0 ? 'var(--warning)' : 'var(--success)',
             ipucu: tutanaksiz.length > 0 ? 'Belgesi yok' : 'Hepsi belgeli',
           },
+          {
+            label: 'İMZA BEKLEYEN',
+            value: String(imzaBekleyen.length),
+            color: imzaBekleyen.length > 0 ? 'var(--warning)' : 'var(--success)',
+            ipucu: imzaBekleyen.length > 0
+              ? 'Islak imzalı tarama yüklenmemiş'
+              : (tutanaklar.length ? 'Tüm tutanaklar arşivde' : 'Tutanak yok'),
+          },
         ]}
-        sutun={3}
+        sutun={4}
       />
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '16px 0 12px' }}>
@@ -361,7 +445,17 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
                         {d.tutanak_no}
                       </a>
                     ) : (
-                      <Badge tone="warning">Tutanaksız</Badge>
+                      <Badge tone="uyari">Tutanaksız</Badge>
+                    )}
+                    {d.tutanak_no && (
+                      <div style={{
+                        marginTop: 3, font: '400 11px/15px var(--font-sans)',
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        color: d.imzali_tutanak_yolu ? 'var(--success)' : 'var(--warning)',
+                      }}>
+                        {d.imzali_tutanak_yolu && <CheckCircle2 size={11} strokeWidth={2} />}
+                        {d.imzali_tutanak_yolu ? 'İmzalısı arşivde' : 'İmza bekliyor'}
+                      </div>
                     )}
                   </TD>
                   <TD>
@@ -397,6 +491,135 @@ export default function ZimmetSekmesi({ kullaniciId, personelAd }) {
           </TBody>
         </Table>
       )}
+
+      {/* ── Teslim tutanakları — ıslak imzalı arşiv (mig 313) ─────────────
+          Kalem tablosu "personelde ne var" sorusuna, bu tablo "belgesi nerede"
+          sorusuna cevap verir. Belge tutanak bazlı olduğu için kalem satırına
+          değil buraya konuldu: 5 kalemlik tutanakta 5 ayrı yükle butonu
+          göstermek aynı taramayı 5 kez istemek olurdu. */}
+      {tutanaklar.length > 0 && (
+        <div style={{ marginTop: 26 }}>
+          <div style={{
+            font: '600 12px/16px var(--font-sans)',
+            color: 'var(--text-primary)',
+            display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4,
+          }}>
+            <FileText size={14} strokeWidth={1.8} style={{ color: 'var(--text-secondary)' }} />
+            TESLİM TUTANAKLARI
+          </div>
+          <div style={{
+            font: '400 11px/16px var(--font-sans)',
+            color: 'var(--text-tertiary)', marginBottom: 10,
+          }}>
+            Tutanağı yazdırıp teslim eden ve teslim alan imzaladıktan sonra taramasını buraya
+            yükleyin. Belge kişiye özeldir, yalnız yetkili personel görebilir. PDF, JPG veya PNG · en çok 15 MB.
+          </div>
+
+          <Table>
+            <THead>
+              <TR>
+                <TH>TUTANAK NO</TH>
+                <TH>TARİH</TH>
+                <TH>KALEM</TH>
+                <TH>İMZALI BELGE</TH>
+                <TH style={{ width: 210 }}>İŞLEM</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {tutanaklar.map(t => {
+                const mesgul = yuklenen === t.no
+                return (
+                  <TR key={t.no}>
+                    <TD>
+                      <a
+                        href={'/demirbas-tutanak/' + t.no}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          color: 'var(--accent-primary)', textDecoration: 'none',
+                        }}
+                      >
+                        <Printer size={13} strokeWidth={1.7} />
+                        {t.no}
+                      </a>
+                    </TD>
+                    <TD>{tarihBicim(t.tarih)}</TD>
+                    <TD>
+                      {t.kalemler.length} kalem
+                      <div style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                        {t.kalemler.map(kalemAdi).join(', ')}
+                      </div>
+                    </TD>
+                    <TD>
+                      {t.imzaliYol ? (
+                        <div>
+                          <Badge tone="basarili" icon={<CheckCircle2 size={11} strokeWidth={2} />}>
+                            İmzalı
+                          </Badge>
+                          {t.imzaliTarih && (
+                            <div style={{ font: '400 11px/15px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 3 }}>
+                              {tarihBicim(t.imzaliTarih)} tarihinde yüklendi
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge tone="uyari">İmza bekliyor</Badge>
+                      )}
+                    </TD>
+                    <TD>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {t.imzaliYol ? (
+                          <>
+                            <Button
+                              variant="secondary" size="sm" disabled={mesgul}
+                              iconLeft={<ExternalLink size={13} strokeWidth={1.7} />}
+                              onClick={() => belgeAc(t.imzaliYol)}
+                            >
+                              Görüntüle
+                            </Button>
+                            <button
+                              type="button" onClick={() => belgeIste(t.no)} disabled={mesgul}
+                              title="Yerine yeni tarama yükle — eskisi arşivde kalır"
+                              style={islemBtn}
+                            >
+                              <Upload size={14} strokeWidth={1.7} />
+                            </button>
+                            <button
+                              type="button" onClick={() => belgeKaldir(t.no)} disabled={mesgul}
+                              title="Belge bağlantısını kaldır — tutanak yeniden imza bekler"
+                              style={islemBtn}
+                            >
+                              <RotateCcw size={14} strokeWidth={1.7} />
+                            </button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="primary" size="sm" disabled={mesgul}
+                            iconLeft={<Upload size={13} strokeWidth={1.7} />}
+                            onClick={() => belgeIste(t.no)}
+                          >
+                            {mesgul ? 'Yükleniyor…' : 'İmzalı PDF Yükle'}
+                          </Button>
+                        )}
+                      </div>
+                    </TD>
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Tek gizli seçici tüm satırlara hizmet eder — hedef tutanak ref'te */}
+      <input
+        ref={dosyaRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png"
+        onChange={dosyaSecildi}
+        style={{ display: 'none' }}
+      />
     </div>
   )
 }

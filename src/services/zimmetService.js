@@ -267,7 +267,7 @@ export async function tutanakOlustur(kalemIdler) {
 export async function tutanakGetir(tutanakNo) {
   const { data: kalemler, error } = await supabase
     .from('demirbas_zimmet')
-    .select('id, demirbas_no, kategori, marka, model, seri_no, aciklama, teslim_notu, verildi_tarih, kullanici_id, zimmetleyen_id')
+    .select('id, demirbas_no, kategori, marka, model, seri_no, aciklama, teslim_notu, verildi_tarih, kullanici_id, zimmetleyen_id, imzali_tutanak_yolu, imzali_yukleme_tarih')
     .eq('tutanak_no', tutanakNo)
     .order('demirbas_no')
   if (error) throw error
@@ -286,5 +286,74 @@ export async function tutanakGetir(tutanakNo) {
     personel: kisiMap.get(kalemler[0].kullanici_id) || null,
     teslimEden: kisiMap.get(kalemler[0].zimmetleyen_id) || null,
     tarih: kalemler[0].verildi_tarih,
+    imzaliYol: kalemler[0].imzali_tutanak_yolu || null,
+    imzaliTarih: kalemler[0].imzali_yukleme_tarih || null,
   }
+}
+
+// ---------- Islak imzali tutanak arsivi (mig 313) ----------
+// Tutanak basilir -> teslim eden + teslim alan imzalar -> taranir -> buraya
+// yuklenir. Belge TUTANAK bazlidir: ayni tutanak_no'lu TUM satirlara ayni yol
+// yazilir, bunu RPC yapar (istemcide "once bul sonra tek tek yaz" yaris olur).
+//
+// Bucket PRIVATE: tutanakta personelin adi, cihazin seri numarasi ve islak
+// imzasi var. Public link sizarsa herkese acik olur -- gosterirken 1 saatlik
+// signed URL uretilir.
+
+const IMZALI_TIPLER = ['application/pdf', 'image/jpeg', 'image/png']
+const IMZALI_MAX_MB = 15
+
+export async function imzaliTutanakYukle(tutanakNo, file) {
+  if (!tutanakNo) throw new Error('Tutanak numarası yok.')
+  if (!file) throw new Error('Dosya seçilmedi.')
+  // Dogrulama BURADA da yapiliyor: bucket zaten reddeder ama oradan donen
+  // hata kullaniciya anlasilmaz geliyor ("mime type not allowed").
+  if (!IMZALI_TIPLER.includes(file.type)) {
+    throw new Error('Yalnız PDF, JPG veya PNG yükleyebilirsiniz.')
+  }
+  if (file.size > IMZALI_MAX_MB * 1024 * 1024) {
+    throw new Error(`Dosya ${IMZALI_MAX_MB} MB sınırını aşıyor (${(file.size / 1048576).toFixed(1)} MB).`)
+  }
+
+  const uzanti = (file.name?.split('.').pop() || 'pdf').toLowerCase()
+  // Eski yukleme SILINMEZ, yeni dosya yanina yazilir: evrak arsivinde
+  // "once ne yuklenmisti" izi kalmali.
+  const yol = `${tutanakNo}/${Date.now()}.${uzanti}`
+
+  const { error: upHata } = await supabase.storage
+    .from('demirbas-tutanak')
+    .upload(yol, file, { contentType: file.type, upsert: false })
+  if (upHata) throw new Error(upHata.message || 'Dosya yüklenemedi.')
+
+  const { data, error } = await supabase.rpc('demirbas_imzali_tutanak_kaydet', {
+    p_tutanak_no: tutanakNo,
+    p_yol: yol,
+  })
+  if (error) {
+    // Baglanamadiysa yuklenen dosya bucket'ta oksuz kalmasin.
+    await supabase.storage.from('demirbas-tutanak').remove([yol])
+    throw new Error(error.message || 'Belge tutanağa bağlanamadı.')
+  }
+  return { yol, adet: data }
+}
+
+// Private bucket — gorunturlemek icin gecici (1 saat) imzali link.
+export async function imzaliTutanakUrl(yol) {
+  if (!yol) return null
+  const { data, error } = await supabase.storage
+    .from('demirbas-tutanak')
+    .createSignedUrl(yol, 3600)
+  if (error) { console.error('[zimmet] imzaliTutanakUrl:', error); return null }
+  return data?.signedUrl ?? null
+}
+
+// Yanlis belge baglandiysa bagi kaldirir. DOSYAYI SILMEZ — arsivde iz kalir,
+// tutanak yeniden "imza bekliyor" durumuna doner.
+export async function imzaliTutanakKaldir(tutanakNo) {
+  const { error } = await supabase.rpc('demirbas_imzali_tutanak_kaydet', {
+    p_tutanak_no: tutanakNo,
+    p_yol: null,
+  })
+  if (error) throw new Error(error.message || 'Belge bağlantısı kaldırılamadı.')
+  return true
 }
