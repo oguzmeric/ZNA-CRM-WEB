@@ -60,6 +60,11 @@ export default function BelgePaylasModal({
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [hata, setHata] = useState(null)
   const [sonuc, setSonuc] = useState(null)
+  // ⚠️ HOOK'LAR BURADA BİTER — aşağıda erken return var (if (!acik) return null).
+  // kopyaDurum ilk eklendiğinde return'ün ALTINA konmuştu: modal açılınca hook
+  // sayısı değişti, React #310 ile TÜM sayfa beyaza düştü (20.08 canlı vaka —
+  // "Müşteriye Gönder" tıklanamıyordu). Yeni hook eklerken bu bloğa ekle.
+  const [kopyaDurum, setKopyaDurum] = useState(null) // null | 'ok' | 'hata'
 
   useEffect(() => {
     if (acik) {
@@ -116,7 +121,7 @@ export default function BelgePaylasModal({
   // Kopyalama artık görünür (20.08): başarıda buton 'Kopyalandı ✓' olur,
   // başarısızlıkta (izin/eski tarayıcı) kullanıcı linki elle seçebilsin diye
   // uyarı verilir — eskiden iki durum da tamamen sessizdi.
-  const [kopyaDurum, setKopyaDurum] = useState(null) // null | 'ok' | 'hata'
+  // (kopyaDurum state'i yukarıda, hook bloğunda — buraya hook KONMAZ.)
   const linkKopyala = async () => {
     if (!sonuc?.link) return
     try {
