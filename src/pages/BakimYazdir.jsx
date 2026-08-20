@@ -121,6 +121,21 @@ export default function BakimYazdir() {
              içerik altı SİYAH çıkar (bkz. ServisFormu, MTJ-2026-0001). */
           html, body { background: #fff !important; }
           @page { size: A4; margin: 8mm; }
+
+          /* ── İmza taşması düzeltmesi (20.08, TB-2026-00084 vakası) ──
+             İçerik bir sayfayı az aşınca imzalar tek başına 2. sayfaya
+             düşüyordu. İki önlem:
+             1) imza+footer TEK PARÇA — bölünmez; sığmazsa bütün geçer,
+                yarım imza / kopuk footer kalmaz. */
+          .imza-ve-footer { break-inside: avoid; page-break-inside: avoid; }
+
+          /* 2) Yazdırmada boşluklar sıkışır — sınırda taşan formlar tek
+             sayfaya toplansın. !important: inline stilleri ancak böyle ezer. */
+          h3 { margin-top: 8px !important; margin-bottom: 5px !important; }
+          td, th { padding: 4px 6px !important; }
+          img[alt="Bakım fotoğrafı"] { height: 110px !important; }
+          .imza-ve-footer > div:first-child { margin-top: 10px !important; }
+          .imza-ve-footer .imza-kutu { min-height: 110px !important; }
         }
         table { border-collapse: collapse; width: 100%; }
         td, th { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 12px; text-align: left; }
@@ -142,8 +157,11 @@ export default function BakimYazdir() {
                 : (k.sonucMetni || '—')}
             </div>
             <CevapOzeti kalem={k} />
-            <ImzaBloku tb={tb} personelAd={personelAd} />
-            <KurumsalFooter cfg={cfg} />
+            {/* imza + footer TEK PARÇA: yazdırmada bölünmez, sığmazsa bütün geçer */}
+            <div className="imza-ve-footer">
+              <ImzaBloku tb={tb} personelAd={personelAd} />
+              <KurumsalFooter cfg={cfg} />
+            </div>
           </div>
         )
       })()}
@@ -177,8 +195,11 @@ export default function BakimYazdir() {
         </div>
       ))}
 
-      <ImzaBloku tb={tb} personelAd={personelAd} />
-      <KurumsalFooter cfg={cfg} />
+      {/* imza + footer TEK PARÇA: yazdırmada bölünmez, sığmazsa bütün geçer */}
+      <div className="imza-ve-footer">
+        <ImzaBloku tb={tb} personelAd={personelAd} />
+        <KurumsalFooter cfg={cfg} />
+      </div>
       </>)}
     </div>
   )
@@ -342,7 +363,7 @@ function ImzaBloku({ tb, personelAd }) {
   const serhli = imzasizTamamlandiMi(tb)
   return (
     <div style={{ display: 'flex', gap: 16, marginTop: 20 }}>
-      <div style={imzaKutuStil}>
+      <div className="imza-kutu" style={imzaKutuStil}>
         <div style={imzaEtiketStil}>MÜŞTERİ YETKİLİSİ</div>
         {tb.musteriImzaUrl
           ? <img src={tb.musteriImzaUrl} alt="Müşteri imzası" style={imzaImgStil} />
@@ -369,7 +390,7 @@ function ImzaBloku({ tb, personelAd }) {
             : `${tb.musteriYetkiliGorev || ''}${tb.musteriImzaTarih ? ` · ${fmtTarihSaat(tb.musteriImzaTarih)}` : ''}`}
         </div>
       </div>
-      <div style={imzaKutuStil}>
+      <div className="imza-kutu" style={imzaKutuStil}>
         <div style={imzaEtiketStil}>TEKNİK PERSONEL</div>
         {tb.personelImzaUrl
           ? <img src={tb.personelImzaUrl} alt="Personel imzası" style={imzaImgStil} />
