@@ -396,8 +396,11 @@ export default function TeklifIcmalYazdir() {
                       <span>KDV %{oranMetni(oran)}</span><span>{ps}{fmt(tutar)}</span>
                     </div>
                   ))}
-                <div style={{ borderTop: '2px solid #0176D3', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, color: '#0176D3' }}>
-                  <span>GENEL TOPLAM (KDV Dahil)</span><span>{ps}{fmt(kdvDahilToplam)}</span>
+                {/* Etiket tek parça + tutar nowrap: uzun etiket 300px kutuda tutarın
+                    içine sarıyordu ("GENEL TOPLAM (KDV ₺2.244.096,00 Dahil)"). */}
+                <div style={{ borderTop: '2px solid #0176D3', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, fontSize: 15, fontWeight: 800, color: '#0176D3' }}>
+                  <span>GENEL TOPLAM<span style={{ display: 'block', font: '600 9.5px/12px Arial, sans-serif', color: '#64748b', letterSpacing: '0.04em' }}>KDV DAHİL</span></span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{ps}{fmt(kdvDahilToplam)}</span>
                 </div>
               </div>
             </div>
