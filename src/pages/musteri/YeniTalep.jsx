@@ -133,17 +133,15 @@ export default function YeniTalep() {
     if (hata[alan]) setHata(prev => ({ ...prev, [alan]: '' }))
   }
 
-  const gorselMi = (f) => (f?.type || '').startsWith('image/') || (f?.type || '').startsWith('video/')
-
   const dogrula = () => {
     const e = {}
     if (!form.anaTur) e.anaTur = 'Talep türü seçiniz'
     if (!form.altKategori) e.altKategori = 'Alt kategori seçiniz'
     if (!form.konu.trim()) e.konu = 'Konu başlığı giriniz'
     if (!form.aciklama.trim()) e.aciklama = 'Açıklama giriniz'
-    if (yeniDosyalar.length === 0 || !yeniDosyalar.some(gorselMi)) {
-      e.dosya = 'En az bir fotoğraf veya video eklemelisiniz'
-    }
+    // Foto/video ZORUNLU DEĞİL (20.08 kullanıcı kararı): müşteri masa başından
+    // ya da telefonla anlatılan arıza için talep açarken görsel isteyemeyebiliyor,
+    // zorunluluk talep açmayı engelliyordu. Ek hâlâ teşvik edilir, şart koşulmaz.
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       e.email = 'Geçerli bir e-posta giriniz'
     }
@@ -663,11 +661,12 @@ export default function YeniTalep() {
                   </div>
                 </div>
 
-                {/* Dosya ekleri — fotograf veya video zorunlu */}
+                {/* Dosya ekleri — OPSİYONEL (20.08; eskiden zorunluydu, talep
+                    açmayı engelliyordu). Metin hâlâ teşvik eder. */}
                 <div>
-                  <Label required>
+                  <Label>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <Paperclip size={12} strokeWidth={1.5} /> Fotoğraf veya video <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(en az 1 adet)</span>
+                      <Paperclip size={12} strokeWidth={1.5} /> Fotoğraf veya video <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(opsiyonel)</span>
                     </span>
                   </Label>
                   <p style={{ font: '400 11.5px/16px var(--font-sans)', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
@@ -745,9 +744,7 @@ export default function YeniTalep() {
                     const e = {}
                     if (!form.konu.trim()) e.konu = 'Konu başlığı giriniz'
                     if (!form.aciklama.trim()) e.aciklama = 'Açıklama giriniz'
-                    if (yeniDosyalar.length === 0 || !yeniDosyalar.some(gorselMi)) {
-                      e.dosya = 'En az bir fotoğraf veya video eklemelisiniz'
-                    }
+                    // Foto/video opsiyonel (20.08) — dogrula() ile aynı kural
                     if (Object.keys(e).length > 0) { setHata(e); return }
                     setAdim(3)
                   }}
