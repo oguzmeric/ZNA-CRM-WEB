@@ -18,7 +18,7 @@ import {
   stokUrunleriniGetir, stokUrunEkle, stokUrunGuncelle, stokUrunSil,
   stokBakiyeHaritasiGetir, stokHareketEkle, gorselYukle,
   stokKalemOzetleriniGetir, stokKalemleriToplu,
-  tumSeriNumaralariniGetir, modelKalemleriniGetir,
+  tumSeriNumaralariniGetir, modelKalemleriniGetir, snDokumunuGetir, durumBul,
   URUN_TIPLERI, PARA_BIRIMLERI, alisFiyatGorebilir,
   dokumanYukle, dokumanImzaliUrl, DOKUMAN_MAX_MB,
   aileleriGetir, aileEkle,
@@ -128,6 +128,7 @@ function Stok() {
   const [excelOnizleme, setExcelOnizleme] = useState(null)
   const [excelHata, setExcelHata] = useState([])
   const [excelModal, setExcelModal] = useState(false)
+  const [excelHazirlaniyor, setExcelHazirlaniyor] = useState(false) // SN dökümü çekilirken buton kilidi
   const [gorselYukleniyor, setGorselYukleniyor] = useState(false)
   const gorselRef = useRef(null)
   // SN duplicate kontrolü — düzenleme modunda yüklenen mevcut SN'ler + global map
@@ -143,6 +144,8 @@ function Stok() {
   // aktif üründen 2.100'ünde özellik, 250'sinde görsel YOK.
   // '' | 'gorsel' | 'ozellik' | 'ikisi'
   const [eksikFiltre, setEksikFiltre] = useState('')
+  // S/N süzgeci (20.08): '' = hepsi, 'snli' = seri takipli ürünler, 'snsiz' = takipsizler
+  const [snFiltre, setSnFiltre] = useState('')
   const [ozellikliIdler, setOzellikliIdler] = useState(null)  // Set<urunId> — lazy
   const [kategoriModal, setKategoriModal] = useState(false) // admin kategori yönetimi
   const [dokumanYukleniyor, setDokumanYukleniyor] = useState(false)
@@ -160,7 +163,7 @@ function Stok() {
   const [ozellikFiltre, setOzellikFiltre] = useState({})       // liste filtreleri {ozellikId: deger}
   // Sayfa no URL'de (?sayfa=7): model detayına girip geri dönünce liste aynı sayfada.
   // ozellikFiltre OBJE — hook DEĞER karşılaştırır, referans değişimi resetlemez.
-  const [sayfa, setSayfa] = useUrlSayfa([arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre, eksikFiltre])
+  const [sayfa, setSayfa] = useUrlSayfa([arama, sayfaBoyutu, filtreKatId, pasifGoster, ozellikFiltre, eksikFiltre, snFiltre])
   const [urunOzellikMap, setUrunOzellikMap] = useState(null)   // Map<urunId, Map<ozellikId,deger>> — lazy
 
   // "Eksik bilgi" filtresi özellik gerektiriyorsa dolu ürün id kümesini lazy çek.
@@ -332,8 +335,13 @@ function Stok() {
     XLSX.writeFile(wb, 'ZNA_Stok_Sablonu.xlsx')
   }
 
-  // Mevcut stok listesini Excel'e aktar — bakiye + opsiyon + değer dahil
-  const excelIndir = () => {
+  // Mevcut stok listesini Excel'e aktar — bakiye + opsiyon + değer dahil.
+  // 2. sayfa "Seri Numaraları" (20.08): SN ile stoğa alınan TÜM kalemler —
+  // ekranda ürün ürün gezmek yerine tek dökümde (3.900+ kalem).
+  const excelIndir = async () => {
+    if (excelHazirlaniyor) return
+    setExcelHazirlaniyor(true)
+    try {
     const satirlar = urunler.map(u => {
       const bakiye = stokBakiye(u.stokKodu)
       const opsiyonlu = opsiyonluMiktar(u.stokKodu)
@@ -370,9 +378,46 @@ function Stok() {
     ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Stok')
+
+    // ── 2. sayfa: Seri Numaraları ──
+    // Döküm alınamazsa ürün sayfası YİNE iner — ama sessiz değil, uyarı verilir
+    // (kısmi sonuç şeffaflığı).
+    let snSayisi = 0
+    try {
+      const { kalemler, musteriAd } = await snDokumunuGetir()
+      const urunAdMap = new Map(urunler.map(u => [u.stokKodu, u.stokAdi]))
+      const tarihK = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : ''
+      const snSatirlar = kalemler.map(k => ({
+        'Seri No': k.seri_no || '',
+        'Stok Kodu': k.stok_kodu || '',
+        'Ürün Adı': urunAdMap.get(k.stok_kodu) || '',
+        'Marka': k.marka || '',
+        'Model': k.model || '',
+        'Durum': durumBul(k.durum)?.isim || k.durum || '',
+        'Müşteri': k.musteri_id ? (musteriAd.get(k.musteri_id) || `#${k.musteri_id}`) : '',
+        'Stok Giriş': tarihK(k.olusturma_tarih),
+        'Takılma': tarihK(k.takilma_tarihi),
+      }))
+      snSayisi = snSatirlar.length
+      const wsSn = XLSX.utils.json_to_sheet(snSatirlar)
+      wsSn['!cols'] = [
+        { wch: 16 }, { wch: 12 }, { wch: 34 }, { wch: 14 }, { wch: 18 },
+        { wch: 16 }, { wch: 32 }, { wch: 11 }, { wch: 11 },
+      ]
+      XLSX.utils.book_append_sheet(wb, wsSn, 'Seri Numaraları')
+    } catch (e) {
+      console.error('[excelIndir] SN dökümü:', e?.message || e)
+      toast.warning('Seri numarası sayfası eklenemedi — dosya yalnız ürün listesiyle indirildi.')
+    }
+
     const bugun = new Date().toISOString().split('T')[0]
     XLSX.writeFile(wb, `ZNA_Stok_${bugun}.xlsx`)
-    toast.success(`${satirlar.length} ürün Excel'e aktarıldı.`)
+    toast.success(snSayisi > 0
+      ? `${satirlar.length} ürün + ${snSayisi} seri no Excel'e aktarıldı (2 sayfa).`
+      : `${satirlar.length} ürün Excel'e aktarıldı.`)
+    } finally {
+      setExcelHazirlaniyor(false)
+    }
   }
 
   const excelOku = (e) => {
@@ -804,6 +849,9 @@ function Stok() {
   const gorunenUrunler = urunler.filter((u) => {
     if (!pasifGoster && u.aktif === false) return false
     if (filtreKatSet && !filtreKatSet.has(u.kategoriId)) return false
+    // S/N süzgeci — kart üzerindeki seriTakipli bayrağından
+    if (snFiltre === 'snli' && !u.seriTakipli) return false
+    if (snFiltre === 'snsiz' && u.seriTakipli) return false
     // Eksik bilgi süzgeci — küme henüz yüklenmediyse özellik koşulu uygulanmaz
     if (eksikFiltre) {
       const gorselYok = !String(u.gorselUrl || '').trim()
@@ -871,7 +919,15 @@ function Stok() {
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={sablonIndir}>Şablon</Button>
-          <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={excelIndir}>Excel indir</Button>
+          <Button
+            variant="tertiary" size="sm"
+            iconLeft={<Download size={13} strokeWidth={1.5} />}
+            onClick={excelIndir}
+            disabled={excelHazirlaniyor}
+            title="2 sayfalı döküm: ürün listesi (bakiyeli) + tüm seri numaraları"
+          >
+            {excelHazirlaniyor ? 'Hazırlanıyor…' : 'Excel indir'}
+          </Button>
           <Button variant="tertiary" size="sm" iconLeft={<Upload size={13} strokeWidth={1.5} />} onClick={() => dosyaRef.current?.click()}>Excel aktar</Button>
           <input ref={dosyaRef} type="file" accept=".xlsx,.xls" onChange={excelOku} style={{ display: 'none' }} />
           <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>Opsiyonlar</Button>
@@ -982,6 +1038,13 @@ function Stok() {
           <option value="gorsel">Görseli olmayanlar</option>
           <option value="ozellik">Teknik özelliği olmayanlar</option>
           <option value="ikisi">Görseli + özelliği olmayanlar</option>
+        </CustomSelect>
+        {/* S/N süzgeci (20.08) — seri no ile takip edilen ürünleri hızlı ayırır */}
+        <CustomSelect className="w-auto" value={snFiltre}
+          onChange={(e) => setSnFiltre(e.target.value)} style={{ minWidth: 150 }}>
+          <option value="">S/N: hepsi</option>
+          <option value="snli">S/N takipli ürünler</option>
+          <option value="snsiz">S/N takipsizler</option>
         </CustomSelect>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', font: '400 12px/16px var(--font-sans)', color: 'var(--text-secondary)' }}>
           <input

@@ -295,6 +295,31 @@ export const DURUMLAR = [
 ]
 export const durumBul = (id) => DURUMLAR.find((d) => d.id === id)
 
+// TÜM S/N kalemlerinin dökümü — Stok Kartları'ndaki Excel'in "Seri Numaraları"
+// sayfası (20.08 kullanıcı isteği: "SN okutup stoğa aldıklarımızın tam listesi").
+// Sahadaki kalemler için müşteri adı da eşlenir (yalnız geçen id'ler çekilir).
+// cached DEĞİL: dışa aktarım anlık gerçeği basmalı.
+export const snDokumunuGetir = async () => {
+  const kalemler = await pagedFetch((off, size) =>
+    supabase
+      .from('stok_kalemleri')
+      .select('seri_no, stok_kodu, marka, model, durum, musteri_id, olusturma_tarih, takilma_tarihi')
+      .eq('silindi', false)
+      .order('id')
+      .range(off, off + size - 1)
+  )
+  const ids = [...new Set(kalemler.map(k => k.musteri_id).filter(Boolean))]
+  const musteriAd = new Map()
+  // .in() listesi URL'e gömülür — 200'erli parçalara bölmek sınır aşımını önler
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from('musteriler').select('id, firma_adi').in('id', ids.slice(i, i + 200))
+    if (error) { console.warn('[snDokumunuGetir] müşteri adları:', error.message); break }
+    for (const m of (data || [])) musteriAd.set(m.id, m.firma_adi)
+  }
+  return { kalemler, musteriAd }
+}
+
 // Her stok kodu için S/N kalemlerinin özetini getir (marka/model + durum sayıları)
 export const stokKalemOzetleriniGetir = () => cached('stokKalemOzet:list', async () => {
   const kalemler = await pagedFetch((off, size) =>
