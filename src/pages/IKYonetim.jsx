@@ -393,6 +393,7 @@ export default function IKYonetim() {
 // ─────────────────────────────────────────────────────────────────────────
 // Sekme 1: İzin Onayları
 function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, personelAd, onKarar, onSil }) {
+  const { toast } = useToast()   // izin formu popup uyarısı için (20.08)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Bekleyenler — vurgulu blok */}
@@ -440,7 +441,7 @@ function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, pers
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Button variant="secondary" size="sm" iconLeft={<Printer size={13} />}
-                    onClick={() => izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })}>
+                    onClick={() => { if (!izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })) toast.error('Tarayıcı yazdırma penceresini engelledi — açılır pencere iznini verin.') }}>
                     Form
                   </Button>
                   <Button variant="primary" size="sm" iconLeft={<CheckCircle2 size={13} />}
@@ -519,7 +520,7 @@ function IzinOnaylari({ bekleyenler, tumListe, durumFiltre, setDurumFiltre, pers
                       <TD style={{ whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 4 }}>
                           <Button variant="tertiary" size="sm" iconLeft={<Printer size={12} />}
-                            onClick={() => izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })}>
+                            onClick={() => { if (!izinFormuYazdir(t, { ad: personelAd(t.kullaniciId) })) toast.error('Tarayıcı yazdırma penceresini engelledi — açılır pencere iznini verin.') }}>
                             Form
                           </Button>
                           <Button variant="tertiary" size="sm" iconLeft={<Trash2 size={12} />}

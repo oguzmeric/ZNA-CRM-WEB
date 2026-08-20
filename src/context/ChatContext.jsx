@@ -65,7 +65,7 @@ export function ChatProvider({ children }) {
   const { kullanici, kullanicilar } = useAuth()
   // DİKKAT: destructuring ŞART. `const { toast } = useToast()` context objesinin
   // KENDİSİNİ verir ({ showToast, toast }) → toast.info undefined olur ve
-  // `toast?.info?.(...)` optional-call sayesinde hata bile fırlatmadan sessizce
+  // `toast.info(...)` optional-call sayesinde hata bile fırlatmadan sessizce
   // hiçbir şey yapmaz. Bu yüzden yeni mesaj bildirimi HİÇ çıkmıyordu; aynı
   // sebeple "Mesaj gönderilemedi" / "Sohbet açılamadı" hataları da yutuluyordu.
   const { toast } = useToast()
@@ -148,7 +148,7 @@ export function ChatProvider({ children }) {
     if (yeni.gondericiId === kullanici?.id) return          // kendi mesajım
     if (aktifKonusmaRef.current === anahtar) return          // zaten bakıyorum
     bildirimSesiCal()
-    toast?.info?.(`${baslik}: ${onizlemeMetni(yeni.icerik)}`)
+    toast.info(`${baslik}: ${onizlemeMetni(yeni.icerik)}`)
     // Birebir mesajda sohbet penceresi kendiliğinden açılır (04.08 isteği).
     // Grupta AÇILMAZ: grup trafiği yoğun, her mesajda pencere zıplaması işi
     // böler — grupta bildirim + okunmamış rozeti yeterli.
@@ -283,7 +283,7 @@ export function ChatProvider({ children }) {
     if (mevcut) return mevcut
     // Yarış koşulu DB'de advisory lock ile tekilleştiriliyor
     const r = await birebirSohbetAc(hedef.kisiId)
-    if (r.__error) { toast?.error?.(`Sohbet açılamadı: ${r.__error}`); return null }
+    if (r.__error) { toast.error(`Sohbet açılamadı: ${r.__error}`); return null }
     sohbetleriYenile()
     return r.sohbetId
   }, [birebirSohbetIdBul, sohbetleriYenile, toast])
@@ -293,7 +293,7 @@ export function ChatProvider({ children }) {
     if (!icerik?.trim() || !kullanici?.id || !hedef) return
 
     const sohbetId = await sohbetIdSagla(hedef)
-    if (!sohbetId) { toast?.error?.('Sohbet bulunamadı'); return }
+    if (!sohbetId) { toast.error('Sohbet bulunamadı'); return }
 
     const yeni = await dbMesajGonder(
       kullanici.id,
@@ -301,7 +301,7 @@ export function ChatProvider({ children }) {
       icerik,
       sohbetId,
     )
-    if (yeni?.__error) { toast?.error?.(`Mesaj gönderilemedi: ${yeni.__error}`); return }
+    if (yeni?.__error) { toast.error(`Mesaj gönderilemedi: ${yeni.__error}`); return }
     if (yeni) {
       setMesajlar((prev) => prev.some((m) => m.id === yeni.id) ? prev : [...prev, yeni])
       setSohbetler((prev) => prev.map(s =>

@@ -125,7 +125,7 @@ export default function MusteriTalepDetay() {
       await notEkle(talep.id, metin, kullanici, 'musteri')
       setYeniNot('')
     } catch (e) {
-      toast?.error?.(e?.message || 'Mesaj gönderilemedi, lütfen tekrar deneyin.')
+      toast.error(e?.message || 'Mesaj gönderilemedi, lütfen tekrar deneyin.')
     }
   }
 
@@ -146,7 +146,7 @@ export default function MusteriTalepDetay() {
     // yine de sessiz kalmıyoruz — müşteri açıklamasının düştüğünü bilmeli.
     if (sorunAciklama.trim()) {
       notEkle(talep.id, sorunAciklama.trim(), kullanici, 'musteri')
-        .catch(e => toast?.error?.(e?.message || 'Açıklama kaydedilemedi.'))
+        .catch(e => toast.error(e?.message || 'Açıklama kaydedilemedi.'))
     }
     setOnayAsamasi('bitti')
   }

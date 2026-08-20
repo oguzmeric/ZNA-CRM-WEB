@@ -132,9 +132,9 @@ export default function PersonelSicil() {
       const yeni = await sicilKaydet(id, form, kullanici?.id)
       setSicil(yeni)
       setForm(null)
-      toast?.success?.('Sicil bilgileri kaydedildi.')
+      toast.success('Sicil bilgileri kaydedildi.')
     } catch (e) {
-      toast?.error?.(e?.message || 'Kaydedilemedi.')
+      toast.error(e?.message || 'Kaydedilemedi.')
     } finally {
       setKaydediliyor(false)
     }

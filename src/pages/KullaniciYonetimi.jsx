@@ -851,7 +851,7 @@ export default function KullaniciYonetimi() {
           options: { data: { ad: form.ad, kullanici_adi: form.kullaniciAdi, tip: form.tip } },
         })
         // tempClient oturumunu derhal kapat — ana client'a sızmasın
-        try { await tempClient.auth.signOut() } catch {}
+        try { await tempClient.auth.signOut() } catch (e) { console.warn('[tempClient signOut]', e?.message) }
 
         if (authError || !authData?.user) {
           const msg = authError?.message || 'bilinmeyen'
@@ -1188,9 +1188,12 @@ export default function KullaniciYonetimi() {
                               setSifreKaydediliyor(true)
                               try {
                                 const sonuc = await kullaniciSifreSifirla(duzenle, yeniSifre)
-                                toast.success(`${sonuc?.hedefAd ?? 'Kullanıcı'} için şifre güncellendi.`)
-                                // Şifreyi clipboard'a kopyala (admin'e kolaylık)
-                                try { await navigator.clipboard?.writeText(yeniSifre) } catch {}
+                                // Pano sonucu artık görünür (20.08): admin "panoda" sanıp
+                                // yapıştırmadan göndermesin.
+                                let panoOk = false
+                                try { await navigator.clipboard?.writeText(yeniSifre); panoOk = true } catch { /* izin yok */ }
+                                toast.success(`${sonuc?.hedefAd ?? 'Kullanıcı'} için şifre güncellendi.${panoOk ? ' Şifre panoya kopyalandı.' : ''}`)
+                                if (!panoOk) toast.warning('Şifre panoya KOPYALANAMADI — ekrandan elle kopyalayın.')
                                 setSifreSifirlaAcik(false)
                                 setYeniSifre('')
                               } catch (e) {

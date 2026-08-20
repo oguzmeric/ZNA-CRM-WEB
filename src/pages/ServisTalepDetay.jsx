@@ -268,7 +268,7 @@ export default function ServisTalepDetay() {
     try {
       await notEkle(talep.id, metin, kullanici, notTip)
     } catch (e) {
-      toast?.error?.(e?.message || 'Not eklenemedi.')
+      toast.error(e?.message || 'Not eklenemedi.')
       return
     }
 

@@ -56,11 +56,11 @@ export default function BakimDetay() {
   const kalemEkle = async (tip) => {
     const k = await topluBakimKalemEkle(tb.id, tip)
     if (k) {
-      toast?.success?.(`${kalemBilgi(tip).isim} eklendi (${k.altNo}) — teknik personel ekranına yansır.`)
+      toast.success(`${kalemBilgi(tip).isim} eklendi (${k.altNo}) — teknik personel ekranına yansır.`)
       setKalemEkleAcik(false)
       yukle()
     } else {
-      toast?.error?.('Kalem eklenemedi (aynı kalem zaten var olabilir).')
+      toast.error('Kalem eklenemedi (aynı kalem zaten var olabilir).')
     }
   }
 
@@ -74,23 +74,23 @@ export default function BakimDetay() {
       : `${kalemBilgi(k.kalemTip).isim} kalemi silinsin mi?`
     if (!window.confirm(mesaj)) return
     const s = await topluBakimKalemSil(k)
-    if (s?.hata) toast?.error?.(s.hata)
-    else { toast?.success?.('Kalem silindi.'); yukle() }
+    if (s?.hata) toast.error(s.hata)
+    else { toast.success('Kalem silindi.'); yukle() }
   }
 
   const iptalEt = async () => {
     const sebep = window.prompt('İptal sebebi:')
     if (sebep === null) return
     const g = await topluBakimGuncelle(tb.id, { durum: 'iptal', iptalSebebi: sebep || null })
-    if (g) { toast?.success?.('İş emri iptal edildi.'); yukle() }
-    else toast?.error?.('İptal edilemedi.')
+    if (g) { toast.success('İş emri iptal edildi.'); yukle() }
+    else toast.error('İptal edilemedi.')
   }
 
   const kaliciSil = async () => {
     if (!window.confirm(`${tb.tbNo} kalıcı olarak silinecek (tüm kalemleriyle birlikte). Emin misiniz?`)) return
     const s = await topluBakimSil(tb.id)
-    if (s?.hata) { toast?.error?.('Silinemedi: ' + s.hata); return }
-    toast?.success?.('Bakım işi silindi.')
+    if (s?.hata) { toast.error('Silinemedi: ' + s.hata); return }
+    toast.success('Bakım işi silindi.')
     navigate('/bakim-isleri')
   }
 
@@ -324,7 +324,7 @@ export default function BakimDetay() {
                   <Button variant={tb.musteriImzaUrl ? 'secondary' : 'primary'} onClick={() => {
                     if (!tb.musteriImzaUrl) {
                       const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
-                      if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
+                      if (!ad) { toast.error('Önce müşteri yetkilisinin adını girin.'); return }
                     }
                     setImzaHedef('musteri')
                   }}>
@@ -345,7 +345,7 @@ export default function BakimDetay() {
                   style={{ marginLeft: 'auto', background: '#16a34a' }}
                   onClick={async () => {
                     // Personel imzası HER durumda şart — işi yapanın beyanı olmadan tutanak olmaz
-                    if (!tb.personelImzaUrl) { toast?.error?.('Teknik personel imzası zorunludur.'); return }
+                    if (!tb.personelImzaUrl) { toast.error('Teknik personel imzası zorunludur.'); return }
                     const patch = { durum: 'tamamlandi' }
                     if (!tb.musteriImzaUrl) {
                       patch.musteriImzaYokSebep = imzaYokSebep
@@ -353,7 +353,7 @@ export default function BakimDetay() {
                     }
                     const g = await topluBakimGuncelle(tb.id, patch)
                     if (g) {
-                      toast?.success?.(tb.musteriImzaUrl
+                      toast.success(tb.musteriImzaUrl
                         ? `${tb.tbNo} tamamlandı 🎉`
                         : `${tb.tbNo} imzasız tamamlandı — gerekçe rapora işlendi`)
                       setImzaYok(false); yukle()
@@ -383,7 +383,7 @@ export default function BakimDetay() {
               <Input id="tb-yetkili-ad" defaultValue={tb.musteriYetkiliAd || ''} placeholder="Yetkili adı *" style={{ maxWidth: 200 }} />
               <Button variant="primary" onClick={() => {
                 const ad = document.getElementById('tb-yetkili-ad')?.value?.trim()
-                if (!ad) { toast?.error?.('Önce müşteri yetkilisinin adını girin.'); return }
+                if (!ad) { toast.error('Önce müşteri yetkilisinin adını girin.'); return }
                 setImzaHedef('musteri')
               }}>
                 Müşteri İmzasını Sonradan Ekle
@@ -494,7 +494,7 @@ export default function BakimDetay() {
             const g = await topluBakimGuncelle(tb.id, patch)
             setImzaHedef(null)
             if (g) yukle()
-            else toast?.error?.('İmza kaydedilemedi.')
+            else toast.error('İmza kaydedilemedi.')
           }}
         />
       )}

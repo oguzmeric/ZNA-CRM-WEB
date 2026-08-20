@@ -225,7 +225,7 @@ function Stok() {
         .then(gmap => setGlobalSN(gmap || new Map()))
         .catch(e => {
           console.warn('[Stok] Global SN yüklenemedi:', e?.message)
-          toast?.warning?.('Seri no çakışma kontrolü devre dışı — girmeden önce çakışmadığından emin olun.')
+          toast.warning('Seri no çakışma kontrolü devre dışı — girmeden önce çakışmadığından emin olun.')
         })
     }
   }, [form.seriTakipli, duzenleId])

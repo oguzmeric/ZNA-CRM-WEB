@@ -98,15 +98,15 @@ export default function MesaiDuzeltModal({ open, onClose, kayit, personeller = [
           giris: korunmus(form.giris, kayit.giris_zamani),
           cikis: korunmus(form.cikis, kayit.cikis_zamani),
         })
-        toast?.success?.('Mesai kaydı güncellendi.')
+        toast.success('Mesai kaydı güncellendi.')
       } else {
         await mesaiKaydiEkle({ ...form, tip })
-        toast?.success?.('Mesai kaydı eklendi.')
+        toast.success('Mesai kaydı eklendi.')
       }
       onKaydedildi?.()
       onClose?.()
     } catch (e) {
-      toast?.error?.(e.message || 'İşlem tamamlanamadı.')
+      toast.error(e.message || 'İşlem tamamlanamadı.')
     } finally {
       setKaydediyor(false)
     }
@@ -117,11 +117,11 @@ export default function MesaiDuzeltModal({ open, onClose, kayit, personeller = [
     setKaydediyor(true)
     try {
       await mesaiKaydiSil({ id: kayit.id, sebep: form.sebep })
-      toast?.success?.('Mesai kaydı silindi.')
+      toast.success('Mesai kaydı silindi.')
       onKaydedildi?.()
       onClose?.()
     } catch (e) {
-      toast?.error?.(e.message || 'Kayıt silinemedi.')
+      toast.error(e.message || 'Kayıt silinemedi.')
     } finally {
       setKaydediyor(false)
     }

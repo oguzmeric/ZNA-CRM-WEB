@@ -105,7 +105,8 @@ export const satisEkle = async (satis) => {
     // Best-effort; cleanup başarısız olsa bile asıl hata fırlatılır.
     if (satirError) {
       console.error('satisEkle satir hata:', satirError.message)
-      try { await supabase.from('satislar').delete().eq('id', satisData.id) } catch {}
+      try { await supabase.from('satislar').delete().eq('id', satisData.id) }
+      catch (e) { console.error('satisEkle rollback BASARISIZ — yetim satış başlığı kaldı:', satisData.id, e?.message) }
       throw satirError
     }
   }

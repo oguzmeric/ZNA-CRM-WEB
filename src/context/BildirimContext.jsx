@@ -55,7 +55,9 @@ function gonderTarayiciBildirimi(baslik, mesaj, link, navigate) {
 
 export function BildirimProvider({ children }) {
   const { kullanici } = useAuth()
-  const toastCtx = useToast()
+  // Standart destructure (20.08 sessiz-hata temizliği): ?. zinciri hatayı
+  // maskeliyordu. Sıra güvenli: BildirimProvider, ToastProvider İÇİNDE (main.jsx).
+  const { toast } = useToast()
   const navigate = useNavigate()
   const [bildirimler, setBildirimler] = useState([])
   const subRef = useRef(null)
@@ -86,7 +88,7 @@ export function BildirimProvider({ children }) {
         if (baglantiTik > 0 && bilinenEnYeniRef.current > 0 && enYeni > bilinenEnYeniRef.current) {
           const kacan = data.filter(b => (Number(b.id) || 0) > bilinenEnYeniRef.current && !b.okundu)
           if (kacan.length > 0) {
-            toastCtx?.toast?.info(
+            toast.info(
               kacan[0].baslik + (kacan.length > 1 ? ` (+${kacan.length - 1} bildirim daha)` : ''),
               { baslik: '🔔 Siz yokken bildirim geldi', sure: 15000 },
             )
@@ -121,8 +123,7 @@ export function BildirimProvider({ children }) {
       const destekTipi = tip === 'destek'
       const sure = (gorevTipi || destekTipi) ? 15000 : 8000
 
-      const toast = toastCtx?.toast
-      if (toast) {
+          {
         if (tip === 'servis_talebi' || gorevTipi || destekTipi) {
           toast.info(mesaj, { baslik, sure })
         } else if (tip === 'hata' || tip === 'kritik') {

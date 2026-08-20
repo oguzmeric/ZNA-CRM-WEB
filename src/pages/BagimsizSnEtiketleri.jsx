@@ -66,7 +66,10 @@ export default function BagimsizSnEtiketleri() {
 
   const basildiIsaretle = async (kalemler) => {
     const ids = kalemler.map(k => k.id)
-    await etiketBasildiIsaretle(ids)
+    // Servis artık gerçek sonucu dönüyor (20.08): eskiden hata yutulup
+    // koşulsuz "işaretlendi" deniyordu — işaret DB'ye yazılmamışken.
+    const ok = await etiketBasildiIsaretle(ids)
+    if (!ok) { toast.error('Basıldı işareti kaydedilemedi — etiketler "bekliyor" olarak kaldı.'); return }
     toast.success(`${ids.length} etiket "basıldı" işaretlendi.`)
     setYazdirAcik(false)
     yenile()

@@ -932,7 +932,10 @@ function EklerBolumu({ ekler = [], kullaniciId, notId, onEkleEklendi, onEkSilind
 
   const ekKaldir = async (ek) => {
     if (!window.confirm(`"${ek.ad}" silinsin mi?`)) return
-    await ekSil(ek.path)
+    // Storage silme başarısız olsa da ek listeden çıkar (dosya öksüz kalır,
+    // akış bozulmaz) — ama kullanıcı artık haberdar edilir (20.08).
+    const ok = await ekSil(ek.path)
+    if (!ok) toast.warning('Dosya depodan silinemedi, ek yine de listeden kaldırıldı.')
     onEkSilindi(ek.path)
   }
 

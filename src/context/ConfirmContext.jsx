@@ -138,6 +138,10 @@ export function ConfirmProvider({ children }) {
 
   const confirm = useCallback((config) => {
     return new Promise((resolve) => {
+      // Üst üste iki confirm() çağrılırsa öncekinin promise'i SONSUZA KADAR
+      // asılı kalıyordu — bekleyen await'li akış (sil/kaydet) sessizce donardı.
+      // Yenisi gelirken önceki "vazgeçildi" sayılır (20.08 sessiz-hata temizliği).
+      cevapRef.current?.(false)
       cevapRef.current = resolve
       setModal(typeof config === 'string' ? { mesaj: config } : config)
     })
@@ -145,7 +149,10 @@ export function ConfirmProvider({ children }) {
 
   const onCevap = (sonuc) => {
     setModal(null)
-    cevapRef.current?.(sonuc)
+    // Ref'i temizle: çift tetiklenmede (Enter + tık) ikinci çağrı no-op kalsın.
+    const coz = cevapRef.current
+    cevapRef.current = null
+    coz?.(sonuc)
   }
 
   return (

@@ -167,7 +167,7 @@ export default function MesaiRaporu() {
       .limit(5000)
     if (personelId) q = q.eq('kullanici_id', personelId)
     q.then(({ data, error }) => {
-      if (error) { console.error('[mesai raporu]', error.message); toast?.error?.('Mesai kayıtları alınamadı.') }
+      if (error) { console.error('[mesai raporu]', error.message); toast.error('Mesai kayıtları alınamadı.') }
       setKayitlar(data || [])
       setYukleniyor(false)
     })
@@ -288,7 +288,7 @@ export default function MesaiRaporu() {
     : `${String(Math.floor(dk / 60)).padStart(2, '0')}:${String(dk % 60).padStart(2, '0')}`
 
   const excelIndir = () => {
-    if (!ozet.length) { toast?.warning?.('Dışa aktarılacak kayıt yok.'); return }
+    if (!ozet.length) { toast.warning('Dışa aktarılacak kayıt yok.'); return }
     const kirilimAd = KIRILIMLAR.find(k => k.id === kirilim)?.ad || ''
     // Web tablosuyla aynı mantık: günlük kırılımda o günün giriş/çıkış saati,
     // haftalık-aylıkta ORTALAMA giriş/çıkış saati. (Eskiden dönemin ilk girişi /
@@ -359,7 +359,7 @@ export default function MesaiRaporu() {
     sayfaYaz(detaySatir, 'Detay', ['Süre'])
     // Kırılım dosya adına da girsin — indirilen dosyalar birbirine karışmasın
     XLSX.writeFile(wb, `mesai-raporu-${kirilimAd}-${baslangic}_${bitis}.xlsx`)
-    toast?.success?.('Excel indirildi.')
+    toast.success('Excel indirildi.')
   }
 
   // Ham kayıt listesi (düzeltme bölümü). Sorgu zaten tarih + personel ile

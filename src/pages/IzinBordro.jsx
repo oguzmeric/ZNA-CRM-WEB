@@ -242,7 +242,7 @@ export default function IzinBordro() {
                         {t.durum !== 'iptal' && (
                           <Button size="sm" variant="secondary"
                             iconLeft={<Printer size={12} />}
-                            onClick={() => izinFormuYazdir(t, { ad: kullanici?.ad, unvan: kullanici?.unvan })}>
+                            onClick={() => { if (!izinFormuYazdir(t, { ad: kullanici?.ad, unvan: kullanici?.unvan })) toast.error('Tarayıcı yazdırma penceresini engelledi — açılır pencere iznini verin.') }}>
                             Formu Yazdır
                           </Button>
                         )}

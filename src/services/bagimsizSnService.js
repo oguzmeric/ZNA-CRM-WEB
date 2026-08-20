@@ -73,12 +73,15 @@ export const servisBagimsizSnleriGetir = async (servisTalepId) => {
 }
 
 // Etiketleri "basıldı" işaretle
+// true = gerçekten işaretlendi (20.08 sessiz-hata temizliği): eskiden hata
+// yutulup çağıran koşulsuz 'işaretlendi' diyordu.
 export const etiketBasildiIsaretle = async (ids) => {
-  if (!ids?.length) return
+  if (!ids?.length) return true
   const { error } = await supabase.from('bagimsiz_snler')
     .update({ etiket_basildi: true, etiket_basim_tarih: new Date().toISOString() })
     .in('id', ids)
-  if (error) console.warn('[etiketBasildiIsaretle]', error.message)
+  if (error) { console.warn('[etiketBasildiIsaretle]', error.message); return false }
+  return true
 }
 
 // SN kaydını sil (yanlış üretilen / demo). Cihaza atanmış SN'in cihaz kaydına

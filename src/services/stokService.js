@@ -153,7 +153,8 @@ export const gorselYukle = async (file, stokKodu) => {
   // Yüklemeden SONRA siliyoruz — önce silseydik yükleme patladığında ürün
   // görselsiz kalırdı. remove() olmayan dosyada hata fırlatmaz.
   const digerleri = GORSEL_UZANTILAR.filter((u) => u !== ext).map((u) => `${stokKodu}.${u}`)
-  try { await supabase.storage.from('urun-gorselleri').remove(digerleri) } catch {}
+  try { await supabase.storage.from('urun-gorselleri').remove(digerleri) }
+  catch (e) { console.warn('[gorsel temizlik] eski uzantılar silinemedi:', e?.message) }
 
   const { data } = supabase.storage.from('urun-gorselleri').getPublicUrl(path)
   // SÜRÜM DAMGASI ŞART: dosya hep aynı yola yazıldığı için publicUrl her

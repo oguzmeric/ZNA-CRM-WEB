@@ -193,7 +193,10 @@ export default function BayiDetay() {
   const sureceDon = async () => {
     const onay = await confirm({ baslik: 'Sürece Döndür', mesaj: 'Bayi statüsü, sözleşme/evrak/onay durumuna göre yeniden hesaplansın mı?', onayMetin: 'Evet', iptalMetin: 'Vazgeç' })
     if (!onay) return
-    await bayiStatuGuncelle(firma.id, 'evrak_bekleniyor') // manuel statüden çıkar
+    // Servis hata durumunda { _hata } döner (throw etmez) — kontrolsüz bırakılınca
+    // statü değişmemişken "döndürüldü" deniyordu (20.08 sessiz-hata temizliği).
+    const sonuc = await bayiStatuGuncelle(firma.id, 'evrak_bekleniyor') // manuel statüden çıkar
+    if (sonuc?._hata) { toast.error('Statü güncellenemedi: ' + sonuc._hata); return }
     await yukle(true)
     toast.success('Bayi süreç takibine döndürüldü.')
   }

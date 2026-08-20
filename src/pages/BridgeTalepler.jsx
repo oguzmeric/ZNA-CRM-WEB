@@ -66,10 +66,10 @@ export default function BridgeTalepler() {
     setTestCalisiyor(false)
     if (r?.ok) {
       const gt = r.getTask
-      toast?.success?.(`Bağlantı başarılı — getTask kod ${gt?.code}, ${gt?.alanlar?.length ?? 0} alan geldi` +
+      toast.success(`Bağlantı başarılı — getTask kod ${gt?.code}, ${gt?.alanlar?.length ?? 0} alan geldi` +
         (r.kaydedildi ? `, ${r.kaydedildi} kayıt yazıldı` : ''))
     } else {
-      toast?.error?.(`Bağlantı hatası: ${r?.hata || 'bilinmeyen'}${r?.aciklama ? ' — ' + r.aciklama : ''}`)
+      toast.error(`Bağlantı hatası: ${r?.hata || 'bilinmeyen'}${r?.aciklama ? ' — ' + r.aciklama : ''}`)
     }
     yukle()
   }
@@ -78,9 +78,9 @@ export default function BridgeTalepler() {
     setTestCalisiyor(true)
     const r = await bridgeSenkronCalistir('liste')
     setTestCalisiyor(false)
-    if (r?.ok) toast?.success?.(`Toplu çekim: ${r.kaydedilen}/${r.cekilen} kaydedildi (uzak ${r.uzakToplam})`)
-    else if (r?.hata === 'filtre_yok') toast?.warning?.('Toplu çekim kapalı — belediyeden görev tipi filtresi (taskTypeIdList) bekleniyor.')
-    else toast?.error?.(`Toplu çekim hatası: ${r?.hata || 'bilinmeyen'}`)
+    if (r?.ok) toast.success(`Toplu çekim: ${r.kaydedilen}/${r.cekilen} kaydedildi (uzak ${r.uzakToplam})`)
+    else if (r?.hata === 'filtre_yok') toast.warning('Toplu çekim kapalı — belediyeden görev tipi filtresi (taskTypeIdList) bekleniyor.')
+    else toast.error(`Toplu çekim hatası: ${r?.hata || 'bilinmeyen'}`)
     yukle()
   }
 
@@ -89,9 +89,9 @@ export default function BridgeTalepler() {
     if (g) {
       setListe((prev) => prev.map((t) => (t.id === id ? { ...t, ...g } : t)))
       setDetay((prev) => (prev && prev.id === id ? { ...prev, ...g } : prev))
-      toast?.success?.('Güncellendi')
+      toast.success('Güncellendi')
     } else {
-      toast?.error?.('Güncellenemedi')
+      toast.error('Güncellenemedi')
     }
   }
 

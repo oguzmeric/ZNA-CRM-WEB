@@ -113,11 +113,19 @@ export default function BelgePaylasModal({
     }
   }
 
+  // Kopyalama artık görünür (20.08): başarıda buton 'Kopyalandı ✓' olur,
+  // başarısızlıkta (izin/eski tarayıcı) kullanıcı linki elle seçebilsin diye
+  // uyarı verilir — eskiden iki durum da tamamen sessizdi.
+  const [kopyaDurum, setKopyaDurum] = useState(null) // null | 'ok' | 'hata'
   const linkKopyala = async () => {
     if (!sonuc?.link) return
     try {
       await navigator.clipboard.writeText(sonuc.link)
-    } catch {}
+      setKopyaDurum('ok')
+    } catch {
+      setKopyaDurum('hata')
+    }
+    setTimeout(() => setKopyaDurum(null), 2500)
   }
 
   const baslik = belgeTipi === 'teklif' ? 'Teklifi Müşteriye Gönder'
@@ -152,8 +160,9 @@ export default function BelgePaylasModal({
             <Label>Paylaşım Linki ({sureGun} gün geçerli)</Label>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <Input value={sonuc.link} readOnly style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 12 }} />
-              <Button variant="secondary" onClick={linkKopyala} title="Kopyala">
-                <Copy size={16} />
+              <Button variant="secondary" onClick={linkKopyala}
+                title={kopyaDurum === 'hata' ? 'Kopyalanamadı — linki elle seçin' : 'Kopyala'}>
+                {kopyaDurum === 'ok' ? '✓' : kopyaDurum === 'hata' ? '⚠' : <Copy size={16} />}
               </Button>
               <Button variant="secondary" onClick={() => window.open(sonuc.link, '_blank')} title="Aç">
                 <ExternalLink size={16} />

@@ -95,11 +95,11 @@ export default function YeniTopluBakim() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }))
 
   const kaydet = async () => {
-    if (!form.musteriId) { toast?.error?.('Müşteri seçin.'); return }
+    if (!form.musteriId) { toast.error('Müşteri seçin.'); return }
     // Lokasyon OPSİYONEL — lokasyonu olmayan müşteride doğrudan devam edilir (24.07)
-    if (!form.planlananTarih) { toast?.error?.('Planlanan bakım tarihi girin.'); return }
-    if (!form.teknikPersonelId) { toast?.error?.('Görevli teknik personel seçin.'); return }
-    if (secilenKalemler.length === 0) { toast?.error?.('En az bir bakım kalemi seçin.'); return }
+    if (!form.planlananTarih) { toast.error('Planlanan bakım tarihi girin.'); return }
+    if (!form.teknikPersonelId) { toast.error('Görevli teknik personel seçin.'); return }
+    if (secilenKalemler.length === 0) { toast.error('En az bir bakım kalemi seçin.'); return }
 
     setKaydediliyor(true)
     const sonuc = await topluBakimOlustur({
@@ -123,8 +123,8 @@ export default function YeniTopluBakim() {
       kalemTipleri: secilenKalemler,
     })
     setKaydediliyor(false)
-    if (sonuc?.hata) { toast?.error?.(sonuc.hata); return }
-    toast?.success?.(`Toplu bakım oluşturuldu: ${sonuc.tbNo}`)
+    if (sonuc?.hata) { toast.error(sonuc.hata); return }
+    toast.success(`Toplu bakım oluşturuldu: ${sonuc.tbNo}`)
     navigate(`/bakim-isleri/${sonuc.id}`)
   }
 

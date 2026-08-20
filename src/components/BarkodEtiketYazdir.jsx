@@ -72,7 +72,10 @@ export default function BarkodEtiketYazdir({ kalemler, marka, stokKodu, onKapat,
     if (seciliKalemler.length === 0) { toast.warning('En az bir SN seçin.'); return }
     // window.print browser-native — CSS'te print class'ları etiketleri düzenler
     window.print()
-    // Basıldı işareti çağıranın sorumluluğunda (window.print senkron döner)
+    // Basıldı işareti çağıranın sorumluluğunda (window.print senkron döner).
+    // onYazdir BİLEREK opsiyonel: takip yalnız bağımsız SN'lerde var
+    // (bagimsiz_snler.etiket_basildi); stok_kalemleri'nde böyle bir kolon YOK,
+    // ModelDetay bu prop'u geçmez — no-op orada doğru davranış (20.08 denetimi).
     onYazdir?.(seciliKalemler)
   }
 

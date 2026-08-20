@@ -154,9 +154,13 @@ export const ekYukleWeb = async ({ file, kullaniciId, notId }) => {
   }
 }
 
+// true = storage'dan silindi. false'ta çağıran akışı durdurmaz (ek listeden
+// yine çıkar — dosya öksüz kalır) ama en azından iz bırakılır (20.08).
 export const ekSil = async (path) => {
-  if (!path) return
-  await supabase.storage.from('not-ekleri').remove([path]).catch(() => {})
+  if (!path) return true
+  const { error } = await supabase.storage.from('not-ekleri').remove([path])
+  if (error) { console.warn('[ekSil]', error.message); return false }
+  return true
 }
 
 // Sadece ekler array'i güncelle
