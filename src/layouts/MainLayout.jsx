@@ -649,6 +649,11 @@ function MainLayout({ children }) {
     if (location.pathname.startsWith('/teklifler/')) return 'Teklif Detayı'
     if (location.pathname === '/satislar') return 'Satış Faturaları'
     if (location.pathname.startsWith('/satislar/')) return 'Fatura Detayı'
+    // Aynı sayfa iki kuyruğa hizmet eder (17.08 kararı): ?kaynak=musteri portal
+    // kuyruğudur — üst bar da sayfa içi başlıkla aynı adı söylemeli (20.08:
+    // "yukarıda Servis Talepleri yazıyor" karışıklığı).
+    if (location.pathname === '/servis-talepleri'
+        && new URLSearchParams(location.search).get('kaynak') === 'musteri') return 'Portal Talepleri'
     if (location.pathname === '/servis-talepleri') return 'Servis Talepleri'
     if (location.pathname === '/servis-talepleri/yeni') return 'Yeni Servis Talebi'
     if (location.pathname.startsWith('/servis-talepleri/')) return 'Servis Talep Detayı'

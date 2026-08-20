@@ -384,24 +384,30 @@ export default function ServisTalepleri() {
           </CustomSelect>
           {/* KANAL — kuyruklar ayrı olduğu için bu bir filtre değil, KAPSAM
               göstergesi. Yine de "hepsini gör" gerekebiliyor (arama/rapor);
-              seçim URL'e yazılır, sayfa paylaşılınca aynı kapsam açılır. */}
-          <CustomSelect
-            value={kaynakFiltre}
-            onChange={e => {
-              const v = e.target.value
-              setKaynakFiltre(v); setSayfa(1)
-              setSearchParams(prev => {
-                const p = new URLSearchParams(prev)
-                // 'personel' varsayılan olduğu için URL'e yazılmaz
-                if (v === 'personel') p.delete('kaynak'); else p.set('kaynak', v)
-                return p
-              }, { replace: true })
-            }}
-          >
-            <option value="personel">Personel talepleri</option>
-            <option value="musteri">Portal talepleri</option>
-            <option value="tumu">Hepsi (personel + portal)</option>
-          </CustomSelect>
+              seçim URL'e yazılır, sayfa paylaşılınca aynı kapsam açılır.
+              ⚠️ Portal görünümünde (?kaynak=musteri) GÖSTERİLMEZ (20.08 isteği):
+              sayfa zaten "Portal Talepleri" başlığını taşıyor, buradaki "Portal
+              talepleri" yazısı tekrar/karışıklık yaratıyordu. Kuyruklar arası
+              geçiş menüden yapılır (Servis ↔ Müşteri Portalı). */}
+          {kaynakFiltre !== 'musteri' && (
+            <CustomSelect
+              value={kaynakFiltre}
+              onChange={e => {
+                const v = e.target.value
+                setKaynakFiltre(v); setSayfa(1)
+                setSearchParams(prev => {
+                  const p = new URLSearchParams(prev)
+                  // 'personel' varsayılan olduğu için URL'e yazılmaz
+                  if (v === 'personel') p.delete('kaynak'); else p.set('kaynak', v)
+                  return p
+                }, { replace: true })
+              }}
+            >
+              <option value="personel">Personel talepleri</option>
+              <option value="musteri">Portal talepleri</option>
+              <option value="tumu">Hepsi (personel + portal)</option>
+            </CustomSelect>
+          )}
           {filtreAktif && (
             <Button variant="tertiary" size="sm" iconLeft={<X size={12} strokeWidth={1.5} />} onClick={temizle}>
               Filtreleri temizle
