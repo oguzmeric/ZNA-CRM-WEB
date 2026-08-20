@@ -728,19 +728,49 @@ function MainLayout({ children }) {
   const ikYetkiliMi = ikGorebilirMi(kullanici)
   const etkinGrup = (m) => (ikYetkiliMi && m.grupIK) ? m.grupIK : (m.grup || 'gunluk')
 
+  // ── Menü yolu aktif mi — TEK KAYNAK (20.08) ────────────────────────────────
+  // Aynı path'e İKİ menü öğesi işaret edebilir: Servis Talepleri
+  // '/servis-talepleri', Portal Talepleri '/servis-talepleri?kaynak=musteri'
+  // (FARKLI gruplarda). Eskiden query kontrolü yalnız aynı grubun altMenu
+  // kardeşlerine bakıyordu; Portal Talepleri başka grupta olduğundan portal
+  // kuyruğundayken Servis > Servis Talepleri de vurgulu görünüyordu ve grup
+  // açma da query'siz eşleşip yanlış grubu (Servis) açıyordu.
+  const _tumMenuYollari = (() => {
+    const y = []
+    for (const m of gorunenMenu) {
+      if (m.altMenu) { for (const a of m.altMenu) if (a.yol) y.push(a.yol) }
+      else if (m.yol) y.push(m.yol)
+    }
+    return y
+  })()
+  const _suankiQuery = location.search.replace(/^\?/, '')
+  const yolAktifMi = (ham) => {
+    if (!ham) return false
+    const [p, q = ''] = ham.split('?')
+    const pathOk = p === '/dashboard'
+      ? location.pathname === '/dashboard'
+      : (location.pathname === p || location.pathname.startsWith(p + '/'))
+    if (!pathOk) return false
+    if (q) return _suankiQuery === q
+    // Query'siz yol: aynı path'in query'li BAŞKA bir menü linki şu an tam
+    // eşleşiyorsa bu öğe aktif DEĞİL — spesifik link kazanır.
+    return !_tumMenuYollari.some(y => {
+      if (y === ham || !y.includes('?')) return false
+      const [p2, q2] = y.split('?')
+      return p2 === p && _suankiQuery === q2
+    })
+  }
+
   // Aktif sayfanın menü öğesi — en UZUN yol eşleşmesi kazanır ('/stok-hareketleri'
   // düz startsWith ile '/stok'a da uyar, kısa olan yanlış grubu açardı).
+  // Uzunluk HAM yol üzerinden: query'li eşleşme otomatik daha spesifik sayılır.
   const aktifOge = (() => {
     let enIyi = null
     for (const m of gorunenMenu) {
       const yollar = m.altMenu ? m.altMenu.map(a => a.yol) : (m.yol ? [m.yol] : [])
       for (const ham of yollar) {
-        if (!ham) continue
-        const p = ham.split('?')[0]
-        const eslesti = p === '/dashboard'
-          ? location.pathname === '/dashboard'
-          : (location.pathname === p || location.pathname.startsWith(p + '/'))
-        if (eslesti && (!enIyi || p.length > enIyi.uzunluk)) enIyi = { item: m, uzunluk: p.length }
+        if (!yolAktifMi(ham)) continue
+        if (!enIyi || ham.length > enIyi.uzunluk) enIyi = { item: m, uzunluk: ham.length }
       }
     }
     return enIyi?.item || null
@@ -1130,19 +1160,10 @@ function MainLayout({ children }) {
                   {acik && (
                     <div style={{ marginLeft: 25, borderLeft: '1px solid var(--border-on-dark)', paddingLeft: 6, display: 'flex', flexDirection: 'column', marginTop: 1, marginBottom: 2 }}>
                       {item.altMenu.map(alt => {
-                        // alt.yol query string icerebilir (orn /servis-talepleri?kaynak=musteri).
-                        // pathname ve search'i ayri kontrol et.
-                        const [altPath, altQuery = ''] = alt.yol.split('?')
-                        const pathEslesti = location.pathname === altPath || location.pathname.startsWith(altPath + '/')
-                        const aktif = altQuery
-                          ? (pathEslesti && location.search.replace(/^\?/, '') === altQuery)
-                          : (pathEslesti
-                              // Query'siz item (Servis Talepleri) — kardes query'li link aktifse aktif degil
-                              && !item.altMenu.some(a2 => {
-                                if (a2 === alt || !a2.yol.includes('?')) return false
-                                const [p2, q2] = a2.yol.split('?')
-                                return p2 === altPath && location.search.replace(/^\?/, '') === q2
-                              }))
+                        // Aktiflik TEK KAYNAK: yolAktifMi — query'li yolları ve
+                        // FARKLI GRUPTAKİ aynı-path linkleri de hesaba katar
+                        // (Servis Talepleri ↔ Portal Talepleri çifte vurgu vakası, 20.08).
+                        const aktif = yolAktifMi(alt.yol)
                         // Rozet kaynağı tek yerde: rozetSayisi() (personel/müşteri talebi, kritik stok…)
                         return (
                           <button
@@ -1175,8 +1196,9 @@ function MainLayout({ children }) {
               )
             }
 
-            const aktif = location.pathname === item.yol ||
-              (item.yol !== '/dashboard' && location.pathname.startsWith(item.yol))
+            // yolAktifMi: query'li üst seviye yol (Portal Talepleri) artık
+            // vurgulanabiliyor — eski pathname kıyası query'yi hiç görmüyordu.
+            const aktif = yolAktifMi(item.yol)
             return (
               <SortableSatir id={item.id} key={item.id} duzenModu={duzenModu}>
               <button
