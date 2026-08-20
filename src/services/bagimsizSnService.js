@@ -93,3 +93,32 @@ export const bagimsizSnSil = async (ids) => {
   if (error) { console.error('[bagimsizSnSil]', error.message); return { hata: error.message } }
   return { silinen: count ?? ids.length }
 }
+
+// ── Havuzdan stok koduna atama (mig 317) ────────────────────────────────
+// "Atanabilir" = ne bir stok kalemine ne bir müşteri cihazına bağlı.
+// Büyük liste kuralı: sınır + arama servise gömülü (varsayılan 200).
+export const atanabilirSnleriGetir = async ({ arama = '', limit = 200 } = {}) => {
+  let q = supabase
+    .from('bagimsiz_snler')
+    .select('id, seri_no, urun_adi, stok_kodu, kaynak, olusturan_ad, olusturma_tarih, etiket_basildi')
+    .is('stok_kalemi_id', null)
+    .is('cihaz_id', null)
+    .order('olusturma_tarih', { ascending: false })
+    .limit(limit)
+  const temiz = String(arama || '').trim()
+  if (temiz) q = q.ilike('seri_no', `%${temiz}%`)
+  const { data, error } = await q
+  if (error) { console.error('[atanabilirSnleriGetir]', error.message); throw error }
+  return arrayToCamel(data || [])
+}
+
+// Kısmi sonuç döner: { eklenen: number, atlanan: [{ seri_no, sebep }] }.
+// Defteri RPC değil köprü trigger yazar (reference_stok_hareket_tek_kaynak).
+export const snleriStogaAta = async (ids, stokKodu) => {
+  const { data, error } = await supabase.rpc('bagimsiz_sn_stoga_ata', {
+    p_ids: ids,
+    p_stok_kodu: stokKodu,
+  })
+  if (error) throw new Error(error.message || 'Atama başarısız.')
+  return data // { eklenen, atlanan }
+}

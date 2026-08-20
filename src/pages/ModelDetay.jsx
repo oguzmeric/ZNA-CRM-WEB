@@ -7,7 +7,7 @@ import { useConfirm } from '../context/ConfirmContext'
 import {
   ArrowLeft, Package, Tag, Hash, AlertTriangle, Building2, Calendar,
   ArrowDown, ArrowUp, ArrowRightLeft, Box, Plus, User, PackageOpen,
-  Pencil, Trash2, History, RotateCcw, Eye,
+  Pencil, Trash2, History, RotateCcw, Eye, Layers
 } from 'lucide-react'
 import {
   modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
@@ -25,6 +25,7 @@ import {
 } from '../services/depoService'
 import { AlertOctagon, Wrench, ShoppingCart, XCircle } from 'lucide-react'
 import SnEkleModal from '../components/SnEkleModal'
+import SnHavuzAtaModal from '../components/SnHavuzAtaModal'
 import BarkodEtiketYazdir from '../components/BarkodEtiketYazdir'
 import { Printer } from 'lucide-react'
 import { musterileriGetir } from '../services/musteriService'
@@ -106,6 +107,7 @@ function ModelDetay() {
   const [sayfa, setSayfa] = useUrlSayfa([filtre, arama, sayfaBoyutu])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [snEkleAcik, setSnEkleAcik] = useState(false)
+  const [snHavuzAcik, setSnHavuzAcik] = useState(false)
   const [yenile, setYenile] = useState(0)
   const [seciliKalem, setSeciliKalem] = useState(null)  // teknisyene ver modalı için
   // Toplu seçim: tek tek "Teknisyene Ver" tıklamak 30+ kalemde işkenceydi.
@@ -317,6 +319,14 @@ function ModelDetay() {
             disabled={!kalemler.some(k => !k.silindi)}
           >
             Etiket Yazdır
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setSnHavuzAcik(true)}
+            iconLeft={<Layers size={14} strokeWidth={1.5} />}
+            title="Önceden üretilip basılmış barkodları okuyucusuz, seçerek bu stoka ekle"
+          >
+            Havuzdan Ata
           </Button>
           <Button
             variant="primary"
@@ -1068,6 +1078,13 @@ function ModelDetay() {
       <SnEkleModal
         open={snEkleAcik}
         onClose={() => setSnEkleAcik(false)}
+        urun={urun}
+        onEklendi={() => setYenile(y => y + 1)}
+      />
+
+      <SnHavuzAtaModal
+        open={snHavuzAcik}
+        onClose={() => setSnHavuzAcik(false)}
         urun={urun}
         onEklendi={() => setYenile(y => y + 1)}
       />
