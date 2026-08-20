@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Plus, Pencil, Trash2, Check, Receipt, Bell, AlertCircle, FileText, Inbox,
   ChevronUp, ChevronDown, Download, Inbox as InboxMail, ClipboardEdit, Search as SearchIc,
-  CheckCircle2, Ban, Clock,
+  CheckCircle2, Ban, Clock, Layers, AlertTriangle,
 } from 'lucide-react'
 
 import { useToast } from '../context/ToastContext'
@@ -119,6 +119,11 @@ export default function Teklifler() {
   // Ahmet/Turkuaz vakası: taslak yalnız Yeni Teklif'te görünüyordu,
   // listede arayan "kaydetmedim, kayboldu" sanıyordu.
   const [taslagim, setTaslagim] = useState(null)
+  // İCMAL modu (20.08): aynı kurumun 3-4 teklifi tek belgede sunulur.
+  // Seçim DİZİ tutulur (Set değil) — icmal kapağındaki sıra SEÇİM sırasıdır
+  // (kullanıcı "kamera / ses / yangın" gibi anlamlı bir sunum sırası kurar).
+  const [icmalModu, setIcmalModu] = useState(false)
+  const [icmalSecim, setIcmalSecim] = useState([])
   const [sayfa, setSayfa] = useUrlSayfa([aktifSekme, arama, siralama, benimTekliflerim, yasFiltresi])
 
   // Filtre/sekme/arama değişince 1. sayfaya dön
@@ -210,6 +215,21 @@ export default function Teklifler() {
   // KALDIRILDI (2026-08-06): proforma artık TEKLİFTEN kesilmez — teklif
   // siparişe dönüşür, proforma SİPARİŞ üzerinden kesilir (faturaTalepService
   // aynı kuralı sunucu tarafında da uygular).
+
+  // ── İCMAL seçimi ──────────────────────────────────────────────────────────
+  const icmalToggle = (id) => {
+    setIcmalSecim(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+  const icmalKapat = () => { setIcmalModu(false); setIcmalSecim([]) }
+  const icmalGoruntule = () => {
+    if (icmalSecim.length < 2) return
+    // Senkron window.open — await yok, popup engeline takılmaz
+    window.open(`/teklifler/icmal/yazdir?ids=${icmalSecim.join(',')}`, '_blank')
+  }
+  const icmalSecilenler = icmalSecim
+    .map(id => teklifler.find(t => t.id === id))
+    .filter(Boolean)
+  const icmalFirmalar = [...new Set(icmalSecilenler.map(t => String(t.firmaAdi || '').trim()).filter(Boolean))]
 
   const siralayici = {
     yeni:          (a, b) => new Date(b.tarih || b.olusturmaTarih || 0) - new Date(a.tarih || a.olusturmaTarih || 0),
@@ -303,12 +323,55 @@ export default function Teklifler() {
                 </button>
               ))}
             </div>
+            <Button
+              variant={icmalModu ? 'primary' : 'secondary'}
+              iconLeft={<Layers size={14} strokeWidth={1.5} />}
+              onClick={() => icmalModu ? icmalKapat() : setIcmalModu(true)}
+              title="Aynı kurumun birden çok teklifini tek belgede (icmal) görüntüle"
+            >
+              {icmalModu ? 'İcmali Kapat' : 'İcmal'}
+            </Button>
             <Button variant="primary" iconLeft={<Plus size={14} strokeWidth={1.5} />} onClick={() => navigate('/teklifler/yeni')}>
               Yeni teklif
             </Button>
           </div>
         )}
       </div>
+
+      {/* İCMAL seçim şeridi — mod açıkken görünür */}
+      {icmalModu && aktifSekme !== 'musteri_talepleri' && (
+        <Card style={{ padding: '10px 14px', marginBottom: 14, borderLeft: '3px solid var(--brand-primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <span className="t-body-strong">
+                <span className="tabular-nums">{icmalSecim.length}</span> teklif seçildi
+              </span>
+              <span className="t-body" style={{ color: 'var(--text-secondary)' }}>
+                {' '}— listeden işaretleyin; icmal kapağındaki sıra seçim sıranızdır.
+              </span>
+              {icmalFirmalar.length > 1 && (
+                <div style={{
+                  display: 'flex', gap: 6, alignItems: 'center', marginTop: 6,
+                  font: '500 12px/16px var(--font-sans)', color: 'var(--warning)',
+                }}>
+                  <AlertTriangle size={13} strokeWidth={1.7} style={{ flexShrink: 0 }} />
+                  Farklı müşterilerden teklif seçtiniz: {icmalFirmalar.join(' · ')}
+                </div>
+              )}
+            </div>
+            <Button
+              variant="primary"
+              iconLeft={<Layers size={14} strokeWidth={1.5} />}
+              disabled={icmalSecim.length < 2}
+              title={icmalSecim.length < 2 ? 'En az 2 teklif seçin' : 'İcmali yeni sekmede aç'}
+              onClick={icmalGoruntule}
+            >
+              İcmal Görüntüle ({icmalSecim.length})
+            </Button>
+            <Button variant="secondary" onClick={icmalKapat}>Vazgeç</Button>
+          </div>
+        </Card>
+      )}
 
       {/* Arama + Sıralama */}
       {aktifSekme !== 'musteri_talepleri' && (
@@ -540,6 +603,7 @@ export default function Teklifler() {
                   {/* tableLayout fixed + colgroup: uzun firma/konu adları satırı bozmaz, üç nokta ile kısalır */}
                   <table style={{ width: '100%', minWidth: 1120, tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>
                     <colgroup>
+                      {icmalModu && <col style={{ width: 40 }} />} {/* İcmal seçimi */}
                       <col style={{ width: 112 }} />               {/* Teklif No */}
                       <col style={{ width: '24%' }} />             {/* Müşteri */}
                       <col style={{ width: '24%' }} />             {/* Açıklama */}
@@ -553,6 +617,7 @@ export default function Teklifler() {
                     <thead>
                       <tr>
                         {[
+                          ...(icmalModu ? [{ l: '' }] : []),
                           { l: 'Teklif No' },
                           { l: 'Müşteri' },
                           { l: 'Teklif Açıklaması' },
@@ -592,6 +657,18 @@ export default function Teklifler() {
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
+                            {/* İcmal seçimi */}
+                            {icmalModu && (
+                              <td style={{ padding: '5px 0 5px 14px', borderBottom: '1px solid var(--border-default)', verticalAlign: 'middle' }}>
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${t.teklifNo || t.id} icmale ekle`}
+                                  checked={icmalSecim.includes(t.id)}
+                                  onChange={() => icmalToggle(t.id)}
+                                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--brand-primary)' }}
+                                />
+                              </td>
+                            )}
                             {/* Teklif No */}
                             <td style={{ padding: '5px 10px 12px 14px', borderBottom: '1px solid var(--border-default)', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>

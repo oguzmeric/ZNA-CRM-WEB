@@ -4,6 +4,9 @@
 
 const gecersizler = /[\\/:*?"<>|\r\n\t]+/g
 
+// İcmal gibi teklif-dışı çıktı adları da aynı temizlikten geçsin diye dışa açık
+export const dosyaAdiTemizle = (metin) => temizle(metin)
+
 const temizle = (metin) => {
   if (!metin) return ''
   return String(metin)

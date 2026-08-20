@@ -103,6 +103,7 @@ const MusteriTalepDetay = lazy(() => import('./pages/musteri/MusteriTalepDetay')
 const TeklifIste = lazy(() => import('./pages/musteri/TeklifIste'))
 const Cihazlarim = lazy(() => import('./pages/musteri/Cihazlarim'))
 const TeklifYazdir = lazy(() => import('./pages/TeklifYazdir'))
+const TeklifIcmalYazdir = lazy(() => import('./pages/TeklifIcmalYazdir'))
 const FaturaYazdir = lazy(() => import('./pages/FaturaYazdir'))
 const ProformaYazdir = lazy(() => import('./pages/ProformaYazdir'))
 const ServisFormuYazdir = lazy(() => import('./pages/ServisFormuYazdir'))
@@ -394,6 +395,8 @@ function App() {
     return (
       <Suspense fallback={<SayfaYukleniyor />}>
         <Routes>
+          {/* İcmal rotası :id/yazdir'dan ÖNCE — statik segment zaten öncelikli, sıra okunurluk için */}
+          <Route path="/teklifler/icmal/yazdir" element={<TeklifGuard><TeklifIcmalYazdir /></TeklifGuard>} />
           <Route path="/teklifler/:id/yazdir" element={<TeklifGuard><TeklifYazdir /></TeklifGuard>} />
           <Route path="/satislar/:id/yazdir" element={<TeklifGuard><FaturaYazdir /></TeklifGuard>} />
           <Route path="/fatura-talepleri/:id/yazdir" element={<ProformaYazdir />} />

@@ -10,7 +10,6 @@ import StandartCikti from './teklifCikti/StandartCikti'
 import TrassirCikti from './teklifCikti/TrassirCikti'
 import KarelCikti from './teklifCikti/KarelCikti'
 import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
-import { dosyayiKaydet } from '../lib/dosyaIndir'
 import { tipCoz } from '../lib/teklifTemplates'
 import { teklifiTlyeCevir, oranMetni } from '../lib/teklifHesap'
 
@@ -98,112 +97,21 @@ export default function TeklifYazdir() {
   const gosterilen = tlGoster && dovizli && kurVar ? teklifiTlyeCevir(teklif) : teklif
 
   // PDF'i direkt indir — html2canvas + jsPDF, dialog acmaz.
-  // Cikti elementini off-screen container'a klonla (print CSS bypass icin),
-  // 794x1123 px (A4 96dpi) sabit genislik ver, capture et, multi-page PDF olarak indir.
+  // Motor ortak lib'de (ciktiPdfIndir, 20.08): İcmal ile aynı kod, davranış
+  // birebir eski pdfIndir (off-screen klon + satır sınırından dilimleme).
   const pdfIndir = async () => {
     if (!ciktiRef.current) return
     setPdfYukleniyor(true)
-    let klon = null
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ])
-
-      const A4_W = 794   // px @ 96dpi
-      const A4_H = 1123
-
-      // Cikti'yi off-screen clone et — print:none stilleri etkilemesin
-      klon = ciktiRef.current.cloneNode(true)
-      klon.style.position = 'fixed'
-      klon.style.left = '-99999px'
-      klon.style.top = '0'
-      klon.style.width = A4_W + 'px'
-      klon.style.background = '#fff'
-      klon.style.zIndex = '-1'
-      document.body.appendChild(klon)
-
-      // Görseller yüklensin (CORS dahil)
-      await new Promise(r => setTimeout(r, 300))
-
-      const canvas = await html2canvas(klon, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: A4_W,
-        windowWidth: A4_W,
-      })
-
-      const SAYFA_MM = 297           // A4 yüksekliği
-      const GENISLIK_MM = 210        // A4 genişliği
-      const KENAR_MM = 10            // sayfa üstü/altı nefes payı
-      const mmPerPx = GENISLIK_MM / A4_W
-      const sayfaPx = Math.floor((SAYFA_MM - KENAR_MM * 2) / mmPerPx)
-      const olcek = canvas.width / A4_W   // html2canvas scale'i (klon genişliğine göre)
-      const toplamPx = Math.round(canvas.height / olcek)
-
-      // ⚠️ Eskiden canvas sayfa yüksekliğinden KÖR kesiliyordu; kesme noktası
-      // satırın ortasına denk gelince metin ikiye bölünüyordu. Artık kesme,
-      // bir satırın/bloğun bittiği yerden yapılır.
-      const kokUst = klon.getBoundingClientRect().top
-      const kesmeNoktalari = [...new Set(
-        Array.from(klon.querySelectorAll('.teklif-sayfa, tr, .bedel-serit, .page > *'))
-          .map(el => {
-            const r = el.getBoundingClientRect()
-            return r.height > 0 ? Math.round(r.bottom - kokUst) : null
-          })
-          .filter(v => v != null),
-      )].sort((a, b) => a - b)
-
-      const dilimler = []
-      let bas = 0
-      while (bas < toplamPx - 1) {
-        let son = bas + sayfaPx
-        if (son >= toplamPx) {
-          son = toplamPx
-        } else {
-          // Sayfanın en az üçte birini dolduran en son satır sınırında kes
-          const adaylar = kesmeNoktalari.filter(n => n > bas + sayfaPx * 0.35 && n <= son)
-          if (adaylar.length) son = adaylar[adaylar.length - 1]
-        }
-        if (son <= bas) son = Math.min(bas + sayfaPx, toplamPx)  // sonsuz döngü kilidi
-        dilimler.push([bas, son])
-        bas = son
-      }
-
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
-      dilimler.forEach(([ust, alt], i) => {
-        if (i > 0) pdf.addPage()
-        const yukseklikPx = Math.round((alt - ust) * olcek)
-        const dilim = document.createElement('canvas')
-        dilim.width = canvas.width
-        dilim.height = yukseklikPx
-        const ctx = dilim.getContext('2d')
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, dilim.width, dilim.height)
-        ctx.drawImage(
-          canvas,
-          0, Math.round(ust * olcek), canvas.width, yukseklikPx,
-          0, 0, canvas.width, yukseklikPx,
-        )
-        pdf.addImage(
-          dilim.toDataURL('image/jpeg', 0.95), 'JPEG',
-          0, KENAR_MM, GENISLIK_MM, (alt - ust) * mmPerPx,
-        )
-      })
-
-      const blob = pdf.output('blob')
+      const { bolumleriPdfIndir } = await import('../lib/ciktiPdfIndir')
       const dosyaAd = onaysiz
         ? teklifDosyaAdi(teklif, 'pdf').replace(/\.pdf$/i, '-TASLAK.pdf')
         : teklifDosyaAdi(teklif, 'pdf')
-      await dosyayiKaydet(blob, dosyaAd)
+      await bolumleriPdfIndir([ciktiRef.current], dosyaAd)
     } catch (err) {
       console.error('[PDF indir]', err)
       alert('PDF üretilirken hata: ' + (err?.message || 'bilinmeyen'))
     } finally {
-      if (klon) try { document.body.removeChild(klon) } catch {}
       setPdfYukleniyor(false)
     }
   }
