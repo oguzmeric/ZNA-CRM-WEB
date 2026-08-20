@@ -2036,6 +2036,7 @@ function Stok() {
                       <div style={{ display: 'inline-flex', gap: 4 }}>
                         <button
                           aria-label="Opsiyonla"
+                          title="Opsiyonla — ürünü teklife/işe rezerve et"
                           onClick={(e) => { e.stopPropagation(); opsiyonAc(u) }}
                           style={iconBtnStyle}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
@@ -2045,6 +2046,7 @@ function Stok() {
                         </button>
                         <button
                           aria-label="Düzenle"
+                          title="Ürün kartını düzenle"
                           onClick={(e) => { e.stopPropagation(); duzenleAc(u) }}
                           style={iconBtnStyle}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
@@ -2054,6 +2056,7 @@ function Stok() {
                         </button>
                         <button
                           aria-label="Sil"
+                          title="Ürünü sil"
                           onClick={(e) => { e.stopPropagation(); urunSil(u.id) }}
                           style={iconBtnStyle}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
