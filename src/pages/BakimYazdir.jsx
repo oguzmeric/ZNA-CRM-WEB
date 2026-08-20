@@ -83,7 +83,7 @@ export default function BakimYazdir() {
   const yapilanlar = tb.kalemler.filter((k) => k.sonucMetni || k.durum === 'yapilamadi')
 
   return (
-    <div ref={sayfaRef} style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
+    <div ref={sayfaRef} className="bakim-sayfa" style={{ fontFamily: 'Arial, sans-serif', color: '#111', background: '#fff', maxWidth: 800, margin: '0 auto', padding: 24 }}>
       {/* Yazdır butonu — çıktıya girmez */}
       {/* Araç çubuğu — gruplu, sade (belge seçimi · şirket · aksiyonlar) */}
       <div className="no-print" style={{
@@ -130,12 +130,16 @@ export default function BakimYazdir() {
           .imza-ve-footer { break-inside: avoid; page-break-inside: avoid; }
 
           /* 2) Yazdırmada boşluklar sıkışır — sınırda taşan formlar tek
-             sayfaya toplansın. !important: inline stilleri ancak böyle ezer. */
-          h3 { margin-top: 8px !important; margin-bottom: 5px !important; }
-          td, th { padding: 4px 6px !important; }
-          img[alt="Bakım fotoğrafı"] { height: 110px !important; }
-          .imza-ve-footer > div:first-child { margin-top: 10px !important; }
-          .imza-ve-footer .imza-kutu { min-height: 110px !important; }
+             sayfaya toplansın. !important: inline stilleri ancak böyle ezer.
+             (İlk tur yetmedi — TB-84 %18 taşıyordu; banner ve sayfa padding'i
+             de kısıldı, ölçümle 2 sayfa → 1 sayfaya indi.) */
+          .bakim-sayfa { padding: 6px 24px !important; }
+          .banner-img { height: 56px !important; }
+          h3 { margin-top: 7px !important; margin-bottom: 4px !important; }
+          td, th { padding: 3px 6px !important; font-size: 11px !important; }
+          img[alt="Bakım fotoğrafı"] { height: 96px !important; }
+          .imza-ve-footer > div:first-child { margin-top: 8px !important; }
+          .imza-ve-footer .imza-kutu { min-height: 92px !important; }
         }
         table { border-collapse: collapse; width: 100%; }
         td, th { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 12px; text-align: left; }
@@ -244,6 +248,7 @@ function Baslik({ altBaslik, tbNo, cfg }) {
     <div style={{ marginBottom: 12 }}>
       <div style={{ textAlign: 'center', marginBottom: 8 }}>
         <img
+          className="banner-img"
           src={cfg.bannerSrc}
           alt={cfg.firmaAdi}
           style={{ maxWidth: '100%', height: cfg.bannerYukseklik, objectFit: 'contain' }}
