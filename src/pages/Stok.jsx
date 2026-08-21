@@ -1459,8 +1459,11 @@ function Stok() {
               </div>
             )}
             <div style={{ gridColumn: 'span 2' }}>
-              <Label>Açıklama</Label>
-              <Input
+              <Label>Açıklama <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(teklif çıktısında ürün adının altında basılır)</span></Label>
+              {/* Textarea (21.08): teknik açıklamalar uzun — tek satır Input'ta
+                  görünmüyordu; artık teklife de bastığımız için rahat girilmeli. */}
+              <Textarea
+                rows={2}
                 value={form.aciklama}
                 onChange={(e) => setForm({ ...form, aciklama: e.target.value })}
                 placeholder="Ürün hakkında kısa açıklama…"
