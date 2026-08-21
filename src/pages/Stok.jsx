@@ -130,6 +130,10 @@ function Stok() {
   const [excelHata, setExcelHata] = useState([])
   const [excelModal, setExcelModal] = useState(false)
   const [excelHazirlaniyor, setExcelHazirlaniyor] = useState(false) // SN dökümü çekilirken buton kilidi
+  // ⚠️ Kaydet/Güncelle kilidi (21.08 "2-3. tıkta çalışıyor gibi" bildirimi):
+  // kaydet() SN ekleme + 4bin+ kalemlik özet yenileme ile saniyeler sürüyor;
+  // buton tepkisiz kalınca kullanıcı üst üste basıyor, kaydet ÇOK KEZ koşuyordu.
+  const [kaydediliyor, setKaydediliyor] = useState(false)
   const [gorselYukleniyor, setGorselYukleniyor] = useState(false)
   const gorselRef = useRef(null)
   // SN duplicate kontrolü — düzenleme modunda yüklenen mevcut SN'ler + global map
@@ -730,6 +734,7 @@ function Stok() {
   }
 
   const kaydet = async () => {
+    if (kaydediliyor) return   // çift/üçlü tık = kaydet'in çok kez koşması (21.08)
     if (!form.stokAdi || !form.stokKodu) {
       toast.error('Stok adı ve kodu zorunludur.')
       return
@@ -739,6 +744,8 @@ function Stok() {
       toast.error('Bu stok kodu zaten kullanılıyor.')
       return
     }
+    setKaydediliyor(true)
+    try {
     if (duzenleId) {
       const { ilkStok, topluSN, seriKalemleri, ...updateForm } = form
       const guncellendi = await stokUrunGuncelle(duzenleId, updateForm)
@@ -842,6 +849,9 @@ function Stok() {
     setForm(bosForm)
     setDuzenleId(null)
     setGoster(false)
+    } finally {
+      setKaydediliyor(false)
+    }
   }
 
   const iptal = () => {
@@ -1982,7 +1992,9 @@ function Stok() {
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={kaydet}>{duzenleId ? 'Güncelle' : 'Kaydet'}</Button>
+            <Button variant="primary" onClick={kaydet} disabled={kaydediliyor}>
+              {kaydediliyor ? 'Kaydediliyor…' : (duzenleId ? 'Güncelle' : 'Kaydet')}
+            </Button>
             <Button variant="secondary" onClick={iptal}>İptal</Button>
           </div>
         </Card>
