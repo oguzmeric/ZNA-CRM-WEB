@@ -236,7 +236,11 @@ export function AuthProvider({ children }) {
     kullanicilariGetir().then(setKullanicilar).catch((e) => {
       console.warn('[auth] kullanicilariGetir hata:', e)
     })
-  }, [kullanici])
+  // ⚠️ kullanici?.id (nesne değil): login akışında kullanici nesnesi birkaç kez
+  // tazelenir (SIGNED_IN + profil) ve tam liste her seferinde yeniden iniyordu
+  // (137 KB ×2 — 21.08 açılış seli ölçümü). Mobildeki 19.08 dersiyle aynı.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kullanici?.id])
 
   const girisYap = async (kullaniciAdi, sifre) => {
     // Şifresini yazan kullanıcı AKTİFTİR — damgayı HER ŞEYDEN ÖNCE tazele.

@@ -166,9 +166,13 @@ export function ServisTalebiProvider({ children }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!kullanici) { setTalepler([]); return }
     let iptal = false
-    const ilkYukle = () => servisTalepleriniGetir()
-      .then(d => { if (!iptal) setTalepler(d) })
-      .catch(e => { if (!iptal) console.warn('[ServisTalebiContext] talepler alınamadı:', e.message) })
+    let sonYukleme = 0
+    const ilkYukle = () => {
+      sonYukleme = Date.now()
+      return servisTalepleriniGetir()
+        .then(d => { if (!iptal) setTalepler(d) })
+        .catch(e => { if (!iptal) console.warn('[ServisTalebiContext] talepler alınamadı:', e.message) })
+    }
     ilkYukle()
 
     // Realtime — başka istemci yeni talep eklediğinde anında listemize ekle
@@ -193,9 +197,13 @@ export function ServisTalebiProvider({ children }) {
       )
       .subscribe()
 
-    // Sekme tekrar görünür olunca tazelet (realtime atlanmışsa yedek)
+    // Sekme tekrar görünür olunca tazelet (realtime atlanmışsa yedek).
+    // ⚠️ 60sn eşiği (21.08): her Alt-Tab dönüşünde ~560 KB'lık tam liste
+    // yeniden iniyordu — realtime zaten canlı tutarken bu israftı.
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') ilkYukle()
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - sonYukleme < 60_000) return
+      ilkYukle()
     }
     document.addEventListener('visibilitychange', onVisibility)
 
@@ -204,7 +212,11 @@ export function ServisTalebiProvider({ children }) {
       try { supabase.removeChannel(channel) } catch {}
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [kullanici])
+  // ⚠️ kullanici?.id (nesne değil): login akışında nesne birkaç kez tazelenir,
+  // 560 KB'lık liste + realtime kanal her seferinde SIFIRDAN kuruluyordu
+  // (21.08 açılış seli ölçümü: servis_talepleri 561 KB ×2). Mobil 19.08 dersi.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kullanici?.id])
 
   const talepOlustur = async (formData, kullanici) => {
     if (!kullanici?.musteriId) {

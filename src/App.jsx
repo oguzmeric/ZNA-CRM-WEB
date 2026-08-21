@@ -259,8 +259,9 @@ function App() {
   // her zaman anlık açılır, veri arkada sessizce tazelenir.
   useEffect(() => {
     if (!kullanici) return
-    // 800ms: login/refresh sonrası kullanıcı daha ilk menüye tıklamadan ısıtma
-    // başlasın (2.5sn beklerken tıklanınca soğuk fetch'e denk geliyordu)
+    // 1500ms + 600ms aralık (21.08): 800ms/250ms'te ısıtma (~2,5 MB) tam da
+    // açılan sayfanın kendi istekleriyle çakışıp her sayfayı yavaşlatıyordu
+    // ("açılış seli" ölçümü). SWR sayesinde ilk tık yine sıcak; sel yayılıyor.
     const t = setTimeout(() => {
       const isit = [
         () => import('./services/gorusmeService').then(m => m.gorusmeleriGetir()),
@@ -269,10 +270,11 @@ function App() {
         () => import('./services/teklifService').then(m => m.teklifleriGetir()),
         () => import('./services/satisService').then(m => m.satislariGetir()),
       ]
-      isit.forEach((fn, i) => setTimeout(() => fn().catch(() => {}), i * 250))
-    }, 800)
+      isit.forEach((fn, i) => setTimeout(() => fn().catch(() => {}), i * 600))
+    }, 1500)
     return () => clearTimeout(t)
-  }, [kullanici])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kullanici?.id])
 
   // Global Ctrl+K / ⌘+K listener + programatik açma eventi
   useEffect(() => {
