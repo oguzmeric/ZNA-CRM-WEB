@@ -941,6 +941,9 @@ function Stok() {
   const toplamBakiye = urunler.reduce((sum, u) => sum + stokBakiye(u.stokKodu), 0)
   const kritikSayi = urunler.filter(u => u.minStok && stokBakiye(u.stokKodu) <= Number(u.minStok)).length
   const seriTakipliSayi = kalemOzetleri.size
+  // Toplam S/N kalemi — "SN ekledim ama toplam ürün artmadı" karışıklığı (21.08):
+  // üstteki sayaç ürün KARTLARINI sayar, seri numaraları bu sayıda görünür.
+  const toplamSN = [...kalemOzetleri.values()].reduce((s, o) => s + (o.toplam || 0), 0)
 
   if (yukleniyor) {
     return <SkeletonList />
@@ -956,7 +959,7 @@ function Stok() {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <h1 className="t-h2" style={{ margin: 0 }}>Stok Kartları</h1>
           <span style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-            <span className="tabular-nums">{toplamUrun}</span> ürün
+            <span className="tabular-nums">{toplamUrun}</span> ürün kartı · <span className="tabular-nums">{toplamSN}</span> S/N
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -993,10 +996,11 @@ function Stok() {
         alignItems: 'stretch',
       }}>
         {[
-          { l: 'Toplam ürün',        v: toplamUrun,                 ton: 'var(--text-primary)',   Icon: Package },
+          { l: 'Ürün kartı',         v: toplamUrun,                 ton: 'var(--text-primary)',   Icon: Package },
+          { l: 'Toplam S/N',         v: toplamSN,                   ton: 'var(--text-primary)',   Icon: Tag },
           { l: 'Toplam stok bakiye', v: Math.round(toplamBakiye),   ton: 'var(--text-primary)',   Icon: Hash },
           { l: 'Kritik seviye',      v: kritikSayi,                 ton: kritikSayi > 0 ? 'var(--danger)' : 'var(--text-tertiary)',    Icon: AlertTriangle },
-          { l: 'S/N takipli',        v: seriTakipliSayi,            ton: 'var(--text-secondary)', Icon: Tag },
+          { l: 'S/N takipli kart',   v: seriTakipliSayi,            ton: 'var(--text-secondary)', Icon: Tag },
         ].map((k, i, arr) => [
           <div key={k.l} style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <k.Icon size={13} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
