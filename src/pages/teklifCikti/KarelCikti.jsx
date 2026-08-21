@@ -140,7 +140,13 @@ export default function KarelCikti({ teklif, pacal = false }) {
                 {(teklif.satirlar || []).map((s, i) => (
                   <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? '—' : 'ZNA')}</td>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
+                    <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>
+                      {s.stokAdi}
+                      {/* Ürün kartı açıklaması (21.08) — küçük punto, sarmalı */}
+                      {s.aciklama && (
+                        <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2, lineHeight: 1.3 }}>{s.aciklama}</div>
+                      )}
+                    </td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
                   </tr>
                 ))}
@@ -175,7 +181,13 @@ export default function KarelCikti({ teklif, pacal = false }) {
                 return (
                   <tr key={i} style={{ background: i % 2 ? '#f8fafc' : '#fff' }}>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}>{s.marka || (s.stokKodu ? '—' : 'ZNA')}</td>
-                    <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>{s.stokAdi}</td>
+                    <td style={{ padding: 6, border: '1px solid #cbd5e1' }}>
+                      {s.stokAdi}
+                      {/* Ürün kartı açıklaması (21.08) — küçük punto, sarmalı */}
+                      {s.aciklama && (
+                        <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2, lineHeight: 1.3 }}>{s.aciklama}</div>
+                      )}
+                    </td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{s.miktar} {s.birim}</td>
                     <td style={{ padding: 6, border: '1px solid #cbd5e1', textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>
                     {iskKolon && (

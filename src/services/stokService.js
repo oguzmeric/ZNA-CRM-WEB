@@ -4,7 +4,11 @@ import { pagedFetch } from '../lib/pagedFetch'
 import { cached, invalidate, invalidatePrefix } from '../lib/cache'
 
 // Liste kolonları — aciklama listede lazım değil (3762 ürün × free text = büyük)
-const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf, kategori_id, urun_tipi, barkod, tedarikci, tedarikci_urun_kodu, garanti_suresi_ay, para_birimi, aktif, dokuman_url, dokuman_ad, aile_id'
+// ⚠️ aciklama 21.08'de eklendi (whitelist tuzağı): kolon listede olmadığından
+// düzenleme modalı açıklamayı HEP BOŞ gösteriyordu — kullanıcı girdiğini
+// silinmiş sanıyor, üstüne kaydederse GERÇEKTEN siliyordu. Teklif çıktısı da
+// ürün açıklamasını buradan enrich eder.
+const STOK_URUN_LISTE_KOLONLARI = 'id, stok_kodu, stok_adi, kategori, birim, stok_miktari, min_stok, birim_fiyat, kdv_orani, olusturma_tarih, marka, grup_kodu, gorsel_url, katalogda_goster, seri_takipli, beklenen_adet, alis_fiyat, raf, kategori_id, urun_tipi, barkod, tedarikci, tedarikci_urun_kodu, garanti_suresi_ay, para_birimi, aktif, dokuman_url, dokuman_ad, aile_id, aciklama'
 
 // Ürün tipleri (mig 151) — spec: stoklu/stoksuz/sarf/hizmet/demirbaş
 export const URUN_TIPLERI = [

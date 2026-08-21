@@ -111,7 +111,13 @@ export default function StandartCikti({ teklif, pacal = false }) {
                   <tr key={i}>
                     <td style={{ color: '#94a3b8' }}>{i + 1}</td>
                     <td>{s.marka || '—'}</td>
-                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{s.stokAdi}</div>
+                      {/* Ürün kartı açıklaması (21.08) — küçük punto, sarmalı: teklife sığar */}
+                      {s.aciklama && (
+                        <div style={{ fontSize: 10.5, fontWeight: 400, color: '#64748b', marginTop: 2, lineHeight: 1.35 }}>{s.aciklama}</div>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right' }}>{s.miktar} {s.birim || 'Adet'}</td>
                   </tr>
                 ))}
@@ -160,7 +166,13 @@ export default function StandartCikti({ teklif, pacal = false }) {
                 return (
                   <tr key={i}>
                     <td style={{ color: '#94a3b8' }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{s.stokAdi}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{s.stokAdi}</div>
+                      {/* Ürün kartı açıklaması (21.08) — küçük punto, sarmalı: teklife sığar */}
+                      {s.aciklama && (
+                        <div style={{ fontSize: 10.5, fontWeight: 400, color: '#64748b', marginTop: 2, lineHeight: 1.35 }}>{s.aciklama}</div>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right' }}>{s.miktar}</td>
                     <td>{s.birim}</td>
                     <td style={{ textAlign: 'right' }}>{paraSembol}{fmt(s.birimFiyat)}</td>

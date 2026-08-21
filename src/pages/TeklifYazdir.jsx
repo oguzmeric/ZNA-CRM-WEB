@@ -54,7 +54,9 @@ export default function TeklifYazdir() {
 
   useEffect(() => {
     Promise.all([teklifGetir(id), stokUrunleriniGetir()]).then(([data, urunler]) => {
-      // Eski teklifler satirlarinda marka olmayabiliyor — stokKodu uzerinden enrich et
+      // Eski teklifler satirlarinda marka olmayabiliyor — stokKodu uzerinden enrich et.
+      // aciklama da (21.08): ürün kartındaki açıklama çıktıda ürün adının altında
+      // basılır; satırda kendi açıklaması varsa o kazanır.
       if (data?.satirlar?.length) {
         const urunMap = new Map((urunler || []).map(u => [u.stokKodu, u]))
         data = {
@@ -62,6 +64,7 @@ export default function TeklifYazdir() {
           satirlar: data.satirlar.map(s => ({
             ...s,
             marka: s.marka || urunMap.get(s.stokKodu)?.marka || '',
+            aciklama: s.aciklama || urunMap.get(s.stokKodu)?.aciklama || '',
           })),
         }
       }

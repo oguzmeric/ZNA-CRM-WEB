@@ -75,6 +75,7 @@ export default function TeklifIcmalYazdir() {
           satirlar: (s.teklif.satirlar || []).map(sa => ({
             ...sa,
             marka: sa.marka || urunMap.get(sa.stokKodu)?.marka || '',
+            aciklama: sa.aciklama || urunMap.get(sa.stokKodu)?.aciklama || '',
           })),
         })
       }
