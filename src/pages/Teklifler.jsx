@@ -106,7 +106,14 @@ export default function Teklifler() {
   const [sunucuToplam, setSunucuToplam] = useState(0)
   const tamListeHazirRef = useRef(false)
 
-  const [aktifSekme, setAktifSekme] = useState('cevap_beklenenler')
+  // ?sekme=N ile derin bağlantı (21.08): portal talebi yönlendirmesi
+  // "Müşteri Talepleri" sekmesine link verir; TEK-1040 dersi — "bulamıyorum"
+  // çoğu kez sekme meselesiydi, artık sekme adreslenebilir.
+  const [aktifSekme, setAktifSekme] = useState(() => {
+    const s = new URLSearchParams(window.location.search).get('sekme')
+    const gecerli = ['acik', 'bekleyenler', 'cevap_beklenenler', 'onaylananlar', 'reddedilenler', 'tumu', 'musteri_talepleri']
+    return gecerli.includes(s) ? s : 'cevap_beklenenler'
+  })
   const [arama, setArama] = useState('')
   const [seciliTalep, setSeciliTalep] = useState(null)
   const [siralama, setSiralama] = useState('yeni')  // yeni | eski | tutar_yuksek | tutar_dusuk

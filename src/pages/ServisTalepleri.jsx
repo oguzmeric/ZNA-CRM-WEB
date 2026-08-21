@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains } from '../lib/trSearch'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User, MapPin } from 'lucide-react'
+import { Trash2, Inbox, LayoutGrid, List, X, AlertTriangle, Filter, Plus, User, MapPin, CornerUpRight } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import Sayfalama from '../components/Sayfalama'
 import ServisKonuYonetimModal from '../components/ServisKonuYonetimModal'
+import TalepYonlendirModal from '../components/TalepYonlendirModal'
 import {
   Button, SearchInput, Card, Badge, CodeBadge, KPICard, EmptyState, Avatar,
 } from '../components/ui'
@@ -40,6 +41,8 @@ export default function ServisTalepleri() {
       || (talep.kaynak === 'musteri' ? 'Müşteri (portal)' : null)
   }
   const [silOnayId, setSilOnayId] = useState(null)
+  // Portal talebi yönlendirme modalı (21.08) — yalnız kaynak='musteri' satırlarında
+  const [yonlendirilecek, setYonlendirilecek] = useState(null)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -214,6 +217,11 @@ export default function ServisTalepleri() {
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
 
       <ServisKonuYonetimModal acik={konuYonetimAcik} onKapat={() => setKonuYonetimAcik(false)} />
+      <TalepYonlendirModal
+        acik={!!yonlendirilecek}
+        talep={yonlendirilecek}
+        onKapat={() => setYonlendirilecek(null)}
+      />
       {/* Header — kompakt tek satır */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -519,6 +527,27 @@ export default function ServisTalepleri() {
                             {new Date(talep.olusturmaTarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
                           </td>
                           <td style={{ padding: '5px 14px', borderBottom: '1px solid var(--border-default)', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                            {/* Yönlendir — yalnız PORTAL talepleri: görüşme/keşif/görev/teklif
+                                triyajı tek noktadan (21.08). Servis işiyse detaydan atanır. */}
+                            {(talep.kaynak || 'personel') === 'musteri' && (
+                              <button
+                                aria-label="Yönlendir"
+                                title="Yönlendir — görüşme / keşif / görev / teklif talebi"
+                                onClick={() => setYonlendirilecek(talep)}
+                                style={{
+                                  width: 28, height: 28, marginRight: 4,
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  background: 'transparent', border: '1px solid var(--border-default)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  color: 'var(--text-secondary)',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                              >
+                                <CornerUpRight size={12} strokeWidth={1.8} />
+                              </button>
+                            )}
                             <button
                               aria-label="Sil"
                               onClick={() => setSilOnayId(silOnayAcik ? null : talep.id)}

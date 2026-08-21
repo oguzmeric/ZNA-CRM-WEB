@@ -5,7 +5,7 @@ import { geriDon } from '../lib/geriDon'
 import {
   ArrowLeft, Search, CheckCircle2, Trash2, AlertTriangle, FileText, MessageSquare,
   Lock, User, Mail, MapPin, Monitor, Phone, Clock, Star, Send, Check,
-  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt, Package,
+  Paperclip, Upload, Download, Image as ImageIcon, Pencil, X, Printer, Receipt, Package, CornerUpRight,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi, servisOnaylayabilirMi } from '../context/ServisTalebiContext'
@@ -18,6 +18,7 @@ import MentionTextarea from '../components/MentionTextarea'
 import CustomSelect from '../components/CustomSelect'
 import CokluSelect from '../components/CokluSelect'
 import BelgePaylasModal from '../components/BelgePaylasModal'
+import TalepYonlendirModal from '../components/TalepYonlendirModal'
 import ServisFormBilgileriCard from '../components/ServisFormBilgileriCard'
 import HeicResim from '../components/HeicResim'
 import ServisMalzemeleriCard from '../components/ServisMalzemeleriCard'
@@ -69,6 +70,8 @@ export default function ServisTalepDetay() {
   const [silOnayGoster, setSilOnayGoster] = useState(false)
   const [paylasimModalAcik, setPaylasimModalAcik] = useState(false)
   const [sirketSecimAcik, setSirketSecimAcik] = useState(false)
+  // Portal talebi yönlendirme modalı (21.08)
+  const [yonlendirAcik, setYonlendirAcik] = useState(false)
   const [secilenAtanan, setSecilenAtanan] = useState('')
   const [atamaKaydediliyor, setAtamaKaydediliyor] = useState(false)
 
@@ -396,6 +399,18 @@ export default function ServisTalepDetay() {
                 sahaya çıkmadan boş/ara formu yazdıramıyordu.
                 Müşteriye Gönder ve Fatura butonları bilinçli olarak hâlâ
                 tamamlanma şartına bağlı — onlar dışarıya iş yapıyor. */}
+            {/* Yönlendir — yalnız PORTAL talepleri (21.08): görüşme/keşif/görev/
+                teklif triyajı; kuyruktaki butonla aynı modal. */}
+            {(talep.kaynak || 'personel') === 'musteri' && (
+              <Button
+                variant="secondary"
+                size="md"
+                iconLeft={<CornerUpRight size={14} strokeWidth={1.8} />}
+                onClick={() => setYonlendirAcik(true)}
+              >
+                Yönlendir
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="md"
@@ -1274,6 +1289,7 @@ export default function ServisTalepDetay() {
       </div>
 
       {/* Müşteriye gönder — mail/SMS ile tokenli paylaşım linki */}
+      <TalepYonlendirModal acik={yonlendirAcik} talep={talep} onKapat={() => setYonlendirAcik(false)} />
       <BelgePaylasModal
         acik={paylasimModalAcik}
         onKapat={() => setPaylasimModalAcik(false)}
