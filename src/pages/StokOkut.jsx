@@ -48,6 +48,9 @@ export default function StokOkut() {
   const [sesAcik, setSesAcik] = useState(true)
   const inputRef = useRef(null)
   const sonOkunanRef = useRef({ kod: '', zaman: 0 }) // Zebex çift okuma koruması
+  // Oturum boyu mükerrer koruması (21.08 kullanıcı isteği): aynı SN'e bu
+  // oturumda İŞLEM uygulandıysa tekrar uygulanmaz — kafa karışmasın.
+  const oturumIslenenRef = useRef(new Map())   // normKod -> saat
   const audioRef = useRef(null)
 
   // Personel listesi — zimmet alıcıları (tip='zna', silinmemiş, admin hariç)
@@ -67,10 +70,14 @@ export default function StokOkut() {
 
   // Kiosk: odak HEP giriş alanında — sayfaya tıklanınca bile geri döner
   const odaklan = useCallback(() => {
-    // CustomSelect paneli açıkken odağı çalma (personel/sebep seçimi yapılabilsin)
+    // CustomSelect paneli açıkken ya da başka bir giriş alanı odaktayken odağı
+    // ÇALMA (21.08: personel seçicinin arama kutusunun odağı çalınıyordu —
+    // 'kişi seçiliyor ama kaydedilmiyor' bildirimi).
     setTimeout(() => {
+      if (document.querySelector('[data-custom-select-panel]')) return
       const aktif = document.activeElement
-      if (aktif && (aktif.tagName === 'SELECT' || aktif.closest?.('[role="listbox"], [data-radix-popper-content-wrapper]'))) return
+      if (aktif && aktif !== inputRef.current &&
+          (aktif.tagName === 'INPUT' || aktif.tagName === 'TEXTAREA' || aktif.tagName === 'SELECT')) return
       inputRef.current?.focus()
     }, 50)
   }, [])
@@ -107,6 +114,15 @@ export default function StokOkut() {
     if (sonOkunanRef.current.kod === kod && simdi - sonOkunanRef.current.zaman < 2000) return
     sonOkunanRef.current = { kod, zaman: simdi }
 
+    const normAnahtar = (x) => String(x).toUpperCase().replace(/[^A-Z0-9]/g, '')
+    const nk = normAnahtar(kod)
+    if (mod !== 'sorgula' && oturumIslenenRef.current.has(nk)) {
+      kaydet({ tip: 'atla', sn: kod, mesaj: 'Mükerrer — bu oturumda ' + oturumIslenenRef.current.get(nk) + "'de işlendi" })
+      bip(false)
+      setGirdi('')
+      odaklan()
+      return
+    }
     setMesgul(true)
     try {
       const { data: rpc, error } = await supabase.rpc('stok_sn_ara', { p_kod: kod })
@@ -148,6 +164,7 @@ export default function StokOkut() {
         }
         const g = await snDepoyaCek(kalem.id)
         setSonKart({ kaynak: 'stok', kalem: g })
+        oturumIslenenRef.current.set(nk, new Date().toLocaleTimeString('tr-TR'))
         kaydet({ tip: 'ok', sn: kalem.seriNo, mesaj: 'Depoya çekildi' })
         bip(true)
         return
@@ -168,6 +185,7 @@ export default function StokOkut() {
         const g = await snTeknisyeneVer(kalem.id, Number(teknisyenId))
         const kisi = personel.find(p => String(p.id) === String(teknisyenId))
         setSonKart({ kaynak: 'stok', kalem: g })
+        oturumIslenenRef.current.set(nk, new Date().toLocaleTimeString('tr-TR'))
         kaydet({ tip: 'ok', sn: kalem.seriNo, mesaj: `${kisi?.ad || 'Personele'} verildi` })
         bip(true)
         return
@@ -187,6 +205,7 @@ export default function StokOkut() {
           geldigi_musteri_id: kalem.musteriId || null,
         })
         setSonKart({ kaynak: 'stok', kalem: g ? toCamel(g) : { ...kalem, durum: 'arizali_depoda' } })
+        oturumIslenenRef.current.set(nk, new Date().toLocaleTimeString('tr-TR'))
         kaydet({ tip: 'ok', sn: kalem.seriNo, mesaj: 'Arızalı (depoda) işaretlendi' })
         bip(true)
         return
