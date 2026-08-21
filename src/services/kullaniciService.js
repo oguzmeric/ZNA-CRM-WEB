@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { toCamel, arrayToCamel, toSnake } from '../lib/mapper'
+import { cached, invalidate } from '../lib/cache'
 
 // Liste kolonları — 21 kullanıcı listesinde imza (~150KB base64) taşımak saçma.
 // Servis Formu / mobil profil ihtiyacı için ayrıca session'a özgü kolon seti var.
@@ -13,10 +14,14 @@ const KULLANICI_SESSION_KOLONLARI = KULLANICI_KOLONLARI + ', imza'
 const kullaniciAdiToEmail = (kullaniciAdi) =>
   `${kullaniciAdi.toLowerCase().replace(/[^a-z0-9]/g, '')}@zna.local`
 
-export const kullanicilariGetir = async () => {
+// cached (21.08 açılış seli): liste 7 ayrı yerden çağrılıyor ve açılışta
+// 137 KB ×3 iniyordu — eşzamanlı çağrılar tek fetch'i paylaşır, 60sn SWR.
+// Gerçek mutasyonlar invalidate eder; kullaniciDurumGuncelle (online damgası)
+// BİLEREK etmez — sık çalışır, cache'i sürekli delerdi (rozet ≤60sn gecikebilir).
+export const kullanicilariGetir = () => cached('kullanicilar:list', async () => {
   const { data } = await supabase.from('kullanicilar').select(KULLANICI_KOLONLARI).order('id')
   return arrayToCamel(data)
-}
+}, 60_000)
 
 // Supabase Auth ile giriş.
 // 1. auth.signInWithPassword(email, password)
@@ -210,6 +215,7 @@ export const kullaniciEkle = async (kullanici) => {
     .select()
     .single()
   if (error) { console.error('kullaniciEkle hata:', error.message); throw error }
+  invalidate('kullanicilar:list')
   return toCamel(data)
 }
 
@@ -224,6 +230,7 @@ export const kullaniciGuncelle = async (id, guncellenmis) => {
     .select()
     .single()
   if (error) { console.error('kullaniciGuncelle hata:', error.message); throw error }
+  invalidate('kullanicilar:list')
   return toCamel(data)
 }
 
@@ -261,6 +268,7 @@ export const kullaniciSil = async (id) => {
     console.error('kullaniciSil hata:', error.message)
     throw new Error(error.message)
   }
+  invalidate('kullanicilar:list')
 }
 
 // === Hesap askısı (mig 259) — SECURITY DEFINER rpc'ler; RLS + koruma
@@ -269,11 +277,13 @@ export const kullaniciSil = async (id) => {
 export const kullaniciAskiyaAl = async (id, sebep) => {
   const { error } = await supabase.rpc('kullanici_askiya_al', { p_id: id, p_sebep: sebep || null })
   if (error) throw new Error(error.message)
+  invalidate('kullanicilar:list')
 }
 
 export const kullaniciAskidanCikar = async (id) => {
   const { error } = await supabase.rpc('kullanici_askidan_cikar', { p_id: id })
   if (error) throw new Error(error.message)
+  invalidate('kullanicilar:list')
 }
 
 export const kullaniciDurumGuncelle = async (id, durum) => {

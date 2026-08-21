@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, abortAllInFlight, abortStaleInFlight, yerelOturumTemizle } from '../lib/supabase'
-import { invalidateAll as cacheInvalidateAll, expireAll as cacheExpireAll } from '../lib/cache'
+import { invalidateAll as cacheInvalidateAll, expireAll as cacheExpireAll, invalidate } from '../lib/cache'
 import { aktiviteDamgala, aktiviteTemizle } from '../lib/idleAktivite'
 import { aktiviteLogEkle } from '../services/aktiviteService'
 import {
@@ -340,7 +340,9 @@ export function AuthProvider({ children }) {
 
   // Liste DB'den tazelenir — RPC ile yapılan değişikliklerden (askıya alma
   // gibi) sonra state'in gerçek veriyle eşitlenmesi için.
+  // "Yenile" sözü TAZE veri demek: önce cache delinir (21.08, liste cached oldu).
   const kullanicilarYenile = async () => {
+    invalidate('kullanicilar:list')
     try { setKullanicilar(await kullanicilariGetir()) }
     catch (e) { console.warn('[auth] kullanicilarYenile hata:', e) }
   }
