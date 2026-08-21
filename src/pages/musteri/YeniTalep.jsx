@@ -99,6 +99,8 @@ export default function YeniTalep() {
   const [yeniDosyalar, setYeniDosyalar] = useState([])
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [gonderHata, setGonderHata] = useState('')
+  // Talep oluştu ama ek(ler) yüklenemedi — başarı ekranında gösterilir
+  const [ekUyari, setEkUyari] = useState('')
 
   // Portalda seçilebilen türler (bakım/kurulum hariç), üstüne müşteriye özel izin filtresi.
   // ⚠️ Kişiye özel izin listesi yalnız bakım/kurulum içeriyorsa filtre boş kalır —
@@ -160,11 +162,17 @@ export default function YeniTalep() {
         .filter(Boolean).join(' · ')
       const talep = await talepOlustur({ ...form, lokasyon: lokasyonMetni }, kullanici)
       if (!talep?.id) throw new Error('Talep oluşturulamadı (kayıt sistemi yanıt vermedi).')
-      // Dosyaları sırayla yükle
+      // Dosyaları sırayla yükle — hata SESSİZ yutulmaz: talep oluştu ama ek
+      // düşmediyse müşteri başarı ekranında bunu görmeli (21.08; mig 319 ile
+      // meta kaydı RPC'ye taşındı, gerçek hata artık buraya ulaşıyor).
+      let ekHataSayisi = 0
       for (const f of yeniDosyalar) {
         try { await dosyaYukle(talep.id, f, kullanici.ad) }
-        catch (e) { console.error('[dosya]', f.name, e) }
+        catch (e) { ekHataSayisi++; console.error('[dosya]', f.name, e) }
       }
+      setEkUyari(ekHataSayisi > 0
+        ? `${ekHataSayisi} dosya yüklenemedi — talep detayından tekrar deneyebilir ya da ekibimize iletebilirsiniz.`
+        : '')
       setGonderildi(true)
       setTimeout(() => navigate(`/musteri-portal/talep/${talep.id}`), 1500)
     } catch (e) {
@@ -201,6 +209,16 @@ export default function YeniTalep() {
         <p style={{ font: '400 14px/20px var(--font-sans)', color: 'var(--text-secondary)' }}>
           En kısa sürede ekibimiz sizinle iletişime geçecektir.
         </p>
+        {ekUyari && (
+          <p style={{
+            marginTop: 14, padding: '10px 14px', maxWidth: 420, textAlign: 'center',
+            background: 'var(--warning-soft, rgba(245,158,11,0.12))',
+            border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+            font: '500 12.5px/18px var(--font-sans)', color: 'var(--text-secondary)',
+          }}>
+            ⚠️ {ekUyari}
+          </p>
+        )}
       </div>
     )
   }

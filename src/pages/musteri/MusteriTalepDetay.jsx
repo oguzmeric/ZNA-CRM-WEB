@@ -48,7 +48,11 @@ function YildizGoster({ puan, boyut = 18 }) {
 export default function MusteriTalepDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
-  const { talepler, notEkle, talepGuncelle, dosyaLinkiAl, ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI } = useServisTalebi()
+  const {
+    talepler, notEkle, dosyaLinkiAl,
+    musteriOnayVer, musteriDegerlendir, musteriTalepDuzenle,
+    ANA_TURLER, DURUM_LISTESI, ACILIYET_SEVIYELERI,
+  } = useServisTalebi()
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -108,10 +112,16 @@ export default function MusteriTalepDetay() {
 
   const duzenlemeyiIptal = () => { setDuzenlemeModu(false); setDuzenForm(null) }
 
-  const duzenlemeyiKaydet = () => {
+  // ⚠️ RPC (mig 319): müşteride tabloya UPDATE politikası yok — eski
+  // talepGuncelle yolu RLS'e takılıp SESSİZCE düşüyordu.
+  const duzenlemeyiKaydet = async () => {
     if (!duzenForm.konu.trim() || !duzenForm.aciklama.trim()) return
-    talepGuncelle(talep.id, duzenForm, kullanici.ad, 'Müşteri tarafından güncellendi')
-    setDuzenlemeModu(false); setDuzenForm(null)
+    try {
+      await musteriTalepDuzenle(talep.id, duzenForm)
+      setDuzenlemeModu(false); setDuzenForm(null)
+    } catch (e) {
+      toast.error(e?.message || 'Talep güncellenemedi, lütfen tekrar deneyin.')
+    }
   }
 
   // ⚠️ await ŞART (18.08): eskiden notEkle beklenmeden kutu temizleniyordu.
@@ -129,19 +139,27 @@ export default function MusteriTalepDetay() {
     }
   }
 
-  const musteriOnayladi = () => {
-    talepGuncelle(talep.id, { musteriOnay: 'onaylandi' }, kullanici.ad, 'Müşteri çözümü onayladı')
-    setOnayAsamasi('anket')
+  // ⚠️ Üç akış da RPC'ye taşındı (mig 319): müşteride UPDATE politikası yok,
+  // eski talepGuncelle yolu RLS'e takılıp SESSİZCE düşüyordu — müşteri "çözümü
+  // onayla"ya basıyor, hiçbir şey kaydedilmiyordu.
+  const musteriOnayladi = async () => {
+    try {
+      await musteriOnayVer(talep.id, true)
+      setOnayAsamasi('anket')
+    } catch (e) {
+      toast.error(e?.message || 'Onay kaydedilemedi, lütfen tekrar deneyin.')
+    }
   }
 
   const sorunDevamEdiyor = () => setOnayAsamasi('sorun')
 
-  const sorunGonder = () => {
-    talepGuncelle(talep.id,
-      { durum: 'devam_ediyor', musteriOnay: 'ret' },
-      kullanici.ad,
-      'Müşteri sorunu devam ettiğini bildirdi'
-    )
+  const sorunGonder = async () => {
+    try {
+      await musteriOnayVer(talep.id, false)
+    } catch (e) {
+      toast.error(e?.message || 'Bildirim kaydedilemedi, lütfen tekrar deneyin.')
+      return
+    }
     // Not kaydı başarısız olsa bile akış ilerlemeli (durum zaten güncellendi);
     // yine de sessiz kalmıyoruz — müşteri açıklamasının düştüğünü bilmeli.
     if (sorunAciklama.trim()) {
@@ -156,12 +174,7 @@ export default function MusteriTalepDetay() {
     if (degKaydediliyor) return
     setDegKaydediliyor(true)
     try {
-      await talepGuncelle(talep.id, {
-        degerlendirmePuan: degPuan,
-        degerlendirmeYorum: degYorum.trim() || null,
-        degerlendirmeTarihi: new Date().toISOString(),
-        degerlendirmeKullaniciId: kullanici?.id || null,
-      }, kullanici.ad, `Müşteri ${degPuan}/5 yıldız değerlendirdi`)
+      await musteriDegerlendir(talep.id, degPuan, degYorum.trim())
       setOnayAsamasi('bitti')
     } catch (e) {
       console.error('[degerlendirmeKaydet]', e?.message)

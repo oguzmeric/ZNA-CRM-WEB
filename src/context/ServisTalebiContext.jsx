@@ -478,6 +478,44 @@ export function ServisTalebiProvider({ children }) {
     return data
   }
 
+  // ─── Müşteri portal yazma yolları (mig 319 RPC'leri) ───────────────
+  // ⚠️ Müşteride servis_talepleri UPDATE politikası YOK (mig 311 ile aynı kök).
+  // Çözüm onayı / değerlendirme / düzenleme eskiden talepGuncelle (UPDATE) ile
+  // yapılıyordu ve SESSİZCE düşüyordu. Hepsi SECURITY DEFINER RPC'lere taşındı;
+  // hata FIRLATIR — çağıran yakalayıp kullanıcıya göstermeli.
+  const musteriOnayVer = async (talepId, onay) => {
+    const { error } = await supabase.rpc('servis_talep_musteri_onay', {
+      p_talep_id: talepId, p_onay: onay,
+    })
+    if (error) throw new Error(error.message || 'Onay kaydedilemedi.')
+    setTalepler(prev => prev.map(t => t.id === talepId
+      ? { ...t, musteriOnay: onay ? 'onaylandi' : 'ret', durum: onay ? t.durum : 'devam_ediyor' }
+      : t))
+  }
+
+  const musteriDegerlendir = async (talepId, puan, yorum) => {
+    const { error } = await supabase.rpc('servis_talep_degerlendir', {
+      p_talep_id: talepId, p_puan: puan, p_yorum: yorum || null,
+    })
+    if (error) throw new Error(error.message || 'Değerlendirme kaydedilemedi.')
+    setTalepler(prev => prev.map(t => t.id === talepId
+      ? {
+          ...t,
+          degerlendirmePuan: puan,
+          degerlendirmeYorum: yorum || null,
+          degerlendirmeTarihi: new Date().toISOString(),
+        }
+      : t))
+  }
+
+  const musteriTalepDuzenle = async (talepId, alanlar) => {
+    const { error } = await supabase.rpc('servis_talep_musteri_duzenle', {
+      p_talep_id: talepId, p_alanlar: alanlar,
+    })
+    if (error) throw new Error(error.message || 'Talep güncellenemedi.')
+    setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...alanlar } : t))
+  }
+
   const talepSil = async (id) => {
     // Bucket'taki dosyaları temizle (orphan kalmasın)
     const talep = talepler.find(t => t.id === id)
@@ -490,7 +528,12 @@ export function ServisTalebiProvider({ children }) {
   }
 
   // ─── Dosya yönetimi ────────────────────────────────────────────
-  const dosyaYukle = async (talepId, file, uploaderAd = '') => {
+  // ⚠️ Meta kaydı RPC ile (mig 319): `dosyalar` jsonb'sini UPDATE etmek
+  // müşteride RLS'e takılıyordu (tabloda müşteri UPDATE politikası yok —
+  // mig 311 notEkle ile aynı kök). Storage'a dosya GİDİYOR ama meta sessizce
+  // düşüyordu: müşterinin yüklediği ek talep kaydında hiç görünmüyordu.
+  // RPC yalnız `dosyalar` dizisine ekler; personel de aynı yolu kullanır.
+  const dosyaYukle = async (talepId, file) => {
     const safeName = file.name.replace(/[^\w.\-]/g, '_')
     const path = `${talepId}/${Date.now()}_${safeName}`
     const { error } = await supabase.storage
@@ -498,18 +541,16 @@ export function ServisTalebiProvider({ children }) {
       .upload(path, file, { contentType: file.type })
     if (error) throw error
 
-    const meta = {
-      path,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-      uploaderAd: uploaderAd || null,
-    }
-    const mevcut = talepler.find(t => t.id === talepId)
-    const yeniDosyalar = [...(mevcut?.dosyalar || []), meta]
-    const kayitli = await servisTalepGuncelle(talepId, { dosyalar: yeniDosyalar })
-    if (kayitli) setTalepler(prev => prev.map(t => t.id === talepId ? { ...t, ...kayitli } : t))
+    const { data: meta, error: rpcHata } = await supabase.rpc('servis_talep_dosya_ekle', {
+      p_talep_id: talepId,
+      p_ad: file.name,
+      p_tip: file.type || null,
+      p_boyut: file.size || null,
+      p_yol: path,
+    })
+    if (rpcHata) throw new Error(rpcHata.message || 'Dosya kaydı eklenemedi.')
+    setTalepler(prev => prev.map(t =>
+      t.id === talepId ? { ...t, dosyalar: [...(t.dosyalar || []), meta] } : t))
     return meta
   }
 
@@ -568,6 +609,9 @@ export function ServisTalebiProvider({ children }) {
         talepGuncelle,
         talepSil,
         notEkle,
+        musteriOnayVer,
+        musteriDegerlendir,
+        musteriTalepDuzenle,
         dosyaYukle,
         dosyaLinkiAl,
         dosyaSil,
