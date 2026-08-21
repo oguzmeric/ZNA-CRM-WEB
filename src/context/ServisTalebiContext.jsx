@@ -488,8 +488,10 @@ export function ServisTalebiProvider({ children }) {
       p_talep_id: talepId, p_onay: onay,
     })
     if (error) throw new Error(error.message || 'Onay kaydedilemedi.')
+    // ⚠️ musteri_onay kolonu BOOLEAN (mig 320 dersi): null=sorulmadı,
+    // true=onaylandı, false=başlangıç/ret (ret ayrımı durumdan okunur).
     setTalepler(prev => prev.map(t => t.id === talepId
-      ? { ...t, musteriOnay: onay ? 'onaylandi' : 'ret', durum: onay ? t.durum : 'devam_ediyor' }
+      ? { ...t, musteriOnay: onay, durum: onay ? t.durum : 'devam_ediyor' }
       : t))
   }
 

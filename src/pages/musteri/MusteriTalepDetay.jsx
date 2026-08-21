@@ -11,7 +11,7 @@ import { useToast } from '../../context/ToastContext'
 import { useServisTalebi } from '../../context/ServisTalebiContext'
 import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
-  Button, Input, Textarea, Label, Card, Badge, CodeBadge, Alert, EmptyState, TarihSaatSecici,
+  Button, Input, Textarea, Label, Card, Badge, CodeBadge, EmptyState, TarihSaatSecici,
 } from '../../components/ui'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
@@ -840,7 +840,9 @@ export default function MusteriTalepDetay() {
               )}
 
               {/* 4. Değerlendirme alındı */}
-              {(onayAsamasi === 'bitti' || mevcutDeg) && talep.musteriOnay === 'onaylandi' && (
+              {/* ⚠️ musteri_onay BOOLEAN (mig 320): 'onaylandi' metniyle
+                  karşılaştırma hiç tutmuyordu — blok asla görünmüyordu. */}
+              {(onayAsamasi === 'bitti' || mevcutDeg) && talep.musteriOnay === true && (
                 <Card style={{ background: 'var(--brand-primary-soft)', borderColor: 'var(--border-default)' }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--brand-primary)' }} />
@@ -866,15 +868,10 @@ export default function MusteriTalepDetay() {
                 </Card>
               )}
 
-              {/* 5. Talep yeniden açıldı */}
-              {talep.musteriOnay === 'ret' && (
-                <Alert
-                  variant="danger"
-                  title="Talebiniz yeniden açıldı"
-                >
-                  Ekibimiz en kısa sürede sizinle iletişime geçecek.
-                </Alert>
-              )}
+              {/* 'Talep yeniden açıldı' bloğu KALDIRILDI: ret akışı durumu
+                  'devam_ediyor'a döndürür, bu blok (durum==='tamamlandi'
+                  koşulunun içinde) hiçbir zaman render edilemiyordu; kolon
+                  boolean olduğundan 'ret' karşılaştırması da ölüydü (mig 320). */}
             </>
           )}
         </div>
