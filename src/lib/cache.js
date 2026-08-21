@@ -14,10 +14,15 @@ const pending = new Map()                // key -> Promise (dedupe concurrent fe
 // Kendi mutasyonların invalidate ile anında yansır; kritik ekranlar realtime.
 const DEFAULT_TTL = 300_000              // 5 dk
 
-// Invalidate token'ı: her invalidate çağrısı bunu artırır. In-flight fetch
-// resolve olduğunda token'ı karşılaştırır — değiştiyse store'a yazmaz.
-// Race fix: invalidatePrefix sonra in-flight fetch eski değeri yazmasın.
-let epoch = 0
+// Invalidate token'ı: in-flight fetch resolve olduğunda karşılaştırır —
+// değiştiyse store'a yazmaz (invalidate sonrası stale değer geri kaçmasın).
+// ⚠️ 21.08: token artık KEY BAZLI. Eskiden tek global sayaçtı ve HERHANGİ bir
+// key'in invalidate'i, süren TÜM fetch'lerin sonucunu çöpe attırıyordu —
+// login fırtınasında kullanicilar listesi 3 kez indirilip 3 kez yazılamadı
+// (açılış seli ölçümü). invalidateAll için global sayaç ayrıca durur.
+const epochs = new Map()                 // key -> sayaç
+let globalEpoch = 0
+const epochOf = (key) => `${globalEpoch}:${epochs.get(key) || 0}`
 
 /**
  * Cache'li fetch. Aynı anahtar için son ttl ms içinde yanıt varsa onu döndürür.
@@ -48,13 +53,13 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
   // Aynı key için yürütülen fetch varsa ona bağlan
   if (pending.has(key)) return pending.get(key)
 
-  const baslatildigiEpoch = epoch
+  const baslatildigiEpoch = epochOf(key)
   const p = (async () => {
     try {
       const value = await fetcher()
-      // Bu fetch başladıktan sonra invalidate olduysa store'a yazma —
+      // Bu fetch başladıktan sonra BU KEY invalidate olduysa store'a yazma —
       // aksi halde stale değer cache'e geri kaçar.
-      if (epoch === baslatildigiEpoch) {
+      if (epochOf(key) === baslatildigiEpoch) {
         store.set(key, { at: Date.now(), value })
       }
       return value
@@ -70,11 +75,11 @@ export async function cached(key, fetcher, ttl = DEFAULT_TTL) {
 // stale değer cache'e geri yazılmaz. pending dedupe'u paylaşır.
 function arkaPlandaTazele(key, fetcher) {
   if (pending.has(key)) return
-  const baslatildigiEpoch = epoch
+  const baslatildigiEpoch = epochOf(key)
   const p = (async () => {
     try {
       const value = await fetcher()
-      if (epoch === baslatildigiEpoch) store.set(key, { at: Date.now(), value })
+      if (epochOf(key) === baslatildigiEpoch) store.set(key, { at: Date.now(), value })
       return value
     } catch (_) {
       return undefined // sessiz — eldeki stale değer zaten servis edildi
@@ -87,8 +92,8 @@ function arkaPlandaTazele(key, fetcher) {
 
 /** Bir veya birden fazla key'i temizle. */
 export function invalidate(...keys) {
-  epoch++
   for (const k of keys) {
+    epochs.set(k, (epochs.get(k) || 0) + 1)
     store.delete(k)
     pending.delete(k)
   }
@@ -96,18 +101,19 @@ export function invalidate(...keys) {
 
 /** Regex/prefix ile toplu temizle. */
 export function invalidatePrefix(prefix) {
-  epoch++
+  // Süren fetch'ler pending'de — uyan HER key'in epoch'u artar ki in-flight
+  // sonuç store'a geri yazılmasın; store'daki uyanlar da silinir.
   for (const k of store.keys()) {
-    if (k.startsWith(prefix)) store.delete(k)
+    if (k.startsWith(prefix)) { epochs.set(k, (epochs.get(k) || 0) + 1); store.delete(k) }
   }
   for (const k of pending.keys()) {
-    if (k.startsWith(prefix)) pending.delete(k)
+    if (k.startsWith(prefix)) { epochs.set(k, (epochs.get(k) || 0) + 1); pending.delete(k) }
   }
 }
 
 /** Komple temizle (örn. logout). */
 export function invalidateAll() {
-  epoch++
+  globalEpoch++
   store.clear()
   pending.clear()
 }
