@@ -16,6 +16,7 @@ import { siparistenFaturaTalebiAc, siparisFaturaTalebiGetir } from '../services/
 import { useConfirm } from '../context/ConfirmContext'
 import AlisFaturaKarti from '../components/AlisFaturaKarti'
 import { musteriGetir } from '../services/musteriService'
+import { teklifinAktifSozlesmesi } from '../services/satisSozlesmeService'
 import { gorusmeGetir } from '../services/gorusmeService'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -56,6 +57,10 @@ export default function SiparisDetay() {
   const [iptalModalAcik, setIptalModalAcik] = useState(false)
   const [iptalSebebi, setIptalSebebi] = useState('')
   const [iptalIsleniyor, setIptalIsleniyor] = useState(false)
+  // Teklif üzerinden açılmış sözleşme (21.08): siparis.sozlesme_id yalnız
+  // SİPARİŞTEN açılan sözleşmede dolar — tekliften açılanda boş kalıyordu ve
+  // 'Satış Sözleşmesi Oluştur' aktif kalıp MÜKERRER sözleşmeye davet ediyordu.
+  const [teklifSozlesmesi, setTeklifSozlesmesi] = useState(null)
   // Sipariş tamamlama → montaj servisi köprüsü (mig 168)
   const { confirm } = useConfirm()
   const [mesgul, setMesgul] = useState(false)
@@ -86,6 +91,10 @@ export default function SiparisDetay() {
         setKalemler(k || [])
         setMusteri(m)
         setGorusme(g)
+        // Tekliften açılmış sözleşme var mı — sözleşme butonu kilidi için
+        if (!s.sozlesmeId && s.teklifId) {
+          teklifinAktifSozlesmesi(s.teklifId).then(setTeklifSozlesmesi).catch(() => {})
+        }
         // Fatura talebi rozeti (best-effort)
         siparisFaturaTalebiGetir(s.id).then(setFaturaTalebi).catch(() => {})
         // Müşterinin lokasyonları (şubeleri) — seçici ve ad çözümü için
@@ -286,10 +295,22 @@ export default function SiparisDetay() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => geriDon(navigate, '/siparisler')}>Geri</Button>
         <Button variant="secondary" iconLeft={<Printer size={14} />} onClick={() => window.open(`/siparisler/${siparis.id}/yazdir`, '_blank')}>PDF / Yazdır</Button>
-        {/* Satış sözleşmesi (spec: sipariş numarası oluşunca "Satış Sözleşmesi Oluştur") */}
+        {/* Satış sözleşmesi (spec: sipariş numarası oluşunca "Satış Sözleşmesi Oluştur").
+            ⚠️ 21.08: sozlesme_id yalnız SİPARİŞTEN açılan sözleşmede dolar —
+            TEKLİFTEN açılmışsa (satis_sozlesme_teklifleri bağı) buton aktif
+            kalıp mükerrer sözleşmeye davet ediyordu (TEK-1017 vakası). */}
         {siparis.sozlesmeId ? (
           <Button variant="secondary" iconLeft={<FileText size={14} />} onClick={() => navigate(`/sozlesmeler/satis/${siparis.sozlesmeId}`)}>
             Sözleşmeli Sipariş ✓
+          </Button>
+        ) : teklifSozlesmesi ? (
+          <Button
+            variant="secondary"
+            iconLeft={<FileText size={14} />}
+            onClick={() => navigate(`/sozlesmeler/satis/${teklifSozlesmesi.id}`)}
+            title="Bu siparişin teklifi için zaten sözleşme var — görüntülemek için tıklayın"
+          >
+            🔒 Sözleşme: {teklifSozlesmesi.sozlesmeNo}
           </Button>
         ) : (
           <Button variant="secondary" iconLeft={<FileText size={14} />} onClick={() => navigate(`/sozlesmeler/satis/yeni?siparisId=${siparis.id}`)}>
