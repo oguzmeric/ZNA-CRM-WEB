@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useParams, useNavigate } from 'react-router-dom'
 import { geriDon } from '../lib/geriDon'
+import MusteriyeTakModal from '../components/MusteriyeTakModal'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
 import {
@@ -13,7 +14,7 @@ import {
   modelKalemleriniGetir, modelKalemleriniGetirTumu, DURUMLAR, durumBul,
   stokUrunleriniGetir, stokHareketleriniGetir, gorselYukle, stokUrunGuncelle,
   snTeknisyeneVer, snDepoyaCek, snGuncelle, snSil, snGeriGetir, snGecmisi,
-  snTopluTeknisyeneVer, snTopluDepoyaCek,
+  snTopluTeknisyeneVer, snTopluDepoyaCek, snTopluMusteriyeTak,
   SN_SILME_SEBEPLERI, aileleriGetir,
 } from '../services/stokService'
 import {
@@ -114,6 +115,8 @@ function ModelDetay() {
   // Seçim id bazlı Set — sayfalar arası korunur; veri tazelenince sıfırlanır.
   const [seciliIdler, setSeciliIdler] = useState(new Set())
   const [topluVerAcik, setTopluVerAcik] = useState(false)
+  // Depodan doğrudan müşteriye takma modalı (21.08)
+  const [musteriTakAcik, setMusteriTakAcik] = useState(false)
   const [topluMesgul, setTopluMesgul] = useState(false)
   const [duzenlenenKalem, setDuzenlenenKalem] = useState(null)  // SN düzenleme modalı için
   const [silinecekKalem, setSilinecekKalem] = useState(null)  // SN sil sebep modalı için
@@ -612,6 +615,13 @@ function ModelDetay() {
                   Teknisyene Ver ({seciliDepoda.length})
                 </Button>
               )}
+              {seciliDepoda.length > 0 && (
+                <Button size="sm" variant="secondary" disabled={topluMesgul}
+                  onClick={() => setMusteriTakAcik(true)}
+                  title="Depodaki seçili S/N'leri doğrudan müşteriye/lokasyona tak (sahada olur)">
+                  Müşteriye Tak ({seciliDepoda.length})
+                </Button>
+              )}
               {seciliTeknisyende.length > 0 && (
                 <Button size="sm" variant="secondary" disabled={topluMesgul}
                   iconLeft={<PackageOpen size={12} strokeWidth={1.5} />}
@@ -1102,6 +1112,27 @@ function ModelDetay() {
           }}
         />
       )}
+
+      {/* Müşteriye Tak Modalı — depodan doğrudan sahaya/lokasyona (21.08) */}
+      <MusteriyeTakModal
+        acik={musteriTakAcik && seciliDepoda.length > 0}
+        adet={seciliDepoda.length}
+        onKapat={() => setMusteriTakAcik(false)}
+        onTak={async ({ musteriId, musteriLokasyonId, etiket }) => {
+          try {
+            const islenen = await snTopluMusteriyeTak(
+              seciliDepoda.map(k => k.id),
+              { musteriId, musteriLokasyonId }
+            )
+            toast.success(`${islenen.length} S/N ${etiket} müşterisine takıldı (sahada).`)
+            setSeciliIdler(new Set())
+            setYenile(y => y + 1)
+          } catch (e) {
+            toast.error('Müşteriye takma başarısız: ' + (e?.message || 'bilinmeyen hata'))
+            throw e
+          }
+        }}
+      />
 
       {/* Teknisyene Ver Modalı (toplu seçim) */}
       {topluVerAcik && seciliDepoda.length > 0 && (

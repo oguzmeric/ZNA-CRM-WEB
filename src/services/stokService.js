@@ -500,6 +500,32 @@ export const snTopluTeknisyeneVer = async (ids, teknisyenId) => {
   return arrayToCamel(data || [])
 }
 
+// Depodaki SN'leri DOĞRUDAN müşteriye/lokasyona tak (21.08 kullanıcı isteği):
+// eskiden depodan sahaya tek yol teknisyen üzerinden servis akışıydı; showroom/
+// doğrudan kurulumlarda kalem ya teknisyende takılı kalıyor ya da SİLİNİYORDU
+// ("showroom'da takılı" diye silinen kalem vakası). durum='sahada' +
+// musteri_id + (varsa) musteri_lokasyon_id yazılır; defter kaydını köprü
+// trigger 'Firma / Lokasyon — S/N' açıklamasıyla KENDİSİ yazar (tek kaynak).
+export const snTopluMusteriyeTak = async (ids, { musteriId, musteriLokasyonId = null }) => {
+  const liste = [...new Set((ids || []).filter(Boolean))]
+  if (!liste.length) return []
+  if (!musteriId) throw new Error('Müşteri seçilmedi.')
+  const { data, error } = await supabase
+    .from('stok_kalemleri')
+    .update({
+      durum: 'sahada',
+      musteri_id: musteriId,
+      musteri_lokasyon_id: musteriLokasyonId || null,
+      takilma_tarihi: new Date().toISOString(),
+    })
+    .in('id', liste)
+    .eq('durum', 'depoda')     // yalnız depodakiler — yarış korunması
+    .select()
+  if (error) { console.error('snTopluMusteriyeTak:', error.message); throw error }
+  invalidatePrefix('stok')
+  return arrayToCamel(data || [])
+}
+
 // Birden çok teknisyendeki SN'i TEK seferde depoya çek — tek UPDATE + tek audit
 export const snTopluDepoyaCek = async (ids) => {
   const liste = [...new Set((ids || []).filter(Boolean))]
