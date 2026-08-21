@@ -177,7 +177,15 @@ export const mevcutOturumKullanici = async () => {
   if (!session?.user) return null
 
   try {
-    return await profilGetirRetry(session.user.id)
+    // ⚠️ 5sn cached (21.08): login/restore anında ÜÇ ayrı tetik (App restore +
+    // SIGNED_IN + INITIAL_SESSION) aynı profili EŞZAMANLI çekiyordu — imza
+    // base64'ü yüzünden her biri ~137 KB, toplam ~400 KB israf (açılış seli
+    // ölçümü). Kısa pencere fırtınayı tekiller; 5sn sonrası taze çeker.
+    return await cached(
+      `profil:${session.user.id}`,
+      () => profilGetirRetry(session.user.id),
+      5_000,
+    )
   } catch (e) {
     console.warn('[mevcutOturumKullanici] profil alınamadı (retry sonrası):', e.message)
     return null
