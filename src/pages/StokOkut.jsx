@@ -118,7 +118,7 @@ export default function StokOkut() {
 
     const normAnahtar = (x) => String(x).toUpperCase().replace(/[^A-Z0-9]/g, '')
     const nk = mod + ':' + normAnahtar(kod)
-    if (mod !== 'sorgula' && oturumIslenenRef.current.has(nk)) {
+    if (oturumIslenenRef.current.has(nk)) {
       kaydet({ tip: 'atla', sn: kod, mesaj: 'Mükerrer — bu oturumda ' + oturumIslenenRef.current.get(nk) + "'de işlendi" })
       bip(false)
       setGirdi('')
@@ -139,6 +139,7 @@ export default function StokOkut() {
       if (rpc.kaynak === 'cihaz') {
         const c = toCamel(rpc.kayit)
         setSonKart({ kaynak: 'cihaz', kalem: c })
+        oturumIslenenRef.current.set(nk, new Date().toLocaleTimeString('tr-TR'))
         kaydet({ tip: 'bilgi', sn: c.seriNo, mesaj: 'Müşteri cihazı kaydı — stok işlemi uygulanmaz' })
         bip(false)
         return
@@ -148,6 +149,7 @@ export default function StokOkut() {
       setSonKart({ kaynak: 'stok', kalem })
 
       if (mod === 'sorgula') {
+        oturumIslenenRef.current.set(nk, new Date().toLocaleTimeString('tr-TR'))
         kaydet({ tip: 'ok', sn: kalem.seriNo, mesaj: `${durumBul(kalem.durum)?.isim || kalem.durum} — ${kalem.model || kalem.stokKodu}` })
         bip(true)
         return
