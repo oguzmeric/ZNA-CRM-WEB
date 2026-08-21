@@ -48,9 +48,11 @@ export default function StokOkut() {
   const [sesAcik, setSesAcik] = useState(true)
   const inputRef = useRef(null)
   const sonOkunanRef = useRef({ kod: '', zaman: 0 }) // Zebex çift okuma koruması
-  // Oturum boyu mükerrer koruması (21.08 kullanıcı isteği): aynı SN'e bu
-  // oturumda İŞLEM uygulandıysa tekrar uygulanmaz — kafa karışmasın.
-  const oturumIslenenRef = useRef(new Map())   // normKod -> saat
+  // Oturum boyu mükerrer koruması (21.08 kullanıcı isteği): aynı SN'e AYNI
+  // İŞLEM bu oturumda uygulandıysa tekrar uygulanmaz — kafa karışmasın.
+  // Anahtar MOD+SN: 'depoya çek → sonra teknisyene ver' akışı serbest kalır
+  // (farklı iş), yalnız aynı işlemin tekrarı kilitlenir.
+  const oturumIslenenRef = useRef(new Map())   // mod:normKod -> saat
   const audioRef = useRef(null)
 
   // Personel listesi — zimmet alıcıları (tip='zna', silinmemiş, admin hariç)
@@ -115,7 +117,7 @@ export default function StokOkut() {
     sonOkunanRef.current = { kod, zaman: simdi }
 
     const normAnahtar = (x) => String(x).toUpperCase().replace(/[^A-Z0-9]/g, '')
-    const nk = normAnahtar(kod)
+    const nk = mod + ':' + normAnahtar(kod)
     if (mod !== 'sorgula' && oturumIslenenRef.current.has(nk)) {
       kaydet({ tip: 'atla', sn: kod, mesaj: 'Mükerrer — bu oturumda ' + oturumIslenenRef.current.get(nk) + "'de işlendi" })
       bip(false)
