@@ -7,7 +7,7 @@ import {
   teknisyenAylikRapor, acikRMAlar, rmaGeriDondu, RMA_SONUCLARI,
   depolariGetir, depoEkle, depoGuncelle, depoBazliSayilar, DEPO_TIPLERI,
 } from '../services/depoService'
-import { stokUrunleriniGetir, stokHareketleriniGetir, stokKalemOzetleriniGetir } from '../services/stokService'
+import { stokUrunleriniGetir, stokBakiyeHaritasiGetir, stokKalemOzetleriniGetir } from '../services/stokService'
 import { Button, Card, Badge, EmptyState, Table, THead, TBody, TR, TH, TD, CodeBadge, Input } from '../components/ui'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
@@ -37,9 +37,14 @@ export default function DepoRaporlar() {
 
   const rmalariYenile = () => acikRMAlar().then(setRmalar).catch(e => console.error(e))
 
-  // Stok değeri raporu verileri (bakiye hesabı Stok.jsx ile aynı mantık)
+  // Stok değeri raporu verileri (bakiye hesabı Stok.jsx ile aynı mantık).
+  // ⚠️ 21.08 PERF: eskiden stokHareketleriniGetir ile 4.900 hareketin TÜM
+  // kolonları (~1 MB) çekilip her ürün için filter taranıyordu (2.446 ürün ×
+  // 4.867 hareket ≈ 12M karşılaştırma) — "sayfa baya bekletiyor" şikâyeti.
+  // stokBakiyeHaritasiGetir aynı bakiyeyi 3 kolonla, tek geçişte, 'sayim'
+  // RESET kuralını da doğru işleyerek verir (Stok.jsx zaten buna geçmişti).
   const [urunler, setUrunler] = useState([])
-  const [hareketler, setHareketler] = useState([])
+  const [bakiyeHarita, setBakiyeHarita] = useState(new Map())
   const [kalemOzetleri, setKalemOzetleri] = useState(new Map())
 
   useEffect(() => {
@@ -47,17 +52,17 @@ export default function DepoRaporlar() {
       supabase.from('kullanicilar').select('id, ad, rol').order('ad'),
       acikRMAlar(),
       stokUrunleriniGetir(),
-      stokHareketleriniGetir(),
+      stokBakiyeHaritasiGetir(),
       stokKalemOzetleriniGetir(),
     ])
-      .then(([r1, r2, u, h, ko]) => {
+      .then(([r1, r2, u, bh, ko]) => {
         // Yöneticiler teknisyen listesine girmesin — isim regex'i yerine rol
         // (eski hardcoded 'oğuz|ali|ferdi' filtresi yeni yönetici atanınca bozuluyordu)
         const list = (r1?.data || []).filter(k => k.rol !== 'admin')
         setPersonel(list)
         setRmalar(r2 || [])
         setUrunler(u || [])
-        setHareketler(h || [])
+        setBakiyeHarita(bh || new Map())
         setKalemOzetleri(ko || new Map())
         if (list.length) setSeciliId(list[0].id)
       })
@@ -77,13 +82,8 @@ export default function DepoRaporlar() {
         const ko = kalemOzetleri.get(u.stokKodu)
         return Math.max(0, (Number(ko?.toplam) || 0) - (Number(ko?.hurda) || 0))
       }
-      return hareketler
-        .filter(h => h.stokKodu === u.stokKodu)
-        .reduce((t, h) => {
-          if (h.hareketTipi === 'giris' || h.hareketTipi === 'transfer_giris') return t + Number(h.miktar)
-          if (h.hareketTipi === 'cikis' || h.hareketTipi === 'transfer_cikis') return t - Number(h.miktar)
-          return t
-        }, 0)
+      // Sunucudan gelen özet harita — Stok.jsx ile birebir aynı kaynak
+      return Number(bakiyeHarita.get(u.stokKodu)) || 0
     }
     let toplam = 0
     let fiyatsizUrun = 0
@@ -108,7 +108,7 @@ export default function DepoRaporlar() {
       .map(([grup, g]) => ({ grup, ...g }))
       .sort((a, b) => b.deger - a.deger)
     return { toplam, fiyatsizUrun, grupListe, detay }
-  }, [urunler, hareketler, kalemOzetleri])
+  }, [urunler, bakiyeHarita, kalemOzetleri])
 
   useEffect(() => {
     if (!seciliId || !ay) return
