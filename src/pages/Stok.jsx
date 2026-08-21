@@ -379,41 +379,81 @@ function Stok() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Stok')
 
-    // ── 2. sayfa: Seri Numaraları ──
-    // Döküm alınamazsa ürün sayfası YİNE iner — ama sessiz değil, uyarı verilir
-    // (kısmi sonuç şeffaflığı).
+    // ── S/N sayfaları — DURUMA GÖRE AYRI (21.08 kullanıcı isteği):
+    // "stok listesi indirdiğimizde sadece depodakileri görmeliyiz; diğerleri
+    // ayrı sekmelerde." Tek karma listede teknisyendekiler depoda sanılıyordu.
+    // Döküm alınamazsa ürün sayfası YİNE iner — sessiz değil, uyarı verilir.
     let snSayisi = 0
+    let snOzet = ''
     try {
-      const { kalemler, musteriAd } = await snDokumunuGetir()
+      const { kalemler, musteriAd, teknisyenAd } = await snDokumunuGetir()
       const urunAdMap = new Map(urunler.map(u => [u.stokKodu, u.stokAdi]))
       const tarihK = (t) => t ? new Date(t).toLocaleDateString('tr-TR') : ''
-      const snSatirlar = kalemler.map(k => ({
+      const temel = (k) => ({
         'Seri No': k.seri_no || '',
         'Stok Kodu': k.stok_kodu || '',
         'Ürün Adı': urunAdMap.get(k.stok_kodu) || '',
         'Marka': k.marka || '',
         'Model': k.model || '',
-        'Durum': durumBul(k.durum)?.isim || k.durum || '',
-        'Müşteri': k.musteri_id ? (musteriAd.get(k.musteri_id) || `#${k.musteri_id}`) : '',
         'Stok Giriş': tarihK(k.olusturma_tarih),
-        'Takılma': tarihK(k.takilma_tarihi),
-      }))
-      snSayisi = snSatirlar.length
-      const wsSn = XLSX.utils.json_to_sheet(snSatirlar)
-      wsSn['!cols'] = [
-        { wch: 16 }, { wch: 12 }, { wch: 34 }, { wch: 14 }, { wch: 18 },
-        { wch: 16 }, { wch: 32 }, { wch: 11 }, { wch: 11 },
+      })
+      const tekAd = (k) => k.teknisyen_id ? (teknisyenAd.get(k.teknisyen_id) || `#${k.teknisyen_id}`) : ''
+      const musAd = (k) => k.musteri_id ? (musteriAd.get(k.musteri_id) || `#${k.musteri_id}`) : ''
+      const SAYFALAR = [
+        {
+          ad: 'Depodaki SN',
+          uyar: (k) => k.durum === 'depoda',
+          satir: temel,
+        },
+        {
+          // 'arizada' = teknisyen üzerindeki arızalı — o da kişinin taşıdığı mal
+          ad: 'Teknisyendeki SN',
+          uyar: (k) => k.durum === 'teknisyende' || k.durum === 'arizada',
+          satir: (k) => ({ ...temel(k), 'Teknisyen': tekAd(k), 'Durum': durumBul(k.durum)?.isim || k.durum }),
+        },
+        {
+          ad: 'Sahadaki SN',
+          uyar: (k) => k.durum === 'sahada',
+          satir: (k) => ({ ...temel(k), 'Müşteri': musAd(k), 'Takılma': tarihK(k.takilma_tarihi) }),
+        },
+        {
+          // arizali_depoda / tamirde / hurda + olası bilinmeyen durumlar —
+          // hiçbir kalem dökümden SESSİZCE düşmez
+          ad: 'Diğer SN',
+          uyar: () => true,
+          satir: (k) => ({
+            ...temel(k),
+            'Durum': durumBul(k.durum)?.isim || k.durum || '',
+            'Teknisyen': tekAd(k),
+            'Müşteri': musAd(k),
+          }),
+        },
       ]
-      XLSX.utils.book_append_sheet(wb, wsSn, 'Seri Numaraları')
+      const kalanlar = new Set(kalemler)
+      const parcalar = []
+      for (const s of SAYFALAR) {
+        const grup = [...kalanlar].filter(s.uyar)
+        grup.forEach(k => kalanlar.delete(k))
+        if (grup.length === 0) continue
+        const ws2 = XLSX.utils.json_to_sheet(grup.map(s.satir))
+        ws2['!cols'] = [
+          { wch: 16 }, { wch: 12 }, { wch: 34 }, { wch: 14 }, { wch: 18 },
+          { wch: 11 }, { wch: 26 }, { wch: 16 }, { wch: 26 },
+        ]
+        XLSX.utils.book_append_sheet(wb, ws2, s.ad)
+        snSayisi += grup.length
+        parcalar.push(`${s.ad.replace(' SN', '').toLocaleLowerCase('tr')} ${grup.length}`)
+      }
+      snOzet = parcalar.join(' · ')
     } catch (e) {
       console.error('[excelIndir] SN dökümü:', e?.message || e)
-      toast.warning('Seri numarası sayfası eklenemedi — dosya yalnız ürün listesiyle indirildi.')
+      toast.warning('Seri numarası sayfaları eklenemedi — dosya yalnız ürün listesiyle indirildi.')
     }
 
     const bugun = new Date().toISOString().split('T')[0]
     XLSX.writeFile(wb, `ZNA_Stok_${bugun}.xlsx`)
     toast.success(snSayisi > 0
-      ? `${satirlar.length} ürün + ${snSayisi} seri no Excel'e aktarıldı (2 sayfa).`
+      ? `${satirlar.length} ürün + ${snSayisi} S/N aktarıldı (${snOzet}).`
       : `${satirlar.length} ürün Excel'e aktarıldı.`)
     } finally {
       setExcelHazirlaniyor(false)
@@ -918,13 +958,14 @@ function Stok() {
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <Button variant="tertiary" size="sm" iconLeft={<Download size={13} strokeWidth={1.5} />} onClick={sablonIndir}>Şablon</Button>
+          {/* "Şablon" butonu ana bardan KALDIRILDI (21.08 — "neyin şablonu?"):
+              içe aktarım şablonu artık Excel önizleme modalının içinde. */}
           <Button
             variant="tertiary" size="sm"
             iconLeft={<Download size={13} strokeWidth={1.5} />}
             onClick={excelIndir}
             disabled={excelHazirlaniyor}
-            title="2 sayfalı döküm: ürün listesi (bakiyeli) + tüm seri numaraları"
+            title="Çok sayfalı döküm: ürün listesi + depodaki / teknisyendeki / sahadaki seri numaraları"
           >
             {excelHazirlaniyor ? 'Hazırlanıyor…' : 'Excel indir'}
           </Button>
@@ -2153,6 +2194,16 @@ function Stok() {
         width={960}
         footer={
           <>
+            {/* Şablon buraya taşındı (21.08) — içe aktarım bağlamında anlamlı */}
+            <Button
+              variant="tertiary"
+              iconLeft={<Download size={13} strokeWidth={1.5} />}
+              onClick={sablonIndir}
+              title="Beklenen kolon düzenini gösteren örnek Excel dosyası"
+              style={{ marginRight: 'auto' }}
+            >
+              İçe aktarım şablonu
+            </Button>
             <Button variant="secondary" onClick={() => setExcelModal(false)}>İptal</Button>
             <Button
               variant="primary"

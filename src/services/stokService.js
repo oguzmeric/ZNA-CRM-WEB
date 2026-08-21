@@ -303,7 +303,7 @@ export const snDokumunuGetir = async () => {
   const kalemler = await pagedFetch((off, size) =>
     supabase
       .from('stok_kalemleri')
-      .select('seri_no, stok_kodu, marka, model, durum, musteri_id, olusturma_tarih, takilma_tarihi')
+      .select('seri_no, stok_kodu, marka, model, durum, musteri_id, teknisyen_id, olusturma_tarih, takilma_tarihi')
       .eq('silindi', false)
       .order('id')
       .range(off, off + size - 1)
@@ -317,7 +317,16 @@ export const snDokumunuGetir = async () => {
     if (error) { console.warn('[snDokumunuGetir] müşteri adları:', error.message); break }
     for (const m of (data || [])) musteriAd.set(m.id, m.firma_adi)
   }
-  return { kalemler, musteriAd }
+  // Teknisyendeki sayfası KİMDE olduğunu söylemeli (21.08) — id az, tek sorgu
+  const tekIds = [...new Set(kalemler.map(k => k.teknisyen_id).filter(Boolean))]
+  const teknisyenAd = new Map()
+  if (tekIds.length) {
+    const { data, error } = await supabase
+      .from('kullanicilar').select('id, ad').in('id', tekIds.slice(0, 200))
+    if (error) console.warn('[snDokumunuGetir] teknisyen adları:', error.message)
+    for (const u of (data || [])) teknisyenAd.set(u.id, u.ad)
+  }
+  return { kalemler, musteriAd, teknisyenAd }
 }
 
 // Her stok kodu için S/N kalemlerinin özetini getir (marka/model + durum sayıları)
