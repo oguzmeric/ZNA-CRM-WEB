@@ -64,7 +64,14 @@ export default function ZimmetPanel({ onKapat }) {
     (async () => {
       // Demirbaş ALICI listesi — yalnız YÖNETİM çıkarılır. Depo sorumluları
       // (Salih/Mahmut) paneli işletir ama kendileri de zimmet alabilmeli.
-      const { data: liste } = await supabase.from('kullanicilar').select('id, ad, unvan').order('ad')
+      // ⚠️ tip='zna' + silinmemiş (21.08): filtre yokken portal müşterileri
+      // ve kapalı hesaplar da alıcı listesine sızıyordu.
+      const { data: liste } = await supabase
+        .from('kullanicilar')
+        .select('id, ad, unvan, foto_url')
+        .eq('tip', 'zna')
+        .or('hesap_silindi.is.null,hesap_silindi.eq.false')
+        .order('ad')
       setKullanicilar((liste || []).filter(k => !yonetimMi(k)))
     })()
   }, [])
@@ -106,13 +113,20 @@ export default function ZimmetPanel({ onKapat }) {
 
   const teknisyeneGoreGrupla = (liste) => {
     const map = new Map()
+    // ⚠️ TÜM personel 0 kayıtla başlar (21.08): eskiden liste yalnız AKTİF
+    // kaydı olanlardan türüyordu — kaydı olmayan teknisyenler hiç
+    // görünmüyordu ("sadece 5 isim çıkıyor" bildirimi).
+    for (const k of kullanicilar) map.set(k.id, { kullanici: k, kayitlar: [] })
     for (const kayit of liste) {
       const k = kayit.kullanici
       if (!k?.id) continue
       if (!map.has(k.id)) map.set(k.id, { kullanici: k, kayitlar: [] })
       map.get(k.id).kayitlar.push(kayit)
     }
-    return Array.from(map.values()).sort((a, b) => (a.kullanici.ad || '').localeCompare(b.kullanici.ad || '', 'tr'))
+    // Kaydı olanlar önce (çok → az), sonra alfabetik
+    return Array.from(map.values()).sort((a, b) =>
+      (b.kayitlar.length - a.kayitlar.length)
+      || (a.kullanici.ad || '').localeCompare(b.kullanici.ad || '', 'tr'))
   }
 
   const envanterGruplu = yonetim ? teknisyeneGoreGrupla(envanterListe) : null
@@ -299,7 +313,11 @@ function YonetimGorunum({ sekme, envanterGruplu, demirbasGruplu, seciliId, setSe
         <div style={{ marginBottom: 12, fontSize: 14, color: R.metin2 }}>
           <strong style={{ color: R.metin }}>{secili.kullanici.ad}</strong> · {secili.kayitlar.length} {birim}
         </div>
-        {sekme === 'envanter'
+        {secili.kayitlar.length === 0 ? (
+          <div style={{ fontSize: 13, color: R.metin3, padding: '8px 0' }}>
+            Bu kişide aktif {birim} yok.
+          </div>
+        ) : sekme === 'envanter'
           ? secili.kayitlar.map(k => <EnvanterSatir key={k.id} kayit={k} />)
           : secili.kayitlar.map(d => <DemirbasSatir key={d.id} kayit={d} yonetim onIade={onIade} onDuzenle={onDuzenle} />)
         }
