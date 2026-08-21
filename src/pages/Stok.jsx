@@ -1,4 +1,5 @@
 import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
+import { seriNormalize } from '../lib/seriNormalize'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
@@ -690,7 +691,8 @@ function Stok() {
 
   // Toplu SN analizi (yeni/bu ürün/başka ürün/tekrar)
   const topluSNAnaliz = (() => {
-    const lines = (form.topluSN || '').split('\n').map(s => s.trim()).filter(Boolean)
+    // seriNormalize (21.08): görünmez karakterli SN telefonda bulunamıyordu
+    const lines = (form.topluSN || '').split('\n').map(seriNormalize).filter(Boolean)
     const yeni = [], buUrunde = [], baskaUrunde = [], tekrar = []
     const goruldu = new Set()
     for (const s of lines) {
@@ -805,7 +807,7 @@ function Stok() {
             try {
               const hazir = gecerli.map(k => ({
                 stokKodu: form.stokKodu,
-                seriNo: k.seriNo.trim(),
+                seriNo: seriNormalize(k.seriNo),
                 barkod: k.barkod?.trim() || null,
                 marka: form.marka || null,
                 model: form.model || form.stokAdi,

@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Hash, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Modal, Button, Textarea, Label, Alert } from './ui'
 import { stokKalemleriToplu, modelKalemleriniGetir, tumSeriNumaralariniGetir } from '../services/stokService'
+import { seriNormalize } from '../lib/seriNormalize'
 
 export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
   const [metin, setMetin] = useState('')
@@ -33,7 +34,9 @@ export default function SnEkleModal({ open, onClose, urun, onEklendi }) {
   }, [open, urun?.stokKodu])
 
   const satirlar = useMemo(
-    () => metin.split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+    // seriNormalize (21.08): Excel/pano yapıştırmasındaki zero-width/NBSP
+    // görünmezleri DB'ye giriyordu — telefon tam-eşleşmede SN'i bulamıyordu.
+    () => metin.split(/\r?\n/).map(seriNormalize).filter(Boolean),
     [metin]
   )
 
