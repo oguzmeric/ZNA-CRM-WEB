@@ -126,6 +126,7 @@ export default function StokOkut() {
       return
     }
     setMesgul(true)
+    setGirdi('')   // işlem sürerken gelen yeni okuma önceki kodun üstüne yapışmasın
     try {
       const { data: rpc, error } = await supabase.rpc('stok_sn_ara', { p_kod: kod })
       if (error) throw new Error(error.message)
