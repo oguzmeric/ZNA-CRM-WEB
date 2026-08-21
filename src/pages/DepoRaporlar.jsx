@@ -49,7 +49,8 @@ export default function DepoRaporlar() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('kullanicilar').select('id, ad, rol').order('ad'),
+      // tip='zna': müşteri portal hesapları teknisyen listesine SIZMASIN (21.08)
+      supabase.from('kullanicilar').select('id, ad, rol').eq('tip', 'zna').order('ad'),
       acikRMAlar(),
       stokUrunleriniGetir(),
       stokBakiyeHaritasiGetir(),
@@ -115,6 +116,28 @@ export default function DepoRaporlar() {
     teknisyenAylikRapor(seciliId, ay).then(setRapor).catch(e => console.error('[rapor]', e))
   }, [seciliId, ay])
 
+  // S/N envanterinin durum özeti — sayfanın "bir bakışta rapor" şeridi (21.08:
+  // "sayfayı anlayamadım" geri bildirimi; en üstte gerçek envanter durur).
+  const snOzet = useMemo(() => {
+    const t = { toplam: 0, depoda: 0, teknisyende: 0, sahada: 0, arizada: 0, arizaliDepoda: 0, tamirde: 0, hurda: 0 }
+    for (const o of kalemOzetleri.values()) {
+      t.toplam += Number(o.toplam) || 0
+      t.depoda += Number(o.depoda) || 0
+      t.teknisyende += Number(o.teknisyende) || 0
+      t.sahada += Number(o.sahada) || 0
+      t.arizada += Number(o.arizada) || 0
+      t.arizaliDepoda += Number(o.arizaliDepoda) || 0
+      t.tamirde += Number(o.tamirde) || 0
+      t.hurda += Number(o.hurda) || 0
+    }
+    return t
+  }, [kalemOzetleri])
+
+  const fiyatliUrunSayisi = useMemo(
+    () => urunler.filter(u => Number(u.alisFiyat) > 0).length,
+    [urunler],
+  )
+
   if (yukleniyor) return <SkeletonList />
 
   return (
@@ -124,6 +147,42 @@ export default function DepoRaporlar() {
         <h1 className="t-h2" style={{ margin: 0 }}>Depo Raporları</h1>
       </div>
 
+      {/* ── S/N ENVANTER ÖZETİ — sayfanın asıl raporu: bir bakışta nerede ne var ── */}
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <Warehouse size={16} strokeWidth={1.5} />
+          <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Seri Numaralı Envanter — Nerede Ne Var?</h3>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            toplam <strong className="tabular-nums">{snOzet.toplam.toLocaleString('tr-TR')}</strong> kalem
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+          {[
+            { ad: 'Depoda', n: snOzet.depoda, renk: '#3b82f6' },
+            { ad: 'Teknisyende', n: snOzet.teknisyende, renk: '#a855f7' },
+            { ad: 'Sahada (müşteride)', n: snOzet.sahada, renk: '#10b981' },
+            { ad: 'Arızalı (teknisyende)', n: snOzet.arizada, renk: '#f59e0b' },
+            { ad: 'Arızalı depoda', n: snOzet.arizaliDepoda, renk: '#dc2626' },
+            { ad: 'Tamirde', n: snOzet.tamirde, renk: '#ec4899' },
+            { ad: 'Hurda', n: snOzet.hurda, renk: '#6b7280' },
+          ].map(k => (
+            <div key={k.ad} style={{
+              padding: '10px 12px', borderRadius: 8,
+              border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+              borderLeft: `3px solid ${k.renk}`,
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{k.ad}</div>
+              <div style={{ fontWeight: 700, fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>
+                {k.n.toLocaleString('tr-TR')}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 10 }}>
+          Seri numarası bazında tam liste: <strong>Stok Kartları → Excel indir</strong> — Depodaki / Teknisyendeki / Sahadaki SN sayfaları.
+        </div>
+      </Card>
+
       {/* Depolar (Faz 4, mig 153) — Araç/Proje/Geçici depo yönetimi + doluluk */}
       <DepolarKarti />
 
@@ -132,12 +191,23 @@ export default function DepoRaporlar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <Wallet size={16} strokeWidth={1.5} />
           <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Stok Değeri</h3>
-          {stokDegeri.fiyatsizUrun > 0 && (
+          {fiyatliUrunSayisi > 0 && stokDegeri.fiyatsizUrun > 0 && (
             <span style={{ fontSize: 11, color: 'var(--warning, #B45309)' }}>
               ⚠ {stokDegeri.fiyatsizUrun} üründe alış fiyatı girilmemiş (hesaba dahil değil)
             </span>
           )}
         </div>
+        {/* Alış fiyatı HİÇ girilmemişken kocaman ₺0,00 göstermek kafa karıştırıyordu
+            (21.08) — rapor, verinin neden boş olduğunu kendi söyler. */}
+        {fiyatliUrunSayisi === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', padding: '4px 2px', lineHeight: 1.6 }}>
+            Bu rapor <strong>bakiye × alış fiyatı</strong> ile deponun parasal değerini gösterir.
+            Şu an <strong>{urunler.length.toLocaleString('tr-TR')} ürünün hiçbirinde alış fiyatı girilmemiş</strong>,
+            bu yüzden hesaplanacak değer yok. Fiyatlar girildikçe (Stok Kartları → ürünü düzenle →
+            Alış fiyatı) bu kart kendiliğinden dolar.
+          </div>
+        ) : (
+        <>
         <div style={{ display: 'flex', gap: 24, marginBottom: 14, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>TOPLAM STOK DEĞERİ</div>
@@ -189,6 +259,8 @@ export default function DepoRaporlar() {
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
             En değerli 15 ürün gösteriliyor — tam liste için Stok Kartları'ndan "Excel indir".
           </div>
+        )}
+        </>
         )}
       </Card>
 
@@ -396,7 +468,8 @@ function DepolarKarti() {
         <Warehouse size={16} strokeWidth={1.5} />
         <h3 className="t-h2" style={{ fontSize: 14, margin: 0 }}>Depolar</h3>
         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-          SN'ler ModelDetay'daki 📦 butonuyla depoya atanır; atanmayanlar Merkez'de sayılır
+          Depodaki tüm seri numaralı ürünler Merkez'de sayılır. Araç/şantiye deposu tanımlarsanız
+          ürün kartından (Stok Kartları → ürün → 📦) seri numaralarını o depoya taşıyabilirsiniz.
         </span>
         {admin && !ekleAcik && (
           <Button variant="secondary" size="sm" iconLeft={<Plus size={12} strokeWidth={1.5} />}

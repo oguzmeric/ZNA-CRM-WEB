@@ -560,17 +560,29 @@ export const snDepoAta = async (kalemId, depoId, depoAd) => {
 }
 
 // Depo bazlı SN sayıları (yalnız durum='depoda' olanlar) — Map<depoId|null, adet>
+// ⚠️ 21.08 düzeltmesi: eski hâli satırları çekip istemcide sayıyordu ve
+// PostgREST'in 1000 satır varsayılan limitine takılıyordu — depoda 3.729 kalem
+// varken "Merkez Depo 1000 SN" görünüyordu. Artık satır TAŞIMADAN head-count.
 export const depoBazliSayilar = async () => {
-  const { data, error } = await supabase
-    .from('stok_kalemleri')
-    .select('depo_id')
-    .eq('durum', 'depoda')
-    .eq('silindi', false)
-  if (error) { console.error('[depoBazliSayilar]', error.message); return new Map() }
   const map = new Map()
-  for (const r of data || []) {
-    const k = r.depo_id ?? null
-    map.set(k, (map.get(k) || 0) + 1)
+  const say = async (filtreUygula) => {
+    let q = supabase
+      .from('stok_kalemleri')
+      .select('id', { count: 'exact', head: true })
+      .eq('durum', 'depoda')
+      .eq('silindi', false)
+    q = filtreUygula(q)
+    const { count, error } = await q
+    if (error) { console.error('[depoBazliSayilar]', error.message); return 0 }
+    return count || 0
   }
+  const { data: depolar, error } = await supabase.from('depolar').select('id')
+  if (error) console.error('[depoBazliSayilar] depolar:', error.message)
+  const [merkez, ...depoSayilari] = await Promise.all([
+    say(q => q.is('depo_id', null)),
+    ...(depolar || []).map(d => say(q => q.eq('depo_id', d.id))),
+  ])
+  map.set(null, merkez)
+  ;(depolar || []).forEach((d, i) => map.set(d.id, depoSayilari[i]))
   return map
 }
