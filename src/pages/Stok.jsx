@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import * as XLSX from 'xlsx'
 import {
-  Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList,
+  Plus, Pencil, Trash2, Package, Upload, Download, ClipboardList, ScanLine,
   ArrowLeftRight, Image as ImageIcon, AlertTriangle, X, Tag, Hash,
   ClipboardCheck, BarChart3, FolderTree, FileText, Eye, EyeOff,
   SlidersHorizontal, ArrowLeft,
@@ -986,6 +986,7 @@ function Stok() {
           </Button>
           <Button variant="tertiary" size="sm" iconLeft={<Upload size={13} strokeWidth={1.5} />} onClick={() => dosyaRef.current?.click()}>Excel aktar</Button>
           <input ref={dosyaRef} type="file" accept=".xlsx,.xls" onChange={excelOku} style={{ display: 'none' }} />
+          <Button variant="secondary" size="sm" iconLeft={<ScanLine size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok/okut')} title="Depo kiosk: USB okuyucuyla art arda SN okut, seçili işlemi otomatik uygula">SN Okut</Button>
           <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-opsiyon')}>Opsiyonlar</Button>
           <Button variant="secondary" size="sm" iconLeft={<ArrowLeftRight size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-hareketleri')}>Hareketler</Button>
           <Button variant="secondary" size="sm" iconLeft={<AlertTriangle size={13} strokeWidth={1.5} />} onClick={() => navigate('/stok-kritik')}>Kritik Seviye</Button>

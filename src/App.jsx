@@ -48,6 +48,7 @@ const StokSayim = lazy(() => import('./pages/StokSayim'))
 const DepoRaporlar = lazy(() => import('./pages/DepoRaporlar'))
 const BagimsizSnEtiketleri = lazy(() => import('./pages/BagimsizSnEtiketleri'))
 const ModelDetay = lazy(() => import('./pages/ModelDetay'))
+const StokOkut = lazy(() => import('./pages/StokOkut'))
 const SlaAyarlari = lazy(() => import('./pages/SlaAyarlari'))
 const Performans = lazy(() => import('./pages/Performans'))
 const TrassirLisanslar = lazy(() => import('./pages/TrassirLisanslar'))
@@ -479,6 +480,7 @@ function App() {
           <Route path="/gorusmeler/:id" element={<GorusmeDetay />} />
           <Route path="/stok" element={<Stok />} />
           <Route path="/stok/model/:stokKodu" element={<ModelDetay />} />
+          <Route path="/stok/okut" element={<StokOkut />} />
           <Route path="/stok-hareketleri" element={<StokHareketleri />} />
           <Route path="/stok-opsiyon" element={<StokOpsiyon />} />
           <Route path="/stok-kritik" element={<StokKritik />} />

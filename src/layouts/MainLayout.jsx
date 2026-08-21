@@ -204,6 +204,9 @@ const menuItems = [
     grup: 'operasyon',
     altMenu: [
       { id: 'stok-kartlar', isim: 'Stok Kartları', yol: '/stok' },
+      // Depo kiosk ekranı (21.08): USB barkod okuyucuyla art arda SN okutup
+      // depoya çek / teknisyene ver / arızalı işaretle — depodaki PC bu iş için
+      { id: 'stok-okut', isim: 'SN Okut', yol: '/stok/okut' },
       { id: 'stok-hareketler', isim: 'Stok Hareketleri', yol: '/stok-hareketleri' },
       { id: 'stok-opsiyon', isim: 'Stok Opsiyonları', yol: '/stok-opsiyon' },
       { id: 'stok-kritik', isim: 'Kritik Seviye', yol: '/stok-kritik' },
