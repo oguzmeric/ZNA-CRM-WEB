@@ -17,6 +17,7 @@ import { aktifKonulariGetir } from '../services/servisKonuService'
 import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
 } from '../components/ui'
+import { geriDon } from '../lib/geriDon'
 
 const trNormalize = (str = '') =>
   String(str).toLowerCase()
@@ -147,7 +148,7 @@ export default function YeniServisTalebi() {
   return (
     <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
       <button
-        onClick={() => navigate('/servis-talepleri')}
+        onClick={() => geriDon(navigate, '/servis-talepleri')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
@@ -430,7 +431,7 @@ export default function YeniServisTalebi() {
 
       {/* Kaydet / iptal */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Button variant="secondary" onClick={() => navigate('/servis-talepleri')}>İptal</Button>
+        <Button variant="secondary" onClick={() => geriDon(navigate, '/servis-talepleri')}>İptal</Button>
         <Button
           variant="primary"
           iconLeft={<Plus size={14} strokeWidth={1.5} />}

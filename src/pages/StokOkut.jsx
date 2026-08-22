@@ -22,6 +22,7 @@ import { snArizaliIsaretle, ARIZA_SEBEPLERI } from '../services/depoService'
 import { useToast } from '../context/ToastContext'
 import { Card, Button, Badge, CodeBadge } from '../components/ui'
 import CustomSelect from '../components/CustomSelect'
+import { geriDon } from '../lib/geriDon'
 
 const MODLAR = [
   { id: 'sorgula', isim: 'Sorgula', Ikon: Search, renk: 'var(--brand-primary)', aciklama: 'Okut, sadece bilgi göster' },
@@ -240,7 +241,7 @@ export default function StokOkut() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
       {/* Başlık */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => navigate('/stok')}>Stok Kartları</Button>
+        <Button variant="ghost" iconLeft={<ArrowLeft size={14} />} onClick={() => geriDon(navigate, '/stok')}>Stok Kartları</Button>
         <h1 className="t-h2" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <ScanLine size={20} strokeWidth={1.8} style={{ color: 'var(--brand-primary)' }} />
           SN Okut

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, ArrowRight } from 'lucide-react'
 import { Button, Card, Input, Textarea, Select, Label } from '../components/ui'
 import { demoCihazEkle } from '../services/demoService'
 import { useToast } from '../context/ToastContext'
+import { geriDon } from '../lib/geriDon'
 
 const KATEGORILER = [
   { value: '', label: 'Seçiniz' },
@@ -45,7 +46,7 @@ export default function YeniDemoCihaz() {
 
   return (
     <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>
-      <Button variant="ghost" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/demolar')}>
+      <Button variant="ghost" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/demolar')}>
         Demolar
       </Button>
 
@@ -98,7 +99,7 @@ export default function YeniDemoCihaz() {
             <Button type="submit" variant="secondary" iconLeft={<Save size={14} strokeWidth={1.5} />} disabled={kaydediliyor}>
               {kaydediliyor ? 'Kaydediliyor…' : 'Sadece Kaydet'}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => navigate('/demolar')} disabled={kaydediliyor}>
+            <Button type="button" variant="ghost" onClick={() => geriDon(navigate, '/demolar')} disabled={kaydediliyor}>
               İptal
             </Button>
           </div>

@@ -216,7 +216,7 @@ function MusteriDetay() {
         icon={<Building2 size={32} strokeWidth={1.5} />}
         title="Müşteri bulunamadı"
         action={
-          <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/musteriler')}>
+          <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/musteriler')}>
             Müşterilere dön
           </Button>
         }

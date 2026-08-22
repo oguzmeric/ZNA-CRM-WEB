@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { teklifGetir } from '../services/teklifService'
 import { teklifBenzerlikSkoru } from '../lib/teklifBenzerlik'
+import { geriDon } from '../lib/geriDon'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
 
@@ -107,7 +108,7 @@ function TeklifKiyasla() {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <p className="text-gray-400">Teklif bulunamadı.</p>
-        <button onClick={() => navigate('/teklifler')} className="mt-4 text-sm text-blue-600">
+        <button onClick={() => geriDon(navigate, '/teklifler')} className="mt-4 text-sm text-blue-600">
           ← Tekliflere dön
         </button>
       </div>
@@ -120,7 +121,7 @@ function TeklifKiyasla() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => geriDon(navigate, '/teklifler')}
         className="text-sm text-gray-400 hover:text-blue-600 mb-4 flex items-center gap-1"
       >
         ← Geri Dön

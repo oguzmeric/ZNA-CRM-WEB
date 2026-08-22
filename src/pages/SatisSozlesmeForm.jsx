@@ -39,6 +39,7 @@ import {
   SABLON_TIPLERI_SS, FIRMA_TIPLERI_SS, ODEME_TIPLERI_SS, KUR_TIPLERI_SS, SS_DURUMLARI,
   evrakListesiUret, sozlesmeHtmlUret, ssBelgeGoster,
 } from '../lib/satisSozlesmeMaddeleri'
+import { geriDon } from '../lib/geriDon'
 
 const BOS_FORM = {
   sablonTipi: 'standart',
@@ -631,7 +632,7 @@ export default function SatisSozlesmeForm() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
-          <button onClick={() => navigate('/sozlesmeler')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', font: '500 12px/16px var(--font-sans)', padding: 0, marginBottom: 6 }}>
+          <button onClick={() => geriDon(navigate, '/sozlesmeler')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', font: '500 12px/16px var(--font-sans)', padding: 0, marginBottom: 6 }}>
             <ArrowLeft size={13} strokeWidth={1.5} /> Sözleşmeler
           </button>
           <h1 className="t-h1" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

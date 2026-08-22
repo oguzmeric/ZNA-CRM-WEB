@@ -190,7 +190,7 @@ export default function KesifDetay() {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
         <EmptyState title="Keşif bulunamadı" icon={<Compass size={28} />} />
-        <Button variant="primary" style={{ marginTop: 12 }} onClick={() => navigate('/kesifler')}>Keşiflere Dön</Button>
+        <Button variant="primary" style={{ marginTop: 12 }} onClick={() => geriDon(navigate, '/kesifler')}>Keşiflere Dön</Button>
       </div>
     )
   }

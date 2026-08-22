@@ -518,7 +518,7 @@ function TeklifDetay() {
         <p className="t-caption" style={{ marginTop: 8, marginBottom: 24 }}>
           #{id} numaralı teklif silinmiş veya erişilemiyor. Hatırlatma bildiriminden geldiyseniz teklif artık mevcut değil.
         </p>
-        <Button variant="primary" onClick={() => navigate('/teklifler')}>Tekliflere Dön</Button>
+        <Button variant="primary" onClick={() => geriDon(navigate, '/teklifler')}>Tekliflere Dön</Button>
       </div>
     )
   }

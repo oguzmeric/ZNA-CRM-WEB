@@ -42,6 +42,7 @@ import IzinlerSekmesi from '../components/sicil/IzinlerSekmesi'
 import AvanslarSekmesi from '../components/sicil/AvanslarSekmesi'
 import ZimmetSekmesi from '../components/sicil/ZimmetSekmesi'
 import EvrakModal from '../components/sicil/EvrakModal'
+import { geriDon } from '../lib/geriDon'
 
 const SEKMELER = [
   { id: 'genel',    label: 'Genel Bakış',      ikon: LayoutDashboard },
@@ -165,7 +166,7 @@ export default function PersonelSicil() {
           description="Kayıt silinmiş ya da erişim yetkiniz yok olabilir."
           action={
             <Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />}
-              onClick={() => navigate('/ik-yonetim?sekme=sicil')}>
+              onClick={() => geriDon(navigate, '/ik-yonetim?sekme=sicil')}>
               İK Yönetimi'ne dön
             </Button>
           }
@@ -188,7 +189,7 @@ export default function PersonelSicil() {
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
       {/* Geri */}
       <button
-        onClick={() => navigate('/ik-yonetim?sekme=sicil')}
+        onClick={() => geriDon(navigate, '/ik-yonetim?sekme=sicil')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',

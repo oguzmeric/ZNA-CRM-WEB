@@ -13,6 +13,7 @@ import { uygunZamanFormat } from '../../lib/uygunZamanFormat'
 import {
   Button, Input, Textarea, Label, Card, Badge, CodeBadge, EmptyState, TarihSaatSecici,
 } from '../../components/ui'
+import { geriDon } from '../../lib/geriDon'
 
 const ACIL_TONE = { acil: 'kayip', yuksek: 'beklemede', normal: 'lead', dusuk: 'neutral' }
 const DURUM_TONE = {
@@ -86,7 +87,7 @@ export default function MusteriTalepDetay() {
         <EmptyState
           icon={<FileText size={32} strokeWidth={1.5} />}
           title="Talep bulunamadı"
-          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/musteri-portal/taleplerim')}>Taleplerime dön</Button>}
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/musteri-portal/taleplerim')}>Taleplerime dön</Button>}
         />
       </div>
     )
@@ -203,7 +204,7 @@ export default function MusteriTalepDetay() {
       {/* Kompakt üst şerit — tek satır: geri + rozetler + başlık + düzenle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <button
-          onClick={() => navigate('/musteri-portal/taleplerim')}
+          onClick={() => geriDon(navigate, '/musteri-portal/taleplerim')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             padding: '6px 10px',
