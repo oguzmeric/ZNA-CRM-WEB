@@ -53,7 +53,7 @@ serve(async (req) => {
     // 2. Caller admin mi? kullanicilar tablosunda tip='zna' olanlar admin sayilir
     const { data: callerProfil, error: profilErr } = await supaAdmin
       .from('kullanicilar')
-      .select('id, ad, tip, durum')
+      .select('id, ad, tip, durum, rol, hesap_silindi')
       .eq('auth_id', callerAuth.user.id)
       .maybeSingle()
 
@@ -64,9 +64,15 @@ serve(async (req) => {
       )
     }
 
-    // 'durum' field'i 'cevrimici'/'cevrimdisi' (online/offline) tutuyor — 'aktif' degil.
-    // Erisim engeli icin sadece 'pasif' kontrolu (varsa). Diger her ZNA personeli admin sayilir.
-    if (callerProfil.tip !== 'zna' || callerProfil.durum === 'pasif') {
+    // 🔴 22.08 GUVENLIK: eskiden tip='zna' olan HER personel admin sayiliyordu
+    // (24 kisi herkesin sifresini sifirlayabiliyordu). Artik DB is_admin() ile ayni
+    // kural: rol='admin' AND tip='zna' AND hesap_silindi=false (mig 246/323).
+    if (
+      callerProfil.rol !== 'admin' ||
+      callerProfil.tip !== 'zna' ||
+      callerProfil.hesap_silindi === true ||
+      callerProfil.durum === 'pasif'
+    ) {
       return new Response(
         JSON.stringify({ ok: false, hata: 'Bu islem icin admin (ZNA personeli) yetkisi gerekli' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
