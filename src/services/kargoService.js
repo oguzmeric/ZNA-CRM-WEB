@@ -68,6 +68,7 @@ export const kargoGuncelle = async (id, guncellenmis) => {
 }
 
 export const kargoSil = async (id) => {
-  await supabase.from('kargolar').delete().eq('id', id)
+  const { error } = await supabase.from('kargolar').delete().eq('id', id)
+  if (error) throw new Error(error.message)   // sessiz yutma yok: çağıran hatayı gösterir
   invalidate('kargolar:list')
 }

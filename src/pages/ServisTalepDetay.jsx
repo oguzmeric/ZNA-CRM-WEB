@@ -152,7 +152,7 @@ export default function ServisTalepDetay() {
       <div style={{ padding: 24 }}>
         <EmptyState
           title="Talep bulunamadı"
-          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/servis-talepleri')}>Taleplere dön</Button>}
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/servis-talepleri')}>Taleplere dön</Button>}
         />
       </div>
     )
@@ -542,7 +542,11 @@ export default function ServisTalepDetay() {
             action={
               <div style={{ display: 'flex', gap: 8 }}>
                 <Button variant="secondary" size="sm" onClick={() => setSilOnayGoster(false)}>İptal</Button>
-                <Button variant="danger" size="sm" onClick={() => { talepSil(talep.id); navigate('/servis-talepleri') }}>Evet, sil</Button>
+                <Button variant="danger" size="sm" onClick={async () => {
+                  // Silme BEKLENİR: önceden beklenmeden listeye dönülüyor, liste silinen kaydı gösteriyor, hata yutuluyordu
+                  try { await talepSil(talep.id); toast.success('Talep silindi.'); navigate('/servis-talepleri') }
+                  catch (e) { toast.error('Silinemedi: ' + (e?.message || 'bilinmeyen hata')) }
+                }}>Evet, sil</Button>
               </div>
             }
             style={{ marginTop: 16 }}

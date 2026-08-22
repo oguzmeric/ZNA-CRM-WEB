@@ -6,6 +6,7 @@ import {
   Check, Pencil, Package, Send, ExternalLink, Copy,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useKargo } from '../context/KargoContext'
 import {
@@ -39,6 +40,7 @@ export default function KargoDetay() {
   const navigate = useNavigate()
   const { kullanici, kullanicilar } = useAuth()
   const { bildirimEkle } = useBildirim()
+  const { toast } = useToast()
   const {
     kargolar, kargoDurumGuncelle, kargoGuncelle,
     kargoNotEkle, kargoSil,
@@ -60,7 +62,7 @@ export default function KargoDetay() {
         <EmptyState
           icon={<Package size={32} strokeWidth={1.5} />}
           title="Kargo bulunamadı"
-          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => navigate('/kargolar')}>Kargolara dön</Button>}
+          action={<Button variant="secondary" iconLeft={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => geriDon(navigate, '/kargolar')}>Kargolara dön</Button>}
         />
       </div>
     )
@@ -148,7 +150,11 @@ export default function KargoDetay() {
           title="Bu kargoyu kalıcı olarak silmek istediğinize emin misiniz?"
           action={
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="danger" size="sm" onClick={() => { kargoSil(kargo.id); navigate('/kargolar') }}>Evet, sil</Button>
+              <Button variant="danger" size="sm" onClick={async () => {
+                // Silme BEKLENİR: önceden beklenmeden listeye dönülüyor, liste silinen kaydı gösteriyor, hata yutuluyordu
+                try { await kargoSil(kargo.id); toast.success('Kargo silindi.'); navigate('/kargolar') }
+                catch (e) { toast.error('Silinemedi: ' + (e?.message || 'bilinmeyen hata')) }
+              }}>Evet, sil</Button>
               <Button variant="secondary" size="sm" onClick={() => setSilOnay(false)}>İptal</Button>
             </div>
           }

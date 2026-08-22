@@ -185,5 +185,5 @@ export const servisTalepGuncelle = async (id, guncellenmis) => {
 
 export const servisTalepSil = async (id) => {
   const { error } = await supabase.from('servis_talepleri').delete().eq('id', id)
-  if (error) console.error('servisTalepSil hata:', error.message)
+  if (error) throw new Error(error.message)   // sessiz yutma yok: liste silinmemiş kaydı gösteriyordu
 }
