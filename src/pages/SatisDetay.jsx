@@ -258,7 +258,7 @@ function SatisDetay() {
       if (yeniMod) {
         const yeni = await satisEkle(payload)
         toast.success('Fatura oluşturuldu.')
-        navigate(`/satislar/${yeni.id}`)
+        navigate(`/satislar/${yeni.id}`, { replace: true })   // geri → liste; 'Yeni Fatura' formuna dönüp mükerrer kayıt açılmasın
       } else {
         await satisGuncelle(id, payload)
         toast.success('Fatura güncellendi.')
@@ -293,7 +293,7 @@ function SatisDetay() {
         const yeni = await satisEkle(payload)
         await stokDusumYap(form.satirlar, form.faturaNo || form.istekNo, form.firmaAdi)
         toast.success('Fatura gönderildi olarak kaydedildi.')
-        navigate(`/satislar/${yeni.id}`)
+        navigate(`/satislar/${yeni.id}`, { replace: true })   // geri → liste; 'Yeni Fatura' formuna dönüp mükerrer kayıt açılmasın
       } else {
         await satisGuncelle(id, payload)
         setForm((prev) => ({ ...prev, durum: 'gonderildi' }))

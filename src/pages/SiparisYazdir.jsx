@@ -11,6 +11,7 @@ import { musteriGetir } from '../services/musteriService'
 import { lokasyonAdiGetir } from '../services/musteriLokasyonService'
 import { gorusmeGetir } from '../services/gorusmeService'
 import { dosyayiKaydet } from '../lib/dosyaIndir'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 const paraSembol = (pb) => (pb === 'USD' ? '$' : pb === 'EUR' ? '€' : '₺')
 const fmt = (n) => (Number(n) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -168,7 +169,7 @@ export default function SiparisYazdir() {
           </button>
           <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
           <button
-            onClick={() => window.close()}
+            onClick={() => yazdirKapat(`/siparisler/${id}`)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               padding: '7px 10px', fontSize: 12.5, fontWeight: 500,

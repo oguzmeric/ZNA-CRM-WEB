@@ -11,6 +11,7 @@ import { servisTalepGetir } from '../services/servisService'
 import { musteriGetir } from '../services/musteriService'
 import { formEnvanterKalemleri } from '../services/servisMalzemeService'
 import ServisFormu from './servisCikti/ServisFormu'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 const SIRKETLER = [
   { id: 'zna',        label: 'ZNA Teknoloji' },
@@ -121,7 +122,7 @@ export default function ServisFormuYazdir() {
           🖨 Yazdır / PDF
         </button>
         <button
-          onClick={() => window.close()}
+          onClick={() => yazdirKapat(`/servis-talepleri/${id}`)}
           style={{
             background: '#f1f5f9', color: '#475569', border: 'none',
             borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer',

@@ -125,7 +125,7 @@ export default function YeniTopluBakim() {
     setKaydediliyor(false)
     if (sonuc?.hata) { toast.error(sonuc.hata); return }
     toast.success(`Toplu bakım oluşturuldu: ${sonuc.tbNo}`)
-    navigate(`/bakim-isleri/${sonuc.id}`)
+    navigate(`/bakim-isleri/${sonuc.id}`, { replace: true })   // geri → liste (boş forma değil)
   }
 
   if (!sahaSorumlusuMu(kullanici)) {

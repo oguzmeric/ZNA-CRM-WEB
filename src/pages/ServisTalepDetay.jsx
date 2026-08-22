@@ -316,7 +316,7 @@ export default function ServisTalepDetay() {
 
       {/* Geri */}
       <button
-        onClick={() => geriDon(navigate, '/servis-talepleri')}
+        onClick={() => geriDon(navigate, talep?.kaynak === 'musteri' ? '/servis-talepleri?kaynak=musteri' : '/servis-talepleri')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
@@ -544,7 +544,7 @@ export default function ServisTalepDetay() {
                 <Button variant="secondary" size="sm" onClick={() => setSilOnayGoster(false)}>İptal</Button>
                 <Button variant="danger" size="sm" onClick={async () => {
                   // Silme BEKLENİR: önceden beklenmeden listeye dönülüyor, liste silinen kaydı gösteriyor, hata yutuluyordu
-                  try { await talepSil(talep.id); toast.success('Talep silindi.'); navigate('/servis-talepleri') }
+                  try { await talepSil(talep.id); toast.success('Talep silindi.'); navigate(talep?.kaynak === 'musteri' ? '/servis-talepleri?kaynak=musteri' : '/servis-talepleri') }
                   catch (e) { toast.error('Silinemedi: ' + (e?.message || 'bilinmeyen hata')) }
                 }}>Evet, sil</Button>
               </div>

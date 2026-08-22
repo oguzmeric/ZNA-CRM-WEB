@@ -29,6 +29,7 @@ import {
   imzaYokSebepMetni, imzasizTamamlandiMi,
 } from '../services/topluBakimService'
 import { kullanicilariGetir } from '../services/kullaniciService'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 const fmtTarih = (t) => t ? new Date(String(t).includes('T') ? t : t + 'T00:00:00').toLocaleDateString('tr-TR') : '—'
 const fmtTarihSaat = (t) => t ? new Date(t).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
@@ -109,7 +110,7 @@ export default function BakimYazdir() {
             {pdfUretiliyor ? '⏳ Hazırlanıyor…' : '⬇ PDF İndir'}
           </button>
           <button onClick={() => window.print()} style={{ ...btnStil, background: '#fff', color: '#334155', border: '1px solid #cbd5e1' }}>🖨 Yazdır</button>
-          <button onClick={() => window.close()} style={{ ...btnStil, background: 'transparent', color: '#64748b' }}>Kapat</button>
+          <button onClick={() => yazdirKapat(`/bakim-isleri/${id}`)} style={{ ...btnStil, background: 'transparent', color: '#64748b' }}>Kapat</button>
         </div>
       </div>
       <style>{`

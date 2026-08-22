@@ -459,7 +459,7 @@ export default function ServisTalepleri() {
                       <>
                         <tr
                           key={talep.id}
-                          onClick={() => !silOnayAcik && navigate(`/servis-talepleri/${talep.id}`)}
+                          onClick={() => !silOnayAcik && navigate(`/servis-talepleri/${talep.id}${kaynakFiltre === 'musteri' ? '?kaynak=musteri' : ''}`)}
                           style={{ cursor: silOnayAcik ? 'default' : 'pointer', transition: 'background 120ms' }}
                           onMouseEnter={e => !silOnayAcik && (e.currentTarget.style.background = 'var(--surface-sunken)')}
                           onMouseLeave={e => !silOnayAcik && (e.currentTarget.style.background = 'transparent')}
@@ -653,7 +653,7 @@ export default function ServisTalepleri() {
                     return (
                       <div
                         key={talep.id}
-                        onClick={() => navigate(`/servis-talepleri/${talep.id}`)}
+                        onClick={() => navigate(`/servis-talepleri/${talep.id}${kaynakFiltre === 'musteri' ? '?kaynak=musteri' : ''}`)}
                         style={{
                           background: 'var(--surface-card)',
                           border: '1px solid var(--border-default)',

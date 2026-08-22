@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Building2, User, AlertTriangle, MapPin, Phone, Calendar, Wrench, Settings,
@@ -18,6 +18,7 @@ import {
   Button, Input, Textarea, Label, Card, Badge, EmptyState, Alert, SearchInput,
 } from '../components/ui'
 import { geriDon } from '../lib/geriDon'
+import { useKaydedilmemisKoruma } from '../hooks/useKaydedilmemisKoruma'
 
 const trNormalize = (str = '') =>
   String(str).toLowerCase()
@@ -51,7 +52,11 @@ export default function YeniServisTalebi() {
   const [musteriler, setMusteriler] = useState([])
   const [seciliMusteri, setSeciliMusteri] = useState(null)
   const [musteriLokasyonlari, setMusteriLokasyonlari] = useState([])
-  const [form, setForm] = useState(bos)
+  const [form, setFormHam] = useState(bos)
+  // 22.08 geri çıkış koruması: kullanıcı etkileşimiyle değişen form 'dokunuldu'
+  // sayılır; ön doldurma (aşağıdaki effect) setFormHam ile yazar, kirli SAYILMAZ.
+  const [dokunuldu, setDokunuldu] = useState(false)
+  const setForm = useCallback((u) => { setDokunuldu(true); setFormHam(u) }, [])
   const [seciliTeknisyenId, setSeciliTeknisyenId] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   // Talep kaydedilmeden malzeme satırları DB'ye yazılamaz — burada bekler,
@@ -74,7 +79,7 @@ export default function YeniServisTalebi() {
     const m = musteriler.find(x => x.id?.toString() === musteriId.toString())
     if (!m) return
     setSeciliMusteri(m)
-    setForm(p => ({
+    setFormHam(p => ({
       ...p,
       // ⚠️ Müşteri değişince lokasyon KİMLİĞİ düşer: önceki müşterinin
       // lokasyonu yenisine ait değildir, kalırsa yanlış firmaya bağlanır.
@@ -86,6 +91,9 @@ export default function YeniServisTalebi() {
     // Müşterinin lokasyonlarını çek (varsa dropdown göstereceğiz)
     musteriLokasyonlariniGetir(m.id).then(setMusteriLokasyonlari).catch(() => setMusteriLokasyonlari([]))
   }
+
+  const kirli = dokunuldu || malzemeTaslak.length > 0 || seciliTeknisyenId !== ''
+  const { serbestBirak, cikisOnayi } = useKaydedilmemisKoruma(kirli)
 
   const kaydet = async () => {
     if (!seciliMusteri) {
@@ -131,7 +139,8 @@ export default function YeniServisTalebi() {
         )
         // Sessizce kaybolmasın: bir kısmı yazılamadıysa kullanıcı bilsin
         if (hatali) toast.error(`${hatali} malzeme aktarılamadı, talep detayından tekrar ekleyin.`)
-        navigate(`/servis-talepleri/${yeni.id}`)
+        serbestBirak()
+        navigate(`/servis-talepleri/${yeni.id}`, { replace: true })   // geri → liste (boş forma değil)
       } else {
         toast.error('Talep oluşturulamadı.')
       }
@@ -148,7 +157,7 @@ export default function YeniServisTalebi() {
   return (
     <div style={{ padding: 24, maxWidth: 1040, margin: '0 auto' }}>
       <button
-        onClick={() => geriDon(navigate, '/servis-talepleri')}
+        onClick={async () => { if (await cikisOnayi()) geriDon(navigate, '/servis-talepleri') }}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
@@ -431,7 +440,7 @@ export default function YeniServisTalebi() {
 
       {/* Kaydet / iptal */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Button variant="secondary" onClick={() => geriDon(navigate, '/servis-talepleri')}>İptal</Button>
+        <Button variant="secondary" onClick={async () => { if (await cikisOnayi()) geriDon(navigate, '/servis-talepleri') }}>İptal</Button>
         <Button
           variant="primary"
           iconLeft={<Plus size={14} strokeWidth={1.5} />}

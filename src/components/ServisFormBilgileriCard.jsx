@@ -11,7 +11,7 @@
 // Kart artik: degisiklik varken rozet basar, sayfadan cikisi engeller ve
 // durumu `onKirliDegisti` ile sayfaya bildirir (servis kapatma kapisi icin).
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Save, AlertTriangle, Check } from 'lucide-react'
 import { Card, CardTitle, Button, Input, Label, Textarea } from './ui'
 
@@ -95,8 +95,13 @@ export default function ServisFormBilgileriCard({ talep, onKaydet, onKirliDegist
   const [basariMsg, setBasariMsg] = useState(null)
   const [hata, setHata] = useState(null)
 
-  // Talep degisirse local state'i tazele (realtime guncelleme)
+  // Talep degisirse local state'i tazele (realtime guncelleme).
+  // ⚠️ KİRLİYKEN EZME (22.08): ofiste çözüm açıklaması yazılırken teknisyen
+  // mobilden marka/model güncelleyince yazılan paragraf siliniyordu. Kirli
+  // kartta dış güncelleme uygulanmaz; kullanıcı Kaydet'e basınca kendi hâli yazılır.
+  const kirliRef = useRef(false)
   useEffect(() => {
+    if (kirliRef.current) return
     setServisTipi(setOlustur(talep?.servisTipi))
     setYukumluluk(setOlustur(talep?.yukumluluk))
     setServisYeri(setOlustur(talep?.servisYeri))
@@ -118,6 +123,7 @@ export default function ServisFormBilgileriCard({ talep, onKaydet, onKirliDegist
     metinNorm(marka) !== metinNorm(talep?.marka) ||
     metinNorm(model) !== metinNorm(talep?.model) ||
     metinNorm(cozumAciklamasi) !== metinNorm(talep?.cozumAciklamasi)
+  useEffect(() => { kirliRef.current = kirli }, [kirli])
 
   // Sayfa bunu servis kapatma kapısında kullanıyor
   useEffect(() => { onKirliDegisti?.(kirli) }, [kirli, onKirliDegisti])

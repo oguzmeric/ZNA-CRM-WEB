@@ -12,6 +12,7 @@ import KarelCikti from './teklifCikti/KarelCikti'
 import { teklifDosyaAdi } from '../lib/teklifDosyaAdi'
 import { tipCoz } from '../lib/teklifTemplates'
 import { teklifiTlyeCevir, oranMetni } from '../lib/teklifHesap'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 const ciktiMap = {
   standart: StandartCikti,
@@ -274,7 +275,7 @@ export default function TeklifYazdir() {
           </button>
           <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
           <button
-            onClick={() => window.close()}
+            onClick={() => yazdirKapat(`/teklifler/${id}`)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               padding: '7px 10px', fontSize: 12.5, fontWeight: 500,

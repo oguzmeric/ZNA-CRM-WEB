@@ -33,6 +33,7 @@ import StandartCikti from './teklifCikti/StandartCikti'
 import { dosyaAdiTemizle } from '../lib/teklifDosyaAdi'
 import { tipCoz } from '../lib/teklifTemplates'
 import { teklifHesapla, teklifiTlyeCevir, oranMetni, tutarMetni, r2 } from '../lib/teklifHesap'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 const PARA_SEMBOL = { TL: '₺', USD: '$', EUR: '€' }
 const sembol = (pb) => PARA_SEMBOL[pb] || '₺'
@@ -279,7 +280,7 @@ export default function TeklifIcmalYazdir() {
           </button>
           <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
           <button
-            onClick={() => window.close()}
+            onClick={() => yazdirKapat('/teklifler')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               padding: '7px 10px', fontSize: 12.5, fontWeight: 500,

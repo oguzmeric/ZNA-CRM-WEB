@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { faturaTalepGetir } from '../services/faturaTalepService'
+import { yazdirKapat } from '../lib/yazdirKapat'
 
 // Kurumsal PROFORMA FATURA çıktısı. Proforma resmî belge değildir —
 // filigran + uyarı bandı bunu belirgin kılar (gerçek fatura FaturaYazdir'da).
@@ -95,7 +96,7 @@ export default function ProformaYazdir() {
 
       <div className="no-print" style={{ position: 'fixed', top: 16, right: 16, display: 'flex', gap: 8, zIndex: 999 }}>
         <button onClick={() => window.print()} style={{ background: MAVI, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>🖨 Yazdır / PDF</button>
-        <button onClick={() => window.close()} style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✕ Kapat</button>
+        <button onClick={() => yazdirKapat('/fatura-talepleri')} style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✕ Kapat</button>
       </div>
 
       {/* Bedelsizde filigran da bunu söylesin — belge tek bakışta ayırt edilsin */}
