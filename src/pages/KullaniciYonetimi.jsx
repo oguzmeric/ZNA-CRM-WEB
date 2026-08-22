@@ -2,7 +2,7 @@ import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import {
   Plus, Pencil, Trash2, Shield, User, Check, AlertTriangle, Settings,
-  LogIn, LogOut, FileText, Clock, CheckCircle2, PauseCircle, PlayCircle,
+  LogIn, LogOut, FileText, Clock, CheckCircle2, PauseCircle, PlayCircle, ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { ANA_TURLER, PORTAL_TURLERI } from '../context/ServisTalebiContext'
@@ -125,7 +125,21 @@ function sonGirisCevir(tarih) {
 }
 
 function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER, aramaMetni, setAramaMetni, onDuzenle, onSil, onAski }) {
-  const [yetkiAcik, setYetkiAcik] = useState({})
+  // 22.08: liste 30 satırda 3 ekran boyu uzuyordu (her satır ~65px + yetki çipleri).
+  // Kompakt tablo düzeni: satır 40px, yetkiler SAYI olarak, detay satıra tıklayınca
+  // açılır. Gruplar katlanabilir; tercih kişiye özel (localStorage).
+  const [acikDetay, setAcikDetay] = useState(null)          // tek seferde bir satır
+  const [kapaliGruplar, setKapaliGruplar] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ky_kapali_gruplar') || '[]') } catch { return [] }
+  })
+  const grupAcKapa = (gid) => {
+    setKapaliGruplar(p => {
+      const y = p.includes(gid) ? p.filter(x => x !== gid) : [...p, gid]
+      try { localStorage.setItem('ky_kapali_gruplar', JSON.stringify(y)) } catch { /* kota dolu olabilir */ }
+      return y
+    })
+  }
+
   const ozetMap = useMemo(() => {
     const m = new Map()
     kullaniciOzet.forEach(o => m.set(o.id, o))
@@ -150,188 +164,240 @@ function KullaniciListesi({ kullanicilar, kullaniciOzet, tumModuller, ANA_TURLER
     ].filter(g => g.liste.length > 0)
   }, [filtreli])
 
-  const KullaniciSatiri = ({ k }) => {
+  const KullaniciSatiri = ({ k, sonSatir }) => {
     const ozet = ozetMap.get(k.id) || {}
     const durum = k.durum || 'cevrimdisi'
-    const acik = !!yetkiAcik[k.id]
+    const detayAcik = acikDetay === k.id
 
-    // Yetki itemlari
     const yetkiler = k.tip === 'musteri'
       ? (k.izinliTurler?.length > 0
           ? k.izinliTurler.map(tid => ANA_TURLER.find(t => t.id === tid)?.isim).filter(Boolean)
           : (k.firmaAdi ? ['Tüm türler açık'] : []))
       : (k.moduller || []).map(mid => tumModuller.find(t => t.id === mid)?.isim).filter(Boolean)
-    const gosterilen = acik ? yetkiler : yetkiler.slice(0, 3)
-    const kalan = yetkiler.length - gosterilen.length
+
+    // Nokta yetkiler — satırda rozet olarak değil, detayda listelenir
+    const ekYetkiler = EK_YETKILER.filter(y => k[y.alan]).map(y => y.isim)
+    if (k.faturaYetkilisi) ekYetkiler.unshift('Fatura yetkilisi')
+    if (k.montajSorumlusu) ekYetkiler.push('Montaj sorumlusu')
+
+    const kritikVar = (k.moduller || []).some(m => m === 'bordro_yonetim' || m === 'kullanici_yonetimi')
 
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--border-default)',
-        transition: 'background 120ms',
-      }}
-        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-sunken)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        {/* Avatar + online dot */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <Avatar name={k.ad} size="md" />
-          <span aria-hidden style={{
-            position: 'absolute', bottom: -1, right: -1,
-            width: 11, height: 11, borderRadius: '50%',
-            background: DURUM_RENK[durum] || DURUM_RENK.cevrimdisi,
-            border: '2px solid var(--surface-card)',
-          }} title={DURUM_ISIM[durum] || 'Bilinmiyor'} />
-        </div>
+      <>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setAcikDetay(p => (p === k.id ? null : k.id))}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAcikDetay(p => (p === k.id ? null : k.id)) } }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '7px 12px', cursor: 'pointer',
+            borderBottom: (sonSatir && !detayAcik) ? 'none' : '1px solid var(--border-default)',
+            background: detayAcik ? 'var(--surface-sunken)' : 'transparent',
+            transition: 'background 120ms',
+          }}
+          onMouseEnter={e => { if (!detayAcik) e.currentTarget.style.background = 'var(--surface-sunken)' }}
+          onMouseLeave={e => { if (!detayAcik) e.currentTarget.style.background = 'transparent' }}
+        >
+          {/* Avatar + durum noktası */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar name={k.ad} size="xs" />
+            <span aria-hidden style={{
+              position: 'absolute', bottom: -1, right: -1,
+              width: 8, height: 8, borderRadius: '50%',
+              background: DURUM_RENK[durum] || DURUM_RENK.cevrimdisi,
+              border: '2px solid var(--surface-card)',
+            }} title={DURUM_ISIM[durum] || 'Bilinmiyor'} />
+          </div>
 
-        {/* Isim + meta */}
-        <div style={{ minWidth: 0, flex: '0 0 240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ font: '500 14px/20px var(--font-sans)', color: 'var(--text-primary)' }}>{k.ad}</span>
-            {k.askida && (
-              <Badge tone="kayip" title={k.askiSebebi || 'Hesap askıda — giriş ve veri erişimi kapalı'}>
-                Askıda
-              </Badge>
-            )}
+          {/* Ad + kullanıcı adı — tek satır */}
+          <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{
+              font: '500 13px/18px var(--font-sans)', color: 'var(--text-primary)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200,
+            }}>
+              {k.ad}
+            </span>
+            <span style={{
+              font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              @{k.kullaniciAdi}{k.firmaAdi ? ` · ${k.firmaAdi}` : ''}
+            </span>
+          </div>
+
+          {/* Rozetler — yalnız istisnai durumlar */}
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {k.askida && <Badge tone="kayip" title={k.askiSebebi || 'Hesap askıda'}>Askıda</Badge>}
             {k.rol === 'admin' && <Badge tone="kayip">Admin</Badge>}
-            {k.siparisOnayUstYetkili && <Badge tone="beklemede">Üst Onaycı</Badge>}
-            {k.siparisOnayYetkilisi && !k.siparisOnayUstYetkili && <Badge tone="brand">Onaycı</Badge>}
+            {kritikVar && <Badge tone="uyari" title="Bordro/maaş ya da kullanıcı yönetimi yetkisi">🔒</Badge>}
           </div>
-          <div style={{ font: '400 12px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            @{k.kullaniciAdi}
-            {k.firmaAdi && <span> · {k.firmaAdi}</span>}
+
+          {/* Yetki özeti — çip yığını yerine sayı */}
+          <div style={{
+            flex: '0 0 96px', textAlign: 'right',
+            font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {yetkiler.length === 0
+              ? <span style={{ fontStyle: 'italic' }}>yetki yok</span>
+              : `${yetkiler.length} ${k.tip === 'musteri' ? 'talep türü' : 'modül'}`}
+            {ekYetkiler.length > 0 && <span> +{ekYetkiler.length}</span>}
           </div>
-          {ozet.sonGiris && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2, font: '400 11px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
-              <Clock size={10} strokeWidth={1.5} />
-              {sonGirisCevir(ozet.sonGiris)}
-            </div>
-          )}
-        </div>
 
-        {/* Yetkiler */}
-        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {gosterilen.length === 0
-            ? <span className="t-caption" style={{ fontStyle: 'italic' }}>Yetki tanımlı değil</span>
-            : gosterilen.map(isim => (
-                <Badge key={isim} tone={k.tip === 'musteri' ? 'brand' : 'lead'}>{isim}</Badge>
-              ))}
-          {kalan > 0 && (
-            <button
-              onClick={() => setYetkiAcik(p => ({ ...p, [k.id]: true }))}
-              style={{
-                padding: '2px 8px', borderRadius: 999,
-                border: '1px dashed var(--border-default)',
-                background: 'transparent', cursor: 'pointer',
-                font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
-              }}
-            >
-              +{kalan} daha
-            </button>
-          )}
-          {acik && yetkiler.length > 3 && (
-            <button
-              onClick={() => setYetkiAcik(p => ({ ...p, [k.id]: false }))}
-              style={{
-                padding: '2px 8px', borderRadius: 999,
-                border: '1px dashed var(--border-default)',
-                background: 'transparent', cursor: 'pointer',
-                font: '500 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
-              }}
-            >
-              − Az göster
-            </button>
-          )}
-        </div>
+          {/* Son giriş */}
+          <div style={{
+            flex: '0 0 92px', textAlign: 'right',
+            font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)',
+          }}>
+            {ozet.sonGiris ? sonGirisCevir(ozet.sonGiris) : '—'}
+          </div>
 
-        {/* Aksiyon butonlari */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <button
-            aria-label="Düzenle"
-            onClick={() => onDuzenle(k)}
+          {/* Aksiyonlar — satır tıklamasını yutmasınlar */}
+          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+            <IkonBtn ikon={Pencil} etiket="Düzenle" onClick={() => onDuzenle(k)} />
+            {k.rol !== 'admin' && (
+              <IkonBtn
+                ikon={k.askida ? PlayCircle : PauseCircle}
+                etiket={k.askida ? 'Askıdan çıkar' : 'Askıya al'}
+                renk={k.askida ? 'var(--warning)' : undefined}
+                onClick={() => onAski(k)}
+              />
+            )}
+            {k.silinebilir && <IkonBtn ikon={Trash2} etiket="Sil" tehlike onClick={async () => await onSil(k.id)} />}
+          </div>
+
+          <ChevronDown
+            size={13}
+            strokeWidth={1.5}
             style={{
-              width: 32, height: 32,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: 'transparent', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
+              flexShrink: 0, color: 'var(--text-tertiary)',
+              transform: detayAcik ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-soft)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-          >
-            <Pencil size={14} strokeWidth={1.5} />
-          </button>
-          {/* Askı: admin hesaplarında yok (RPC de reddeder — karar: yönetici
-              kilitlenmez). Veri çekme korumasının elle müdahale kapısı. */}
-          {k.rol !== 'admin' && (
-            <button
-              aria-label={k.askida ? 'Askıdan çıkar' : 'Askıya al'}
-              title={k.askida ? 'Askıdan çıkar — giriş ve veri erişimi yeniden açılır' : 'Askıya al — giriş ve TÜM veri erişimi kapanır'}
-              onClick={() => onAski(k)}
-              style={{
-                width: 32, height: 32,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: 'transparent', border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-sm)',
-                color: k.askida ? 'var(--warning)' : 'var(--text-secondary)', cursor: 'pointer',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--warning-soft, rgba(245,158,11,0.12))'; e.currentTarget.style.color = 'var(--warning)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = k.askida ? 'var(--warning)' : 'var(--text-secondary)' }}
-            >
-              {k.askida ? <PlayCircle size={14} strokeWidth={1.5} /> : <PauseCircle size={14} strokeWidth={1.5} />}
-            </button>
-          )}
-          {k.silinebilir && (
-            <button
-              aria-label="Sil"
-              onClick={async () => await onSil(k.id)}
-              style={{
-                width: 32, height: 32,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: 'transparent', border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; e.currentTarget.style.color = 'var(--danger)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            >
-              <Trash2 size={14} strokeWidth={1.5} />
-            </button>
-          )}
+          />
         </div>
-      </div>
+
+        {/* Detay — yetkiler burada, satırı şişirmeden */}
+        {detayAcik && (
+          <div style={{
+            padding: '10px 12px 12px 46px',
+            background: 'var(--surface-sunken)',
+            borderBottom: sonSatir ? 'none' : '1px solid var(--border-default)',
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div>
+              <div style={{ font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                {k.tip === 'musteri' ? 'Görebildiği talep türleri' : 'Modül erişimleri'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {yetkiler.length === 0
+                  ? <span className="t-caption" style={{ fontStyle: 'italic' }}>Yetki tanımlı değil</span>
+                  : yetkiler.map(isim => (
+                      <Badge key={isim} tone={k.tip === 'musteri' ? 'brand' : 'lead'}>{isim}</Badge>
+                    ))}
+              </div>
+            </div>
+            {ekYetkiler.length > 0 && (
+              <div>
+                <div style={{ font: '600 10px/14px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Özel yetkiler
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {ekYetkiler.map(isim => <Badge key={isim} tone="beklemede">{isim}</Badge>)}
+                </div>
+              </div>
+            )}
+            {k.askida && !!k.askiSebebi && (
+              <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--danger)' }}>
+                Askı sebebi: {k.askiSebebi}
+              </div>
+            )}
+          </div>
+        )}
+      </>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Arama */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <SearchInput
         value={aramaMetni}
         onChange={e => setAramaMetni(e.target.value)}
-        placeholder="Kullanıcı adı, kullanıcı adı veya firmaya göre ara…"
+        placeholder="Ad, kullanıcı adı veya firmaya göre ara…"
       />
 
       {filtreli.length === 0 ? (
         <Card><EmptyState title="Eşleşen kullanıcı bulunamadı" /></Card>
       ) : (
-        gruplar.map(g => (
-          <div key={g.id}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px 8px' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: g.renk }} />
-              <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {g.isim}
-              </span>
-              <span style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                ({g.liste.length})
-              </span>
+        gruplar.map(g => {
+          const kapali = kapaliGruplar.includes(g.id)
+          return (
+            <div key={g.id}>
+              <button
+                onClick={() => grupAcKapa(g.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '4px 4px 7px', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <ChevronDown
+                  size={13}
+                  strokeWidth={2}
+                  style={{ color: 'var(--text-tertiary)', transform: kapali ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms' }}
+                />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: g.renk }} />
+                <span style={{ font: '700 12px/16px var(--font-sans)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {g.isim}
+                </span>
+                <span style={{ font: '500 11px/14px var(--font-sans)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                  ({g.liste.length})
+                </span>
+              </button>
+              {!kapali && (
+                <Card padding={0}>
+                  {g.liste.map((k, i) => (
+                    <KullaniciSatiri key={k.id} k={k} sonSatir={i === g.liste.length - 1} />
+                  ))}
+                </Card>
+              )}
             </div>
-            <Card padding={0}>
-              {g.liste.map(k => <KullaniciSatiri key={k.id} k={k} />)}
-            </Card>
-          </div>
-        ))
+          )
+        })
       )}
     </div>
+  )
+}
+
+// Kompakt ikon butonu — liste satırındaki aksiyonlar (tekrar eden 20 satırlık stil yerine)
+function IkonBtn(props) {
+  const { etiket, onClick, renk, tehlike } = props
+  const Ikon = props.ikon                       // ⚠️ destructure'da lint 'kullanılmıyor' sanıyor
+  const temel = renk || 'var(--text-tertiary)'
+  return (
+    <button
+      aria-label={etiket}
+      title={etiket}
+      onClick={onClick}
+      style={{
+        width: 26, height: 26,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: 'transparent', border: '1px solid transparent',
+        borderRadius: 'var(--radius-sm)', color: temel, cursor: 'pointer',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = tehlike ? 'var(--danger-soft)' : 'var(--brand-primary-soft)'
+        e.currentTarget.style.color = tehlike ? 'var(--danger)' : 'var(--brand-primary)'
+        e.currentTarget.style.borderColor = 'var(--border-default)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color = temel
+        e.currentTarget.style.borderColor = 'transparent'
+      }}
+    >
+      <Ikon size={13} strokeWidth={1.5} />
+    </button>
   )
 }
 
