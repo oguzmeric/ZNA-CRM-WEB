@@ -49,6 +49,7 @@ import {
   Button, Card, Input, Textarea, Label,
   Badge, EmptyState, Avatar, TarihSaatSecici,
 } from '../components/ui'
+import { useKaydedilmemisKoruma } from '../hooks/useKaydedilmemisKoruma'
 
 // Kanban v2 (madde 33): 5 kolon — her kolon birden çok DB durumunu toplar,
 // sürüklemede hedef kolonun ANA durumu (id) yazılır.
@@ -377,7 +378,11 @@ function Gorevler() {
   const [gorusmeler, setGorusmeler] = useState([])          // form "Bağlı görüşme" seçicisi (teklif ile aynı desen)
   const [lokasyonModalAcik, setLokasyonModalAcik] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [form, setForm] = useState(bosForm)
+  const [form, setFormHam] = useState(bosForm)
+  // 22.08 geri çıkış koruması: kullanıcı etkileşimiyle değişen form 'dokunuldu';
+  // formAc/duzenleAc ön doldurması setFormHam ile yazar ve bayrağı sıfırlar (yanlış pozitif yok).
+  const [dokunuldu, setDokunuldu] = useState(false)
+  const setForm = useCallback((u) => { setDokunuldu(true); setFormHam(u) }, [])
   const [goster, setGoster] = useState(false)
   const [duzenleId, setDuzenleId] = useState(null)
   const [aktifGorev, setAktifGorev] = useState(null)
@@ -699,7 +704,7 @@ function Gorevler() {
   }
 
   const formAc = () => {
-    setForm(bosForm); setDuzenleId(null); setDetayYuklendi(true); setGelismisAcik(false); setGoster(true)
+    setFormHam(bosForm); setDokunuldu(false); setDuzenleId(null); setDetayYuklendi(true); setGelismisAcik(false); setGoster(true)
   }
 
   // Panel'den ?yeni=1 ile gelinirse formu direkt aç
@@ -711,6 +716,9 @@ function Gorevler() {
       setSearchParams(kopya, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  const kirli = goster && (dokunuldu || gorevEkleri.length > 0)
+  useKaydedilmemisKoruma(kirli)   // sidebar/palet/bildirim geçişi kirli formda sorar
 
   const kaydet = async () => {
     if (!form.baslik || !form.atanan || !form.bitisTarih) {
@@ -873,7 +881,8 @@ function Gorevler() {
       const pad = n => String(n).padStart(2, '0')
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
     }
-    setForm({
+    setDokunuldu(false)
+    setFormHam({
       baslik: g.baslik, aciklama: g.aciklama || '', atanan: g.atanan, oncelik: g.oncelik,
       durum: g.durum || 'bekliyor',
       sonTarih: g.sonTarih,
@@ -905,7 +914,7 @@ function Gorevler() {
     duzenleFetchRef.current = g.id
     gorevGetir(g.id).then(tam => {
       if (duzenleFetchRef.current !== g.id || !tam) return
-      setForm(f => ({
+      setFormHam(f => ({
         ...f,
         beklenenCikti: tam.beklenenCikti || '',
         hatirlatmaSecim: hatirlatmalardanSecim(tam.hatirlatmalar),

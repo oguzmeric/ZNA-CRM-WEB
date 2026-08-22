@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useUrlSayfa } from '../lib/useUrlSayfa'
 import { useAuth } from '../context/AuthContext'
 import { useServisTalebi } from '../context/ServisTalebiContext'
@@ -28,6 +28,7 @@ import {
   Button, SearchInput, Input, Textarea, Label,
   Card, Badge, CodeBadge, EmptyState, SegmentedControl,
 } from '../components/ui'
+import { useKaydedilmemisKoruma } from '../hooks/useKaydedilmemisKoruma'
 
 const varsayilanKonular = [
   'CCTV', 'NVR-ANALİZ', 'Network', 'Teklif', 'Keşif', 'Demo',
@@ -84,7 +85,11 @@ function Gorusmeler() {
   const [tamListeHazir, setTamListeHazir] = useState(false)
   const [sunucuToplam, setSunucuToplam] = useState(0)
   const tamListeHazirRef = useRef(false)
-  const [form, setForm] = useState(bosForm)
+  const [form, setFormHam] = useState(bosForm)
+  // 22.08 geri çıkış koruması: kullanıcı etkileşimiyle değişen form 'dokunuldu';
+  // formAc/duzenleAc ön doldurması setFormHam ile yazar ve bayrağı sıfırlar (yanlış pozitif yok).
+  const [dokunuldu, setDokunuldu] = useState(false)
+  const setForm = useCallback((u) => { setDokunuldu(true); setFormHam(u) }, [])
   const [secilenFirma, setSecilenFirma] = useState('')
   const [goster, setGoster] = useState(false)
   const [duzenleId, setDuzenleId] = useState(null)
@@ -261,7 +266,8 @@ function Gorusmeler() {
   const lokasyonMap = new Map(tumLokasyonlar.map(l => [l.id, l]))
 
   const formAc = () => {
-    setForm({ ...bosForm, gorusen: kullanici.ad, tarih: new Date().toISOString().split('T')[0] })
+    setDokunuldu(false)
+    setFormHam({ ...bosForm, gorusen: kullanici.ad, tarih: new Date().toISOString().split('T')[0] })
     setSecilenFirma(''); setManuelKonuAc(false); setDuzenleId(null); setGoster(true)
     setYeniDosyalar([]); setMevcutDosyalar([])
   }
@@ -279,7 +285,7 @@ function Gorusmeler() {
   const duzenleAc = (g) => {
     const manuelMi = !varsayilanKonular.includes(g.konu)
     setSecilenFirma(g.firmaAdi || '')
-    setForm({
+    setFormHam({
       firmaAdi: g.firmaAdi,
       musteriId: g.musteriId || g.muhatapId || '',
       // Eski kayıtlarda görüşülen kişi muhatap_id yerine musteri_id'de tutuluyor;
@@ -297,7 +303,7 @@ function Gorusmeler() {
       tarih: g.tarih,
       lokasyonId: g.lokasyonId || '',
     })
-    setManuelKonuAc(manuelMi); setDuzenleId(g.id); setGoster(true)
+    setDokunuldu(false); setManuelKonuAc(manuelMi); setDuzenleId(g.id); setGoster(true)
     setYeniDosyalar([]); setMevcutDosyalar(g.dosyalar || [])
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -328,6 +334,9 @@ function Gorusmeler() {
       setManuelKonuAc(false); setForm({ ...form, konu, manuelKonu: '' })
     }
   }
+
+  const kirli = goster && (dokunuldu || yeniDosyalar.length > 0)
+  useKaydedilmemisKoruma(kirli)   // sidebar/palet/bildirim geçişi kirli formda sorar
 
   const kaydet = async () => {
     const sonKonu = manuelKonuAc

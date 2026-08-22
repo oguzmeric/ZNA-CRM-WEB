@@ -15,6 +15,7 @@ import { satislariGetir } from '../services/satisService'
 import { stokUrunleriniGetir } from '../services/stokService'
 import { useServisTalebi } from '../context/ServisTalebiContext'
 import { trContains, trNormalize } from '../lib/trSearch'
+import { useKirliForm } from '../context/KirliFormContext'
 
 const RECENT_KEY = 'kp_recent'
 const RECENT_MAX = 8
@@ -107,6 +108,7 @@ const recentEkle = (giris) => {
 
 export default function KomutPaleti({ acik, onClose }) {
   const navigate = useNavigate()
+  const { cikisOnayi } = useKirliForm()   // 22.08: kirli form varken palet geçişi sorar
   const { kullanici } = useAuth()
   const isMusteri = kullanici?.tip === 'musteri'
   // Teklif + satış faturası arama sonuçları yetkisizde hiç çekilmez (mig 238)
@@ -262,8 +264,8 @@ export default function KomutPaleti({ acik, onClose }) {
       recentEkle({ tip: oge.tip, id: oge.id, baslik: oge.baslik, altbaslik: oge.altbaslik, yol: oge.yol })
     }
     onClose?.()
-    navigate(oge.yol)
-  }, [navigate, onClose])
+    cikisOnayi().then((ok) => { if (ok) navigate(oge.yol) })
+  }, [navigate, onClose, cikisOnayi])
 
   // Klavye
   const handleKey = (e) => {

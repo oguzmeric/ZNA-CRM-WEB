@@ -10,7 +10,7 @@ import { aktiviteLogEkle } from '../services/aktiviteService'
 import { useChat } from '../context/ChatContext'
 import { useBildirim } from '../context/BildirimContext'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   LayoutDashboard, Users, CheckSquare, Phone, Calendar, Package,
   ReceiptText, KeyRound, Wrench, Truck, FolderOpen, BarChart3,
@@ -33,6 +33,7 @@ import { trContains } from '../lib/trSearch'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useKirliForm } from '../context/KirliFormContext'
 
 // Drag-drop wrapper — bir menu satirini sortable hale getirir.
 //
@@ -391,6 +392,10 @@ function MainLayout({ children }) {
   )
   const gorusmeOkunmamis = gorusmeBildirimleri.length
   const navigate = useNavigate()
+  // 22.08: kaydedilmemiş form varken menü/bildirim/profil geçişi ÖNCE sorar
+  // (KirliFormContext). navigate() değil git() kullanılır.
+  const { cikisOnayi } = useKirliForm()
+  const git = useCallback(async (yol) => { if (await cikisOnayi()) navigate(yol) }, [cikisOnayi, navigate])
   const location = useLocation()
 
   // Kritik stok rozeti — min_stok altına düşen ürün sayısı. Mount'ta + 5 dk'da
@@ -686,7 +691,7 @@ function MainLayout({ children }) {
 
   const bildirimTikla = (b) => {
     bildirimOku(b.id)
-    if (b.link) navigate(b.link)
+    if (b.link) git(b.link)
     setBildirimPanelAcik(false)
   }
 
@@ -809,7 +814,7 @@ function MainLayout({ children }) {
   const aramaGit = (s) => {
     grupVarsayilanaDon(etkinGrup(s.item))
     menuAc(s.item.id)
-    navigate(s.yol)
+    git(s.yol)
     setMenuAra('')
   }
 
@@ -870,18 +875,18 @@ function MainLayout({ children }) {
                 <img
                   src={profilFoto}
                   alt="Profil"
-                  onClick={() => navigate('/profil')}
+                  onClick={() => git('/profil')}
                   style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }}
                 />
               ) : (
-                <span onClick={() => navigate('/profil')} style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                <span onClick={() => git('/profil')} style={{ cursor: 'pointer', display: 'inline-flex' }}>
                   <Avatar name={kullanici?.ad} size="sm" onDark />
                 </span>
               )}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <button
-                onClick={() => navigate('/profil')}
+                onClick={() => git('/profil')}
                 style={{
                   background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                   color: 'var(--text-on-dark)',
@@ -1171,7 +1176,7 @@ function MainLayout({ children }) {
                         return (
                           <button
                             key={alt.id}
-                            onClick={() => navigate(alt.yol)}
+                            onClick={() => git(alt.yol)}
                             style={{
                               width: '100%', textAlign: 'left',
                               display: 'flex', alignItems: 'center', gap: 8,
@@ -1205,7 +1210,7 @@ function MainLayout({ children }) {
             return (
               <SortableSatir id={item.id} key={item.id} duzenModu={duzenModu}>
               <button
-                onClick={() => navigate(item.yol)}
+                onClick={() => git(item.yol)}
                 style={{
                   width: '100%',
                   display: 'flex', alignItems: 'center', gap: 9,

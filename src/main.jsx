@@ -18,6 +18,7 @@ import './styles/tokens.css'
 import './styles/typography.css'
 import './index.css'
 import App from './App.jsx'
+import { KirliFormProvider } from './context/KirliFormContext'
 
 // Yeni sürüm yayınlanınca açık kalan sekmeler kendini kurtarsın.
 // render'DAN ÖNCE: chunk hatası React ağacı kurulurken de olabilir.
@@ -35,13 +36,13 @@ createRoot(document.getElementById('root')).render(
               <ChatProvider>
                 <BildirimProvider>
                   <AktiviteProvider>
-                    <ConfirmProvider>
+                    <ConfirmProvider><KirliFormProvider>
                       <HatirlatmaProvider>
                         <ToplantiHatirlaticiProvider>
                           <App />
                         </ToplantiHatirlaticiProvider>
                       </HatirlatmaProvider>
-                    </ConfirmProvider>
+                    </KirliFormProvider></ConfirmProvider>
                   </AktiviteProvider>
                 </BildirimProvider>
               </ChatProvider>
