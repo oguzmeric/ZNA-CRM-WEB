@@ -242,7 +242,9 @@ export default function IKYonetim() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <p className="t-caption" style={{ color: 'var(--text-tertiary)', marginTop: 4 }}>
-          İzin taleplerini karara bağla, personel bordrolarını yükle ve yönet.
+          {bordroYetkisi
+            ? 'İzin taleplerini karara bağla, personel bordrolarını yükle ve yönet.'
+            : 'İzin ve avans taleplerini karara bağla, puantajı yönet.'}
         </p>
       </div>
 
