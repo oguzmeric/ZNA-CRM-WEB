@@ -29,6 +29,7 @@ import AvansOnaylari, { AvansKararModal, AvansOdemeModal } from '../components/A
 import PuantajPanel from '../components/PuantajPanel'
 import PersonelSicilListesi from '../components/sicil/PersonelSicilListesi'
 import { yeniSekmedeAc, acmaHatasi } from '../lib/dosyaAc'
+import { bordroGorebilirMi } from '../lib/ikYetki'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -50,18 +51,21 @@ const SEKMELER = [
   { id: 'izin',      label: 'İzin Onayları',    ikon: CalendarCheck },
   { id: 'avans',     label: 'Avans Onayları',   ikon: Banknote },
   { id: 'puantaj',   label: 'Puantaj',          ikon: Clock },
-  { id: 'yukle',     label: 'Bordro Yükle',     ikon: Upload },
-  { id: 'bordrolar', label: 'Yüklü Bordrolar',  ikon: FolderOpen },
+  { id: 'yukle',     label: 'Bordro Yükle',     ikon: Upload, sadeceBordro: true },
+  { id: 'bordrolar', label: 'Yüklü Bordrolar',  ikon: FolderOpen, sadeceBordro: true },
   // 18.08: Personel Sicil — kişi bazlı özlük kartı. Menüye AYRI öğe eklenmedi
   // (kullanıcı kararı: "ekstradan menü eklememize gerek yok"), giriş noktası
   // yalnız bu sekme. Kart /ik-yonetim/sicil/:id rotasında açılır.
   { id: 'sicil',     label: 'Personel Sicil',   ikon: IdCard },
 ]
-const SEKME_IDLER = SEKMELER.map(s => s.id)
+// (SEKME_IDLER kaldırıldı — sekme geçerliliği artık yetkiye göre: gorunenSekmeler)
 
 
 export default function IKYonetim() {
   const { kullanici } = useAuth()
+  // Bordro/maaş sekmeleri yalnız bordro_yonetim modülünde (mig 324 — DB de kapalı).
+  const bordroYetkisi = bordroGorebilirMi(kullanici)
+  const gorunenSekmeler = SEKMELER.filter(s => !s.sadeceBordro || bordroYetkisi)
   const { toast } = useToast()
   const { confirm } = useConfirm()
 
@@ -70,7 +74,8 @@ export default function IKYonetim() {
   const [aramaParam, setAramaParam] = useSearchParams()
   const urlSekme = aramaParam.get('sekme')
   const [sekme, setSekmeState] = useState(
-    SEKME_IDLER.includes(urlSekme) ? urlSekme : 'izin',
+    // Yetkisiz kişi ?sekme=bordrolar ile gelirse boş ekran değil İzin sekmesi görür (mig 324)
+    gorunenSekmeler.some(s => s.id === urlSekme) ? urlSekme : 'izin',
   )
   const setSekme = (id) => {
     setSekmeState(id)
@@ -274,7 +279,7 @@ export default function IKYonetim() {
         display: 'inline-flex', background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
         borderRadius: 10, padding: 3, marginBottom: 16,
       }}>
-        {SEKMELER.map(s => {
+        {gorunenSekmeler.map(s => {
           const aktif = sekme === s.id
           const Icon = s.ikon
           return (
@@ -335,7 +340,7 @@ export default function IKYonetim() {
             <PuantajPanel personeller={personeller} kullanici={kullanici} />
           )}
 
-          {sekme === 'yukle' && (
+          {sekme === 'yukle' && bordroYetkisi && (
             <BordroYukleForm
               personeller={personeller}
               kullanici={kullanici}
@@ -343,7 +348,7 @@ export default function IKYonetim() {
             />
           )}
 
-          {sekme === 'bordrolar' && (
+          {sekme === 'bordrolar' && bordroYetkisi && (
             <YukluBordrolar
               bordroListe={bordroListe}
               personeller={personeller}

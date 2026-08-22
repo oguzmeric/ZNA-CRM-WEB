@@ -43,12 +43,13 @@ import AvanslarSekmesi from '../components/sicil/AvanslarSekmesi'
 import ZimmetSekmesi from '../components/sicil/ZimmetSekmesi'
 import EvrakModal from '../components/sicil/EvrakModal'
 import { geriDon } from '../lib/geriDon'
+import { bordroGorebilirMi } from '../lib/ikYetki'
 
 const SEKMELER = [
   { id: 'genel',    label: 'Genel Bakış',      ikon: LayoutDashboard },
   { id: 'ozluk',    label: 'Özlük',            ikon: User },
   { id: 'istihdam', label: 'İstihdam',         ikon: Briefcase },
-  { id: 'maas',     label: 'Maaş & Bordro',    ikon: Wallet },
+  { id: 'maas',     label: 'Maaş & Bordro',    ikon: Wallet, sadeceBordro: true },
   { id: 'mesai',    label: 'Çalışma Saatleri', ikon: Clock },
   { id: 'izin',     label: 'İzinler',          ikon: CalendarCheck },
   { id: 'avans',    label: 'Avanslar',         ikon: Banknote },
@@ -62,6 +63,9 @@ export default function PersonelSicil() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { kullanici } = useAuth()
+  // Maaş & Bordro sekmesi yalnız bordro_yonetim modülünde (mig 324 — DB de kapalı).
+  const bordroYetkisi = bordroGorebilirMi(kullanici)
+  const gorunenSekmeler = SEKMELER.filter(s => !s.sadeceBordro || bordroYetkisi)
   const { toast } = useToast()
 
   const [personel, setPersonel] = useState(null)
@@ -329,7 +333,7 @@ export default function PersonelSicil() {
         padding: 3, flexWrap: 'wrap',
         opacity: form ? 0.55 : 1,
       }}>
-        {SEKMELER.map(s => {
+        {gorunenSekmeler.map(s => {
           const aktif = sekme === s.id
           const Icon = s.ikon
           return (
@@ -396,7 +400,7 @@ export default function PersonelSicil() {
           </div>
         )}
 
-        {sekme === 'maas'  && <MaasBordroSekmesi kullaniciId={id} />}
+        {sekme === 'maas'  && bordroYetkisi && <MaasBordroSekmesi kullaniciId={id} />}
         {sekme === 'mesai' && <CalismaSaatleriSekmesi kullaniciId={id} />}
         {sekme === 'izin'  && (
           <IzinlerSekmesi kullaniciId={id} sicil={sicil}

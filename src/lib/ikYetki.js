@@ -5,3 +5,10 @@
 // Kullanıcı Yönetimi'nden modül ver.
 export const ikGorebilirMi = (kullanici) =>
   (kullanici?.moduller || []).includes('ik_yonetim')
+
+// BORDRO & MAAŞ — İK'nın en dar kapısı (22.08 kullanıcı kararı: "burası çok kritik").
+// SADECE 'bordro_yonetim' modülü: Ali (1), Oğuz (2). admin rolü BYPASS EDEMEZ
+// (Ferdi/Ahmet admin ama bordro göremez). DB karşılığı: public.bordro_yetkili() (mig 324).
+// ⚠️ Personelin KENDİ bordrosu bu kapıdan geçmez — /izin-bordro > Bordrolarım herkese açıktır.
+export const bordroGorebilirMi = (kullanici) =>
+  (kullanici?.moduller || []).includes('bordro_yonetim')

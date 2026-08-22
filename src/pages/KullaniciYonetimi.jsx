@@ -19,23 +19,72 @@ import {
 import { trContains } from '../lib/trSearch'
 import { aktiviteLoglariGetir, aktiviteLoglariTemizle } from '../services/aktiviteService'
 
-const tumModuller = [
-  { id: 'musteriler',        isim: 'Müşteri & Satış' },
-  // Teklif + satış faturası (fiyat/kâr) erişimi — teknisyen, saha ekibi ve depo
-  // personelinde KAPALI olmalı. Web menü/rota, mobil menü ve DB RLS (mig 238)
-  // aynı anahtara bakar; buradan verilen yetki üç yerde de anında geçerlidir.
-  { id: 'teklifler',         isim: 'Teklifler & Fiyatlar' },
-  { id: 'gorevler',          isim: 'Görev Atama' },
-  { id: 'gorusmeler',        isim: 'Görüşmeler' },
-  { id: 'stok',              isim: 'Stok' },
-  { id: 'lisanslar',         isim: 'NVR Lisanslar' },
-  { id: 'raporlar',          isim: 'Raporlar' },
-  { id: 'servis_talepleri',  isim: 'Servis Talepleri' },
-  { id: 'demolar',           isim: 'Demolar' },
-  { id: 'arac_takip',        isim: 'Araç Takip (Mobiltek)' },
+// Modül erişimleri — web menüsü, mobil kartlar ve (teklif/İK/bordro'da) DB RLS
+// AYNI anahtarı okur. 22.08 denetimi: DB'de kullanılan 5 anahtar bu listede YOKTU
+// (ik_yonetim = MAAŞ erişimi dahil) — yalnız SQL ile veriliyordu, artık ekrandan.
+const MODUL_GRUPLARI = [
+  {
+    grup: 'Operasyon',
+    moduller: [
+      { id: 'gorevler',          isim: 'Görev Atama' },
+      { id: 'gorusmeler',        isim: 'Görüşmeler' },
+      { id: 'servis_talepleri',  isim: 'Servis Talepleri' },
+      { id: 'stok',              isim: 'Stok' },
+      { id: 'lisanslar',         isim: 'NVR Lisanslar' },
+      { id: 'demolar',           isim: 'Demolar' },
+    ],
+  },
+  {
+    grup: 'Satış & Raporlama',
+    moduller: [
+      { id: 'musteriler',        isim: 'Müşteri & Satış' },
+      // Teklif + satış faturası (fiyat/kâr) erişimi — teknisyen, saha ekibi ve depo
+      // personelinde KAPALI olmalı. Web menü/rota, mobil menü ve DB RLS (mig 238)
+      // aynı anahtara bakar; buradan verilen yetki üç yerde de anında geçerlidir.
+      { id: 'teklifler',         isim: 'Teklifler & Fiyatlar', uyari: 'Alış/satış fiyatı ve kâr görünür' },
+      { id: 'raporlar',          isim: 'Raporlar' },
+    ],
+  },
+  {
+    grup: 'Saha & Filo',
+    moduller: [
+      { id: 'arac_takip',        isim: 'Araç Takip (Mobiltek)' },
+      { id: 'arac_foto_takip',   isim: 'Araç Foto Kayıt' },
+      { id: 'mesai_takip',       isim: 'Mesai Takip' },
+    ],
+  },
+  {
+    grup: 'İK & Yönetim',
+    moduller: [
+      { id: 'ik_yonetim',        isim: 'İK Yönetimi', uyari: 'İzin, avans ve personel sicili' },
+      // 🔴 mig 324: bordro + maaş RLS'i AYRI ve DAR — admin rolü bile bypass edemez.
+      { id: 'bordro_yonetim',    isim: 'Bordro & Maaş', kritik: true, uyari: 'TÜM personelin bordro ve maaş bilgisi' },
+      { id: 'kullanici_yonetimi', isim: 'Kullanıcı Yönetimi', kritik: true, uyari: 'Yetki verme ekranı' },
+    ],
+  },
+]
+const tumModuller = MODUL_GRUPLARI.flatMap(g => g.moduller)
+
+// Nokta yetkiler — modül değil, tek bir kapıyı açan bayraklar (DB kolonları).
+// Kaynak: App.jsx guard'ları + MainLayout menü kuralları.
+const EK_YETKILER = [
+  { alan: 'teklifOnayYetkilisi',    isim: 'Teklif onay yetkilisi',    aciklama: '"Onaylar" kuyruğunda teklifleri onaylar. Yönetici rolü tek başına yetmez.' },
+  { alan: 'teklifOnayUstYetkili',   isim: 'Teklif ÜST onay yetkilisi', aciklama: 'İskonto/limit aşan tekliflerde son onayı verir.' },
+  { alan: 'siparisOnayYetkilisi',   isim: 'Sipariş onay yetkilisi',   aciklama: '"Sipariş Onayları" kuyruğunu görür ve onaylar.' },
+  { alan: 'siparisOnayUstYetkili',  isim: 'Sipariş ÜST onay yetkilisi', aciklama: 'Tutar limitini aşan siparişlerde son onay.' },
+  { alan: 'demirbasYetkilisi',      isim: 'Demirbaş / zimmet yetkilisi', aciklama: 'Personel zimmet ve demirbaş panelini yönetir.' },
+  { alan: 'sahaSorumlusu',          isim: 'Saha sorumlusu',           aciklama: 'Toplu bakım oluşturur ve saha ekiplerini yönetir.' },
 ]
 
-const bos = { ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '', izinliTurler: [], musteriId: null, faturaYetkilisi: false, montajSorumlusu: false }
+const bos = {
+  ad: '', kullaniciAdi: '', sifre: '', moduller: [], tip: 'zna', firmaAdi: '',
+  izinliTurler: [], musteriId: null,
+  faturaYetkilisi: false, montajSorumlusu: false,
+  // 22.08: bu bayraklar DB'de vardı ve yetki taşıyordu ama ekranda YOKTU
+  teklifOnayYetkilisi: false, teklifOnayUstYetkili: false,
+  siparisOnayYetkilisi: false, siparisOnayUstYetkili: false,
+  demirbasYetkilisi: false, sahaSorumlusu: false,
+}
 
 const LOG_TIP = {
   kullanici_giris: { isim: 'Giriş',           tone: 'aktif',     C: LogIn },
@@ -945,7 +994,17 @@ export default function KullaniciYonetimi() {
       moduller: k.moduller || [], tip: k.tip || 'zna',
       firmaAdi: k.firmaAdi || '', izinliTurler: k.izinliTurler || [],
       musteriId: k.musteriId ?? null,
+      // ⚠️ 22.08: yalnız faturaYetkilisi yükleniyordu — diğer bayraklar forma
+      // gelmediği için her 'Güncelle' onları sessizce FALSE yazıyordu
+      // (Ferdi'nin montaj sorumlusu bayrağı böyle silinme riski taşıyordu).
       faturaYetkilisi: k.faturaYetkilisi === true,
+      montajSorumlusu: k.montajSorumlusu === true,
+      teklifOnayYetkilisi: k.teklifOnayYetkilisi === true,
+      teklifOnayUstYetkili: k.teklifOnayUstYetkili === true,
+      siparisOnayYetkilisi: k.siparisOnayYetkilisi === true,
+      siparisOnayUstYetkili: k.siparisOnayUstYetkili === true,
+      demirbasYetkilisi: k.demirbasYetkilisi === true,
+      sahaSorumlusu: k.sahaSorumlusu === true,
     })
     setDuzenle(k.id); setGoster(true)
     // Form yukarıda açılıyor — kullanıcı listede aşağıdaysa görmesin diye
@@ -1332,36 +1391,57 @@ export default function KullaniciYonetimi() {
               {form.tip !== 'musteri' && (
                 <div style={{ marginBottom: 16 }}>
                   <Label>Modül erişimleri</Label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-                    {tumModuller.map(m => {
-                      const secili = form.moduller.includes(m.id)
-                      return (
-                        <label
-                          key={m.id}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            padding: '8px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            background: secili ? 'var(--brand-primary-soft)' : 'var(--surface-sunken)',
-                            border: `1px solid ${secili ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={secili}
-                            onChange={() => modulToggle(m.id)}
-                            style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
-                          />
-                          <span style={{
-                            font: secili ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
-                            color: secili ? 'var(--brand-primary)' : 'var(--text-primary)',
-                          }}>
-                            {m.isim}
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
+                  {MODUL_GRUPLARI.map(g => (
+                    <div key={g.grup} style={{ marginBottom: 10 }}>
+                      <div style={{ font: '600 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                        {g.grup}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 8 }}>
+                        {g.moduller.map(m => {
+                          const secili = form.moduller.includes(m.id)
+                          const vurgu = m.kritik ? 'var(--danger)' : 'var(--brand-primary)'
+                          return (
+                            <label
+                              key={m.id}
+                              title={m.uyari || ''}
+                              style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: secili ? (m.kritik ? 'var(--danger-soft, rgba(220,38,38,0.08))' : 'var(--brand-primary-soft)') : 'var(--surface-sunken)',
+                                border: `1px solid ${secili ? vurgu : 'var(--border-default)'}`,
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={secili}
+                                onChange={() => modulToggle(m.id)}
+                                style={{ width: 16, height: 16, marginTop: 1, accentColor: vurgu }}
+                              />
+                              <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{
+                                  font: secili ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                                  color: secili ? vurgu : 'var(--text-primary)',
+                                }}>
+                                  {m.isim}{m.kritik ? ' 🔒' : ''}
+                                </span>
+                                {!!m.uyari && (
+                                  <span style={{ font: '400 10px/14px var(--font-sans)', color: 'var(--text-tertiary)' }}>
+                                    {m.uyari}
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {form.moduller.includes('bordro_yonetim') && (
+                    <div style={{ font: '500 11px/16px var(--font-sans)', color: 'var(--danger)', marginTop: 2 }}>
+                      🔒 Bordro & Maaş: bu kişi TÜM personelin bordro ve maaş bilgisini görür. Veritabanı da bu anahtara bakar (mig 324) — yönetici rolü tek başına yetmez.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1416,6 +1496,36 @@ export default function KullaniciYonetimi() {
                   <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
                     Sipariş tamamlanınca açılan montaj servis talebi varsayılan olarak bu kişiye atanır.
                   </div>
+
+                  {/* 22.08: bu bayraklar DB'de vardı ve menü/rota kapılarını açıyordu
+                      ama ekranda YOKTU — yalnız SQL ile veriliyordu. */}
+                  {EK_YETKILER.map(yt => (
+                    <div key={yt.alan}>
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        padding: '8px 12px', maxWidth: 420, marginTop: 8,
+                        borderRadius: 'var(--radius-sm)',
+                        background: form[yt.alan] ? 'var(--brand-primary-soft)' : 'var(--surface-sunken)',
+                        border: `1px solid ${form[yt.alan] ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={!!form[yt.alan]}
+                          onChange={e => setForm(f => ({ ...f, [yt.alan]: e.target.checked }))}
+                          style={{ width: 16, height: 16, accentColor: 'var(--brand-primary)' }}
+                        />
+                        <span style={{
+                          font: form[yt.alan] ? '500 13px/18px var(--font-sans)' : '400 13px/18px var(--font-sans)',
+                          color: form[yt.alan] ? 'var(--brand-primary)' : 'var(--text-primary)',
+                        }}>
+                          {yt.isim}
+                        </span>
+                      </label>
+                      <div style={{ font: '400 11px/16px var(--font-sans)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                        {yt.aciklama}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
