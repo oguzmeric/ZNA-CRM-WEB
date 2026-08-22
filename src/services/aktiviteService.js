@@ -32,12 +32,16 @@ function gunBaslangici(gun) {
 // Logları getir. RLS gereği: admin hepsini, personel kendisininkini alır.
 // Dönüş şekli ESKİ localStorage kaydıyla aynı (kullaniciId/kullaniciAd/tip/tarih/sayfa/sureSaniye)
 // — böylece KullaniciYonetimi/Profil kodları neredeyse değişmeden çalışır.
-export async function aktiviteLoglariGetir({ gun = 'hepsi', limit = 3000 } = {}) {
+export async function aktiviteLoglariGetir({ gun = 'hepsi', limit = 3000, tip = null } = {}) {
   let q = supabase
     .from('aktivite_loglari')
     .select('*')
     .order('olusturma_tarih', { ascending: false })
     .limit(limit)
+
+  // tip filtresi DB'de: 'kullanici_giris' için 36 bin sayfa logunu çekmeye gerek yok
+  // (Kullanıcı Yönetimi listesindeki "son giriş" sütunu — 22.08).
+  if (tip) q = q.eq('tip', tip)
 
   const bas = gunBaslangici(gun)
   if (bas) {

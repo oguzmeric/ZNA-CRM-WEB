@@ -869,6 +869,28 @@ export default function KullaniciYonetimi() {
       .catch(() => setTumLoglar([]))
   }, [aktifSekme])
 
+  // Kullanıcılar sekmesinde "son giriş" sütunu BOŞTU: ağır log yüklemesi yalnız
+  // aktivite/özet sekmesinde koşuyordu (22.08 denetimi). Burada yalnız GİRİŞ
+  // logları çekilir (tip filtresi + 400 satır) — liste anında dolar.
+  const [sonGirisMap, setSonGirisMap] = useState(() => new Map())
+  useEffect(() => {
+    if (aktifSekme !== 'kullanicilar') return undefined
+    let iptal = false
+    aktiviteLoglariGetir({ gun: 'hepsi', limit: 400, tip: 'kullanici_giris' })
+      .then(loglar => {
+        if (iptal) return
+        const m = new Map()
+        for (const l of loglar || []) {
+          if (l.tip !== 'kullanici_giris') continue
+          const id = String(l.kullaniciId)
+          if (!m.has(id) || new Date(l.tarih) > new Date(m.get(id))) m.set(id, l.tarih)
+        }
+        setSonGirisMap(m)
+      })
+      .catch(() => { /* son giriş kozmetik — liste yine çalışır */ })
+    return () => { iptal = true }
+  }, [aktifSekme])
+
   const filtreliLoglar = useMemo(() =>
     tumLoglar
       .filter(l => seciliKullaniciId === 'hepsi' || String(l.kullaniciId) === String(seciliKullaniciId))
@@ -891,6 +913,7 @@ export default function KullaniciYonetimi() {
   )
 
   const kullaniciOzet = kullanicilar.map(k => {
+    const hafifSonGiris = sonGirisMap.get(String(k.id)) || null
     const kLoglari = tumLoglar.filter(l => String(l.kullaniciId) === String(k.id))
     const girisler = kLoglari.filter(l => l.tip === 'kullanici_giris')
     const sayfaSureleri = kLoglari.filter(l => l.tip === 'sayfa_cikis')
@@ -905,7 +928,7 @@ export default function KullaniciYonetimi() {
       toplamGiris: girisler.length,
       toplamSure,
       enCokSayfa: enCok?.[0] || '—',
-      sonGiris: girisler[0]?.tarih,
+      sonGiris: girisler[0]?.tarih || hafifSonGiris,
     }
   })
 
